@@ -1,0 +1,143 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Exceptions\InvalidOrderTransitionException;
+use App\Models\Branch;
+use App\Models\Customer;
+use App\Models\Order;
+use App\Services\Orders\OrderStateMachine;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class OrderStateMachineTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private OrderStateMachine $machine;
+
+    private Branch $branch;
+
+    private Customer $customer;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->machine = new OrderStateMachine;
+
+        $this->branch = Branch::create([
+            'name' => 'Osu', 'slug' => 'osu', 'phone' => '+233200000001', 'address' => 'A',
+            'lat' => 5.5, 'lng' => -0.1, 'opens_at' => '10:00', 'closes_at' => '22:00',
+        ]);
+
+        $this->customer = Customer::create(['phone' => '+233241111111']);
+    }
+
+    private function makeOrder(string $status = 'pending_payment'): Order
+    {
+        $order = Order::create([
+            'reference' => 'ORD-'.uniqid(),
+            'track_token' => bin2hex(random_bytes(16)),
+            'customer_id' => $this->customer->id,
+            'branch_id' => $this->branch->id,
+            'fulfilment_type' => 'delivery',
+            'subtotal' => 3500,
+            'total' => 3500,
+            'payment_method' => 'cash',
+            'payment_status' => 'pending',
+        ]);
+
+        $order->status = $status;
+        $order->save();
+
+        return $order;
+    }
+
+    public function test_valid_transition_stamps_timestamp_and_writes_event(): void
+    {
+        $order = $this->makeOrder('preparing');
+
+        $result = $this->machine->transition($order, 'ready', 'staff', actorId: 1);
+
+        $this->assertSame('ready', $result->status);
+        $this->assertNotNull($result->ready_at);
+
+        $this->assertDatabaseHas('order_events', [
+            'order_id' => $order->id,
+            'from_status' => 'preparing',
+            'to_status' => 'ready',
+            'actor_type' => 'staff',
+            'actor_id' => 1,
+        ]);
+    }
+
+    public function test_illegal_transition_throws(): void
+    {
+        $order = $this->makeOrder('pending_payment');
+
+        $this->expectException(InvalidOrderTransitionException::class);
+
+        $this->machine->transition($order, 'delivered', 'system');
+    }
+
+    public function test_cancellation_requires_a_reason(): void
+    {
+        $order = $this->makeOrder('accepted');
+
+        $this->expectException(InvalidOrderTransitionException::class);
+
+        $this->machine->transition($order, 'cancelled', 'manager', actorId: 1);
+    }
+
+    public function test_cancellation_with_reason_succeeds(): void
+    {
+        $order = $this->makeOrder('accepted');
+
+        $result = $this->machine->transition(
+            $order, 'cancelled', 'manager', actorId: 1, cancellationReason: 'Customer requested cancellation'
+        );
+
+        $this->assertSame('cancelled', $result->status);
+        $this->assertSame('Customer requested cancellation', $result->cancellation_reason);
+        $this->assertNotNull($result->cancelled_at);
+    }
+
+    public function test_non_system_actor_requires_actor_id(): void
+    {
+        $order = $this->makeOrder('paid');
+
+        $this->expectException(InvalidOrderTransitionException::class);
+
+        $this->machine->transition($order, 'accepted', 'staff');
+    }
+
+    public function test_system_actor_does_not_require_actor_id(): void
+    {
+        $order = $this->makeOrder('pending_payment');
+
+        $result = $this->machine->transition($order, 'paid', 'system');
+
+        $this->assertSame('paid', $result->status);
+    }
+
+    public function test_refund_reachable_from_failed_rejected_and_cancelled(): void
+    {
+        foreach (['failed', 'rejected', 'cancelled'] as $from) {
+            $order = $this->makeOrder($from);
+
+            $result = $this->machine->transition($order, 'refunded', 'owner', actorId: 1);
+
+            $this->assertSame('refunded', $result->status);
+        }
+    }
+
+    public function test_refund_not_reachable_from_delivered(): void
+    {
+        $order = $this->makeOrder('delivered');
+
+        $this->expectException(InvalidOrderTransitionException::class);
+
+        $this->machine->transition($order, 'refunded', 'owner', actorId: 1);
+    }
+}
