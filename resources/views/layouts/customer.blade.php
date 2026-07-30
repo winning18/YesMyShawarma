@@ -22,12 +22,12 @@
                 </a>
 
                 <nav class="hidden md:flex items-center gap-6 text-sm text-brand-white">
-                    <a href="{{ route('home') }}" class="hover:text-brand-yellow">{{ __('Home') }}</a>
-                    <a href="{{ route('menu.index') }}" class="hover:text-brand-yellow">{{ __('Menu') }}</a>
-                    <a href="{{ route('branches.index') }}" class="hover:text-brand-yellow">{{ __('Branches') }}</a>
-                    <a href="{{ route('contact') }}" class="hover:text-brand-yellow">{{ __('Contact us') }}</a>
-                    <a href="{{ route('about') }}" class="hover:text-brand-yellow">{{ __('About us') }}</a>
-                    <a href="{{ route('tracking.lookup') }}" class="hover:text-brand-yellow">{{ __('Track order') }}</a>
+                    <a href="{{ route('home') }}" class="hover:text-brand-yellow {{ request()->routeIs('home') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Home') }}</a>
+                    <a href="{{ route('menu.index') }}" class="hover:text-brand-yellow {{ request()->routeIs('menu.index') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Menu') }}</a>
+                    <a href="{{ route('branches.index') }}" class="hover:text-brand-yellow {{ request()->routeIs('branches.index') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Branches') }}</a>
+                    <a href="{{ route('contact') }}" class="hover:text-brand-yellow {{ request()->routeIs('contact') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Contact us') }}</a>
+                    <a href="{{ route('about') }}" class="hover:text-brand-yellow {{ request()->routeIs('about') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('About us') }}</a>
+                    <a href="{{ route('tracking.lookup') }}" class="hover:text-brand-yellow {{ request()->routeIs('tracking.*') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Track order') }}</a>
                 </nav>
 
                 <div class="hidden md:flex items-center gap-4">
@@ -56,12 +56,12 @@
             </div>
 
             <nav x-show="open" x-cloak class="md:hidden px-4 pb-4 space-y-2 text-brand-white text-sm">
-                <a href="{{ route('home') }}" class="block hover:text-brand-yellow">{{ __('Home') }}</a>
-                <a href="{{ route('menu.index') }}" class="block hover:text-brand-yellow">{{ __('Menu') }}</a>
-                <a href="{{ route('branches.index') }}" class="block hover:text-brand-yellow">{{ __('Branches') }}</a>
-                <a href="{{ route('contact') }}" class="block hover:text-brand-yellow">{{ __('Contact us') }}</a>
-                <a href="{{ route('about') }}" class="block hover:text-brand-yellow">{{ __('About us') }}</a>
-                <a href="{{ route('tracking.lookup') }}" class="block hover:text-brand-yellow">{{ __('Track order') }}</a>
+                <a href="{{ route('home') }}" class="block hover:text-brand-yellow {{ request()->routeIs('home') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Home') }}</a>
+                <a href="{{ route('menu.index') }}" class="block hover:text-brand-yellow {{ request()->routeIs('menu.index') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Menu') }}</a>
+                <a href="{{ route('branches.index') }}" class="block hover:text-brand-yellow {{ request()->routeIs('branches.index') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Branches') }}</a>
+                <a href="{{ route('contact') }}" class="block hover:text-brand-yellow {{ request()->routeIs('contact') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Contact us') }}</a>
+                <a href="{{ route('about') }}" class="block hover:text-brand-yellow {{ request()->routeIs('about') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('About us') }}</a>
+                <a href="{{ route('tracking.lookup') }}" class="block hover:text-brand-yellow {{ request()->routeIs('tracking.*') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Track order') }}</a>
                 <a href="{{ route('cart.show') }}" class="block hover:text-brand-yellow">{{ __('Cart') }} ({{ $cartItemCount }})</a>
                 @auth('customer')
                     <form method="POST" action="{{ route('customer.logout') }}">
@@ -95,24 +95,39 @@
             {{ $slot }}
         </main>
 
-        <footer class="mt-12 bg-brand-white border-t border-brand-gray-100">
-            <div class="max-w-5xl mx-auto px-4 py-8 grid grid-cols-1 sm:grid-cols-3 gap-6 text-sm text-brand-gray-500">
+        <footer class="mt-12 bg-brand-black border-t border-brand-yellow">
+            <div class="max-w-5xl mx-auto px-4 py-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 text-sm text-brand-gray-300">
                 <div>
-                    <img src="{{ asset('images/logo-web.png') }}" alt="{{ config('app.name') }}" class="h-8 w-auto mb-3">
-                    <a href="{{ route('contact') }}" class="block hover:text-brand-black">{{ __('Contact us') }}</a>
-                    <a href="{{ route('about') }}" class="block hover:text-brand-black">{{ __('About us') }}</a>
+                    <img src="{{ asset('images/logo-web.png') }}" alt="{{ config('app.name') }}" class="h-9 w-auto mb-4">
+                    <p class="text-brand-gray-300">
+                        {{ __('Shawarma, burgers and more — order online for pickup from our Accra branches.') }}
+                    </p>
                 </div>
+
                 <div>
-                    <p class="font-semibold text-brand-black mb-2">{{ __('Follow us') }}</p>
-                    <x-social-links icon-class="text-brand-gray-500" />
+                    <p class="font-semibold text-brand-yellow uppercase text-xs tracking-wide mb-4">{{ __('Quick links') }}</p>
+                    <nav class="space-y-2">
+                        <a href="{{ route('home') }}" class="block hover:text-brand-yellow transition">{{ __('Home') }}</a>
+                        <a href="{{ route('menu.index') }}" class="block hover:text-brand-yellow transition">{{ __('Menu') }}</a>
+                        <a href="{{ route('branches.index') }}" class="block hover:text-brand-yellow transition">{{ __('Branches') }}</a>
+                        <a href="{{ route('contact') }}" class="block hover:text-brand-yellow transition">{{ __('Contact us') }}</a>
+                        <a href="{{ route('about') }}" class="block hover:text-brand-yellow transition">{{ __('About us') }}</a>
+                        <a href="{{ route('tracking.lookup') }}" class="block hover:text-brand-yellow transition">{{ __('Track order') }}</a>
+                    </nav>
                 </div>
+
                 <div>
-                    <p class="font-semibold text-brand-black mb-2">{{ __('Call us') }}</p>
-                    <a href="tel:+233243635265" class="block hover:text-brand-black"><span class="font-bold">Ga Odumase</span>: +233 (0) 243 635 265</a>
-                    <a href="tel:+233531907747" class="block hover:text-brand-black"><span class="font-bold">Pokuase</span>: +233 (0) 531 907 747</a>
+                    <p class="font-semibold text-brand-yellow uppercase text-xs tracking-wide mb-4">{{ __('Follow us') }}</p>
+                    <x-social-links icon-class="text-brand-gray-300" />
+                </div>
+
+                <div>
+                    <p class="font-semibold text-brand-yellow uppercase text-xs tracking-wide mb-4">{{ __('Call us') }}</p>
+                    <a href="tel:+233243635265" class="block hover:text-brand-yellow transition mb-2"><span class="font-bold text-brand-white">Ga Odumase</span><br>+233 (0) 243 635 265</a>
+                    <a href="tel:+233531907747" class="block hover:text-brand-yellow transition"><span class="font-bold text-brand-white">Pokuase</span><br>+233 (0) 531 907 747</a>
                 </div>
             </div>
-            <div class="max-w-5xl mx-auto px-4 py-4 border-t border-brand-gray-100 text-sm text-brand-gray-500 text-center">
+            <div class="max-w-5xl mx-auto px-4 py-4 border-t border-brand-gray-700 text-sm text-brand-gray-300 text-center">
                 &copy; {{ now()->year }} {{ config('app.name') }}
             </div>
         </footer>
