@@ -81,6 +81,11 @@ class MenuPricingService
             'line_total' => $lineTotal,
             'notes' => $itemData->notes,
             'options' => $optionRows,
+            // Live, not snapshotted — display-only (cart page), never
+            // persisted. OrderCreationService reads specific keys off this
+            // same row and doesn't touch this one, so it can't leak into
+            // order_items the way schema.md's snapshotting rule warns against.
+            'image_url' => $menuItem->imageUrl(),
         ];
     }
 

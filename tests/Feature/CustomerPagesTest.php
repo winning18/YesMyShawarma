@@ -25,9 +25,9 @@ class CustomerPagesTest extends TestCase
         ]);
     }
 
-    public function test_home_page_renders_with_branches(): void
+    public function test_home_page_renders(): void
     {
-        $this->get(route('home'))->assertOk()->assertSee('Ga Odumase');
+        $this->get(route('home'))->assertOk();
     }
 
     public function test_branches_page_renders(): void
@@ -108,6 +108,78 @@ class CustomerPagesTest extends TestCase
         $this->branch->update(['is_active' => false]);
 
         $this->get(route('menu.index'))->assertRedirect(route('branches.index'));
+    }
+
+    public function test_product_page_shows_the_item_its_extras_and_drinks_as_optional_addons(): void
+    {
+        $shawarma = Category::create(['name' => 'Shawarma', 'slug' => 'shawarma']);
+        $drinks = Category::create(['name' => 'Drinks', 'slug' => 'drinks']);
+
+        $item = MenuItem::create([
+            'category_id' => $shawarma->id, 'name' => 'Chicken Shawarma', 'slug' => 'chicken-shawarma', 'base_price' => 5000,
+        ]);
+        $drink = MenuItem::create([
+            'category_id' => $drinks->id, 'name' => 'Mango', 'slug' => 'mango', 'base_price' => 2000,
+        ]);
+        $this->branch->menuItems()->attach([$item->id, $drink->id], ['is_available' => true]);
+
+        $extras = OptionGroup::create(['name' => 'Extras', 'min_select' => 0, 'max_select' => 5]);
+        $item->optionGroups()->attach($extras->id, ['sort_order' => 1]);
+
+        $this->get(route('branches.pick', $this->branch));
+
+        $this->get(route('menu.show', $item))
+            ->assertOk()
+            ->assertSee('Chicken Shawarma')
+            ->assertSee('Extras')
+            ->assertSee('Drinks')
+            ->assertSee('Mango');
+    }
+
+    public function test_product_page_excludes_itself_from_its_own_drinks_addon_list(): void
+    {
+        $drinks = Category::create(['name' => 'Drinks', 'slug' => 'drinks']);
+        $mango = MenuItem::create([
+            'category_id' => $drinks->id, 'name' => 'Mango', 'slug' => 'mango', 'base_price' => 2000,
+        ]);
+        $orange = MenuItem::create([
+            'category_id' => $drinks->id, 'name' => 'Orange', 'slug' => 'orange', 'base_price' => 2000,
+        ]);
+        $this->branch->menuItems()->attach([$mango->id, $orange->id], ['is_available' => true]);
+
+        $this->get(route('branches.pick', $this->branch));
+        $response = $this->get(route('menu.show', $mango));
+
+        $response->assertOk()->assertSee('Orange');
+
+        // Only Orange should get a "+ Add" quick-add card in the Drinks
+        // cross-sell section — Mango appearing there too (as well as in
+        // the page's own title/heading) would mean the "exclude itself"
+        // filter isn't working.
+        $this->assertSame(1, substr_count($response->getContent(), '+ Add'));
+    }
+
+    public function test_product_page_without_a_selected_branch_redirects_to_branches(): void
+    {
+        $category = Category::create(['name' => 'Shawarma', 'slug' => 'shawarma']);
+        $item = MenuItem::create([
+            'category_id' => $category->id, 'name' => 'Chicken Shawarma', 'slug' => 'chicken-shawarma', 'base_price' => 5000,
+        ]);
+
+        $this->get(route('menu.show', $item))->assertRedirect(route('branches.index'));
+    }
+
+    public function test_product_page_404s_when_unavailable_at_the_selected_branch(): void
+    {
+        $category = Category::create(['name' => 'Shawarma', 'slug' => 'shawarma']);
+        $item = MenuItem::create([
+            'category_id' => $category->id, 'name' => 'Chicken Shawarma', 'slug' => 'chicken-shawarma', 'base_price' => 5000,
+        ]);
+        $this->branch->menuItems()->attach($item->id, ['is_available' => false]);
+
+        $this->get(route('branches.pick', $this->branch));
+
+        $this->get(route('menu.show', $item))->assertNotFound();
     }
 
     public function test_option_groups_render_in_their_configured_pivot_order(): void

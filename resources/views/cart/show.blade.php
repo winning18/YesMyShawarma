@@ -18,24 +18,38 @@
         <div class="space-y-4">
             @foreach ($lines as $line)
                 <div class="border border-brand-gray-100 rounded-lg p-5 flex justify-between items-start gap-4">
-                    <div>
-                        <p class="font-semibold">{{ $line['name_snapshot'] }}</p>
-                        @if (! empty($line['options']))
-                            <p class="text-sm text-brand-gray-500">
-                                {{ collect($line['options'])->pluck('name_snapshot')->join(', ') }}
-                            </p>
-                        @endif
-                        @if ($line['notes'])
-                            <p class="text-sm text-brand-gray-500 italic">{{ $line['notes'] }}</p>
+                    <div class="flex items-start gap-4 min-w-0">
+                        @if ($line['image_url'])
+                            <img src="{{ $line['image_url'] }}" alt="{{ $line['name_snapshot'] }}" class="w-16 h-16 rounded-md object-cover shrink-0">
+                        @else
+                            <div class="w-16 h-16 rounded-md bg-brand-gray-100 flex items-center justify-center shrink-0" role="img" aria-label="{{ $line['name_snapshot'] }}">
+                                <svg viewBox="0 0 24 24" fill="none" class="w-6 h-6 text-brand-gray-300">
+                                    <path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z" stroke="currentColor" stroke-width="1.5" />
+                                    <circle cx="9" cy="10.5" r="1.5" stroke="currentColor" stroke-width="1.5" />
+                                    <path d="m5 16 4.5-4 3 2.5L16 11l3 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                                </svg>
+                            </div>
                         @endif
 
-                        <form method="POST" action="{{ route('cart.update', $line['line_id']) }}" class="mt-2 flex items-center gap-2">
-                            @csrf
-                            @method('PATCH')
-                            <label class="text-sm text-brand-gray-500">{{ __('Qty') }}</label>
-                            <input type="number" name="quantity" value="{{ $line['quantity'] }}" min="1" max="{{ \App\Services\Cart\CartService::MAX_LINE_QUANTITY }}" class="w-16 rounded-md border-brand-gray-300 text-sm">
-                            <button type="submit" class="text-sm underline text-brand-gray-500">{{ __('Update') }}</button>
-                        </form>
+                        <div class="min-w-0">
+                            <p class="font-semibold">{{ $line['name_snapshot'] }}</p>
+                            @foreach ($line['options'] as $option)
+                                <p class="text-sm text-brand-gray-500">
+                                    {{ $option['name_snapshot'] }} (+GH₵{{ number_format($option['price_delta_snapshot'] / 100, 2) }})
+                                </p>
+                            @endforeach
+                            @if ($line['notes'])
+                                <p class="text-sm text-brand-gray-500 italic">{{ $line['notes'] }}</p>
+                            @endif
+
+                            <form method="POST" action="{{ route('cart.update', $line['line_id']) }}" class="mt-2 flex items-center gap-2">
+                                @csrf
+                                @method('PATCH')
+                                <label class="text-sm text-brand-gray-500">{{ __('Qty') }}</label>
+                                <input type="number" name="quantity" value="{{ $line['quantity'] }}" min="1" max="{{ \App\Services\Cart\CartService::MAX_LINE_QUANTITY }}" class="w-16 rounded-md border-brand-gray-300 text-sm">
+                                <button type="submit" class="text-sm underline text-brand-gray-500">{{ __('Update') }}</button>
+                            </form>
+                        </div>
                     </div>
 
                     <div class="text-right shrink-0">

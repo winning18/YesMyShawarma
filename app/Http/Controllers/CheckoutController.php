@@ -3,8 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\OrderPlacementException;
-use App\Models\Branch;
-use App\Models\Category;
 use App\Services\Cart\CartService;
 use App\Services\Customers\CustomerService;
 use App\Services\Orders\Data\DeliveryAddressData;
@@ -13,7 +11,6 @@ use App\Services\Orders\OrderCreationService;
 use App\Services\Payments\PaystackPaymentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
@@ -31,29 +28,7 @@ class CheckoutController extends Controller
             ...$summary,
             'deliveryAvailable' => $summary['branch']->deliveryZones()->where('is_active', true)->exists(),
             'customer' => Auth::guard('customer')->user(),
-            'availableDrinks' => $this->availableDrinks($summary['branch']),
         ]);
-    }
-
-    /**
-     * A quick "add a drink?" upsell right at checkout — reuses the same
-     * cart.add endpoint the menu page uses, which redirects back() to
-     * whichever page submitted it, so this needs no dedicated route.
-     */
-    private function availableDrinks(Branch $branch): Collection
-    {
-        $drinksCategory = Category::where('slug', 'drinks')->first();
-
-        if (! $drinksCategory) {
-            return collect();
-        }
-
-        return $branch->menuItems()
-            ->where('menu_items.category_id', $drinksCategory->id)
-            ->where('menu_items.is_active', true)
-            ->wherePivot('is_available', true)
-            ->orderBy('menu_items.sort_order')
-            ->get();
     }
 
     public function store(

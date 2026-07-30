@@ -116,4 +116,46 @@ class ImageUploadTest extends TestCase
             ])
             ->assertForbidden();
     }
+
+    public function test_manager_can_upload_and_remove_a_category_hero_image(): void
+    {
+        $manager = User::factory()->create();
+        $this->assignRoleAt($manager, 'manager', $this->branch);
+
+        $category = Category::create(['name' => 'Shawarma', 'slug' => 'shawarma']);
+
+        $this->actingAs($manager)
+            ->post(route('dashboard.hero-images.image.update', $category), [
+                'image' => UploadedFile::fake()->image('hero.jpg'),
+            ])
+            ->assertRedirect();
+
+        $category->refresh();
+        $this->assertNotNull($category->hero_image_path);
+        Storage::disk('public')->assertExists($category->hero_image_path);
+
+        $storedPath = $category->hero_image_path;
+
+        $this->actingAs($manager)
+            ->delete(route('dashboard.hero-images.image.destroy', $category))
+            ->assertRedirect();
+
+        $category->refresh();
+        $this->assertNull($category->hero_image_path);
+        Storage::disk('public')->assertMissing($storedPath);
+    }
+
+    public function test_staff_cannot_upload_a_category_hero_image(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+
+        $category = Category::create(['name' => 'Shawarma', 'slug' => 'shawarma']);
+
+        $this->actingAs($staff)
+            ->post(route('dashboard.hero-images.image.update', $category), [
+                'image' => UploadedFile::fake()->image('hero.jpg'),
+            ])
+            ->assertForbidden();
+    }
 }

@@ -115,34 +115,4 @@ class CheckoutFlowTest extends TestCase
 
         $this->assertSame('pickup', Order::first()->fulfilment_type);
     }
-
-    public function test_checkout_page_offers_a_drink_upsell_and_adding_one_updates_the_cart(): void
-    {
-        $drinksCategory = Category::create(['name' => 'Drinks', 'slug' => 'drinks']);
-        $mango = MenuItem::create([
-            'category_id' => $drinksCategory->id, 'name' => 'Mango', 'slug' => 'mango', 'base_price' => 2000,
-        ]);
-        $this->branch->menuItems()->attach($mango->id, ['is_available' => true]);
-
-        $this->addToCart(1);
-
-        $this->get(route('checkout.show'))->assertOk()->assertSee('Mango');
-
-        $this->post(route('cart.add'), [
-            'branch_id' => $this->branch->id,
-            'menu_item_id' => $mango->id,
-            'quantity' => 1,
-            'option_ids' => [],
-        ]);
-
-        $this->post(route('checkout.store'), [
-            'name' => 'Ama',
-            'phone' => '0241111111',
-            'payment_method' => 'cash',
-        ]);
-
-        $order = Order::first();
-        $this->assertSame(7000, $order->total); // 5000 shawarma + 2000 mango
-        $this->assertCount(2, $order->items);
-    }
 }

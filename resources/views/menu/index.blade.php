@@ -29,7 +29,9 @@
                 @foreach ($group['items'] as $item)
                     @if (in_array($group['category']->slug, $sideBySideCategories, true))
                         <div class="bg-brand-black rounded-lg p-4 flex items-start gap-3">
-                            <x-product-image :item="$item" class="w-20 h-20 shrink-0" />
+                            <a href="{{ route('menu.show', $item) }}" class="shrink-0">
+                                <x-product-image :item="$item" class="w-20 h-20" />
+                            </a>
 
                             <div class="flex-1 min-w-0">
                                 @include('menu._item-details', ['item' => $item, 'branch' => $branch])
@@ -37,7 +39,9 @@
                         </div>
                     @else
                         <div class="bg-brand-black rounded-lg p-4">
-                            <x-product-image :item="$item" class="w-full max-w-56 mx-auto aspect-square mb-4" />
+                            <a href="{{ route('menu.show', $item) }}">
+                                <x-product-image :item="$item" class="w-full max-w-56 mx-auto aspect-square mb-4" />
+                            </a>
 
                             @include('menu._item-details', ['item' => $item, 'branch' => $branch])
                         </div>

@@ -95,11 +95,19 @@
         <div>
             <h2 class="font-semibold mb-3">{{ __('Order summary') }}</h2>
             <p class="text-sm text-brand-gray-500 mb-3">{{ $branch->name }}</p>
-            <ul class="text-sm space-y-2 mb-4">
+            <ul class="text-sm space-y-3 mb-4">
                 @foreach ($lines as $line)
-                    <li class="flex justify-between">
-                        <span>{{ $line['quantity'] }}x {{ $line['name_snapshot'] }}</span>
-                        <span>GH₵{{ number_format($line['line_total'] / 100, 2) }}</span>
+                    <li>
+                        <div class="flex justify-between">
+                            <span>{{ $line['quantity'] }}x {{ $line['name_snapshot'] }}</span>
+                            <span>GH₵{{ number_format($line['line_total'] / 100, 2) }}</span>
+                        </div>
+                        @foreach ($line['options'] as $option)
+                            <div class="flex justify-between text-brand-gray-500 pl-4">
+                                <span>{{ $option['name_snapshot'] }}</span>
+                                <span>+GH₵{{ number_format($option['price_delta_snapshot'] / 100, 2) }}</span>
+                            </div>
+                        @endforeach
                     </li>
                 @endforeach
             </ul>
@@ -107,24 +115,6 @@
                 <span>{{ __('Subtotal') }}</span>
                 <span>GH₵{{ number_format($subtotal / 100, 2) }}</span>
             </div>
-
-            @if ($availableDrinks->isNotEmpty())
-                <div class="mt-6 border-t border-brand-gray-100 pt-4">
-                    <p class="text-sm font-semibold mb-3">{{ __('Add a drink?') }}</p>
-                    <div class="space-y-2">
-                        @foreach ($availableDrinks as $drink)
-                            <form method="POST" action="{{ route('cart.add') }}" class="flex items-center justify-between text-sm">
-                                @csrf
-                                <input type="hidden" name="branch_id" value="{{ $branch->id }}">
-                                <input type="hidden" name="menu_item_id" value="{{ $drink->id }}">
-                                <input type="hidden" name="quantity" value="1">
-                                <span>{{ $drink->name }} — GH₵{{ number_format(($drink->pivot->price_override ?? $drink->base_price) / 100, 2) }}</span>
-                                <button type="submit" class="text-brand-red hover:text-brand-red-dark font-semibold">+ {{ __('Add') }}</button>
-                            </form>
-                        @endforeach
-                    </div>
-                </div>
-            @endif
         </div>
     </div>
 

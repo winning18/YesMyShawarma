@@ -27,6 +27,12 @@
                             {{ __('Branch images') }}
                         </x-nav-link>
                     @endcan
+
+                    @can('menu.edit_content')
+                        <x-nav-link :href="route('dashboard.hero-images.index')" :active="request()->routeIs('dashboard.hero-images.index')">
+                            {{ __('Hero images') }}
+                        </x-nav-link>
+                    @endcan
                 </div>
             </div>
 
@@ -92,6 +98,12 @@
             @can('branches.manage')
                 <x-responsive-nav-link :href="route('dashboard.branches.index')" :active="request()->routeIs('dashboard.branches.index')">
                     {{ __('Branch images') }}
+                </x-responsive-nav-link>
+            @endcan
+
+            @can('menu.edit_content')
+                <x-responsive-nav-link :href="route('dashboard.hero-images.index')" :active="request()->routeIs('dashboard.hero-images.index')">
+                    {{ __('Hero images') }}
                 </x-responsive-nav-link>
             @endcan
         </div>

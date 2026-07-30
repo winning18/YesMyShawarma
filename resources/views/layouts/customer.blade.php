@@ -14,7 +14,33 @@
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="font-customer antialiased {{ $bodyClass }} text-brand-black">
+    <body class="font-customer antialiased {{ $bodyClass }} text-brand-black min-h-screen flex flex-col">
+        {{--
+            Full-screen page loader. No real vector source exists for the
+            logo (only the PNG exports), so this uses the real logo image
+            as-is plus a hand-authored SVG spinner rather than a fabricated
+            vector trace of the wordmark. Waits for window's load event
+            (all assets, not just the DOM) before fading out; if that's
+            already fired by the time Alpine attaches (fast/cached loads),
+            it just fades immediately instead of waiting forever.
+        --}}
+        <div
+            x-data="{ show: true }"
+            x-init="document.readyState === 'complete'
+                ? setTimeout(() => show = false, 200)
+                : window.addEventListener('load', () => setTimeout(() => show = false, 200))"
+            x-show="show"
+            x-transition:leave="transition ease-out duration-300"
+            x-transition:leave-end="opacity-0"
+            class="fixed inset-0 z-50 bg-brand-black flex flex-col items-center justify-center gap-6"
+        >
+            <img src="{{ asset('images/logo-web.png') }}" alt="{{ config('app.name') }}" class="h-16 w-auto">
+            <svg viewBox="0 0 24 24" fill="none" class="animate-spin w-8 h-8 text-brand-yellow">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4Z"></path>
+            </svg>
+        </div>
+
         <header class="bg-brand-black" x-data="{ open: false }">
             <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
                 <a href="{{ route('home') }}">
@@ -75,6 +101,10 @@
             </nav>
         </header>
 
+        @isset($fullHero)
+            {{ $fullHero }}
+        @endisset
+
         @isset($pageHeader)
             <div class="bg-brand-black py-10 border-t border-brand-yellow">
                 <div class="max-w-5xl mx-auto px-4">
@@ -91,7 +121,7 @@
             </div>
         @endif
 
-        <main class="max-w-5xl mx-auto px-4 py-8">
+        <main class="max-w-5xl mx-auto px-4 py-8 flex-1">
             {{ $slot }}
         </main>
 

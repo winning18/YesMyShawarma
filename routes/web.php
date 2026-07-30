@@ -5,6 +5,7 @@ use App\Http\Controllers\BranchesController;
 use App\Http\Controllers\BranchImageController;
 use App\Http\Controllers\BranchSelectionController;
 use App\Http\Controllers\CartController;
+use App\Http\Controllers\CategoryHeroImageController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\Customer\Auth\AuthenticatedSessionController as CustomerAuthenticatedSessionController;
@@ -23,6 +24,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
 Route::get('/menu', [MenuController::class, 'index'])->name('menu.index');
+Route::get('/menu/{menuItem:slug}', [MenuController::class, 'show'])->name('menu.show');
 
 Route::get('/branches', [BranchesController::class, 'index'])->name('branches.index');
 Route::get('/branches/{branch}/select', [BranchesController::class, 'select'])->name('branches.pick');
@@ -80,6 +82,10 @@ Route::middleware(['auth', 'verified', 'branch'])->group(function () {
     Route::get('/dashboard/menu-items', [MenuItemImageController::class, 'index'])->name('dashboard.menu-items.index');
     Route::post('/dashboard/menu-items/{menuItem}/image', [MenuItemImageController::class, 'update'])->name('dashboard.menu-items.image.update');
     Route::delete('/dashboard/menu-items/{menuItem}/image', [MenuItemImageController::class, 'destroy'])->name('dashboard.menu-items.image.destroy');
+
+    Route::get('/dashboard/hero-images', [CategoryHeroImageController::class, 'index'])->name('dashboard.hero-images.index');
+    Route::post('/dashboard/hero-images/{category}/image', [CategoryHeroImageController::class, 'update'])->name('dashboard.hero-images.image.update');
+    Route::delete('/dashboard/hero-images/{category}/image', [CategoryHeroImageController::class, 'destroy'])->name('dashboard.hero-images.image.destroy');
 });
 
 Route::middleware('auth')->group(function () {

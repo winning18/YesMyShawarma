@@ -31,4 +31,110 @@
         background-repeat: no-repeat, repeat;
         background-size: 100% 560px, 120px 120px;
     }
+
+    /*
+     * Home hero slider background — same "no image asset" discipline as
+     * .menu-hero-bg above: a soft yellow radial glow on black, pure CSS.
+     * One shared background across all slides, since only the icon/copy
+     * crosses fades, keeps the slider transition cheap (no image swap).
+     */
+    .hero-slider-bg {
+        background-color: theme('colors.brand.black');
+        background-image: radial-gradient(circle at 80% 15%, rgba(255, 250, 0, 0.16) 0%, rgba(255, 250, 0, 0) 55%),
+            radial-gradient(circle at 10% 90%, rgba(255, 250, 0, 0.08) 0%, rgba(255, 250, 0, 0) 50%);
+    }
+
+    /*
+     * Continuous rightward-moving marquee for the home page's featured-
+     * items strip. The track holds the item list twice back to back;
+     * animating from -50% to 0% shifts that doubled track to the right
+     * and loops seamlessly the instant it reaches 0 (equivalent to the
+     * start position one copy earlier) — no JS needed for the motion
+     * itself. Paused on hover so a visitor can actually read/click a card.
+     */
+    @keyframes marquee-right {
+        from {
+            transform: translateX(-50%);
+        }
+        to {
+            transform: translateX(0%);
+        }
+    }
+
+    /* Mirror image of marquee-right — same doubled-track trick, opposite direction. */
+    @keyframes marquee-left {
+        from {
+            transform: translateX(0%);
+        }
+        to {
+            transform: translateX(-50%);
+        }
+    }
+
+    .marquee-track {
+        animation: marquee-right 30s linear infinite;
+    }
+
+    .marquee-track-left {
+        animation: marquee-left 30s linear infinite;
+    }
+
+    .marquee-track:hover,
+    .marquee-track-left:hover {
+        animation-play-state: paused;
+    }
+
+    /*
+     * Home page body background, below the hero (which gets its own real
+     * photo per slide, so it doesn't need this). A single blurred conic
+     * gradient "blob" — same yellow-on-black palette as .hero-slider-bg —
+     * slowly rotating behind the content. blur() + transform is GPU-
+     * composited, so this stays cheap on the 3G performance budget despite
+     * looking like motion; no image asset involved. Direction (cw/ccw) is
+     * picked once per page load by Alpine (Math.random()), not by this CSS.
+     */
+    .home-blur-blob {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 130vmax;
+        height: 130vmax;
+        transform: translate(-50%, -50%);
+        background: conic-gradient(
+            from 0deg,
+            rgba(255, 250, 0, 0.22),
+            rgba(0, 0, 0, 0) 25%,
+            rgba(255, 250, 0, 0.12) 55%,
+            rgba(0, 0, 0, 0) 85%,
+            rgba(255, 250, 0, 0.22)
+        );
+        filter: blur(110px);
+        will-change: transform;
+    }
+
+    @keyframes blob-rotate-cw {
+        from {
+            transform: translate(-50%, -50%) rotate(0deg);
+        }
+        to {
+            transform: translate(-50%, -50%) rotate(360deg);
+        }
+    }
+
+    @keyframes blob-rotate-ccw {
+        from {
+            transform: translate(-50%, -50%) rotate(0deg);
+        }
+        to {
+            transform: translate(-50%, -50%) rotate(-360deg);
+        }
+    }
+
+    .home-blur-blob.rotate-cw {
+        animation: blob-rotate-cw 90s linear infinite;
+    }
+
+    .home-blur-blob.rotate-ccw {
+        animation: blob-rotate-ccw 90s linear infinite;
+    }
 }
