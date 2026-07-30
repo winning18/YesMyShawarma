@@ -75,6 +75,14 @@
             </nav>
         </header>
 
+        @isset($pageHeader)
+            <div class="bg-brand-black py-10 border-t border-brand-yellow">
+                <div class="max-w-5xl mx-auto px-4">
+                    <h1 class="text-2xl font-bold text-brand-white text-center">{{ $pageHeader }}</h1>
+                </div>
+            </div>
+        @endisset
+
         @if (session('status'))
             <div class="max-w-5xl mx-auto px-4 pt-4">
                 <div class="rounded-lg bg-brand-yellow-light border border-brand-yellow text-brand-black text-sm px-4 py-2">

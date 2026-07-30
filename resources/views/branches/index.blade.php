@@ -1,5 +1,5 @@
 <x-customer-layout title="Branches · {{ config('app.name') }}">
-    <h1 class="text-2xl font-bold mb-8">{{ __('Our branches') }}</h1>
+    <x-slot name="pageHeader">{{ __('Our branches') }}</x-slot>
 
     <div class="space-y-10">
         @foreach ($branches as $branch)

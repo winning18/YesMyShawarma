@@ -12,6 +12,7 @@ use App\Http\Controllers\Customer\Auth\RegisteredUserController as CustomerRegis
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\MenuItemImageController;
+use App\Http\Controllers\NewsletterController;
 use App\Http\Controllers\OrderActionController;
 use App\Http\Controllers\OrderDashboardController;
 use App\Http\Controllers\ProfileController;
@@ -29,6 +30,8 @@ Route::get('/branches/{branch}/select', [BranchesController::class, 'select'])->
 Route::get('/contact', [ContactController::class, 'index'])->name('contact');
 Route::post('/contact', [ContactController::class, 'submit'])->name('contact.submit');
 Route::get('/about', [AboutController::class, 'index'])->name('about');
+
+Route::post('/newsletter/subscribe', [NewsletterController::class, 'subscribe'])->name('newsletter.subscribe');
 
 Route::get('/cart', [CartController::class, 'show'])->name('cart.show');
 Route::post('/cart/add', [CartController::class, 'add'])->name('cart.add');
