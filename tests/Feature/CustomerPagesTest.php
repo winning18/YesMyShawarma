@@ -37,7 +37,7 @@ class CustomerPagesTest extends TestCase
 
     public function test_contact_page_renders(): void
     {
-        $this->get(route('contact'))->assertOk()->assertSee('0243635265');
+        $this->get(route('contact'))->assertOk()->assertSee('+233 (0) 243 635 265');
     }
 
     public function test_about_page_renders(): void

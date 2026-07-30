@@ -20,8 +20,8 @@
 
                         <div class="mb-6">
                             @if ($branch->is_accepting_orders)
-                                <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-black bg-brand-yellow-light px-2.5 py-1 rounded-full">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-brand-black"></span>
+                                <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-white bg-brand-red px-2.5 py-1 rounded-full">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-brand-white"></span>
                                     {{ __('Accepting orders') }}
                                 </span>
                             @else

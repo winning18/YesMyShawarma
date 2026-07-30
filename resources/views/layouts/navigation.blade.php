@@ -15,6 +15,18 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
                     </x-nav-link>
+
+                    @can('menu.edit_content')
+                        <x-nav-link :href="route('dashboard.menu-items.index')" :active="request()->routeIs('dashboard.menu-items.index')">
+                            {{ __('Menu images') }}
+                        </x-nav-link>
+                    @endcan
+
+                    @can('branches.manage')
+                        <x-nav-link :href="route('dashboard.branches.index')" :active="request()->routeIs('dashboard.branches.index')">
+                            {{ __('Branch images') }}
+                        </x-nav-link>
+                    @endcan
                 </div>
             </div>
 
@@ -70,6 +82,18 @@
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
+
+            @can('menu.edit_content')
+                <x-responsive-nav-link :href="route('dashboard.menu-items.index')" :active="request()->routeIs('dashboard.menu-items.index')">
+                    {{ __('Menu images') }}
+                </x-responsive-nav-link>
+            @endcan
+
+            @can('branches.manage')
+                <x-responsive-nav-link :href="route('dashboard.branches.index')" :active="request()->routeIs('dashboard.branches.index')">
+                    {{ __('Branch images') }}
+                </x-responsive-nav-link>
+            @endcan
         </div>
 
         <!-- Responsive Settings Options -->

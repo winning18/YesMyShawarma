@@ -10,16 +10,14 @@
     to be w-full, ballooning every placeholder to nearly the card's full
     width and squeezing item names into unreadable narrow columns.
 --}}
-@if ($item->image_path)
+@if ($item->imageUrl())
     <img
-        src="{{ asset($item->image_path) }}"
+        src="{{ $item->imageUrl() }}"
         alt="{{ $item->name }}"
+        loading="lazy"
         {{ $attributes->merge(['class' => 'aspect-square object-cover rounded-md bg-brand-gray-100']) }}
     >
 @else
-    {{-- No product photos yet — placeholder keeps the layout identical to
-         when real photos are added, so nothing needs to change but this
-         image_path check once they exist. --}}
     <div
         {{ $attributes->merge(['class' => 'aspect-square rounded-md bg-brand-gray-100 flex items-center justify-center']) }}
         role="img"
