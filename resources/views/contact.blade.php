@@ -1,5 +1,5 @@
 <x-customer-layout title="Contact us · {{ config('app.name') }}">
-    <h1 class="text-2xl font-bold mb-8">{{ __('Contact us') }}</h1>
+    <x-slot name="pageHeader">{{ __('Contact us') }}</x-slot>
 
     {{-- Branch hours --}}
     <h2 class="text-lg font-bold mb-4">{{ __('Opening hours') }}</h2>
