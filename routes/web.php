@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AboutController;
 use App\Http\Controllers\BranchesController;
+use App\Http\Controllers\BranchImageController;
 use App\Http\Controllers\BranchSelectionController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
@@ -10,6 +11,7 @@ use App\Http\Controllers\Customer\Auth\AuthenticatedSessionController as Custome
 use App\Http\Controllers\Customer\Auth\RegisteredUserController as CustomerRegisteredUserController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MenuController;
+use App\Http\Controllers\MenuItemImageController;
 use App\Http\Controllers\OrderActionController;
 use App\Http\Controllers\OrderDashboardController;
 use App\Http\Controllers\ProfileController;
@@ -25,6 +27,7 @@ Route::get('/branches', [BranchesController::class, 'index'])->name('branches.in
 Route::get('/branches/{branch}/select', [BranchesController::class, 'select'])->name('branches.pick');
 
 Route::get('/contact', [ContactController::class, 'index'])->name('contact');
+Route::post('/contact', [ContactController::class, 'submit'])->name('contact.submit');
 Route::get('/about', [AboutController::class, 'index'])->name('about');
 
 Route::get('/cart', [CartController::class, 'show'])->name('cart.show');
@@ -66,6 +69,14 @@ Route::middleware(['auth', 'verified', 'branch'])->group(function () {
     Route::get('/dashboard/shift', [ShiftController::class, 'show'])->name('shift.show');
     Route::post('/dashboard/shift/start', [ShiftController::class, 'start'])->name('shift.start');
     Route::post('/dashboard/shift/end', [ShiftController::class, 'end'])->name('shift.end');
+
+    Route::get('/dashboard/branches', [BranchImageController::class, 'index'])->name('dashboard.branches.index');
+    Route::post('/dashboard/branches/{branch}/image', [BranchImageController::class, 'update'])->name('dashboard.branches.image.update');
+    Route::delete('/dashboard/branches/{branch}/image', [BranchImageController::class, 'destroy'])->name('dashboard.branches.image.destroy');
+
+    Route::get('/dashboard/menu-items', [MenuItemImageController::class, 'index'])->name('dashboard.menu-items.index');
+    Route::post('/dashboard/menu-items/{menuItem}/image', [MenuItemImageController::class, 'update'])->name('dashboard.menu-items.image.update');
+    Route::delete('/dashboard/menu-items/{menuItem}/image', [MenuItemImageController::class, 'destroy'])->name('dashboard.menu-items.image.destroy');
 });
 
 Route::middleware('auth')->group(function () {

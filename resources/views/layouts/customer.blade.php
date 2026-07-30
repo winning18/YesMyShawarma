@@ -96,14 +96,12 @@
                 </div>
                 <div>
                     <p class="font-semibold text-brand-black mb-2">{{ __('Follow us') }}</p>
-                    <a href="https://www.instagram.com/yesmygrill_shawarma" target="_blank" rel="noopener" class="block hover:text-brand-black">Instagram</a>
-                    <a href="https://www.facebook.com/share/18ving6kE3/" target="_blank" rel="noopener" class="block hover:text-brand-black">Facebook</a>
-                    <a href="https://www.tiktok.com/@ymgrillnshawarma" target="_blank" rel="noopener" class="block hover:text-brand-black">TikTok</a>
+                    <x-social-links icon-class="text-brand-gray-500" />
                 </div>
                 <div>
                     <p class="font-semibold text-brand-black mb-2">{{ __('Call us') }}</p>
-                    <a href="tel:+233243635265" class="block hover:text-brand-black">Ga Odumase: 0243635265</a>
-                    <a href="tel:+233531907747" class="block hover:text-brand-black">Pokuase: 0531907747</a>
+                    <a href="tel:+233243635265" class="block hover:text-brand-black"><span class="font-bold">Ga Odumase</span>: +233 (0) 243 635 265</a>
+                    <a href="tel:+233531907747" class="block hover:text-brand-black"><span class="font-bold">Pokuase</span>: +233 (0) 531 907 747</a>
                 </div>
             </div>
             <div class="max-w-5xl mx-auto px-4 py-4 border-t border-brand-gray-100 text-sm text-brand-gray-500 text-center">
