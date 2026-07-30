@@ -1,0 +1,174 @@
+<?php
+
+namespace App\Services\Orders;
+
+use App\Events\OrderPlaced;
+use App\Exceptions\OrderPlacementException;
+use App\Models\Branch;
+use App\Models\Order;
+use App\Services\Customers\CustomerService;
+use App\Services\Delivery\DeliveryZoneMatcher;
+use App\Services\Menu\MenuPricingService;
+use App\Services\Orders\Data\PlaceOrderData;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+
+class OrderCreationService
+{
+    public function __construct(
+        private readonly CustomerService $customers,
+        private readonly DeliveryZoneMatcher $zoneMatcher,
+        private readonly MenuPricingService $pricing,
+    ) {}
+
+    /**
+     * Guest checkout entry point. Callable from Web and Api controllers
+     * alike (both call this same service — see CLAUDE.md's API-first rule).
+     *
+     * Deliberately NOT handled here, each for its own reason:
+     * - promotions / discount_total: Phase 5, always 0 for now.
+     * - cross-branch routing by geocoordinate (schema.md's delivery_zones
+     *   section): $data->branchId is assumed already resolved by the
+     *   caller; this only matches a zone *within* that branch for pricing.
+     * - branch opens_at/closes_at time-window: only the is_active /
+     *   is_accepting_orders flags are enforced; opening-hours enforcement
+     *   interacts with scheduled_for in a way that isn't specified yet.
+     * - unavailable_until auto-restore: checked live off is_available as
+     *   currently stored, not recomputed from unavailable_until here — the
+     *   restore job itself is a separate scheduled-job deliverable.
+     * - saving the address to the customer's address book: this only
+     *   snapshots it onto the order; persisting to customer_addresses is a
+     *   distinct, opt-in action the caller would trigger separately.
+     * - a Paystack `payments` row: created during Paystack transaction
+     *   initialisation (app/Services/Payments/**), not here. Cash orders do
+     *   get their `payments` row here, since there's no separate init step.
+     */
+    public function create(PlaceOrderData $data): Order
+    {
+        if (empty($data->items)) {
+            throw OrderPlacementException::emptyCart();
+        }
+
+        $branch = Branch::findOrFail($data->branchId);
+
+        if (! $branch->is_active || ! $branch->is_accepting_orders) {
+            throw OrderPlacementException::branchNotAccepting();
+        }
+
+        return DB::transaction(function () use ($data, $branch) {
+            $customer = $this->customers->findOrCreateByPhone($data->customerPhone, $data->customerName);
+
+            [$itemRows, $subtotal] = $this->pricing->priceItems($branch, $data->items);
+
+            $discountTotal = 0;
+            [$deliveryFee, $addressSnapshot] = $data->fulfilmentType === 'delivery'
+                ? $this->resolveDelivery($branch, $data, $subtotal)
+                : [0, null];
+
+            $total = $subtotal - $discountTotal + $deliveryFee;
+
+            $initialStatus = $data->paymentMethod === 'cash' ? 'paid' : 'pending_payment';
+
+            $order = new Order([
+                'reference' => $this->generateReference(),
+                'track_token' => Str::random(32),
+                'customer_id' => $customer->id,
+                'branch_id' => $branch->id,
+                'fulfilment_type' => $data->fulfilmentType,
+                'subtotal' => $subtotal,
+                'discount_total' => $discountTotal,
+                'delivery_fee' => $deliveryFee,
+                'total' => $total,
+                'payment_method' => $data->paymentMethod,
+                'payment_status' => 'pending',
+                'delivery_address_snapshot' => $addressSnapshot,
+                'scheduled_for' => $data->scheduledFor,
+            ]);
+            $order->status = $initialStatus;
+            $order->placed_at = now();
+            $order->save();
+
+            foreach ($itemRows as $row) {
+                $orderItem = $order->items()->create([
+                    'menu_item_id' => $row['menu_item_id'],
+                    'name_snapshot' => $row['name_snapshot'],
+                    'unit_price_snapshot' => $row['unit_price_snapshot'],
+                    'quantity' => $row['quantity'],
+                    'line_total' => $row['line_total'],
+                    'notes' => $row['notes'],
+                ]);
+
+                foreach ($row['options'] as $option) {
+                    $orderItem->options()->create($option);
+                }
+            }
+
+            if ($data->paymentMethod === 'cash') {
+                $order->payments()->create([
+                    'provider' => 'cash',
+                    'amount' => $total,
+                    'currency' => 'GHS',
+                    'status' => 'pending',
+                ]);
+            }
+
+            $order->events()->create([
+                'from_status' => null,
+                'to_status' => $initialStatus,
+                'actor_type' => 'customer',
+                'actor_id' => $customer->id,
+                'meta' => ['action' => 'placed'],
+            ]);
+
+            // Deferred to the outermost transaction's commit — a queued
+            // broadcast job must never risk running before the order it
+            // refers to actually exists.
+            $orderId = $order->id;
+            $branchId = $order->branch_id;
+            DB::afterCommit(fn () => OrderPlaced::dispatch($orderId, $branchId));
+
+            return $order->fresh(['items.options', 'events', 'payments']);
+        });
+    }
+
+    /**
+     * @return array{0: int, 1: ?array<string, mixed>}
+     */
+    private function resolveDelivery(Branch $branch, PlaceOrderData $data, int $subtotal): array
+    {
+        $address = $data->deliveryAddress;
+
+        if (! $address) {
+            throw OrderPlacementException::deliveryAddressRequired();
+        }
+
+        $zone = ($address->lat !== null && $address->lng !== null)
+            ? $this->zoneMatcher->matchForBranch($branch, $address->lat, $address->lng)
+            : null;
+
+        if (! $zone) {
+            throw OrderPlacementException::noDeliveryZoneMatch();
+        }
+
+        if ($subtotal < $zone->min_order_total) {
+            throw OrderPlacementException::belowZoneMinimum($zone->min_order_total);
+        }
+
+        return [
+            $zone->delivery_fee,
+            [
+                'ghanapost_code' => $address->ghanapostCode,
+                'landmark' => $address->landmark,
+                'lat' => $address->lat,
+                'lng' => $address->lng,
+            ],
+        ];
+    }
+
+    private function generateReference(): string
+    {
+        // Placeholder scheme — no numbering format is specified anywhere in
+        // the rules. Swap for whatever per-branch/daily sequence is wanted.
+        return 'ORD-'.now()->format('ymd').'-'.strtoupper(Str::random(6));
+    }
+}
