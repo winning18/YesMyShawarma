@@ -8,6 +8,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+// Deliberately no BranchScope here, unlike Order. ShiftService::
+// activeFor() relies on querying a user's shifts across every branch ("a
+// person is in one place at a time" — checked branch-wide, not just the one
+// they're clocking into right now). Scoping this model would silently
+// break that cross-branch check the first time someone tried to clock in
+// at a second branch while still active at another.
 #[Fillable(['user_id', 'branch_id', 'started_at', 'ended_at', 'opening_note', 'closing_note'])]
 class Shift extends Model
 {

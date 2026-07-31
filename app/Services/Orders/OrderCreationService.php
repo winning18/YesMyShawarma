@@ -5,9 +5,10 @@ namespace App\Services\Orders;
 use App\Events\OrderPlaced;
 use App\Exceptions\OrderPlacementException;
 use App\Models\Branch;
+use App\Models\DeliveryArea;
 use App\Models\Order;
 use App\Services\Customers\CustomerService;
-use App\Services\Delivery\DeliveryZoneMatcher;
+use App\Services\Delivery\DeliveryFeeCalculator;
 use App\Services\Menu\MenuPricingService;
 use App\Services\Orders\Data\PlaceOrderData;
 use Illuminate\Support\Facades\DB;
@@ -17,8 +18,8 @@ class OrderCreationService
 {
     public function __construct(
         private readonly CustomerService $customers,
-        private readonly DeliveryZoneMatcher $zoneMatcher,
         private readonly MenuPricingService $pricing,
+        private readonly DeliveryFeeCalculator $feeCalculator,
     ) {}
 
     /**
@@ -27,9 +28,22 @@ class OrderCreationService
      *
      * Deliberately NOT handled here, each for its own reason:
      * - promotions / discount_total: Phase 5, always 0 for now.
+     * - the delivery_fee for delivery orders when location wasn't captured
+     *   at checkout: distance (branch → the customer's shared live
+     *   location) × a flat rate, priced immediately below when lat/lng are
+     *   present, or deferred to the "delivered" transition — see
+     *   OrderStateMachine::transition() — when geolocation couldn't be
+     *   captured. Paystack is allowed for delivery in both cases: when
+     *   location was captured, $order->total already includes the real fee
+     *   by the time PaystackPaymentService charges it; when it wasn't,
+     *   Paystack only charges the subtotal known at that point, and
+     *   whatever the delivered-transition fee turns out to be needs
+     *   collecting separately (cash to the rider) — there's no route to
+     *   charge a Paystack transaction again after the fact.
      * - cross-branch routing by geocoordinate (schema.md's delivery_zones
      *   section): $data->branchId is assumed already resolved by the
-     *   caller; this only matches a zone *within* that branch for pricing.
+     *   caller. delivery_areas is just a named-area label for the rider now,
+     *   not a routing or pricing mechanism.
      * - branch opens_at/closes_at time-window: only the is_active /
      *   is_accepting_orders flags are enforced; opening-hours enforcement
      *   interacts with scheduled_for in a way that isn't specified yet.
@@ -82,6 +96,7 @@ class OrderCreationService
                 'payment_method' => $data->paymentMethod,
                 'payment_status' => 'pending',
                 'delivery_address_snapshot' => $addressSnapshot,
+                'instructions' => $data->instructions,
                 'scheduled_for' => $data->scheduledFor,
             ]);
             $order->status = $initialStatus;
@@ -142,21 +157,41 @@ class OrderCreationService
             throw OrderPlacementException::deliveryAddressRequired();
         }
 
-        $zone = ($address->lat !== null && $address->lng !== null)
-            ? $this->zoneMatcher->matchForBranch($branch, $address->lat, $address->lng)
-            : null;
-
-        if (! $zone) {
-            throw OrderPlacementException::noDeliveryZoneMatch();
+        if ($subtotal < DeliveryFeeCalculator::MINIMUM_ORDER_TOTAL_PESEWAS) {
+            throw OrderPlacementException::belowMinimumOrderTotal(DeliveryFeeCalculator::MINIMUM_ORDER_TOTAL_PESEWAS);
         }
 
-        if ($subtotal < $zone->min_order_total) {
-            throw OrderPlacementException::belowZoneMinimum($zone->min_order_total);
+        // A label for the rider only — validated here too (not just in the
+        // web form) since this service is meant to be callable from
+        // anywhere per CLAUDE.md's API-first rule, and shouldn't trust a
+        // caller to have already checked it. areaOther (the customer's own
+        // area wasn't in the dropdown) becomes a real row via firstOrCreate
+        // — a deliberately light-touch way to grow the shared list rather
+        // than rejecting an order over it.
+        $area = match (true) {
+            $address->areaId !== null => DeliveryArea::where('is_active', true)->find($address->areaId),
+            $address->areaOther !== null => DeliveryArea::firstOrCreate(['name' => trim($address->areaOther)]),
+            default => null,
+        };
+
+        if ($address->areaId !== null && ! $area) {
+            throw OrderPlacementException::invalidDeliveryArea();
         }
+
+        // Price it now if we can — location was captured at checkout, so
+        // there's no reason to make the customer wait until delivery to
+        // see the real fee. Only falls back to "unknown for now" (0, priced
+        // later at the delivered transition) when geolocation genuinely
+        // couldn't be captured.
+        $deliveryFee = ($address->lat !== null && $address->lng !== null)
+            ? $this->feeCalculator->calculate($branch, $address->lat, $address->lng)
+            : 0;
 
         return [
-            $zone->delivery_fee,
+            $deliveryFee,
             [
+                'area_id' => $area?->id,
+                'area_name' => $area?->name,
                 'ghanapost_code' => $address->ghanapostCode,
                 'landmark' => $address->landmark,
                 'lat' => $address->lat,

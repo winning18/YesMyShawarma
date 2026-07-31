@@ -35,6 +35,30 @@ class CustomerPagesTest extends TestCase
         $this->get(route('branches.index'))->assertOk()->assertSee('Ga Odumase');
     }
 
+    public function test_the_currently_selected_branch_is_highlighted_on_the_branches_page(): void
+    {
+        $otherBranch = Branch::create([
+            'name' => 'Pokuase', 'slug' => 'pokuase', 'phone' => '+233200000002', 'address' => 'Pokuase, Accra',
+            'lat' => 5.7, 'lng' => -0.29, 'opens_at' => '19:00', 'closes_at' => '00:00',
+        ]);
+
+        // this->branch ("Ga Odumase") is selected, not the other branch —
+        // assert the badge sits between the two branch names in the
+        // rendered HTML, i.e. attached to Ga Odumase's section specifically
+        // rather than merely present somewhere on the page.
+        $this->get(route('branches.pick', $this->branch));
+
+        $content = $this->get(route('branches.index'))->assertOk()->getContent();
+
+        $selectedNamePos = strpos($content, $this->branch->name);
+        $badgePos = strpos($content, 'Currently selected');
+        $otherNamePos = strpos($content, $otherBranch->name);
+
+        $this->assertNotFalse($badgePos, 'Expected the "Currently selected" badge to be present.');
+        $this->assertGreaterThan($selectedNamePos, $badgePos, 'Expected the badge to render after the selected branch\'s name.');
+        $this->assertLessThan($otherNamePos, $badgePos, 'Expected the badge to render before the other, unselected branch\'s section.');
+    }
+
     public function test_contact_page_renders(): void
     {
         $this->get(route('contact'))->assertOk()->assertSee('+233 (0) 243 635 265');

@@ -5,10 +5,11 @@ namespace Tests\Feature;
 use App\Exceptions\OrderPlacementException;
 use App\Models\Branch;
 use App\Models\Category;
-use App\Models\DeliveryZone;
+use App\Models\DeliveryArea;
 use App\Models\MenuItem;
 use App\Models\Option;
 use App\Models\OptionGroup;
+use App\Services\Delivery\DeliveryFeeCalculator;
 use App\Services\Orders\Data\DeliveryAddressData;
 use App\Services\Orders\Data\PlaceOrderData;
 use App\Services\Orders\Data\PlaceOrderItemData;
@@ -25,6 +26,8 @@ class OrderCreationServiceTest extends TestCase
     private Branch $branch;
 
     private MenuItem $shawarma;
+
+    private DeliveryArea $area;
 
     private OptionGroup $sauceGroup;
 
@@ -43,15 +46,7 @@ class OrderCreationServiceTest extends TestCase
             'lat' => 5.5560, 'lng' => -0.1969, 'opens_at' => '10:00', 'closes_at' => '22:00',
         ]);
 
-        DeliveryZone::create([
-            'branch_id' => $this->branch->id,
-            'name' => 'Osu Zone',
-            'delivery_fee' => 1000,
-            'min_order_total' => 2000,
-            'radius_metres' => 5000,
-            'centre_lat' => 5.5560,
-            'centre_lng' => -0.1969,
-        ]);
+        $this->area = DeliveryArea::create(['name' => 'Osu']);
 
         $category = Category::create(['name' => 'Wraps', 'slug' => 'wraps']);
 
@@ -124,7 +119,69 @@ class OrderCreationServiceTest extends TestCase
         ]);
     }
 
-    public function test_delivery_paystack_order_computes_zone_fee_and_stays_pending(): void
+    public function test_delivery_cash_order_prices_the_fee_immediately_when_location_is_captured(): void
+    {
+        $data = new PlaceOrderData(
+            customerPhone: '+233241111111',
+            customerName: 'Ama',
+            branchId: $this->branch->id,
+            fulfilmentType: 'delivery',
+            paymentMethod: 'cash',
+            items: [$this->baseItem([$this->garlicSauce->id])],
+            deliveryAddress: new DeliveryAddressData(
+                areaId: $this->area->id,
+                ghanapostCode: 'GA-123-4567',
+                landmark: 'Near the mall',
+                lat: 5.5565,
+                lng: -0.1970,
+            ),
+        );
+
+        $expectedFee = app(DeliveryFeeCalculator::class)->calculate($this->branch, 5.5565, -0.1970);
+
+        $order = $this->service->create($data);
+
+        $this->assertSame(7000, $order->subtotal); // 3500 * 2, no chili
+        $this->assertGreaterThan(0, $expectedFee); // sanity check the test points aren't identical
+        $this->assertSame($expectedFee, $order->delivery_fee);
+        $this->assertSame(7000 + $expectedFee, $order->total);
+        $this->assertSame('paid', $order->status);
+        $this->assertDatabaseHas('payments', [
+            'order_id' => $order->id, 'provider' => 'cash', 'amount' => 7000 + $expectedFee,
+        ]);
+        $this->assertSame('GA-123-4567', $order->delivery_address_snapshot['ghanapost_code']);
+        $this->assertSame($this->area->id, $order->delivery_address_snapshot['area_id']);
+        $this->assertSame(5.5565, $order->delivery_address_snapshot['lat']);
+    }
+
+    public function test_delivery_cash_order_defers_the_fee_when_location_is_not_captured(): void
+    {
+        $data = new PlaceOrderData(
+            customerPhone: '+233241111111',
+            customerName: 'Ama',
+            branchId: $this->branch->id,
+            fulfilmentType: 'delivery',
+            paymentMethod: 'cash',
+            items: [$this->baseItem([$this->garlicSauce->id])],
+            deliveryAddress: new DeliveryAddressData(
+                areaId: $this->area->id,
+                ghanapostCode: 'GA-123-4567',
+                landmark: 'Near the mall',
+                lat: null,
+                lng: null,
+            ),
+        );
+
+        $order = $this->service->create($data);
+
+        // Fee isn't known yet — priced later, at the delivered transition
+        // (see OrderStateMachineTest), once location is available another way.
+        $this->assertSame(0, $order->delivery_fee);
+        $this->assertSame(7000, $order->total);
+        $this->assertNull($order->delivery_address_snapshot['lat']);
+    }
+
+    public function test_paystack_is_allowed_for_delivery_orders(): void
     {
         $data = new PlaceOrderData(
             customerPhone: '+233241111111',
@@ -134,6 +191,7 @@ class OrderCreationServiceTest extends TestCase
             paymentMethod: 'paystack',
             items: [$this->baseItem([$this->garlicSauce->id])],
             deliveryAddress: new DeliveryAddressData(
+                areaId: $this->area->id,
                 ghanapostCode: 'GA-123-4567',
                 landmark: 'Near the mall',
                 lat: 5.5565,
@@ -141,16 +199,17 @@ class OrderCreationServiceTest extends TestCase
             ),
         );
 
+        $expectedFee = app(DeliveryFeeCalculator::class)->calculate($this->branch, 5.5565, -0.1970);
+
         $order = $this->service->create($data);
 
-        $this->assertSame(7000, $order->subtotal); // 3500 * 2, no chili
-        $this->assertSame(1000, $order->delivery_fee);
-        $this->assertSame(8000, $order->total);
+        $this->assertSame('paystack', $order->payment_method);
+        $this->assertSame($expectedFee, $order->delivery_fee);
+        $this->assertSame(7000 + $expectedFee, $order->total);
         $this->assertSame('pending_payment', $order->status);
-        $this->assertSame('GA-123-4567', $order->delivery_address_snapshot['ghanapost_code']);
 
-        // No payments row yet — Paystack init is a separate service.
-        $this->assertDatabaseCount('payments', 0);
+        // No cash payments row — Paystack's own init flow creates its payment record.
+        $this->assertDatabaseMissing('payments', ['order_id' => $order->id, 'provider' => 'cash']);
     }
 
     public function test_repeat_customer_reuses_the_same_customer_row(): void
@@ -217,8 +276,10 @@ class OrderCreationServiceTest extends TestCase
         ));
     }
 
-    public function test_address_outside_delivery_zone_is_rejected(): void
+    public function test_an_inactive_delivery_area_is_rejected(): void
     {
+        $this->area->update(['is_active' => false]);
+
         $this->expectException(OrderPlacementException::class);
 
         $this->service->create(new PlaceOrderData(
@@ -226,20 +287,52 @@ class OrderCreationServiceTest extends TestCase
             customerName: null,
             branchId: $this->branch->id,
             fulfilmentType: 'delivery',
-            paymentMethod: 'paystack',
+            paymentMethod: 'cash',
             items: [$this->baseItem([$this->garlicSauce->id])],
             deliveryAddress: new DeliveryAddressData(
+                areaId: $this->area->id,
                 ghanapostCode: 'GA-999-9999',
                 landmark: 'Far away',
-                lat: 6.6000,
-                lng: -1.6000,
+                lat: 5.5565,
+                lng: -0.1970,
             ),
         ));
     }
 
-    public function test_order_below_zone_minimum_is_rejected(): void
+    public function test_an_unlisted_area_creates_a_new_delivery_area_via_free_text(): void
     {
-        DeliveryZone::query()->update(['min_order_total' => 10000]);
+        $this->assertDatabaseMissing('delivery_areas', ['name' => 'East Legon']);
+
+        $data = new PlaceOrderData(
+            customerPhone: '+233241111111',
+            customerName: 'Ama',
+            branchId: $this->branch->id,
+            fulfilmentType: 'delivery',
+            paymentMethod: 'cash',
+            items: [$this->baseItem([$this->garlicSauce->id])],
+            deliveryAddress: new DeliveryAddressData(
+                areaId: null,
+                ghanapostCode: null,
+                landmark: 'Near the mall',
+                lat: 5.5565,
+                lng: -0.1970,
+                areaOther: '  East Legon  ',
+            ),
+        );
+
+        $order = $this->service->create($data);
+
+        $this->assertDatabaseHas('delivery_areas', ['name' => 'East Legon']);
+        $this->assertSame('East Legon', $order->delivery_address_snapshot['area_name']);
+    }
+
+    public function test_order_below_the_minimum_total_is_rejected(): void
+    {
+        $cheapItem = MenuItem::create([
+            'category_id' => $this->shawarma->category_id,
+            'name' => 'Small Drink', 'slug' => 'small-drink', 'base_price' => 1000,
+        ]);
+        $this->branch->menuItems()->attach($cheapItem->id, ['is_available' => true]);
 
         $this->expectException(OrderPlacementException::class);
 
@@ -248,9 +341,10 @@ class OrderCreationServiceTest extends TestCase
             customerName: null,
             branchId: $this->branch->id,
             fulfilmentType: 'delivery',
-            paymentMethod: 'paystack',
-            items: [new PlaceOrderItemData(menuItemId: $this->shawarma->id, quantity: 1, optionIds: [$this->garlicSauce->id])],
+            paymentMethod: 'cash',
+            items: [new PlaceOrderItemData(menuItemId: $cheapItem->id, quantity: 1, optionIds: [])],
             deliveryAddress: new DeliveryAddressData(
+                areaId: $this->area->id,
                 ghanapostCode: 'GA-123-4567',
                 landmark: 'Near the mall',
                 lat: 5.5565,

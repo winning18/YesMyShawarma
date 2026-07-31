@@ -21,7 +21,7 @@ class TrackingController extends Controller
 
     public function data(Order $order): JsonResource
     {
-        return new OrderTrackingResource($order->load(['items', 'branch']));
+        return new OrderTrackingResource($order->load(['items.menuItem', 'items.options', 'branch', 'rider', 'customer']));
     }
 
     /**

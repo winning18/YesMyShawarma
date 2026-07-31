@@ -9,10 +9,11 @@ use Illuminate\View\View;
 
 class BranchesController extends Controller
 {
-    public function index(): View
+    public function index(CustomerBranchSelection $selection): View
     {
         return view('branches.index', [
             'branches' => Branch::where('is_active', true)->get(),
+            'selectedBranchId' => $selection->id(),
         ]);
     }
 

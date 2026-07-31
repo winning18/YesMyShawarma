@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'fulfilment_type',
     'subtotal', 'discount_total', 'delivery_fee', 'total',
     'payment_method', 'payment_status', 'delivery_address_snapshot',
-    'scheduled_for',
+    'instructions', 'scheduled_for',
 ])]
 #[ScopedBy([BranchScope::class])]
 class Order extends Model

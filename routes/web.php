@@ -42,6 +42,7 @@ Route::delete('/cart/{line}', [CartController::class, 'remove'])->name('cart.rem
 
 Route::get('/checkout', [CheckoutController::class, 'show'])->name('checkout.show');
 Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
+Route::get('/checkout/{order:track_token}/confirmation', [CheckoutController::class, 'confirmation'])->name('checkout.confirmation');
 
 Route::get('/track', [TrackingController::class, 'lookup'])->name('tracking.lookup');
 Route::post('/track/find', [TrackingController::class, 'find'])->name('tracking.find');

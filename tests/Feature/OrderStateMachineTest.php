@@ -6,6 +6,7 @@ use App\Exceptions\InvalidOrderTransitionException;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Order;
+use App\Services\Delivery\DeliveryFeeCalculator;
 use App\Services\Orders\OrderStateMachine;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -24,7 +25,7 @@ class OrderStateMachineTest extends TestCase
     {
         parent::setUp();
 
-        $this->machine = new OrderStateMachine;
+        $this->machine = app(OrderStateMachine::class);
 
         $this->branch = Branch::create([
             'name' => 'Osu', 'slug' => 'osu', 'phone' => '+233200000001', 'address' => 'A',
@@ -70,6 +71,40 @@ class OrderStateMachineTest extends TestCase
             'actor_type' => 'staff',
             'actor_id' => 1,
         ]);
+    }
+
+    public function test_delivered_transition_computes_and_stores_the_distance_based_delivery_fee(): void
+    {
+        $order = $this->makeOrder('dispatched');
+        $order->update([
+            'delivery_address_snapshot' => [
+                'area_id' => null, 'area_name' => null,
+                'ghanapost_code' => 'GA-123-4567', 'landmark' => 'Near the mall',
+                'lat' => 5.51, 'lng' => -0.11,
+            ],
+        ]);
+        $order->payments()->create(['provider' => 'cash', 'amount' => $order->total, 'currency' => 'GHS', 'status' => 'pending']);
+
+        $expectedFee = app(DeliveryFeeCalculator::class)->calculate($order->branch, 5.51, -0.11);
+
+        $result = $this->machine->transition($order, 'delivered', 'rider', actorId: 1);
+
+        $this->assertSame($expectedFee, $result->delivery_fee);
+        $this->assertSame(3500 + $expectedFee, $result->total);
+        $this->assertDatabaseHas('payments', [
+            'order_id' => $order->id, 'provider' => 'cash', 'amount' => $result->total,
+        ]);
+    }
+
+    public function test_pickup_order_reaching_delivered_leaves_fee_at_zero(): void
+    {
+        $order = $this->makeOrder('dispatched');
+        $order->update(['fulfilment_type' => 'pickup']);
+
+        $result = $this->machine->transition($order, 'delivered', 'rider', actorId: 1);
+
+        $this->assertSame(0, $result->delivery_fee);
+        $this->assertSame(3500, $result->total);
     }
 
     public function test_illegal_transition_throws(): void

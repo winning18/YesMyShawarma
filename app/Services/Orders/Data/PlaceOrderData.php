@@ -20,5 +20,6 @@ final class PlaceOrderData
         public readonly array $items,
         public readonly ?DeliveryAddressData $deliveryAddress = null,
         public readonly ?DateTimeInterface $scheduledFor = null,
+        public readonly ?string $instructions = null,
     ) {}
 }

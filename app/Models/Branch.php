@@ -34,11 +34,6 @@ class Branch extends Model
             ->withTimestamps();
     }
 
-    public function deliveryZones(): HasMany
-    {
-        return $this->hasMany(DeliveryZone::class);
-    }
-
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);

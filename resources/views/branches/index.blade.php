@@ -3,13 +3,21 @@
 
     <div class="space-y-10">
         @foreach ($branches as $branch)
-            <section class="border border-brand-gray-100 rounded-xl overflow-hidden">
+            @php $isSelected = $selectedBranchId === $branch->id; @endphp
+            <section class="border rounded-xl overflow-hidden {{ $isSelected ? 'border-2 border-brand-yellow' : 'border-brand-gray-100' }}">
                 <div class="grid grid-cols-1 md:grid-cols-2">
                     {{-- Left: image space, hours, status, actions --}}
                     <div class="p-6 flex flex-col">
                         <x-branch-image :branch="$branch" class="w-full aspect-video rounded-lg mb-5" />
 
-                        <h2 class="text-xl font-bold mb-1">{{ $branch->name }}</h2>
+                        <div class="flex items-center gap-2 mb-1">
+                            <h2 class="text-xl font-bold">{{ $branch->name }}</h2>
+                            @if ($isSelected)
+                                <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-black bg-brand-yellow px-2.5 py-1 rounded-full">
+                                    {{ __('Currently selected') }}
+                                </span>
+                            @endif
+                        </div>
                         <p class="text-sm text-brand-gray-500 mb-4">{{ $branch->address }}</p>
 
                         <div class="text-sm mb-3">

@@ -5,10 +5,13 @@ namespace App\Services\Orders;
 use App\Events\OrderStatusChanged;
 use App\Exceptions\InvalidOrderTransitionException;
 use App\Models\Order;
+use App\Services\Delivery\DeliveryFeeCalculator;
 use Illuminate\Support\Facades\DB;
 
 class OrderStateMachine
 {
+    public function __construct(private readonly DeliveryFeeCalculator $feeCalculator) {}
+
     /**
      * Valid transitions, per .claude/rules/orders.md. "Cancelled" is only ever
      * reachable through accepted/preparing/ready, all of which sit downstream
@@ -91,6 +94,32 @@ class OrderStateMachine
 
             if ($to === 'cancelled') {
                 $order->cancellation_reason = $cancellationReason;
+            }
+
+            // OrderCreationService already prices delivery_fee immediately
+            // when the customer's live location was captured at checkout —
+            // this recomputes the same figure from the same snapshot
+            // lat/lng, which is harmless (deterministic distance × rate).
+            // What actually matters here is the other case: location wasn't
+            // captured at checkout, delivery_fee is still 0, and this is
+            // the first and only point it gets priced, now that the trip
+            // has actually happened. Pickup orders and any delivery order
+            // still missing lat/lng (geolocation was never captured) are
+            // left at whatever fee they already have.
+            if ($to === 'delivered' && $order->fulfilment_type === 'delivery') {
+                $lat = $order->delivery_address_snapshot['lat'] ?? null;
+                $lng = $order->delivery_address_snapshot['lng'] ?? null;
+
+                if ($lat !== null && $lng !== null) {
+                    $order->delivery_fee = $this->feeCalculator->calculate($order->branch, (float) $lat, (float) $lng);
+                    $order->total = $order->subtotal - $order->discount_total + $order->delivery_fee;
+
+                    // The cash payment row was created at placement with
+                    // the fee-less total (delivery is cash-only — see
+                    // OrderCreationService::create()) — keep it in sync
+                    // with what's actually collected at the door.
+                    $order->payments()->where('provider', 'cash')->update(['amount' => $order->total]);
+                }
             }
 
             $order->save();

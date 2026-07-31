@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
         $this->call(RolesAndPermissionsSeeder::class);
         $this->call(BranchSeeder::class);
         $this->call(MenuSeeder::class);
+        $this->call(DeliveryAreaSeeder::class);
 
         // User::factory(10)->create();
 
