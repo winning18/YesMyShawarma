@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\ResolveCurrentBranch;
+use App\Http\Middleware\TrackVisitorSession;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -18,16 +19,23 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'branch' => ResolveCurrentBranch::class,
+            'track.visit' => TrackVisitorSession::class,
         ]);
 
         // Laravel's default "guest" redirect target is a hardcoded
         // route('dashboard') regardless of which guard matched — that
         // would send an already-logged-in customer hitting /login into the
-        // staff-only dashboard. Send each guard's already-authenticated
-        // visitor somewhere that actually makes sense for them.
-        $middleware->redirectUsersTo(
-            fn (Request $request) => Auth::guard('customer')->check() ? route('home') : route('dashboard')
-        );
+        // staff-only dashboard, or an already-logged-in rider bouncing off
+        // /rider/login into the staff dashboard instead of their own. Send
+        // each guard's already-authenticated visitor somewhere that
+        // actually makes sense for them.
+        $middleware->redirectUsersTo(function (Request $request) {
+            if (Auth::guard('customer')->check()) {
+                return route('home');
+            }
+
+            return $request->is('rider*') ? route('rider.dashboard') : route('dashboard');
+        });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // The default skeleton's callback only checked the URL prefix, which

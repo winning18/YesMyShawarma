@@ -23,22 +23,22 @@ Roles: `staff`, `rider`, `manager`, `owner`.
 | `orders.accept` | ✓ | — | ✓ | ✓ |
 | `orders.reject` | ✓ | — | ✓ | ✓ |
 | `orders.advance_status` | ✓ | own only | ✓ | ✓ |
-| `orders.claim` | — | ✓ | — | — |
-| `orders.assign_rider` | — | — | ✓ | ✓ |
+| `orders.assign_rider` | ✓ | — | ✓ | ✓ |
 | `orders.void` | — | — | ✓ | ✓ |
 | `orders.refund` | — | — | — | ✓ |
 | `orders.discount` | — | — | ✓ | ✓ |
+| `orders.create` | ✓ | — | ✓ | ✓ |
 | `menu.toggle_availability` | ✓ | — | ✓ | ✓ |
 | `menu.edit_content` | — | — | ✓ | ✓ |
-| `menu.edit_price` | — | — | — | ✓ |
 | `reports.view_operational` | ✓ | — | ✓ | ✓ |
 | `reports.view_financial` | — | — | ✓ | ✓ |
 | `promotions.manage` | — | — | ✓ | ✓ |
 | `customers.view` | — | — | ✓ | ✓ |
 | `users.manage` | — | — | — | ✓ |
 | `branches.manage` | — | — | — | ✓ |
+| `dashboard.performance` | — | — | — | ✓ |
 
-The money-touching permissions — `void`, `refund`, `discount`, `edit_price` — are deliberately
+The money-touching permissions — `void`, `refund`, `discount` — are deliberately
 separated so they can be audited independently. Never fold them into a broader permission.
 
 ## Enforcement
@@ -49,8 +49,8 @@ queries.** Apply it to `Order`, and to every other branch-owned model.
 One forgotten filter in one report leaks another branch's revenue. Model-level scoping means
 you cannot forget.
 
-Riders get a further restriction: they see orders where `rider_id = auth()->id()`, **or**
-`rider_id IS NULL AND status = 'ready'` — the claimable pool at their branch only.
+Riders get a further restriction: they only ever see orders where `rider_id = auth()->id()`.
+There is no claimable pool — see orders.md's rider assignment section.
 
 ## Guards
 

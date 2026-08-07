@@ -10,6 +10,23 @@ paths:
 
 Paystack. Cards and mobile money (MoMo). Currency GHS, stored in pesewas as integers.
 
+## `orders.payment_method` values
+
+- `cash` — cash on delivery/pickup, both channels.
+- `paystack` — web checkout only. The *only* value `PaystackPaymentService` will initialise a
+  transaction for. Paystack's own hosted page lets the customer pick card or Momo; the system
+  doesn't know which, so this stays a single generic value.
+- `momo` — POS only. A manual, in-house payment — staff take the customer's word (or confirm
+  a Momo notification themselves) that payment was sent, the same way cash is trusted at the
+  door. **Never routed through Paystack.** Functionally identical to `cash`: both are
+  `Order::MANUALLY_SETTLED_PAYMENT_METHODS`, both make the order enter at `paid` immediately
+  (`OrderCreationService::create()`) with their own `payments` row (`provider` = `cash` or
+  `momo`), no online transaction to wait on. `PaystackPaymentService::initializeForOrder()`
+  rejects anything but `paystack` — `momo` included.
+
+Reports (`OrderReportService::financialSummary()`'s `revenue_by_payment_method`) group by
+whatever string is stored here — a new value shows up as its own row with no code change.
+
 ## The webhook is the only source of truth
 
 **Never mark an order paid from a client-side callback or a redirect return.** Both are

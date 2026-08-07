@@ -1,7 +1,7 @@
 <div class="flex justify-between items-start mb-3">
     <a href="{{ route('menu.show', $item) }}" class="font-semibold text-brand-yellow hover:underline">{{ $item->name }}</a>
     <p class="font-semibold whitespace-nowrap ml-2 text-brand-yellow">
-        GH₵{{ number_format(($item->pivot->price_override ?? $item->base_price) / 100, 2) }}
+        GH₵{{ number_format($item->base_price / 100, 2) }}
     </p>
 </div>
 

@@ -9,6 +9,7 @@ use App\Models\DeliveryArea;
 use App\Models\MenuItem;
 use App\Models\Option;
 use App\Models\OptionGroup;
+use App\Models\Promotion;
 use App\Services\Delivery\DeliveryFeeCalculator;
 use App\Services\Orders\Data\DeliveryAddressData;
 use App\Services\Orders\Data\PlaceOrderData;
@@ -116,6 +117,31 @@ class OrderCreationServiceTest extends TestCase
 
         $this->assertDatabaseHas('order_events', [
             'order_id' => $order->id, 'from_status' => null, 'to_status' => 'paid', 'actor_type' => 'customer',
+        ]);
+    }
+
+    public function test_pickup_momo_order_succeeds_end_to_end(): void
+    {
+        // Momo is an in-house manual payment (Order::MANUALLY_SETTLED_
+        // PAYMENT_METHODS) — same immediate-'paid' path as cash, no
+        // Paystack involved.
+        $data = new PlaceOrderData(
+            customerPhone: '+233241111111',
+            customerName: 'Ama',
+            branchId: $this->branch->id,
+            fulfilmentType: 'pickup',
+            paymentMethod: 'momo',
+            items: [$this->baseItem([$this->garlicSauce->id])],
+        );
+
+        $order = $this->service->create($data);
+
+        $this->assertSame('paid', $order->status);
+        $this->assertSame('pending', $order->payment_status);
+        $this->assertSame('momo', $order->payment_method);
+
+        $this->assertDatabaseHas('payments', [
+            'order_id' => $order->id, 'provider' => 'momo', 'amount' => $order->total, 'status' => 'pending',
         ]);
     }
 
@@ -324,6 +350,47 @@ class OrderCreationServiceTest extends TestCase
 
         $this->assertDatabaseHas('delivery_areas', ['name' => 'East Legon']);
         $this->assertSame('East Legon', $order->delivery_address_snapshot['area_name']);
+    }
+
+    public function test_a_valid_promo_code_discounts_the_order_and_records_a_redemption(): void
+    {
+        Promotion::create(['code' => 'TENOFF', 'type' => 'percentage', 'value' => 10, 'is_active' => true]);
+
+        $order = $this->service->create(new PlaceOrderData(
+            customerPhone: '+233241111111',
+            customerName: 'Ama',
+            branchId: $this->branch->id,
+            fulfilmentType: 'pickup',
+            paymentMethod: 'cash',
+            items: [$this->baseItem([$this->garlicSauce->id])],
+            promoCode: 'TENOFF',
+        ));
+
+        // (3500 + 0 garlic) * 2 = 7000, 10% off = 700.
+        $this->assertSame(7000, $order->subtotal);
+        $this->assertSame(700, $order->discount_total);
+        $this->assertSame(6300, $order->total);
+        $this->assertNotNull($order->promotion_id);
+
+        $this->assertDatabaseHas('promotion_redemptions', [
+            'order_id' => $order->id,
+            'amount_discounted' => 700,
+        ]);
+    }
+
+    public function test_an_invalid_promo_code_is_rejected(): void
+    {
+        $this->expectException(OrderPlacementException::class);
+
+        $this->service->create(new PlaceOrderData(
+            customerPhone: '+233241111111',
+            customerName: 'Ama',
+            branchId: $this->branch->id,
+            fulfilmentType: 'pickup',
+            paymentMethod: 'cash',
+            items: [$this->baseItem([$this->garlicSauce->id])],
+            promoCode: 'DOES-NOT-EXIST',
+        ));
     }
 
     public function test_order_below_the_minimum_total_is_rejected(): void

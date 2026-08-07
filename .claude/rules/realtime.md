@@ -18,9 +18,13 @@ All private except where noted.
 | Channel | Audience | Events |
 |---|---|---|
 | `branch.{id}.orders` | staff, managers, owner at that branch | `OrderPlaced`, `OrderStatusChanged` |
-| `branch.{id}.dispatch` | riders at that branch | `OrderReadyForPickup`, `OrderClaimed` |
+| `App.Models.User.{id}` | that one user | `OrderAssignedToRider` |
 | `order.{track_token}` | customer, token-authorised | `OrderStatusChanged` |
 | `owner.reports` | owner | `SalePosted` |
+
+Riders don't get a branch-wide channel — there's no claimable pool to broadcast to (see
+orders.md's rider assignment section). `OrderAssignedToRider` fires on the specific rider's
+own private channel instead, since assignment always targets exactly one person.
 
 ## Authorisation
 
@@ -37,8 +41,8 @@ one watch branch two's order flow.
 
 Broadcasts update UI quickly. They are never the source of truth.
 
-- Rider claims are decided by the atomic database update, not by who received the broadcast
-  first. See `.claude/rules/orders.md`.
+- Rider assignment is decided by the database write (auto-assign's row lock, or the manual
+  override), never by who received a broadcast first. See `.claude/rules/orders.md`.
 - The dashboard must reconcile against the server on reconnect. A client that was offline for
   two minutes has a stale board and must refetch, not replay.
 - Never derive state from event ordering. Events can arrive out of order or not at all.

@@ -1,28 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center" x-data="shiftWidget()" x-init="init()">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ __('Orders') }}
-            </h2>
-
-            <div class="flex items-center gap-3 text-sm">
-                <span x-show="active" class="text-gray-500">
-                    {{ __('On shift') }} <span x-text="branch"></span>
-                </span>
-                <button
-                    type="button"
-                    x-show="!active"
-                    @click="start()"
-                    class="px-3 py-1.5 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-900"
-                >{{ __('Start shift') }}</button>
-                <button
-                    type="button"
-                    x-show="active"
-                    @click="end()"
-                    class="px-3 py-1.5 bg-gray-200 text-gray-800 text-sm font-semibold rounded-md hover:bg-gray-300"
-                >{{ __('End shift') }}</button>
-            </div>
-        </div>
+        @include('dashboard._channel-header', ['title' => __('Orders'), 'active' => 'orders'])
     </x-slot>
 
     <div
@@ -86,6 +64,26 @@
                                 <div>
                                     <p class="font-semibold text-gray-900" x-text="order.reference"></p>
                                     <p class="text-sm text-gray-500" x-text="order.status + ' · ' + order.fulfilment_type"></p>
+
+                                    <template x-if="needsRiderControl(order)">
+                                        <div class="mt-2 text-sm">
+                                            <span class="text-gray-500" x-show="order.rider_name">
+                                                {{ __('Rider:') }} <span class="text-gray-900 font-medium" x-text="order.rider_name"></span>
+                                            </span>
+                                            <span class="text-gray-500" x-show="!order.rider_name">{{ __('No rider assigned') }}</span>
+
+                                            <select
+                                                class="block mt-1 text-sm rounded-md border-gray-300"
+                                                x-show="riders.length > 0"
+                                                @change="assignRider(order.id, $event.target.value); $event.target.value = ''"
+                                            >
+                                                <option value="" x-text="order.rider_name ? @js(__('Reassign to…')) : @js(__('Assign to…'))"></option>
+                                                <template x-for="rider in riders" :key="rider.id">
+                                                    <option :value="rider.id" x-text="rider.name"></option>
+                                                </template>
+                                            </select>
+                                        </div>
+                                    </template>
                                 </div>
                                 <div class="flex gap-2 items-center">
                                     <template x-if="nextStatus(order.status)">
@@ -107,56 +105,21 @@
         </div>
     </div>
 
+    @include('partials.shift-widget-script')
+
     <script>
-        function shiftWidget() {
-            return {
-                active: false,
-                branch: null,
-
-                init() {
-                    this.refresh();
-                },
-
-                async refresh() {
-                    const response = await fetch('{{ route('shift.show') }}', { headers: { Accept: 'application/json' } });
-                    const data = await response.json();
-                    this.active = data.active;
-                    this.branch = data.branch;
-                },
-
-                async start() {
-                    await this.post('{{ route('shift.start') }}');
-                },
-
-                async end() {
-                    await this.post('{{ route('shift.end') }}');
-                },
-
-                async post(url) {
-                    await fetch(url, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            Accept: 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        },
-                        body: '{}',
-                    });
-                    this.refresh();
-                },
-            };
-        }
-
         function orderDashboard(branchId) {
             return {
                 needsAcknowledgement: [],
                 inProgress: [],
+                riders: [],
                 error: null,
                 alarmTimer: null,
                 originalTitle: document.title,
 
                 init() {
                     this.fetchData();
+                    this.fetchRiders();
 
                     if (branchId) {
                         window.Echo.private(`branch.${branchId}.orders`)
@@ -185,9 +148,32 @@
                         this.inProgress = data.filter(o => o.status !== 'paid');
                         this.error = null;
                         this.updateAlarm();
+                        this.fetchRiders();
                     } catch (e) {
                         this.error = e.message;
                     }
+                },
+
+                // On-shift riders for the assign-rider dropdown — refreshed
+                // alongside order data so it doesn't go stale as riders
+                // start/end shifts during the session.
+                async fetchRiders() {
+                    try {
+                        const response = await fetch('{{ route('dashboard.riders') }}', {
+                            headers: { Accept: 'application/json' },
+                        });
+
+                        if (!response.ok) return;
+
+                        const { data } = await response.json();
+                        this.riders = data;
+                    } catch (e) {
+                        // Non-critical — the dropdown just stays empty.
+                    }
+                },
+
+                needsRiderControl(order) {
+                    return order.fulfilment_type === 'delivery' && ['ready', 'dispatched'].includes(order.status);
                 },
 
                 async act(orderId, action) {
@@ -196,6 +182,11 @@
 
                 async advance(orderId, to) {
                     await this.post(`/dashboard/orders/${orderId}/advance`, { to });
+                },
+
+                async assignRider(orderId, riderId) {
+                    if (!riderId) return;
+                    await this.post(`/dashboard/orders/${orderId}/assign-rider`, { rider_id: riderId });
                 },
 
                 async post(url, body = {}) {

@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\Order;
 use App\Models\User;
+use App\Services\Branches\BranchContext;
 use Spatie\Permission\PermissionRegistrar;
 
 class OrderPolicy
@@ -28,14 +29,42 @@ class OrderPolicy
         return $this->checkAtOrderBranch($user, $order, 'orders.reject');
     }
 
+    /**
+     * Riders additionally may only advance an order they've actually been
+     * assigned — orders.md's "riders only see their own orders" rule
+     * extends naturally to acting on the order, not just seeing it. A user
+     * whose primary role at this branch isn't "rider" (staff/manager/owner)
+     * is unrestricted, same as before.
+     */
     public function advanceStatus(User $user, Order $order): bool
     {
-        return $this->checkAtOrderBranch($user, $order, 'orders.advance_status');
+        if (! $this->checkAtOrderBranch($user, $order, 'orders.advance_status')) {
+            return false;
+        }
+
+        if (app(BranchContext::class)->primaryRoleFor($user, $order->branch_id) === 'rider') {
+            return $order->rider_id === $user->id;
+        }
+
+        return true;
     }
 
     public function cancel(User $user, Order $order): bool
     {
         return $this->checkAtOrderBranch($user, $order, 'orders.void');
+    }
+
+    /**
+     * Manual assignment (staff/manager/owner) — the fallback path when
+     * auto-assignment finds nobody, or a correction is needed. Pickup
+     * orders never need a rider (orders.md: "Pickup orders skip the rider
+     * entirely"), and once delivered there's nothing left to reassign.
+     */
+    public function assignRider(User $user, Order $order): bool
+    {
+        return $order->fulfilment_type === 'delivery'
+            && in_array($order->status, ['ready', 'dispatched'], true)
+            && $this->checkAtOrderBranch($user, $order, 'orders.assign_rider');
     }
 
     /**

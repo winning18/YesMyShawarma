@@ -19,7 +19,7 @@
             @endif
 
             <p class="text-2xl font-bold mb-6">
-                GH₵{{ number_format(($item->pivot->price_override ?? $item->base_price) / 100, 2) }}
+                GH₵{{ number_format($item->base_price / 100, 2) }}
             </p>
 
             <form method="POST" action="{{ route('cart.add') }}">
@@ -75,7 +75,7 @@
                         <x-product-image :item="$drink" class="w-full aspect-square rounded-md mb-2" />
                         <p class="text-sm font-semibold truncate">{{ $drink->name }}</p>
                         <p class="text-sm text-brand-gray-500 mb-2">
-                            GH₵{{ number_format(($drink->pivot->price_override ?? $drink->base_price) / 100, 2) }}
+                            GH₵{{ number_format($drink->base_price / 100, 2) }}
                         </p>
                         <form method="POST" action="{{ route('cart.add') }}">
                             @csrf

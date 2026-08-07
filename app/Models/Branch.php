@@ -30,7 +30,7 @@ class Branch extends Model
     public function menuItems(): BelongsToMany
     {
         return $this->belongsToMany(MenuItem::class, 'branch_menu_item')
-            ->withPivot(['price_override', 'is_available', 'unavailable_until'])
+            ->withPivot(['is_available', 'unavailable_until'])
             ->withTimestamps();
     }
 

@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+[x-cloak] {
+    display: none !important;
+}
+
 @layer components {
     /*
      * @tailwindcss/forms hardcodes the checked checkmark as a white SVG

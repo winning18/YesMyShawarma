@@ -66,6 +66,31 @@ class BranchContext
     }
 
     /**
+     * Branches the user may pick from the branch switcher. Owner is granted
+     * every branch implicitly (see hasRoleAtAnyBranch), so restricting them
+     * to branchIdsFor()'s literal model_has_roles rows — correct for every
+     * other role — would silently hide any branch they don't happen to hold
+     * an explicit role row at.
+     */
+    public function selectableBranchIdsFor(User $user): Collection
+    {
+        if ($this->hasRoleAtAnyBranch($user, 'owner')) {
+            return Branch::pluck('id');
+        }
+
+        return $this->branchIdsFor($user);
+    }
+
+    public function selectableBranchesFor(User $user): Collection
+    {
+        if ($this->hasRoleAtAnyBranch($user, 'owner')) {
+            return Branch::all();
+        }
+
+        return $this->branchesFor($user);
+    }
+
+    /**
      * spatie's teams mode makes model_has_roles.branch_id NOT NULL and part of
      * its primary key — there is no such thing as a team-unscoped role row, so
      * $user->hasRole() only ever matches once a specific team id is already

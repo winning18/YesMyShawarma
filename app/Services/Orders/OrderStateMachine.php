@@ -10,7 +10,10 @@ use Illuminate\Support\Facades\DB;
 
 class OrderStateMachine
 {
-    public function __construct(private readonly DeliveryFeeCalculator $feeCalculator) {}
+    public function __construct(
+        private readonly DeliveryFeeCalculator $feeCalculator,
+        private readonly RiderAssignmentService $riderAssignment,
+    ) {}
 
     /**
      * Valid transitions, per .claude/rules/orders.md. "Cancelled" is only ever
@@ -114,11 +117,13 @@ class OrderStateMachine
                     $order->delivery_fee = $this->feeCalculator->calculate($order->branch, (float) $lat, (float) $lng);
                     $order->total = $order->subtotal - $order->discount_total + $order->delivery_fee;
 
-                    // The cash payment row was created at placement with
-                    // the fee-less total (delivery is cash-only — see
-                    // OrderCreationService::create()) — keep it in sync
+                    // The cash/momo payment row was created at placement
+                    // with the fee-less total (a manually-settled order —
+                    // Order::MANUALLY_SETTLED_PAYMENT_METHODS — is the only
+                    // case that reaches "delivered" with no known fee yet;
+                    // see OrderCreationService::create()) — keep it in sync
                     // with what's actually collected at the door.
-                    $order->payments()->where('provider', 'cash')->update(['amount' => $order->total]);
+                    $order->payments()->whereIn('provider', Order::MANUALLY_SETTLED_PAYMENT_METHODS)->update(['amount' => $order->total]);
                 }
             }
 
@@ -141,6 +146,14 @@ class OrderStateMachine
             $branchId = $order->branch_id;
             $trackToken = $order->track_token;
             DB::afterCommit(fn () => OrderStatusChanged::dispatch($orderId, $branchId, $to, $trackToken));
+
+            // Pickup orders reach "ready" too, but never need a rider
+            // (orders.md: "Pickup orders skip the rider entirely"). Nobody
+            // eligible is a normal outcome here, not an error — the order
+            // just stays "ready" with rider_id null, for manual assignment.
+            if ($to === 'ready' && $order->fulfilment_type === 'delivery') {
+                $this->riderAssignment->autoAssign($order);
+            }
 
             return $order->refresh();
         });

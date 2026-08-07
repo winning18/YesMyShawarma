@@ -103,6 +103,29 @@ class BranchContextTest extends TestCase
         $this->assertNull(session('current_branch_id'));
     }
 
+    public function test_owner_can_select_a_branch_they_hold_no_explicit_role_at(): void
+    {
+        $owner = User::factory()->create();
+        $this->assignRoleAt($owner, 'owner', $this->osu);
+
+        $this->actingAs($owner)
+            ->post(route('branches.select.store'), ['branch_id' => $this->eastLegon->id])
+            ->assertRedirect(route('dashboard'));
+
+        $this->assertSame($this->eastLegon->id, session('current_branch_id'));
+    }
+
+    public function test_owners_branch_picker_lists_every_branch(): void
+    {
+        $owner = User::factory()->create();
+        $this->assignRoleAt($owner, 'owner', $this->osu);
+
+        $this->actingAs($owner)->get(route('branches.select'))
+            ->assertOk()
+            ->assertSee('Osu')
+            ->assertSee('East Legon');
+    }
+
     public function test_user_with_no_branch_role_is_forbidden(): void
     {
         $rogue = User::factory()->create();

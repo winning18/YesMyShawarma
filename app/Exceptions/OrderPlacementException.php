@@ -47,4 +47,9 @@ class OrderPlacementException extends Exception
 
         return new self("Minimum order for delivery is GHS {$cedis}.");
     }
+
+    public static function invalidPromoCode(string $reason): self
+    {
+        return new self($reason);
+    }
 }

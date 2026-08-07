@@ -21,6 +21,16 @@ class OrderResource extends JsonResource
             'payment_status' => $this->payment_status,
             'total' => $this->total,
             'placed_at' => $this->placed_at?->toIso8601String(),
+            'rider_id' => $this->rider_id,
+            'rider_name' => $this->whenLoaded('rider', fn () => $this->rider?->name),
+            'claimed_at' => $this->claimed_at?->toIso8601String(),
+            'delivery_address' => $this->fulfilment_type === 'delivery' ? [
+                'area_name' => $this->delivery_address_snapshot['area_name'] ?? null,
+                'landmark' => $this->delivery_address_snapshot['landmark'] ?? null,
+                'ghanapost_code' => $this->delivery_address_snapshot['ghanapost_code'] ?? null,
+                'lat' => $this->delivery_address_snapshot['lat'] ?? null,
+                'lng' => $this->delivery_address_snapshot['lng'] ?? null,
+            ] : null,
             'customer_name' => $this->whenLoaded('customer', fn () => $this->customer->name),
             'customer_phone' => $this->whenLoaded('customer', fn () => $this->customer->phone),
             'items' => $this->whenLoaded('items', fn () => $this->items->map(fn ($item) => [

@@ -66,7 +66,7 @@ class MenuPricingService
             throw OrderPlacementException::menuItemUnavailable($menuItem->name);
         }
 
-        $unitPrice = (int) ($branchPivot->pivot->price_override ?? $menuItem->base_price);
+        $unitPrice = (int) $menuItem->base_price;
 
         $optionRows = $this->buildOptionRows($menuItem, $itemData->optionIds);
         $optionsTotal = array_sum(array_column($optionRows, 'price_delta_snapshot'));

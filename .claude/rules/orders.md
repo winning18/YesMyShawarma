@@ -64,30 +64,44 @@ them most.
 
 Escalations write to `order_events` with `meta.escalation_level` so the pattern is auditable.
 
-## Rider claim concurrency
+## Rider assignment
 
-Multiple riders see the same order. A check-then-assign will double-assign on a busy night.
+Assignment is **system-driven, not a rider-facing claim pool.** Riders never browse or pick
+orders themselves — a rider seeing an order at all means it's already theirs.
 
-**Claim atomically:**
+Primary responsibility, in order:
 
-```sql
-UPDATE orders
-   SET rider_id = :rider, claimed_at = NOW()
- WHERE id = :order
-   AND rider_id IS NULL
-   AND status = 'ready'
-```
+1. **System** — automatic, the moment an order reaches `ready` (delivery orders only; pickup
+   skips the rider entirely). See `RiderAssignmentService::autoAssign()`.
+2. **Staff** — manual override via `orders.assign_rider`, for when auto-assignment finds
+   nobody, or a correction is needed (rider went offline, wrong pick, etc.).
+3. **Manager / owner** — same manual override, last resort.
 
-Check affected rows. One row means the claim succeeded. Zero rows means another rider won —
-return the winner's name so the UI shows "claimed by Kwame" rather than a generic error.
+Manual assignment isn't the normal path — it exists for the cases automatic assignment can't
+resolve on its own.
 
-**The WebSocket broadcast is cosmetic.** It greys the card out quickly for other riders. The
-database decides. Never treat a broadcast as authoritative — a rider on a laggy connection
-will double-claim.
+**Eligibility** for auto-assignment: on an active shift at the order's branch, and not already
+carrying another order (`rider_id` on any `ready`/`dispatched` order). Among eligible riders,
+the one least recently assigned goes next (round robin) — `MAX(orders.claimed_at)` per rider,
+nulls (never assigned) sorting first.
 
-Default mode is **claim-based**: riders grab from a pool. Dispatch-based assignment
-(`orders.assign_rider`) exists as a manager override and a per-branch setting, but claim is
-what gets built first.
+**Assignment is a resource allocation, not an order-status race** — the concurrency risk isn't
+two riders claiming the same order (there's no rider-initiated action to race), it's two
+orders becoming `ready` at once and both picking the same rider before either commits. Guard
+against this by locking the *candidate rider* row (`lockForUpdate()`), not the order: acquire
+the lock, re-check eligibility now that any concurrent assignment has had a chance to commit,
+then assign. If ineligible, move to the next candidate.
+
+If nobody is eligible, the order stays `ready` with `rider_id` null — no automatic retry queue.
+It surfaces on the staff dashboard for manual assignment; there is no separate alert for it.
+
+Manual assignment (staff/manager/owner) does not re-check the "not already carrying an order"
+eligibility rule — it's a deliberate human override, trusted to know better than the algorithm
+in a given moment.
+
+**Broadcasts are cosmetic**, same as anywhere else — `OrderAssignedToRider` (private
+`App.Models.User.{riderId}` channel) tells a specific rider's dashboard to refetch. The
+database write already decided the assignment before this ever fires.
 
 ## Totals
 

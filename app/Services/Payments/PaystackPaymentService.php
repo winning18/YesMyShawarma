@@ -17,6 +17,10 @@ class PaystackPaymentService
      * becomes the webhook's idempotency key, are only created once a
      * Paystack transaction is actually initialised, here.
      *
+     * Web checkout only. POS's 'momo' is an in-house manual payment (staff
+     * confirm the customer sent it) — it never reaches this method; see
+     * Order::MANUALLY_SETTLED_PAYMENT_METHODS and PosController::store().
+     *
      * @return array{authorization_url: string, reference: string}
      */
     public function initializeForOrder(Order $order, string $callbackUrl): array

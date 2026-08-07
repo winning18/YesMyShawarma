@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\DeliveryArea;
 use App\Models\MenuItem;
 use App\Models\Order;
+use App\Models\Promotion;
 use App\Services\Delivery\DeliveryFeeCalculator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -274,5 +275,43 @@ class CheckoutFlowTest extends TestCase
             ->assertSee('+233241111111')
             ->assertSee('2x Chicken Shawarma')
             ->assertSee('GH₵100.00');
+    }
+
+    public function test_apply_promo_endpoint_returns_the_discount_for_a_valid_code(): void
+    {
+        Promotion::create(['code' => 'TENOFF', 'type' => 'percentage', 'value' => 10, 'is_active' => true]);
+        $this->addToCart(1);
+
+        $this->postJson(route('checkout.apply-promo'), ['code' => 'TENOFF'])
+            ->assertOk()
+            ->assertJsonPath('discount', 500);
+    }
+
+    public function test_apply_promo_endpoint_rejects_an_invalid_code(): void
+    {
+        $this->addToCart(1);
+
+        $this->postJson(route('checkout.apply-promo'), ['code' => 'NOPE'])
+            ->assertStatus(422);
+    }
+
+    public function test_checkout_with_a_promo_code_applies_the_discount(): void
+    {
+        Promotion::create(['code' => 'TENOFF', 'type' => 'percentage', 'value' => 10, 'is_active' => true]);
+        $this->addToCart(1);
+
+        $response = $this->post(route('checkout.store'), [
+            'name' => 'Ama',
+            'phone' => '0241111111',
+            'payment_method' => 'cash',
+            'promo_code' => 'TENOFF',
+        ]);
+
+        $order = Order::first();
+
+        $response->assertRedirect(route('checkout.confirmation', $order));
+        $this->assertSame(500, $order->discount_total);
+        $this->assertSame(4500, $order->total);
+        $this->assertDatabaseHas('promotion_redemptions', ['order_id' => $order->id]);
     }
 }

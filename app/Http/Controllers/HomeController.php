@@ -26,13 +26,17 @@ class HomeController extends Controller
 
     public function index(): View
     {
-        $heroSlugs = array_keys(Category::HERO_SLIDE_TAGLINES);
-
-        $heroSlides = Category::whereIn('slug', $heroSlugs)->get()
-            ->sortBy(fn (Category $category) => array_search($category->slug, $heroSlugs, true))
+        // Every category is hero-slide-eligible (Hero Slider dashboard
+        // page), but only ones staff actually gave a photo appear on the
+        // live carousel — otherwise a freshly created category would
+        // immediately show an empty slide before anyone got to it.
+        $heroSlides = Category::where('is_active', true)
+            ->whereNotNull('hero_image_path')
+            ->orderBy('sort_order')->orderBy('name')
+            ->get()
             ->map(fn (Category $category) => [
                 'name' => $category->name,
-                'tagline' => Category::HERO_SLIDE_TAGLINES[$category->slug],
+                'tagline' => $category->tagline ?? '',
                 'imageUrl' => $category->heroImageUrl(),
             ])
             ->values();

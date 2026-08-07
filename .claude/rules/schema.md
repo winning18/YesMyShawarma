@@ -29,20 +29,31 @@ the kitchen is overwhelmed.
 ## Menu
 
 ```
-categories              id, name, slug, sort_order, is_active
+categories              id, name, slug, sort_order, is_active, hero_image_path
 menu_items              id, category_id, name, slug, description,
                         base_price, image_path, is_active, sort_order
-branch_menu_item        branch_id, menu_item_id, price_override,
-                        is_available, unavailable_until
+branch_menu_item        branch_id, menu_item_id, is_available, unavailable_until
 option_groups           id, name, min_select, max_select, is_required
 options                 id, option_group_id, name, price_delta, is_active
 menu_item_option_group  menu_item_id, option_group_id, sort_order
+menu_item_schedules     id, menu_item_id, branch_id, day_of_week, starts_at, ends_at
 ```
 
 **Branch-level availability is mandatory.** Staff must mark an item sold out from a phone in
 one tap. `unavailable_until` supports auto-restore at next opening.
 
-Effective price = `branch_menu_item.price_override ?? menu_items.base_price`.
+`hero_image_path` is only ever set for the categories listed in `Category::HERO_SLIDE_TAGLINES`
+(the home page hero slider) — not a general category photo field.
+
+`menu_item_schedules` is opt-in per item, per branch: a row means "on `day_of_week`
+(0=Sunday..6=Saturday, matching Carbon), available between `starts_at` and `ends_at`" — plain
+Africa/Accra local time, not a UTC instant, since this is a recurring weekly pattern tied to
+the branch's own rhythm, not a point in time. An item with no rows is left entirely to the
+manual `is_available` toggle. `ApplyMenuItemSchedules` (scheduled every 5 minutes) is the only
+thing that writes `is_available` for items that do have rows — manual toggles on those still
+work but get reasserted next run.
+
+Price is always `menu_items.base_price` — no per-branch override.
 
 ## Customers
 
@@ -65,7 +76,7 @@ orders
   id, reference, track_token, customer_id, branch_id,
   fulfilment_type (delivery|pickup), status,
   subtotal, discount_total, delivery_fee, total,
-  payment_method (paystack|cash), payment_status,
+  payment_method (paystack|cash), payment_status, channel (web|pos),
   promotion_id, delivery_address_snapshot (json),
   rider_id, claimed_at, scheduled_for,
   placed_at, accepted_at, ready_at, dispatched_at,
@@ -97,6 +108,10 @@ Same applies to `delivery_address_snapshot` — customers edit saved addresses.
 
 - `reference` is the human-readable order number shown to customers and staff.
 - `track_token` is a random 32-char string powering `/track/{token}` with no login.
+- `channel` distinguishes web checkout (`web`, the default) from staff-entered counter/phone
+  orders (`pos`). For `pos` orders, `order_events`' `actor_type`/`actor_id` on the placement
+  row identify the staff member who entered it, not the customer — `OrderCreationService`
+  defaults to `'customer'`/the resolved `Customer` id, but a caller may pass an explicit actor.
 - Status timestamps are denormalised for reporting speed. `order_events` remains the source
   of truth; if the two disagree, `order_events` wins.
 

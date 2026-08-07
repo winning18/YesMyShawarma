@@ -19,8 +19,6 @@ class CartService
 {
     public const MAX_LINE_QUANTITY = 20;
 
-    private const SESSION_KEY = 'cart';
-
     public function __construct(
         private readonly Request $request,
         private readonly MenuPricingService $pricing,
@@ -116,7 +114,7 @@ class CartService
 
     public function clear(): void
     {
-        $this->request->session()->forget(self::SESSION_KEY);
+        $this->request->session()->forget($this->sessionKey());
     }
 
     public function branchId(): ?int
@@ -210,7 +208,7 @@ class CartService
      */
     private function raw(): array
     {
-        return $this->request->session()->get(self::SESSION_KEY, ['branch_id' => null, 'items' => []]);
+        return $this->request->session()->get($this->sessionKey(), ['branch_id' => null, 'items' => []]);
     }
 
     /**
@@ -218,6 +216,17 @@ class CartService
      */
     private function save(array $cart): void
     {
-        $this->request->session()->put(self::SESSION_KEY, $cart);
+        $this->request->session()->put($this->sessionKey(), $cart);
+    }
+
+    /**
+     * Overridden by PosCartService so a staff member's POS cart can never
+     * collide with a guest customer's checkout cart in the same browser
+     * session — both guards share one session store (see config/auth.php),
+     * and this class's session key was previously a single shared constant.
+     */
+    protected function sessionKey(): string
+    {
+        return 'cart';
     }
 }

@@ -6,6 +6,8 @@ use App\Exceptions\InvalidOrderTransitionException;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Order;
+use App\Models\Shift;
+use App\Models\User;
 use App\Services\Delivery\DeliveryFeeCalculator;
 use App\Services\Orders\OrderStateMachine;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -96,6 +98,31 @@ class OrderStateMachineTest extends TestCase
         ]);
     }
 
+    public function test_delivered_transition_reconciles_a_momo_payment_row_too(): void
+    {
+        // Momo behaves exactly like cash here — Order::MANUALLY_SETTLED_
+        // PAYMENT_METHODS, both settled in person, neither known to have
+        // its final fee until the trip's actually made.
+        $order = $this->makeOrder('dispatched');
+        $order->update([
+            'payment_method' => 'momo',
+            'delivery_address_snapshot' => [
+                'area_id' => null, 'area_name' => null,
+                'ghanapost_code' => 'GA-123-4567', 'landmark' => 'Near the mall',
+                'lat' => 5.51, 'lng' => -0.11,
+            ],
+        ]);
+        $order->payments()->create(['provider' => 'momo', 'amount' => $order->total, 'currency' => 'GHS', 'status' => 'pending']);
+
+        $expectedFee = app(DeliveryFeeCalculator::class)->calculate($order->branch, 5.51, -0.11);
+
+        $result = $this->machine->transition($order, 'delivered', 'rider', actorId: 1);
+
+        $this->assertDatabaseHas('payments', [
+            'order_id' => $order->id, 'provider' => 'momo', 'amount' => $result->total,
+        ]);
+    }
+
     public function test_pickup_order_reaching_delivered_leaves_fee_at_zero(): void
     {
         $order = $this->makeOrder('dispatched');
@@ -174,5 +201,30 @@ class OrderStateMachineTest extends TestCase
         $this->expectException(InvalidOrderTransitionException::class);
 
         $this->machine->transition($order, 'refunded', 'owner', actorId: 1);
+    }
+
+    public function test_ready_transition_auto_assigns_an_on_shift_rider_for_delivery_orders(): void
+    {
+        $rider = User::factory()->create();
+        Shift::create(['user_id' => $rider->id, 'branch_id' => $this->branch->id, 'started_at' => now()]);
+
+        $order = $this->makeOrder('preparing');
+
+        $result = $this->machine->transition($order, 'ready', 'staff', actorId: 1);
+
+        $this->assertSame($rider->id, $result->rider_id);
+    }
+
+    public function test_ready_transition_does_not_assign_a_rider_to_a_pickup_order(): void
+    {
+        $rider = User::factory()->create();
+        Shift::create(['user_id' => $rider->id, 'branch_id' => $this->branch->id, 'started_at' => now()]);
+
+        $order = $this->makeOrder('preparing');
+        $order->update(['fulfilment_type' => 'pickup']);
+
+        $result = $this->machine->transition($order, 'ready', 'staff', actorId: 1);
+
+        $this->assertNull($result->rider_id);
     }
 }

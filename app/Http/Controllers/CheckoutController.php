@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\OrderPlacementException;
+use App\Models\Customer;
 use App\Models\DeliveryArea;
 use App\Models\Order;
 use App\Services\Cart\CartService;
@@ -12,7 +13,10 @@ use App\Services\Orders\Data\DeliveryAddressData;
 use App\Services\Orders\Data\PlaceOrderData;
 use App\Services\Orders\OrderCreationService;
 use App\Services\Payments\PaystackPaymentService;
+use App\Services\Promotions\PromotionService;
+use App\Services\Visitors\VisitorSessionService;
 use Closure;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -49,6 +53,7 @@ class CheckoutController extends Controller
         CustomerService $customers,
         OrderCreationService $orders,
         PaystackPaymentService $paystack,
+        VisitorSessionService $visitors,
     ): RedirectResponse {
         $summary = $cart->summary();
 
@@ -98,6 +103,7 @@ class CheckoutController extends Controller
         }
 
         $rules['payment_method'] = ['required', 'in:cash,paystack'];
+        $rules['promo_code'] = ['nullable', 'string'];
 
         $validated = $request->validate($rules);
 
@@ -124,10 +130,13 @@ class CheckoutController extends Controller
                 items: $cart->toPlaceOrderItems(),
                 deliveryAddress: $deliveryAddress,
                 instructions: $validated['instructions'] ?? null,
+                promoCode: $validated['promo_code'] ?? null,
             ));
         } catch (OrderPlacementException $e) {
             return back()->withErrors(['cart' => $e->getMessage()]);
         }
+
+        $visitors->markConverted($request, $order);
 
         $cart->clear();
 
@@ -145,6 +154,47 @@ class CheckoutController extends Controller
         }
 
         return redirect()->route('checkout.confirmation', $order);
+    }
+
+    /**
+     * Live check for the "Apply" button — never the final word. The
+     * authoritative check happens again in OrderCreationService at actual
+     * placement, since a client-reported result can't be trusted (the cart
+     * could change, the code could expire, between here and submit).
+     */
+    public function applyPromoCode(Request $request, CartService $cart, CustomerService $customers, PromotionService $promotions): JsonResponse
+    {
+        $validated = $request->validate([
+            'code' => ['required', 'string'],
+            'phone' => ['nullable', 'string'],
+        ]);
+
+        $summary = $cart->summary();
+
+        if (! $summary['branch']) {
+            return response()->json(['message' => __('Your cart is empty.')], 422);
+        }
+
+        // Not yet a real Customer row until the order is actually placed
+        // (see CustomerService::findOrCreateByPhone) — an unsaved instance
+        // has no id, which correctly matches zero redemptions in
+        // PromotionService's max_per_customer check.
+        $customer = null;
+        if (! empty($validated['phone'])) {
+            $phone = $customers->normalizeGhanaPhone($validated['phone']);
+            $customer = Customer::where('phone', $phone)->first();
+        }
+        $customer ??= new Customer;
+
+        try {
+            $promotion = $promotions->validate($validated['code'], $summary['branch'], $customer, $summary['subtotal']);
+        } catch (OrderPlacementException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'discount' => $promotions->calculateDiscount($promotion, $summary['subtotal']),
+        ]);
     }
 
     public function confirmation(Order $order): View

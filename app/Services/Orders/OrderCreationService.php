@@ -11,6 +11,7 @@ use App\Services\Customers\CustomerService;
 use App\Services\Delivery\DeliveryFeeCalculator;
 use App\Services\Menu\MenuPricingService;
 use App\Services\Orders\Data\PlaceOrderData;
+use App\Services\Promotions\PromotionService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -20,14 +21,17 @@ class OrderCreationService
         private readonly CustomerService $customers,
         private readonly MenuPricingService $pricing,
         private readonly DeliveryFeeCalculator $feeCalculator,
+        private readonly PromotionService $promotions,
     ) {}
 
     /**
-     * Guest checkout entry point. Callable from Web and Api controllers
-     * alike (both call this same service — see CLAUDE.md's API-first rule).
+     * The single order-creation entry point — guest web checkout and
+     * staff-entered POS orders both call this, same as Web/Api controllers
+     * alike (see CLAUDE.md's API-first rule). $data->channel and
+     * $data->actorType/actorId are how a POS caller distinguishes itself;
+     * everything else behaves identically regardless of caller.
      *
      * Deliberately NOT handled here, each for its own reason:
-     * - promotions / discount_total: Phase 5, always 0 for now.
      * - the delivery_fee for delivery orders when location wasn't captured
      *   at checkout: distance (branch → the customer's shared live
      *   location) × a flat rate, priced immediately below when lat/lng are
@@ -54,8 +58,12 @@ class OrderCreationService
      *   snapshots it onto the order; persisting to customer_addresses is a
      *   distinct, opt-in action the caller would trigger separately.
      * - a Paystack `payments` row: created during Paystack transaction
-     *   initialisation (app/Services/Payments/**), not here. Cash orders do
-     *   get their `payments` row here, since there's no separate init step.
+     *   initialisation (app/Services/Payments/**), not here — only
+     *   `payment_method === 'paystack'` (web checkout) ever goes through
+     *   that flow. Manually-settled methods (Order::MANUALLY_SETTLED_
+     *   PAYMENT_METHODS — cash, and momo's in-house POS payments) get
+     *   their `payments` row here instead, since there's no separate
+     *   init step for either.
      */
     public function create(PlaceOrderData $data): Order
     {
@@ -74,14 +82,26 @@ class OrderCreationService
 
             [$itemRows, $subtotal] = $this->pricing->priceItems($branch, $data->items);
 
+            // Re-validated here even though checkout's "Apply" button
+            // already checked it live — that check only ever priced the
+            // cart's subtotal at that moment, never trust it as the final
+            // word. See PromotionService::validate().
+            $promotion = null;
             $discountTotal = 0;
+
+            if ($data->promoCode !== null) {
+                $promotion = $this->promotions->validate($data->promoCode, $branch, $customer, $subtotal);
+                $discountTotal = $this->promotions->calculateDiscount($promotion, $subtotal);
+            }
+
             [$deliveryFee, $addressSnapshot] = $data->fulfilmentType === 'delivery'
                 ? $this->resolveDelivery($branch, $data, $subtotal)
                 : [0, null];
 
             $total = $subtotal - $discountTotal + $deliveryFee;
 
-            $initialStatus = $data->paymentMethod === 'cash' ? 'paid' : 'pending_payment';
+            $manuallySettled = in_array($data->paymentMethod, Order::MANUALLY_SETTLED_PAYMENT_METHODS, true);
+            $initialStatus = $manuallySettled ? 'paid' : 'pending_payment';
 
             $order = new Order([
                 'reference' => $this->generateReference(),
@@ -92,9 +112,11 @@ class OrderCreationService
                 'subtotal' => $subtotal,
                 'discount_total' => $discountTotal,
                 'delivery_fee' => $deliveryFee,
+                'promotion_id' => $promotion?->id,
                 'total' => $total,
                 'payment_method' => $data->paymentMethod,
                 'payment_status' => 'pending',
+                'channel' => $data->channel,
                 'delivery_address_snapshot' => $addressSnapshot,
                 'instructions' => $data->instructions,
                 'scheduled_for' => $data->scheduledFor,
@@ -102,6 +124,10 @@ class OrderCreationService
             $order->status = $initialStatus;
             $order->placed_at = now();
             $order->save();
+
+            if ($promotion) {
+                $this->promotions->redeem($promotion, $order, $customer, $discountTotal);
+            }
 
             foreach ($itemRows as $row) {
                 $orderItem = $order->items()->create([
@@ -118,9 +144,9 @@ class OrderCreationService
                 }
             }
 
-            if ($data->paymentMethod === 'cash') {
+            if ($manuallySettled) {
                 $order->payments()->create([
-                    'provider' => 'cash',
+                    'provider' => $data->paymentMethod,
                     'amount' => $total,
                     'currency' => 'GHS',
                     'status' => 'pending',
@@ -130,8 +156,8 @@ class OrderCreationService
             $order->events()->create([
                 'from_status' => null,
                 'to_status' => $initialStatus,
-                'actor_type' => 'customer',
-                'actor_id' => $customer->id,
+                'actor_type' => $data->actorType ?? 'customer',
+                'actor_id' => $data->actorId ?? $customer->id,
                 'meta' => ['action' => 'placed'],
             ]);
 

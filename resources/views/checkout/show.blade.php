@@ -29,6 +29,9 @@
             branchLng: {{ $branch->lng }},
             ratePerKmPesewas: {{ $ratePerKmPesewas }},
             subtotalPesewas: {{ $subtotal }},
+            discountCode: @js(old('promo_code', '')),
+            discountAmount: 0,
+            promoMessage: '',
             reviewing: false,
             name: @js(old('name', $customer->name ?? '')),
             phone: @js(old('phone', $customer->phone ?? '')),
@@ -75,11 +78,47 @@
                 const distanceKm = earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
                 return Math.round(distanceKm * this.ratePerKmPesewas);
             },
+            async applyPromoCode() {
+                if (!this.discountCode) return;
+
+                try {
+                    const response = await fetch('{{ route('checkout.apply-promo') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Accept: 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                        },
+                        body: JSON.stringify({ code: this.discountCode, phone: this.phone }),
+                    });
+                    const payload = await response.json();
+
+                    if (!response.ok) {
+                        this.discountAmount = 0;
+                        this.promoMessage = payload.message || '{{ __('This promo code is not valid.') }}';
+                        return;
+                    }
+
+                    this.discountAmount = payload.discount;
+                    this.promoMessage = '{{ __('Code applied.') }}';
+                } catch (e) {
+                    this.discountAmount = 0;
+                    this.promoMessage = '{{ __('Could not check this code — try again.') }}';
+                }
+            },
+            // The only place delivery fee, discount, and subtotal actually
+            // combine — see orders.md's totals order (subtotal - discount +
+            // delivery fee), never below zero.
+            estimatedTotal() {
+                const fee = (this.fulfilmentType === 'delivery' && this.estimatedFee !== null) ? this.estimatedFee : 0;
+
+                return Math.max(0, this.subtotalPesewas - this.discountAmount + fee);
+            },
         }"
         x-effect="if (fulfilmentType !== 'delivery') { estimatedFee = null; locationStatus = ''; }"
     >
         <div class="md:col-span-2">
-            <form method="POST" action="{{ route('checkout.store') }}" class="space-y-6" x-ref="form">
+            <form id="checkout-form" method="POST" action="{{ route('checkout.store') }}" class="space-y-6" x-ref="form">
                 @csrf
 
                 <div x-show="!reviewing">
@@ -310,53 +349,45 @@
                 <span>GH₵{{ number_format($subtotal / 100, 2) }}</span>
             </div>
 
+            <div class="flex justify-between text-sm mt-2" x-show="discountAmount > 0" x-cloak>
+                <span>{{ __('Discount') }}</span>
+                <span x-text="'-GH₵' + (discountAmount / 100).toFixed(2)"></span>
+            </div>
+
             @if ($deliveryAvailable)
-                <template x-if="fulfilmentType === 'delivery' && estimatedFee !== null">
-                    <div class="flex justify-between text-sm mt-2">
-                        <span>{{ __('Delivery fee') }}</span>
-                        <span x-text="'GH₵' + (estimatedFee / 100).toFixed(2)"></span>
-                    </div>
-                </template>
-
-                <template x-if="fulfilmentType === 'delivery' && estimatedFee !== null">
-                    <div class="flex justify-between font-semibold border-t border-brand-gray-100 pt-3 mt-2">
-                        <span>{{ __('Total') }}</span>
-                        <span x-text="'GH₵' + ((subtotalPesewas + estimatedFee) / 100).toFixed(2)"></span>
-                    </div>
-                </template>
-
-                <template x-if="!(fulfilmentType === 'delivery' && estimatedFee !== null)">
-                    <div class="flex justify-between font-semibold border-t border-brand-gray-100 pt-3 mt-2">
-                        <span>{{ __('Total') }}</span>
-                        <span>GH₵{{ number_format($subtotal / 100, 2) }}</span>
-                    </div>
-                </template>
-
-                <p x-show="fulfilmentType !== 'delivery' || estimatedFee === null" class="text-xs text-brand-gray-500 mt-2">
-                    {{ __('Delivery fee will be calculated upon rider arrival.') }}
-                </p>
-            @else
-                <div class="flex justify-between font-semibold border-t border-brand-gray-100 pt-3 mt-2">
-                    <span>{{ __('Total') }}</span>
-                    <span>GH₵{{ number_format($subtotal / 100, 2) }}</span>
+                <div class="flex justify-between text-sm mt-2" x-show="fulfilmentType === 'delivery' && estimatedFee !== null" x-cloak>
+                    <span>{{ __('Delivery fee') }}</span>
+                    <span x-text="'GH₵' + (estimatedFee / 100).toFixed(2)"></span>
                 </div>
             @endif
 
-            {{-- Not wired up yet — no promotions/discount_codes schema exists
-                 in this phase of the build. Placeholder only, so the layout
-                 is ready once that's built. --}}
+            <div class="flex justify-between font-semibold border-t border-brand-gray-100 pt-3 mt-2">
+                <span>{{ __('Total') }}</span>
+                <span x-text="'GH₵' + (estimatedTotal() / 100).toFixed(2)"></span>
+            </div>
+
+            @if ($deliveryAvailable)
+                <p x-show="fulfilmentType !== 'delivery' || estimatedFee === null" class="text-xs text-brand-gray-500 mt-2">
+                    {{ __('Delivery fee will be calculated upon rider arrival.') }}
+                </p>
+            @endif
+
             <div class="border-t border-brand-gray-100 pt-3 mt-3">
                 <label class="block text-sm font-medium mb-1" for="discount_code">{{ __('Discount code') }}</label>
                 <div class="flex gap-2">
                     <input
-                        type="text" id="discount_code"
+                        type="text" id="discount_code" name="promo_code" form="checkout-form"
+                        x-model="discountCode"
                         placeholder="{{ __('Enter code') }}"
-                        class="w-full rounded-md border-brand-gray-300"
+                        class="w-full rounded-md {{ $errors->has('promo_code') ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300' }}"
                     >
-                    <button type="button" class="px-4 py-2 bg-brand-gray-100 text-brand-black text-sm font-semibold rounded-md hover:bg-brand-gray-300 shrink-0">
-                        {{ __('Apply') }}
-                    </button>
+                    <button
+                        type="button" @click="applyPromoCode()"
+                        class="px-4 py-2 bg-brand-gray-100 text-brand-black text-sm font-semibold rounded-md hover:bg-brand-gray-300 shrink-0"
+                    >{{ __('Apply') }}</button>
                 </div>
+                <p x-show="promoMessage" x-cloak class="text-xs mt-1" :class="discountAmount > 0 ? 'text-green-600' : 'text-brand-red'" x-text="promoMessage"></p>
+                @error('promo_code') <p class="text-sm text-brand-red mt-1">{{ $message }}</p> @enderror
             </div>
         </div>
     </div>

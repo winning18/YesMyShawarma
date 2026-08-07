@@ -30,6 +30,37 @@ class CustomerPagesTest extends TestCase
         $this->get(route('home'))->assertOk();
     }
 
+    public function test_home_page_hero_only_shows_categories_with_an_uploaded_photo(): void
+    {
+        Category::create(['name' => 'Shawarma', 'slug' => 'shawarma', 'hero_image_path' => 'category-hero/1.jpg']);
+        Category::create(['name' => 'Salads', 'slug' => 'salads']);
+
+        $response = $this->get(route('home'));
+
+        $response->assertSee('Shawarma');
+        $response->assertDontSee('Salads');
+    }
+
+    public function test_home_page_hero_excludes_inactive_categories(): void
+    {
+        Category::create([
+            'name' => 'Discontinued Wraps', 'slug' => 'discontinued-wraps',
+            'hero_image_path' => 'category-hero/1.jpg', 'is_active' => false,
+        ]);
+
+        $this->get(route('home'))->assertDontSee('Discontinued Wraps');
+    }
+
+    public function test_home_page_hero_shows_the_categorys_tagline(): void
+    {
+        Category::create([
+            'name' => 'Shawarma', 'slug' => 'shawarma', 'hero_image_path' => 'category-hero/1.jpg',
+            'tagline' => 'Wrapped fresh, packed with flavour.',
+        ]);
+
+        $this->get(route('home'))->assertSee('Wrapped fresh, packed with flavour.');
+    }
+
     public function test_branches_page_renders(): void
     {
         $this->get(route('branches.index'))->assertOk()->assertSee('Ga Odumase');
