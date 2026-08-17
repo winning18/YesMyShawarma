@@ -33,7 +33,7 @@ class DashboardController extends Controller
     {
         Gate::authorize('viewAny', Order::class);
 
-        $orders = Order::with(['items.options', 'customer'])
+        $orders = Order::with(['items.options', 'customer', 'branch'])
             ->whereIn('status', self::ACTIVE_STATUSES)
             ->where('rider_id', $request->user()->id)
             ->orderBy('placed_at')

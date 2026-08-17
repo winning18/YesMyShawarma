@@ -44,13 +44,18 @@ class ProcessPaystackWebhook implements ShouldQueue
             return;
         }
 
-        // Idempotent: Paystack retries webhook delivery. A duplicate for an
-        // already-settled payment must be a no-op, not a second transition.
-        if ($payment->status === 'paid') {
-            return;
-        }
-
         DB::transaction(function () use ($payment, $data, $stateMachine) {
+            // Lock the row before the idempotency check, not after — Paystack
+            // retries webhook delivery, and without the lock two concurrent
+            // deliveries for the same reference can both read status !==
+            // 'paid' before either commits, each proceeding to transition
+            // the order a second time.
+            $payment = Payment::whereKey($payment->id)->lockForUpdate()->firstOrFail();
+
+            if ($payment->status === 'paid') {
+                return;
+            }
+
             // Store the raw payload before acting on it, regardless of what
             // happens next — per payments.md, it's the only record that
             // matters if a dispute arrives later.

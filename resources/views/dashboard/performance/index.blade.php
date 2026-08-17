@@ -15,7 +15,7 @@
             >{{ __('Operations') }}</a>
         </div>
 
-        <form method="GET" action="{{ route('dashboard.performance') }}">
+        <form method="GET" action="{{ route('dashboard.performance') }}" class="flex flex-wrap items-center gap-3">
             <input type="hidden" name="tab" value="{{ $tab }}">
             <label for="range" class="sr-only">{{ __('Date range') }}</label>
             <select id="range" name="range" onchange="this.form.submit()" class="rounded-md border-gray-300 text-sm">
@@ -23,6 +23,16 @@
                 <option value="7" @selected($rangeKey === '7')>{{ __('Last 7 days') }}</option>
                 <option value="30" @selected($rangeKey === '30')>{{ __('Last 30 days') }}</option>
             </select>
+
+            @if ($tab === 'operations' && $crossBranch)
+                <label for="branch" class="sr-only">{{ __('Branch') }}</label>
+                <select id="branch" name="branch" onchange="this.form.submit()" class="rounded-md border-gray-300 text-sm">
+                    <option value="">{{ __('All branches') }}</option>
+                    @foreach ($branchOptions as $branch)
+                        <option value="{{ $branch->id }}" @selected($branchFilterId === $branch->id)>{{ $branch->name }}</option>
+                    @endforeach
+                </select>
+            @endif
         </form>
 
         @if ($tab === 'sales')

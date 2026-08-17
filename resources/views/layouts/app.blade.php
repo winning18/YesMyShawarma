@@ -48,5 +48,7 @@
                 </main>
             </div>
         </div>
+
+        @include('partials.shift-widget-script')
     </body>
 </html>

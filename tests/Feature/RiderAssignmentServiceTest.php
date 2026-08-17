@@ -8,7 +8,9 @@ use App\Models\Order;
 use App\Models\Shift;
 use App\Models\User;
 use App\Services\Orders\RiderAssignmentService;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 class RiderAssignmentServiceTest extends TestCase
@@ -24,6 +26,8 @@ class RiderAssignmentServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->seed(RolesAndPermissionsSeeder::class);
 
         $this->service = app(RiderAssignmentService::class);
 
@@ -57,6 +61,8 @@ class RiderAssignmentServiceTest extends TestCase
     private function onShift(?string $name = null): User
     {
         $rider = User::factory()->create($name ? ['name' => $name] : []);
+        app(PermissionRegistrar::class)->setPermissionsTeamId($this->branch->id);
+        $rider->assignRole('rider');
         Shift::create(['user_id' => $rider->id, 'branch_id' => $this->branch->id, 'started_at' => now()]);
 
         return $rider;
@@ -90,6 +96,42 @@ class RiderAssignmentServiceTest extends TestCase
 
         $this->assertNull($assigned);
         $this->assertNull($order->fresh()->rider_id);
+    }
+
+    public function test_auto_assign_never_picks_a_staff_member_even_when_they_are_the_only_one_on_shift(): void
+    {
+        // Regression: shifts carries no role column of its own — staff
+        // and riders both start/end shifts through the exact same
+        // mechanism (schema.md) — so an unfiltered "who's on shift" query
+        // would silently auto-assign a staff member as the order's
+        // "rider" the moment they're on shift and free. Same class of bug
+        // already fixed once for RiderAvailabilityController's dropdown.
+        $staff = User::factory()->create();
+        app(PermissionRegistrar::class)->setPermissionsTeamId($this->branch->id);
+        $staff->assignRole('staff');
+        Shift::create(['user_id' => $staff->id, 'branch_id' => $this->branch->id, 'started_at' => now()]);
+
+        $order = $this->makeOrder();
+
+        $assigned = $this->service->autoAssign($order);
+
+        $this->assertNull($assigned);
+        $this->assertNull($order->fresh()->rider_id);
+    }
+
+    public function test_auto_assign_picks_the_rider_over_a_staff_member_also_on_shift(): void
+    {
+        $staff = User::factory()->create();
+        app(PermissionRegistrar::class)->setPermissionsTeamId($this->branch->id);
+        $staff->assignRole('staff');
+        Shift::create(['user_id' => $staff->id, 'branch_id' => $this->branch->id, 'started_at' => now()]);
+
+        $rider = $this->onShift();
+        $order = $this->makeOrder();
+
+        $assigned = $this->service->autoAssign($order);
+
+        $this->assertSame($rider->id, $assigned?->id);
     }
 
     public function test_auto_assign_skips_a_rider_already_carrying_an_order(): void

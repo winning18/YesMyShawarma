@@ -35,6 +35,14 @@ pending_payment ──▶ paid ──▶ accepted ──▶ preparing ──▶ 
 | `cancelled` | Cancelled before delivery | manager or above |
 | `refunded` | Money returned | owner |
 
+The `refunded` status here is reachable only from `rejected`/`cancelled`/`failed` — an order
+that never actually delivered value, whose money is confirmed returned. This is **not** the
+same mechanism as the `refunds` table (see payments.md) that backs actual customer refund
+requests, which apply to a `paid`/`delivered`/any-revenue-bearing order and deliberately never
+touch this status column at all — the two `refunded` concepts sit next to each other, not on
+top of each other. Don't wire the newer feature into this state-machine transition; it was
+built to stay independent, on purpose.
+
 ## Rules
 
 - Transitions are enforced in `OrderStateMachine`. **No code sets `status` directly** — not
@@ -55,7 +63,8 @@ kills the whole system.
 - The dashboard plays a **repeating audible alarm** while any order sits in `paid`. It stops
   only when a user accepts or rejects. Not a single chime — a loop.
 - Browser tab title shows the pending count so a backgrounded tab still signals.
-- Unacknowledged **5 minutes** → SMS the branch manager.
+- Unacknowledged **5 minutes** → SMS the branch manager and any general_manager who oversees
+  that branch (permissions.md — general_manager holds everything a manager holds).
 - Unacknowledged **10 minutes** → SMS the owner.
 
 **Implement escalation as a scheduled job scanning for `paid` orders past threshold.** Do not
@@ -93,7 +102,16 @@ the lock, re-check eligibility now that any concurrent assignment has had a chan
 then assign. If ineligible, move to the next candidate.
 
 If nobody is eligible, the order stays `ready` with `rider_id` null — no automatic retry queue.
-It surfaces on the staff dashboard for manual assignment; there is no separate alert for it.
+It surfaces on the staff dashboard for manual assignment. If no rider is on shift at all, the
+assign control shows "No riders available" rather than an empty dropdown with nothing to
+select, and a distinct one-shot chime (`orderDashboard()`'s `riderAvailableChime()` —
+deliberately not the repeating unacknowledged-order alarm; see realtime.md) plays the moment a
+rider comes on shift *while* an order is actually waiting on one, so staff don't have to keep
+checking back manually. `dashboard.riders` (`RiderAvailabilityController`) is what backs both
+the dropdown and this — it's filtered to the `rider` role specifically, not "anyone on shift":
+`shifts` carries no role column (schema.md), so staff and riders both start/end shifts through
+the exact same mechanism, and an unfiltered query would list staff in a control reserved for
+riders alone.
 
 Manual assignment (staff/manager/owner) does not re-check the "not already carrying an order"
 eligibility rule — it's a deliberate human override, trusted to know better than the algorithm

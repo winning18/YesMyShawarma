@@ -3,10 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\Branch;
+use App\Models\BranchWorkingHour;
 use App\Models\Category;
 use App\Models\MenuItem;
 use App\Models\OptionGroup;
+use App\Models\StaffMember;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class CustomerPagesTest extends TestCase
@@ -23,6 +26,12 @@ class CustomerPagesTest extends TestCase
             'name' => 'Ga Odumase', 'slug' => 'ga-odumase', 'phone' => '+233243635265', 'address' => 'Ga Odumase, Accra',
             'lat' => 5.67, 'lng' => -0.30, 'opens_at' => '14:00', 'closes_at' => '00:00',
         ]);
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
     }
 
     public function test_home_page_renders(): void
@@ -66,6 +75,41 @@ class CustomerPagesTest extends TestCase
         $this->get(route('branches.index'))->assertOk()->assertSee('Ga Odumase');
     }
 
+    public function test_branches_page_shows_accepting_orders_when_open(): void
+    {
+        Carbon::setTestNow(Carbon::now('Africa/Accra')->next(Carbon::MONDAY)->setTime(15, 0));
+        BranchWorkingHour::create(['branch_id' => $this->branch->id, 'day_of_week' => 1, 'opens_at' => '10:00', 'closes_at' => '22:00']);
+
+        $this->get(route('branches.index'))
+            ->assertOk()
+            ->assertSee('Accepting orders')
+            ->assertDontSee('Closed — opens');
+    }
+
+    public function test_branches_page_shows_closed_with_opening_time_when_outside_working_hours(): void
+    {
+        Carbon::setTestNow(Carbon::now('Africa/Accra')->next(Carbon::MONDAY)->setTime(8, 0));
+        BranchWorkingHour::create(['branch_id' => $this->branch->id, 'day_of_week' => 1, 'opens_at' => '10:00', 'closes_at' => '22:00']);
+
+        $this->get(route('branches.index'))
+            ->assertOk()
+            ->assertSee('Closed — opens Monday 10:00am')
+            ->assertDontSee('Accepting orders');
+    }
+
+    public function test_branches_page_shows_paused_regardless_of_working_hours(): void
+    {
+        Carbon::setTestNow(Carbon::now('Africa/Accra')->next(Carbon::MONDAY)->setTime(15, 0));
+        BranchWorkingHour::create(['branch_id' => $this->branch->id, 'day_of_week' => 1, 'opens_at' => '10:00', 'closes_at' => '22:00']);
+        $this->branch->update(['is_accepting_orders' => false]);
+
+        $this->get(route('branches.index'))
+            ->assertOk()
+            ->assertSee('Not accepting orders right now')
+            ->assertDontSee('Accepting orders')
+            ->assertDontSee('Closed — opens');
+    }
+
     public function test_the_currently_selected_branch_is_highlighted_on_the_branches_page(): void
     {
         $otherBranch = Branch::create([
@@ -74,16 +118,22 @@ class CustomerPagesTest extends TestCase
         ]);
 
         // this->branch ("Ga Odumase") is selected, not the other branch —
-        // assert the badge sits between the two branch names in the
-        // rendered HTML, i.e. attached to Ga Odumase's section specifically
-        // rather than merely present somewhere on the page.
+        // assert the badge sits between the two branch cards in the
+        // rendered HTML, i.e. attached to Ga Odumase's card specifically
+        // rather than merely present somewhere on the page. Positions are
+        // measured from the start of the card grid, not the whole page —
+        // the search bar above it embeds every branch's name/address
+        // up front (client-side search index, same pattern as the menu
+        // page), which would otherwise make the other branch's name look
+        // like it precedes the badge even though its actual card doesn't.
         $this->get(route('branches.pick', $this->branch));
 
         $content = $this->get(route('branches.index'))->assertOk()->getContent();
+        $gridStart = strpos($content, 'grid grid-cols-1 md:grid-cols-2');
 
-        $selectedNamePos = strpos($content, $this->branch->name);
-        $badgePos = strpos($content, 'Currently selected');
-        $otherNamePos = strpos($content, $otherBranch->name);
+        $selectedNamePos = strpos($content, $this->branch->name, $gridStart);
+        $badgePos = strpos($content, 'Currently selected', $gridStart);
+        $otherNamePos = strpos($content, $otherBranch->name, $gridStart);
 
         $this->assertNotFalse($badgePos, 'Expected the "Currently selected" badge to be present.');
         $this->assertGreaterThan($selectedNamePos, $badgePos, 'Expected the badge to render after the selected branch\'s name.');
@@ -95,9 +145,42 @@ class CustomerPagesTest extends TestCase
         $this->get(route('contact'))->assertOk()->assertSee('+233 (0) 243 635 265');
     }
 
+    public function test_contact_page_shows_closed_with_opening_time_when_outside_working_hours(): void
+    {
+        Carbon::setTestNow(Carbon::now('Africa/Accra')->next(Carbon::MONDAY)->setTime(8, 0));
+        BranchWorkingHour::create(['branch_id' => $this->branch->id, 'day_of_week' => 1, 'opens_at' => '10:00', 'closes_at' => '22:00']);
+
+        $this->get(route('contact'))
+            ->assertOk()
+            ->assertSee('Closed — opens Monday 10:00am')
+            ->assertDontSee('Accepting orders');
+    }
+
     public function test_about_page_renders(): void
     {
         $this->get(route('about'))->assertOk();
+    }
+
+    public function test_about_page_hides_meet_our_staff_when_no_staff_members_exist(): void
+    {
+        $this->get(route('about'))->assertOk()->assertDontSee('Meet our staff');
+    }
+
+    public function test_about_page_shows_active_staff_members_in_sort_order(): void
+    {
+        StaffMember::create(['name' => 'Zoe Mensah', 'title' => 'Rider', 'sort_order' => 2, 'is_active' => true]);
+        StaffMember::create(['name' => 'Ama Owusu', 'title' => 'Branch Manager', 'sort_order' => 1, 'is_active' => true]);
+        StaffMember::create(['name' => 'Kojo Boateng', 'title' => 'Retired', 'sort_order' => 0, 'is_active' => false]);
+
+        $content = $this->get(route('about'))->assertOk()
+            ->assertSee('Meet our staff')
+            ->assertSee('Ama Owusu')
+            ->assertSee('Branch Manager')
+            ->assertSee('Zoe Mensah')
+            ->assertDontSee('Kojo Boateng')
+            ->getContent();
+
+        $this->assertLessThan(strpos($content, 'Zoe Mensah'), strpos($content, 'Ama Owusu'));
     }
 
     public function test_selecting_a_branch_then_visiting_menu_shows_its_items(): void

@@ -179,4 +179,37 @@ class AssignRiderTest extends TestCase
         $this->assertFalse($ids->contains($elsewhereRider->id));
         $this->assertFalse($ids->contains($offShiftRider->id));
     }
+
+    public function test_on_shift_riders_endpoint_never_lists_staff_even_though_theyre_on_shift_too(): void
+    {
+        // Shifts carry no role of their own (schema.md) — staff and
+        // riders both start/end them through the same mechanism, so an
+        // unfiltered "who's on shift" query would list staff in a control
+        // reserved for riders alone.
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+        Shift::create(['user_id' => $staff->id, 'branch_id' => $this->branch->id, 'started_at' => now()]);
+
+        $rider = $this->onShiftRider('Kwame');
+
+        $response = $this->actingAs($staff)->getJson(route('dashboard.riders'));
+
+        $response->assertOk();
+        $ids = collect($response->json('data'))->pluck('id');
+
+        $this->assertTrue($ids->contains($rider->id));
+        $this->assertFalse($ids->contains($staff->id));
+    }
+
+    public function test_on_shift_riders_endpoint_is_empty_when_no_riders_are_on_shift(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+        Shift::create(['user_id' => $staff->id, 'branch_id' => $this->branch->id, 'started_at' => now()]);
+
+        $response = $this->actingAs($staff)->getJson(route('dashboard.riders'));
+
+        $response->assertOk();
+        $this->assertCount(0, $response->json('data'));
+    }
 }

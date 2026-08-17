@@ -11,6 +11,7 @@ use App\Services\Customers\CustomerService;
 use App\Services\Delivery\DeliveryFeeCalculator;
 use App\Services\Orders\Data\DeliveryAddressData;
 use App\Services\Orders\Data\PlaceOrderData;
+use App\Services\Branches\WorkingHoursService;
 use App\Services\Orders\OrderCreationService;
 use App\Services\Payments\PaystackPaymentService;
 use App\Services\Promotions\PromotionService;
@@ -24,7 +25,7 @@ use Illuminate\View\View;
 
 class CheckoutController extends Controller
 {
-    public function show(CartService $cart): View|RedirectResponse
+    public function show(CartService $cart, WorkingHoursService $workingHours): View|RedirectResponse
     {
         $summary = $cart->summary();
 
@@ -33,6 +34,7 @@ class CheckoutController extends Controller
         }
 
         $deliveryAreas = DeliveryArea::where('is_active', true)->orderBy('name')->get();
+        $branchOpen = $workingHours->isOpenNow($summary['branch']);
 
         return view('checkout.show', [
             ...$summary,
@@ -44,6 +46,11 @@ class CheckoutController extends Controller
             // server-side (OrderCreationService, or OrderStateMachine at
             // delivered if location wasn't captured at checkout).
             'ratePerKmPesewas' => DeliveryFeeCalculator::RATE_PER_KM_PESEWAS,
+            // Placing an order while closed is still allowed (see
+            // OrderCreationService) — this just lets the page warn the
+            // customer up front instead of them finding out only after.
+            'branchOpen' => $branchOpen,
+            'nextOpeningLabel' => $branchOpen ? null : $workingHours->nextOpening($summary['branch'])?->format('l g:ia'),
         ]);
     }
 
@@ -65,7 +72,14 @@ class CheckoutController extends Controller
         $deliveryAvailable = DeliveryArea::where('is_active', true)->exists();
 
         $rules = [
-            'phone' => ['required', 'string'],
+            'phone' => [
+                'required', 'string',
+                function (string $attribute, mixed $value, Closure $fail) use ($customers): void {
+                    if (! $customers->isValidGhanaPhone($value)) {
+                        $fail('Please enter a valid Ghana phone number.');
+                    }
+                },
+            ],
             'name' => ['required', 'string', 'max:255'],
             'instructions' => ['nullable', 'string', 'max:1000'],
         ];
@@ -197,10 +211,15 @@ class CheckoutController extends Controller
         ]);
     }
 
-    public function confirmation(Order $order): View
+    public function confirmation(Order $order, WorkingHoursService $workingHours): View
     {
+        $order->load(['items.options', 'items.menuItem', 'branch', 'customer']);
+        $branchWasClosed = ! $workingHours->isOpenAt($order->branch, $order->placed_at);
+
         return view('checkout.confirmation', [
-            'order' => $order->load(['items.options', 'branch', 'customer']),
+            'order' => $order,
+            'branchWasClosed' => $branchWasClosed,
+            'nextOpeningLabel' => $branchWasClosed ? $workingHours->nextOpening($order->branch, $order->placed_at)?->format('l g:ia') : null,
         ]);
     }
 }

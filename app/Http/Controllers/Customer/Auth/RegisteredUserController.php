@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Customer\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Services\Customers\CustomerService;
+use Closure;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -28,7 +29,14 @@ class RegisteredUserController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'phone' => ['required', 'string'],
+            'phone' => [
+                'required', 'string',
+                function (string $attribute, mixed $value, Closure $fail) use ($customers): void {
+                    if (! $customers->isValidGhanaPhone($value)) {
+                        $fail('Please enter a valid Ghana phone number.');
+                    }
+                },
+            ],
             'password' => ['required', 'confirmed', Password::min(6)],
         ]);
 

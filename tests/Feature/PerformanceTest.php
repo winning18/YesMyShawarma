@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\VisitorSession;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -86,12 +87,61 @@ class PerformanceTest extends TestCase
             ->assertSee('Sales');
     }
 
-    public function test_manager_cannot_view_the_performance_page(): void
+    public function test_manager_can_view_the_performance_page_scoped_to_their_own_branch(): void
     {
         $manager = User::factory()->create();
         $this->assignRoleAt($manager, 'manager', $this->osu);
 
-        $this->actingAs($manager)->get(route('dashboard.performance'))->assertForbidden();
+        $this->makeOrder($this->osu, 'delivered', 5000);
+        $this->makeOrder($this->eastLegon, 'delivered', 9000); // a different branch — must never leak in
+
+        $response = $this->actingAs($manager)
+            ->get(route('dashboard.performance', ['tab' => 'sales', 'range' => 'today']));
+
+        $response->assertOk();
+        $this->assertSame(5000, $response->viewData('summary')['sales']['value']);
+    }
+
+    public function test_manager_never_sees_the_by_branch_breakdown(): void
+    {
+        $manager = User::factory()->create();
+        $this->assignRoleAt($manager, 'manager', $this->osu);
+
+        $response = $this->actingAs($manager)
+            ->get(route('dashboard.performance', ['tab' => 'operations', 'range' => 'today']));
+
+        $response->assertOk();
+        $this->assertNull($response->viewData('branches'));
+        $response->assertDontSee(__('By branch'));
+    }
+
+    public function test_manager_item_sales_are_scoped_to_their_own_branch(): void
+    {
+        $manager = User::factory()->create();
+        $this->assignRoleAt($manager, 'manager', $this->osu);
+
+        $category = Category::create(['name' => 'Wraps', 'slug' => 'wraps']);
+        $item = MenuItem::create(['category_id' => $category->id, 'name' => 'Chicken Shawarma', 'slug' => 'chicken-shawarma', 'base_price' => 5000]);
+
+        $ownBranchOrder = $this->makeOrder($this->osu, 'delivered', 5000);
+        OrderItem::create([
+            'order_id' => $ownBranchOrder->id, 'menu_item_id' => $item->id, 'name_snapshot' => $item->name,
+            'unit_price_snapshot' => 5000, 'quantity' => 1, 'line_total' => 5000,
+        ]);
+
+        $otherBranchOrder = $this->makeOrder($this->eastLegon, 'delivered', 5000);
+        OrderItem::create([
+            'order_id' => $otherBranchOrder->id, 'menu_item_id' => $item->id, 'name_snapshot' => $item->name,
+            'unit_price_snapshot' => 5000, 'quantity' => 9, 'line_total' => 45000,
+        ]);
+
+        $response = $this->actingAs($manager)
+            ->get(route('dashboard.performance', ['tab' => 'sales', 'range' => 'today']));
+
+        $items = collect($response->viewData('itemSales')->items());
+
+        $this->assertCount(1, $items);
+        $this->assertSame(1, $items->first()['amount_sold']);
     }
 
     public function test_sales_tab_aggregates_revenue_and_orders_across_branches(): void
@@ -202,6 +252,61 @@ class PerformanceTest extends TestCase
         $osuRow = $branches->firstWhere(fn ($row) => $row['branch']->id === $this->osu->id);
 
         $this->assertSame(1, $osuRow['escalated']);
+    }
+
+    public function test_operations_tab_shows_avg_times_per_branch(): void
+    {
+        $owner = $this->makeOwner();
+
+        $order = $this->makeOrder($this->eastLegon, 'paid', 4000, minutesAgo: 20);
+        $event = $order->events()->create([
+            'from_status' => 'pending_payment', 'to_status' => 'paid', 'actor_type' => 'system', 'actor_id' => null,
+        ]);
+        DB::table('order_events')->where('id', $event->id)->update(['created_at' => now()->subMinutes(20)]);
+        $order->accepted_at = now()->subMinutes(10);
+        $order->save();
+
+        $response = $this->actingAs($owner)->get(route('dashboard.performance', ['tab' => 'operations', 'range' => 'today']));
+
+        $branches = $response->viewData('branches');
+        $eastLegonRow = $branches->firstWhere(fn ($row) => $row['branch']->id === $this->eastLegon->id);
+        $osuRow = $branches->firstWhere(fn ($row) => $row['branch']->id === $this->osu->id);
+
+        $this->assertSame(10.0, $eastLegonRow['avg_time_to_accept_minutes']);
+        $this->assertNull($osuRow['avg_time_to_accept_minutes']);
+    }
+
+    public function test_owner_can_filter_operations_to_a_single_branch(): void
+    {
+        $owner = $this->makeOwner();
+
+        $this->makeOrder($this->osu, 'delivered', 5000);
+        $this->makeOrder($this->eastLegon, 'delivered', 3000);
+        $this->makeOrder($this->eastLegon, 'delivered', 3000);
+
+        $response = $this->actingAs($owner)->get(route('dashboard.performance', [
+            'tab' => 'operations', 'range' => 'today', 'branch' => $this->eastLegon->id,
+        ]));
+
+        $response->assertOk();
+        $this->assertSame(2, $response->viewData('operational')['total_orders']);
+        $this->assertNull($response->viewData('branches'));
+    }
+
+    public function test_manager_cannot_use_the_branch_filter_to_view_another_branch(): void
+    {
+        $manager = User::factory()->create();
+        $this->assignRoleAt($manager, 'manager', $this->osu);
+
+        $this->makeOrder($this->osu, 'delivered', 5000);
+        $this->makeOrder($this->eastLegon, 'delivered', 9000);
+
+        $response = $this->actingAs($manager)->get(route('dashboard.performance', [
+            'tab' => 'operations', 'range' => 'today', 'branch' => $this->eastLegon->id,
+        ]));
+
+        $response->assertOk();
+        $this->assertSame(1, $response->viewData('operational')['total_orders']);
     }
 
     public function test_performance_page_shows_all_branches_even_when_owner_has_narrowed_via_the_switcher(): void

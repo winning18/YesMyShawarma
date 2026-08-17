@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Events\OrderPlaced;
 use App\Exceptions\OrderPlacementException;
 use App\Models\Branch;
 use App\Models\Category;
@@ -15,7 +16,9 @@ use App\Services\Orders\Data\DeliveryAddressData;
 use App\Services\Orders\Data\PlaceOrderData;
 use App\Services\Orders\Data\PlaceOrderItemData;
 use App\Services\Orders\OrderCreationService;
+use App\Services\Settings\SettingsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
 class OrderCreationServiceTest extends TestCase
@@ -96,7 +99,10 @@ class OrderCreationServiceTest extends TestCase
         $this->assertSame(0, $order->delivery_fee);
         $this->assertSame(7400, $order->total);
         $this->assertSame('paid', $order->status);
-        $this->assertSame('pending', $order->payment_status);
+        // Pickup cash is reconciled the instant staff take it — see
+        // payments.md's "Cash" section — unlike delivery cash, which stays
+        // pending until the rider confirms (OrderStateMachineTest).
+        $this->assertSame('paid', $order->payment_status);
         $this->assertNotNull($order->placed_at);
         $this->assertNull($order->delivery_address_snapshot);
 
@@ -112,12 +118,76 @@ class OrderCreationServiceTest extends TestCase
         $this->assertSame(200, $item->options->first()->price_delta_snapshot);
 
         $this->assertDatabaseHas('payments', [
-            'order_id' => $order->id, 'provider' => 'cash', 'amount' => 7400, 'status' => 'pending',
+            'order_id' => $order->id, 'provider' => 'cash', 'amount' => 7400, 'status' => 'paid',
         ]);
 
         $this->assertDatabaseHas('order_events', [
             'order_id' => $order->id, 'from_status' => null, 'to_status' => 'paid', 'actor_type' => 'customer',
         ]);
+    }
+
+    public function test_placing_an_order_dispatches_order_placed_for_the_live_dashboard(): void
+    {
+        Event::fake([OrderPlaced::class]);
+
+        $order = $this->service->create(new PlaceOrderData(
+            customerPhone: '+233241111111',
+            customerName: 'Ama',
+            branchId: $this->branch->id,
+            fulfilmentType: 'pickup',
+            paymentMethod: 'cash',
+            items: [$this->baseItem([$this->chiliSauce->id])],
+        ));
+
+        Event::assertDispatched(OrderPlaced::class, fn (OrderPlaced $event) => $event->orderId === $order->id && $event->branchId === $this->branch->id
+        );
+    }
+
+    public function test_web_order_reference_uses_the_default_web_prefix(): void
+    {
+        $order = $this->service->create(new PlaceOrderData(
+            customerPhone: '+233241111111',
+            customerName: 'Ama',
+            branchId: $this->branch->id,
+            fulfilmentType: 'pickup',
+            paymentMethod: 'cash',
+            items: [$this->baseItem([$this->garlicSauce->id])],
+            channel: 'web',
+        ));
+
+        $this->assertMatchesRegularExpression('/^YMGS-WEB-[A-Z0-9]{6}$/', $order->reference);
+    }
+
+    public function test_pos_order_reference_uses_the_default_pos_prefix(): void
+    {
+        $order = $this->service->create(new PlaceOrderData(
+            customerPhone: '+233241111111',
+            customerName: 'Ama',
+            branchId: $this->branch->id,
+            fulfilmentType: 'pickup',
+            paymentMethod: 'cash',
+            items: [$this->baseItem([$this->garlicSauce->id])],
+            channel: 'pos',
+        ));
+
+        $this->assertMatchesRegularExpression('/^YMGS-POS-[A-Z0-9]{6}$/', $order->reference);
+    }
+
+    public function test_order_reference_uses_the_configured_prefix_once_settings_are_changed(): void
+    {
+        app(SettingsService::class)->set(SettingsService::ORDER_REFERENCE_PREFIX_WEB, 'SHAWARMA-ONLINE');
+
+        $order = $this->service->create(new PlaceOrderData(
+            customerPhone: '+233241111111',
+            customerName: 'Ama',
+            branchId: $this->branch->id,
+            fulfilmentType: 'pickup',
+            paymentMethod: 'cash',
+            items: [$this->baseItem([$this->garlicSauce->id])],
+            channel: 'web',
+        ));
+
+        $this->assertMatchesRegularExpression('/^SHAWARMA-ONLINE-[A-Z0-9]{6}$/', $order->reference);
     }
 
     public function test_pickup_momo_order_succeeds_end_to_end(): void
@@ -205,6 +275,58 @@ class OrderCreationServiceTest extends TestCase
         $this->assertSame(0, $order->delivery_fee);
         $this->assertSame(7000, $order->total);
         $this->assertNull($order->delivery_address_snapshot['lat']);
+    }
+
+    public function test_delivery_cash_order_defers_payment_status_until_the_rider_confirms(): void
+    {
+        // Unlike pickup cash (paid the instant staff take it), nobody has
+        // been paid yet for a delivery order at placement time — the rider
+        // collects it at the door. See OrderStateMachineTest for the
+        // delivered-transition side of this.
+        $data = new PlaceOrderData(
+            customerPhone: '+233241111111',
+            customerName: 'Ama',
+            branchId: $this->branch->id,
+            fulfilmentType: 'delivery',
+            paymentMethod: 'cash',
+            items: [$this->baseItem([$this->garlicSauce->id])],
+            deliveryAddress: new DeliveryAddressData(
+                areaId: $this->area->id,
+                ghanapostCode: 'GA-123-4567',
+                landmark: 'Near the mall',
+                lat: 5.5565,
+                lng: -0.1970,
+            ),
+        );
+
+        $order = $this->service->create($data);
+
+        $this->assertSame('paid', $order->status);
+        $this->assertSame('pending', $order->payment_status);
+        $this->assertDatabaseHas('payments', [
+            'order_id' => $order->id, 'provider' => 'cash', 'status' => 'pending',
+        ]);
+    }
+
+    public function test_momo_order_with_a_transaction_id_is_paid_immediately(): void
+    {
+        $data = new PlaceOrderData(
+            customerPhone: '+233241111111',
+            customerName: 'Ama',
+            branchId: $this->branch->id,
+            fulfilmentType: 'pickup',
+            paymentMethod: 'momo',
+            items: [$this->baseItem([$this->garlicSauce->id])],
+            paymentReference: 'MOMO-TXN-12345',
+        );
+
+        $order = $this->service->create($data);
+
+        $this->assertSame('paid', $order->payment_status);
+        $this->assertDatabaseHas('payments', [
+            'order_id' => $order->id, 'provider' => 'momo',
+            'provider_reference' => 'MOMO-TXN-12345', 'status' => 'paid',
+        ]);
     }
 
     public function test_paystack_is_allowed_for_delivery_orders(): void

@@ -7,13 +7,13 @@
 
 <div x-data="{ type: @js($value('type', 'percentage')) }" class="space-y-6">
     <div>
-        <x-input-label for="code" :value="__('Code')" />
+        <x-input-label for="code" :value="__('Code')" required />
         <x-text-input id="code" name="code" type="text" class="mt-1 block w-full uppercase" :value="$value('code')" required placeholder="{{ __('e.g. WELCOME10') }}" />
         <x-input-error class="mt-2" :messages="$errors->get('code')" />
     </div>
 
     <div>
-        <x-input-label for="type" :value="__('Type')" />
+        <x-input-label for="type" :value="__('Type')" required />
         <select id="type" name="type" x-model="type" class="mt-1 block w-full rounded-md border-gray-300" required>
             <option value="percentage" @selected($value('type', 'percentage') === 'percentage')>{{ __('Percentage off') }}</option>
             <option value="fixed" @selected($value('type') === 'fixed')>{{ __('Fixed amount off') }}</option>
@@ -22,9 +22,13 @@
     </div>
 
     <div>
-        <x-input-label for="value" :value="__('Value')" />
+        <x-input-label for="value" :value="__('Value')" required />
         <div class="relative mt-1">
-            <x-text-input id="value" name="value" type="number" step="0.01" min="0" class="block w-full" :value="$value('type') === 'fixed' ? $money('value') : $value('value')" required />
+            <x-text-input
+                id="value" name="value" type="number" min="0" class="block w-full"
+                :value="$value('type') === 'fixed' ? $money('value') : $value('value')" required
+                x-bind:step="type === 'percentage' ? 1 : 0.01" x-bind:max="type === 'percentage' ? 100 : null"
+            />
             <span class="absolute inset-y-0 right-3 flex items-center text-sm text-gray-400" x-text="type === 'percentage' ? '%' : 'GH₵'"></span>
         </div>
         <p class="text-xs text-gray-500 mt-1" x-show="type === 'percentage'">{{ __('A whole number between 1 and 100.') }}</p>

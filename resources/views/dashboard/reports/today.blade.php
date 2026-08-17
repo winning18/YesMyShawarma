@@ -37,6 +37,56 @@
             </div>
         </div>
 
+        {{-- Shifts today — total_sales is the staff-entered figure (required
+             at close for staff, optional for manager/owner), system_sales
+             is the snapshot of what the system had recorded at that exact
+             moment (see ShiftController::end()). Anything entered above it
+             shows here as "Extra" rather than getting silently dropped. --}}
+        @if ($shifts->isNotEmpty())
+            <section class="space-y-2">
+                <h3 class="font-semibold text-gray-800 uppercase text-sm tracking-wide">{{ __('Shifts today') }}</h3>
+                <div class="bg-white shadow rounded-lg overflow-hidden overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50 text-left text-gray-500">
+                            <tr>
+                                <th class="px-4 py-2">{{ __('Staff') }}</th>
+                                <th class="px-4 py-2">{{ __('Started') }}</th>
+                                <th class="px-4 py-2">{{ __('Ended') }}</th>
+                                <th class="px-4 py-2 text-right">{{ __('Total sales') }}</th>
+                                <th class="px-4 py-2 text-right">{{ __('System sales') }}</th>
+                                <th class="px-4 py-2 text-right">{{ __('Extra') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            @foreach ($shifts as $shift)
+                                @php
+                                    $extra = ($shift->total_sales !== null && $shift->system_sales !== null)
+                                        ? max(0, $shift->total_sales - $shift->system_sales)
+                                        : null;
+                                @endphp
+                                <tr>
+                                    <td class="px-4 py-2 text-gray-800">{{ $shift->user->name }}</td>
+                                    <td class="px-4 py-2 text-gray-500">{{ $shift->started_at->timezone('Africa/Accra')->format('H:i') }}</td>
+                                    <td class="px-4 py-2 text-gray-500">
+                                        {{ $shift->ended_at?->timezone('Africa/Accra')->format('H:i') ?? __('Active') }}
+                                    </td>
+                                    <td class="px-4 py-2 text-right text-gray-800">
+                                        {{ $shift->total_sales !== null ? 'GH₵'.number_format($shift->total_sales / 100, 2) : '—' }}
+                                    </td>
+                                    <td class="px-4 py-2 text-right text-gray-500">
+                                        {{ $shift->system_sales !== null ? 'GH₵'.number_format($shift->system_sales / 100, 2) : '—' }}
+                                    </td>
+                                    <td class="px-4 py-2 text-right font-medium {{ $extra ? 'text-green-700' : 'text-gray-400' }}">
+                                        {{ $extra ? 'GH₵'.number_format($extra / 100, 2) : '—' }}
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        @endif
+
         {{-- Category sections --}}
         @forelse ($summary['categories'] as $group)
             <section class="space-y-2">

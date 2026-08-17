@@ -3,13 +3,16 @@
 namespace Tests\Feature;
 
 use App\Models\Branch;
+use App\Models\BranchWorkingHour;
 use App\Models\Category;
+use App\Models\Customer;
 use App\Models\DeliveryArea;
 use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\Promotion;
 use App\Services\Delivery\DeliveryFeeCalculator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -36,6 +39,12 @@ class CheckoutFlowTest extends TestCase
             'category_id' => $category->id, 'name' => 'Chicken Shawarma', 'slug' => 'chicken-shawarma', 'base_price' => 5000,
         ]);
         $this->branch->menuItems()->attach($this->shawarma->id, ['is_available' => true]);
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
     }
 
     private function addToCart(int $quantity = 1): void
@@ -313,5 +322,76 @@ class CheckoutFlowTest extends TestCase
         $this->assertSame(500, $order->discount_total);
         $this->assertSame(4500, $order->total);
         $this->assertDatabaseHas('promotion_redemptions', ['order_id' => $order->id]);
+    }
+
+    public function test_checkout_updates_a_returning_customers_name_to_whatever_was_just_typed(): void
+    {
+        // Regression: findOrCreateByPhone used to only fill in a name when
+        // the customer had none at all — the very first name ever entered
+        // for a phone number stuck forever, so every later order kept
+        // showing it (e.g. the confirmation page's "Thank you, :name!")
+        // no matter what was typed at checkout this time.
+        $customer = Customer::create(['phone' => '+233241111111', 'name' => 'Placeholder Name']);
+        $this->addToCart(1);
+
+        $this->post(route('checkout.store'), [
+            'name' => 'Ama Owusu',
+            'phone' => '0241111111',
+            'payment_method' => 'cash',
+        ]);
+
+        $this->assertSame('Ama Owusu', $customer->fresh()->name);
+    }
+
+    public function test_checkout_sets_a_first_time_customers_name(): void
+    {
+        $this->addToCart(1);
+
+        $this->post(route('checkout.store'), [
+            'name' => 'Ama Owusu',
+            'phone' => '0241111111',
+            'payment_method' => 'cash',
+        ]);
+
+        $this->assertSame('Ama Owusu', Customer::where('phone', '+233241111111')->first()->name);
+    }
+
+    public function test_checkout_warns_and_still_accepts_an_order_while_the_branch_is_closed(): void
+    {
+        Carbon::setTestNow(Carbon::now('Africa/Accra')->next(Carbon::MONDAY)->setTime(3, 0));
+        BranchWorkingHour::create(['branch_id' => $this->branch->id, 'day_of_week' => 1, 'opens_at' => '10:00', 'closes_at' => '22:00']);
+
+        $this->addToCart(1);
+
+        $this->get(route('checkout.show'))
+            ->assertOk()
+            ->assertSee("We're currently closed.");
+
+        $response = $this->post(route('checkout.store'), [
+            'name' => 'Ama',
+            'phone' => '0241111111',
+            'payment_method' => 'cash',
+        ]);
+
+        $order = Order::first();
+        $response->assertRedirect(route('checkout.confirmation', $order));
+        $this->assertSame('paid', $order->status);
+
+        $this->get(route('checkout.confirmation', $order))
+            ->assertOk()
+            ->assertSee("We're currently closed.")
+            ->assertSee('reopen Monday 10:00am');
+    }
+
+    public function test_checkout_shows_no_closed_notice_when_the_branch_is_open(): void
+    {
+        Carbon::setTestNow(Carbon::now('Africa/Accra')->next(Carbon::MONDAY)->setTime(15, 0));
+        BranchWorkingHour::create(['branch_id' => $this->branch->id, 'day_of_week' => 1, 'opens_at' => '10:00', 'closes_at' => '22:00']);
+
+        $this->addToCart(1);
+
+        $this->get(route('checkout.show'))
+            ->assertOk()
+            ->assertDontSee("We're currently closed.");
     }
 }

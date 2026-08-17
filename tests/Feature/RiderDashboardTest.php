@@ -97,6 +97,24 @@ class RiderDashboardTest extends TestCase
         $this->assertFalse($ids->contains($delivered->id));
     }
 
+    public function test_rider_sees_the_delivery_coordinates_staff_and_managers_dont(): void
+    {
+        $rider = User::factory()->create();
+        $this->assignRoleAt($rider, 'rider', $this->branchA);
+
+        $order = $this->makeOrder($this->branchA, [
+            'delivery_address_snapshot' => ['area_name' => 'Osu', 'landmark' => 'Near the blue gate', 'lat' => 5.55, 'lng' => -0.19],
+        ]);
+        $order->rider_id = $rider->id;
+        $order->save();
+
+        $response = $this->actingAs($rider)->getJson(route('rider.orders.data'));
+        $data = collect($response->json('data'))->firstWhere('id', $order->id);
+
+        $this->assertSame(5.55, $data['delivery_address']['lat']);
+        $this->assertSame(-0.19, $data['delivery_address']['lng']);
+    }
+
     public function test_rider_can_advance_their_own_claimed_order(): void
     {
         $rider = User::factory()->create();
@@ -134,5 +152,67 @@ class RiderDashboardTest extends TestCase
         $this->assignRoleAt($rider, 'rider', $this->branchA);
 
         $this->actingAs($rider)->get(route('rider.dashboard'))->assertOk();
+    }
+
+    public function test_rider_dashboard_renders_order_item_markup(): void
+    {
+        // Regression: the rider card showed the delivery address but never
+        // what's actually being delivered, even though OrderResource +
+        // items.options were already eager-loaded and present in the JSON
+        // — the Blade template itself just never rendered them.
+        $rider = User::factory()->create();
+        $this->assignRoleAt($rider, 'rider', $this->branchA);
+
+        $this->actingAs($rider)->get(route('rider.dashboard'))
+            ->assertOk()
+            ->assertSee('item.quantity + \'x \' + item.name', false);
+    }
+
+    public function test_rider_dashboard_shows_a_payment_method_badge(): void
+    {
+        $rider = User::factory()->create();
+        $this->assignRoleAt($rider, 'rider', $this->branchA);
+
+        $this->actingAs($rider)->get(route('rider.dashboard'))
+            ->assertOk()
+            ->assertSee('x-text="paymentLabel(order)"', false);
+    }
+
+    public function test_rider_dashboard_renders_the_get_directions_link_and_its_fallback(): void
+    {
+        // The link binding + fallback message are both part of the static
+        // Blade template (client-rendered per order from JSON), so this is
+        // assertable without a live browser — same reasoning as the other
+        // markup-presence tests in this file.
+        $rider = User::factory()->create();
+        $this->assignRoleAt($rider, 'rider', $this->branchA);
+
+        $response = $this->actingAs($rider)->get(route('rider.dashboard'));
+
+        $response->assertOk();
+        $response->assertSee("'&origin=' + order.branch.lat + ',' + order.branch.lng", false);
+        $response->assertSee("'&destination=' + order.delivery_address.lat + ',' + order.delivery_address.lng", false);
+        $response->assertSee("Customer didn't share a live location");
+    }
+
+    public function test_rider_orders_data_includes_the_branch_coordinate_for_directions(): void
+    {
+        // The "Get directions" link routes from the branch to the customer
+        // (not from wherever the rider's device currently reports them),
+        // so the branch's own coordinate has to be on the payload too.
+        $rider = User::factory()->create();
+        $this->assignRoleAt($rider, 'rider', $this->branchA);
+
+        $order = $this->makeOrder($this->branchA, [
+            'delivery_address_snapshot' => ['area_name' => 'Osu', 'landmark' => 'Near the blue gate', 'lat' => 5.55, 'lng' => -0.19],
+        ]);
+        $order->rider_id = $rider->id;
+        $order->save();
+
+        $response = $this->actingAs($rider)->getJson(route('rider.orders.data'));
+        $data = collect($response->json('data'))->firstWhere('id', $order->id);
+
+        $this->assertSame((float) $this->branchA->lat, $data['branch']['lat']);
+        $this->assertSame((float) $this->branchA->lng, $data['branch']['lng']);
     }
 }

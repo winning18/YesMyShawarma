@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        @include('dashboard._channel-header', ['title' => __('POS'), 'active' => 'pos'])
+        @include('dashboard._channel-header', ['title' => __('POS'), 'active' => 'pos', 'isStaff' => $isStaff, 'forceShiftStart' => $forceShiftStart, 'ordersUrl' => $ordersUrl, 'branchId' => $branch->id])
     </x-slot>
 
     <div
@@ -36,6 +36,9 @@
                                         'optionGroups' => $item->optionGroups->map(fn ($g) => [
                                             'id' => $g->id,
                                             'name' => $g->name,
+                                            'min_select' => $g->min_select,
+                                            'max_select' => $g->max_select,
+                                            'is_required' => $g->is_required,
                                             'options' => $g->options->map(fn ($o) => [
                                                 'id' => $o->id, 'name' => $o->name, 'price_delta' => $o->price_delta,
                                             ])->values(),
@@ -90,8 +93,15 @@
 
                 <div class="space-y-3 border-t border-gray-100 pt-4">
                     <div>
-                        <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Customer phone') }}</label>
-                        <input type="tel" x-model="phone" class="w-full rounded-md border-gray-300 text-sm">
+                        <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Customer phone') }} <span class="text-red-600">*</span></label>
+                        <input
+                            type="tel" inputmode="numeric" autocomplete="off"
+                            :value="phone.formatted" @input="phone.onInput($event)" @blur="phone.onBlur()"
+                            placeholder="024-123-4567" maxlength="12"
+                            class="w-full rounded-md text-sm"
+                            :class="phone.invalid ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'"
+                        >
+                        <p class="text-xs text-red-600 mt-1" x-show="phone.invalid">{{ __('Enter a 10-digit phone number.') }}</p>
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Customer name (optional)') }}</label>
@@ -99,7 +109,7 @@
                     </div>
 
                     <div>
-                        <label class="block text-xs font-medium text-gray-500 mb-2">{{ __('Fulfilment') }}</label>
+                        <label class="block text-xs font-medium text-gray-500 mb-2">{{ __('Fulfilment') }} <span class="text-red-600">*</span></label>
                         <div class="flex gap-4 text-sm">
                             <label class="flex items-center gap-1.5">
                                 <input type="radio" x-model="fulfilmentType" value="pickup"> {{ __('Pickup') }}
@@ -115,7 +125,7 @@
                     @if ($deliveryAvailable)
                         <div x-show="fulfilmentType === 'delivery'" x-cloak class="space-y-3">
                             <div>
-                                <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Delivery area') }}</label>
+                                <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Delivery area') }} <span class="text-red-600">*</span></label>
                                 <select x-model="areaId" class="w-full rounded-md border-gray-300 text-sm">
                                     <option value="">{{ __('Select…') }}</option>
                                     @foreach ($deliveryAreas as $area)
@@ -129,7 +139,7 @@
                                 <input type="text" x-model="areaOther" class="w-full rounded-md border-gray-300 text-sm">
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Landmark') }}</label>
+                                <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Landmark') }} <span class="text-red-600">*</span></label>
                                 <input type="text" x-model="landmark" class="w-full rounded-md border-gray-300 text-sm">
                             </div>
                             <div>
@@ -141,7 +151,7 @@
                     @endif
 
                     <div>
-                        <label class="block text-xs font-medium text-gray-500 mb-2">{{ __('Payment') }}</label>
+                        <label class="block text-xs font-medium text-gray-500 mb-2">{{ __('Payment') }} <span class="text-red-600">*</span></label>
                         <div class="flex gap-4 text-sm">
                             <label class="flex items-center gap-1.5">
                                 <input type="radio" x-model="paymentMethod" value="cash"> {{ __('Cash') }}
@@ -150,6 +160,19 @@
                                 <input type="radio" x-model="paymentMethod" value="momo"> {{ __('Momo') }}
                             </label>
                         </div>
+                    </div>
+
+                    <div x-show="paymentMethod === 'momo'" x-cloak>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Momo transaction ID') }}</label>
+                        <div class="flex gap-2">
+                            <input type="text" x-model="paymentReference" class="w-full rounded-md border-gray-300 text-sm" placeholder="{{ __('e.g. from the Momo confirmation SMS') }}">
+                            <button
+                                type="button" @click="paymentReference = ''"
+                                x-show="paymentReference"
+                                class="shrink-0 px-3 py-1.5 text-xs text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+                            >{{ __('Skip') }}</button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">{{ __("Busy? Leave this blank and enter it later from the order — it won't be marked paid until you do.") }}</p>
                     </div>
 
                     <div>
@@ -179,11 +202,17 @@
 
                     <template x-for="group in activeItem.optionGroups" :key="group.id">
                         <fieldset class="mb-4">
-                            <legend class="text-sm text-gray-500 mb-1.5" x-text="group.name"></legend>
+                            <legend class="text-sm text-brand-yellow-dark font-semibold mb-1.5">
+                                <span x-text="group.name"></span><span x-show="group.is_required" class="text-red-600"> *</span>
+                            </legend>
                             <div class="grid grid-cols-2 gap-2">
                                 <template x-for="option in group.options" :key="option.id">
                                     <label class="flex items-center gap-1.5 text-sm">
-                                        <input type="checkbox" :checked="selectedOptionIds.includes(option.id)" @change="toggleOption(option.id)">
+                                        <input
+                                            type="checkbox" :checked="selectedOptionIds.includes(option.id)"
+                                            @change="toggleOption(option.id, group.id)"
+                                            class="rounded border-gray-300"
+                                        >
                                         <span x-text="option.name + (option.price_delta ? ' (+' + formatMoney(option.price_delta) + ')' : '')"></span>
                                     </label>
                                 </template>
@@ -192,7 +221,7 @@
                     </template>
 
                     <div class="flex items-center gap-3 mb-4">
-                        <label class="text-sm font-medium">{{ __('Qty') }}</label>
+                        <label class="text-sm font-medium text-brand-yellow-dark">{{ __('Qty') }}</label>
                         <input type="number" x-model.number="itemQuantity" min="1" max="{{ \App\Services\Cart\PosCartService::MAX_LINE_QUANTITY }}" class="w-20 rounded-md border-gray-300 text-sm">
                     </div>
 
@@ -225,7 +254,7 @@
             return {
                 lines: @json($cart['lines']),
                 subtotal: {{ $cart['subtotal'] }},
-                phone: '',
+                phone: phoneField(''),
                 name: '',
                 fulfilmentType: 'pickup',
                 areaId: '',
@@ -233,6 +262,7 @@
                 landmark: '',
                 ghanapostCode: '',
                 paymentMethod: 'cash',
+                paymentReference: '',
                 instructions: '',
                 error: null,
                 submitting: false,
@@ -249,8 +279,18 @@
                     this.itemQuantity = 1;
                 },
 
-                toggleOption(id) {
-                    this.selectedOptionIds = this.selectedOptionIds.includes(id)
+                toggleOption(id, groupId) {
+                    const alreadySelected = this.selectedOptionIds.includes(id);
+                    const group = this.activeItem.optionGroups.find((g) => g.id === groupId);
+
+                    if (group && group.max_select === 1 && !alreadySelected) {
+                        const otherIdsInGroup = group.options.map((o) => o.id);
+                        this.selectedOptionIds = this.selectedOptionIds.filter((x) => !otherIdsInGroup.includes(x));
+                        this.selectedOptionIds.push(id);
+                        return;
+                    }
+
+                    this.selectedOptionIds = alreadySelected
                         ? this.selectedOptionIds.filter((x) => x !== id)
                         : [...this.selectedOptionIds, id];
                 },
@@ -300,6 +340,13 @@
                 async placeOrder() {
                     if (this.lines.length === 0 || this.submitting) return;
 
+                    this.error = this.validationError();
+                    if (this.error) return;
+
+                    if (this.paymentMethod === 'cash' && !confirm(@js(__('Confirm you have received cash payment for this order?')))) {
+                        return;
+                    }
+
                     this.submitting = true;
                     this.error = null;
 
@@ -308,7 +355,7 @@
                             method: 'POST',
                             headers: this.headers(),
                             body: JSON.stringify({
-                                phone: this.phone,
+                                phone: this.phone.raw,
                                 name: this.name,
                                 fulfilment_type: this.fulfilmentType,
                                 area_id: this.areaId,
@@ -316,6 +363,7 @@
                                 landmark: this.landmark,
                                 ghanapost_code: this.ghanapostCode,
                                 payment_method: this.paymentMethod,
+                                payment_reference: this.paymentMethod === 'momo' ? this.paymentReference : null,
                                 instructions: this.instructions,
                             }),
                         });
@@ -339,10 +387,25 @@
                     }
                 },
 
+                // Mirrors PosController::store()'s validation rules — a
+                // faster front door only, the server-side check stays the
+                // actual authority. Same reasoning as menu-item-form-script.
+                validationError() {
+                    if (!this.phone.valid) return '{{ __('Enter a valid 10-digit customer phone number.') }}';
+
+                    if (this.fulfilmentType === 'delivery') {
+                        if (!this.areaId) return '{{ __('Delivery area is required.') }}';
+                        if (this.areaId === 'other' && !this.areaOther.trim()) return '{{ __('Area name is required.') }}';
+                        if (!this.landmark.trim()) return '{{ __('Landmark is required.') }}';
+                    }
+
+                    return null;
+                },
+
                 resetForm() {
                     this.lines = [];
                     this.subtotal = 0;
-                    this.phone = '';
+                    this.phone = phoneField('');
                     this.name = '';
                     this.fulfilmentType = 'pickup';
                     this.areaId = '';
@@ -350,6 +413,7 @@
                     this.landmark = '';
                     this.ghanapostCode = '';
                     this.paymentMethod = 'cash';
+                    this.paymentReference = '';
                     this.instructions = '';
                 },
 
@@ -368,5 +432,5 @@
         }
     </script>
 
-    @include('partials.shift-widget-script')
+    @include('partials.phone-input-script')
 </x-app-layout>

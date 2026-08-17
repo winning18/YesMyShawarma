@@ -11,34 +11,43 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Backs the owner-only Performance page. Reuses OrderReportService for the
- * actual order aggregation (financialSummary/operationalSummary) rather
- * than re-querying orders here — this class only adds what that service
- * doesn't already do: period-over-period % change, the two-line chart
- * series, item-level sales, and visitor conversion.
+ * Backs the Performance page — owner gets it cross-branch, manager gets
+ * their own branch only (dashboard.performance is granted to both;
+ * PerformanceController decides $ignoreBranchScope by actual role, never
+ * by which branch happens to be selected). Reuses OrderReportService for
+ * the actual order aggregation (financialSummary/operationalSummary)
+ * rather than re-querying orders here — this class only adds what that
+ * service doesn't already do: period-over-period % change, the two-line
+ * chart series, item-level sales, and visitor conversion.
  */
 class PerformanceReportService
 {
     public function __construct(private readonly OrderReportService $orderReports) {}
 
-    public function salesSummary(Carbon $from, Carbon $to): array
+    /**
+     * $ignoreBranchScope defaults true — every existing owner call site
+     * relies on that cross-branch aggregation (same reasoning as the old
+     * OwnerOverviewController this replaces: it must never be silently
+     * narrowed by whatever branch happens to be selected). A manager
+     * viewing their own branch is the only caller that passes false.
+     */
+    /**
+     * @param  ?list<int>  $branchIds  general_manager's multi-branch oversight set — see
+     *                                 OrderReportService::ordersInRange() for the full reasoning.
+     */
+    public function salesSummary(Carbon $from, Carbon $to, bool $ignoreBranchScope = true, ?array $branchIds = null): array
     {
         [$previousFrom, $previousTo] = $this->previousPeriod($from, $to);
 
-        // Performance is owner-only and always cross-branch (same
-        // reasoning as the old OwnerOverviewController it replaces) — it
-        // must never be silently narrowed by whatever branch the owner
-        // last picked via the switcher, so every OrderReportService call
-        // here explicitly ignores BranchScope.
-        $currentFinancial = $this->orderReports->financialSummary($from, $to, ignoreBranchScope: true);
-        $previousFinancial = $this->orderReports->financialSummary($previousFrom, $previousTo, ignoreBranchScope: true);
+        $currentFinancial = $this->orderReports->financialSummary($from, $to, $ignoreBranchScope, branchIds: $branchIds);
+        $previousFinancial = $this->orderReports->financialSummary($previousFrom, $previousTo, $ignoreBranchScope, branchIds: $branchIds);
 
         // "Orders received" counts everything placed in the window,
         // including ones later cancelled/rejected — financialSummary's
         // order count only covers revenue-contributing statuses, which
         // undercounts what a manager would call "orders we got today".
-        $currentOrders = $this->orderReports->operationalSummary($from, $to, ignoreBranchScope: true)['total_orders'];
-        $previousOrders = $this->orderReports->operationalSummary($previousFrom, $previousTo, ignoreBranchScope: true)['total_orders'];
+        $currentOrders = $this->orderReports->operationalSummary($from, $to, $ignoreBranchScope, branchIds: $branchIds)['total_orders'];
+        $previousOrders = $this->orderReports->operationalSummary($previousFrom, $previousTo, $ignoreBranchScope, branchIds: $branchIds)['total_orders'];
 
         $currentConversion = $this->conversionRate($from, $to);
         $previousConversion = $this->conversionRate($previousFrom, $previousTo);
@@ -69,9 +78,18 @@ class PerformanceReportService
     }
 
     /**
+     * A raw query builder aggregation (grouped SUM), never routed through
+     * Eloquent — order_items has no branch_id of its own, and Order's
+     * BranchScope only ever applies to Eloquent queries, so unlike
+     * salesSummary() (which gets branch scoping for free by simply not
+     * ignoring it) this needs an explicit branch_id filter of its own
+     * whenever $ignoreBranchScope is false.
+     *
+     * @param  ?list<int>  $branchIds  general_manager's multi-branch oversight set — takes
+     *                                 precedence over $branchId when given, same as OrderReportService.
      * @return LengthAwarePaginator<int, array{menu_item_id: int, name: string, image_url: ?string, amount_sold: int, item_sales: int, sales_share_pct: float}>
      */
-    public function itemSales(Carbon $from, Carbon $to, string $sort, string $direction, int $perPage = 10): LengthAwarePaginator
+    public function itemSales(Carbon $from, Carbon $to, string $sort, string $direction, int $perPage = 10, bool $ignoreBranchScope = true, ?int $branchId = null, ?array $branchIds = null): LengthAwarePaginator
     {
         $sortColumn = in_array($sort, ['amount_sold', 'item_sales'], true) ? $sort : 'amount_sold';
         $direction = $direction === 'asc' ? 'asc' : 'desc';
@@ -79,7 +97,9 @@ class PerformanceReportService
         $baseQuery = fn () => DB::table('order_items')
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->whereBetween('orders.placed_at', [$from, $to])
-            ->whereNotIn('orders.status', Order::NON_REVENUE_STATUSES);
+            ->whereNotIn('orders.status', Order::NON_REVENUE_STATUSES)
+            ->when(! $ignoreBranchScope && $branchIds !== null, fn ($query) => $query->whereIn('orders.branch_id', $branchIds))
+            ->when(! $ignoreBranchScope && $branchIds === null, fn ($query) => $query->where('orders.branch_id', $branchId));
 
         $totalRevenue = (int) $baseQuery()->sum('order_items.line_total');
 

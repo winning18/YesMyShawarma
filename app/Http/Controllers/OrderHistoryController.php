@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\DeliveryArea;
 use App\Models\Order;
+use App\Services\Branches\BranchContext;
+use App\Services\Orders\RefundService;
+use App\Services\Shifts\ShiftService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -24,7 +27,7 @@ class OrderHistoryController extends Controller
      */
     private const RANGE_PRESETS = ['today', '7', '30', 'week', 'month', 'last_month', 'custom'];
 
-    public function index(Request $request): View
+    public function index(Request $request, BranchContext $context, ShiftService $shifts): View
     {
         Gate::authorize('viewAny', Order::class);
 
@@ -32,16 +35,29 @@ class OrderHistoryController extends Controller
         $filters = $this->filters($request);
         [$from, $to] = $this->dateRange($filters);
 
+        $user = $request->user();
+        $branchId = $context->id();
+        $isOwner = $context->hasRoleAtAnyBranch($user, 'owner');
+        $isStaff = $branchId && $context->primaryRoleFor($user, $branchId) === 'staff';
+
         return view('orders.history', [
             'orders' => $this->orders($channel, $filters, $from, $to),
             'channel' => $channel,
             'filters' => $filters,
             'statuses' => Order::STATUSES,
             'locations' => DeliveryArea::orderBy('name')->pluck('name'),
+            'isStaff' => $isStaff,
+            'forceShiftStart' => $isStaff && ! $shifts->activeFor($user),
+            'ordersUrl' => $isStaff ? route('dashboard') : route('dashboard.orders.live'),
+            'branchId' => $branchId,
+            // Owner can still review history, but the live board/POS it
+            // toggles to and the shift widget are not owner features at
+            // all — see dashboard/_channel-header.blade.php.
+            'hideOperationalControls' => $isOwner,
         ]);
     }
 
-    public function show(Order $order): View
+    public function show(Order $order, RefundService $refunds): View
     {
         Gate::authorize('view', $order);
 
@@ -50,7 +66,14 @@ class OrderHistoryController extends Controller
                 'items.options', 'customer', 'branch', 'rider', 'promotion',
                 'payments',
                 'events' => fn ($query) => $query->orderBy('created_at'),
+                'refunds' => fn ($query) => $query->latest(),
+                'refunds.requestedBy', 'refunds.completedBy',
             ]),
+            // orders.refund (owner/manager/general_manager, payments.md's
+            // Refunds section — all three have identical rights) skips
+            // the approval step entirely, unlike a plain staff request.
+            'canRefundDirectly' => Gate::allows('orders.refund'),
+            'remainingRefundBalance' => $order->payment_status === 'paid' ? $refunds->remainingBalance($order) : 0,
         ]);
     }
 

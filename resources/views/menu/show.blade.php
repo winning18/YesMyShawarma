@@ -22,45 +22,66 @@
                 GH₵{{ number_format($item->base_price / 100, 2) }}
             </p>
 
-            <form method="POST" action="{{ route('cart.add') }}">
-                @csrf
-                <input type="hidden" name="branch_id" value="{{ $branch->id }}">
-                <input type="hidden" name="menu_item_id" value="{{ $item->id }}">
+            <div x-data="menuItemForm()">
+                <form method="POST" action="{{ route('cart.add') }}" @submit="submit($event)">
+                    @csrf
+                    <input type="hidden" name="branch_id" value="{{ $branch->id }}">
+                    <input type="hidden" name="menu_item_id" value="{{ $item->id }}">
 
-                {{--
-                    Extras stay inside this same form (they change this
-                    line's own price) and only render at all when the item
-                    actually has option groups — Drinks below are separate,
-                    self-priced products — each gets its own tiny form and
-                    becomes its own cart line, not an option on this one.
-                --}}
-                @if ($item->optionGroups->isNotEmpty())
-                    <div class="space-y-4 mb-6">
-                        @foreach ($item->optionGroups as $optionGroup)
-                            <fieldset>
-                                <legend class="text-sm text-brand-gray-500 mb-1.5">{{ $optionGroup->name }}</legend>
-                                <div class="grid grid-cols-2 gap-x-3 gap-y-1.5">
-                                    @foreach ($optionGroup->options as $option)
-                                        <label class="flex items-center gap-1.5 text-sm">
-                                            <input type="checkbox" name="option_ids[]" value="{{ $option->id }}" class="checkbox-check-black shrink-0 rounded border-brand-gray-300 text-brand-yellow focus:ring-brand-yellow">
-                                            <span>{{ $option->name }} (+GH₵{{ number_format($option->price_delta / 100, 2) }})</span>
-                                        </label>
-                                    @endforeach
-                                </div>
-                            </fieldset>
-                        @endforeach
+                    {{--
+                        Extras stay inside this same form (they change this
+                        line's own price) and only render at all when the item
+                        actually has option groups — Drinks below are separate,
+                        self-priced products — each gets its own tiny form and
+                        becomes its own cart line, not an option on this one.
+                    --}}
+                    @if ($item->optionGroups->isNotEmpty())
+                        <div class="space-y-4 mb-6">
+                            @foreach ($item->optionGroups as $optionGroup)
+                                <fieldset
+                                    data-min-select="{{ $optionGroup->min_select }}"
+                                    data-max-select="{{ $optionGroup->max_select }}"
+                                    data-required="{{ $optionGroup->is_required ? '1' : '0' }}"
+                                    data-group-name="{{ $optionGroup->name }}"
+                                    @if ($optionGroup->max_select === 1) x-data="{ selected: null }" @endif
+                                >
+                                    <legend class="text-sm text-brand-black font-semibold mb-1.5">
+                                        {{ $optionGroup->name }}@if ($optionGroup->is_required)<span class="text-brand-red"> *</span>@endif
+                                    </legend>
+                                    <div class="grid grid-cols-2 gap-x-3 gap-y-1.5">
+                                        @foreach ($optionGroup->options as $option)
+                                            <label class="flex items-center gap-1.5 text-sm">
+                                                @if ($optionGroup->max_select === 1)
+                                                    <input
+                                                        type="checkbox" name="option_ids[]" value="{{ $option->id }}"
+                                                        :checked="selected === {{ $option->id }}"
+                                                        @change="selected = $event.target.checked ? {{ $option->id }} : null"
+                                                        class="checkbox-check-black shrink-0 rounded border-2 border-brand-black text-brand-yellow focus:ring-brand-black"
+                                                    >
+                                                @else
+                                                    <input type="checkbox" name="option_ids[]" value="{{ $option->id }}" class="checkbox-check-black shrink-0 rounded border-2 border-brand-black text-brand-yellow focus:ring-brand-black">
+                                                @endif
+                                                <span>{{ $option->name }} (+GH₵{{ number_format($option->price_delta / 100, 2) }})</span>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                </fieldset>
+                            @endforeach
+                        </div>
+                    @endif
+
+                    <div class="flex items-center gap-3 mb-6">
+                        <label class="text-sm font-medium text-brand-black">{{ __('Qty') }}</label>
+                        <input type="number" name="quantity" value="1" min="1" max="{{ \App\Services\Cart\CartService::MAX_LINE_QUANTITY }}" class="w-20 rounded-md border-2 border-brand-black focus:border-brand-black focus:ring-brand-black">
                     </div>
-                @endif
 
-                <div class="flex items-center gap-3 mb-6">
-                    <label class="text-sm font-medium">{{ __('Qty') }}</label>
-                    <input type="number" name="quantity" value="1" min="1" max="{{ \App\Services\Cart\CartService::MAX_LINE_QUANTITY }}" class="w-20 rounded-md border-brand-gray-300 focus:border-brand-yellow focus:ring-brand-yellow">
-                </div>
+                    <button type="submit" class="w-full sm:w-auto px-8 py-3 bg-brand-black text-brand-yellow font-bold rounded-md hover:bg-brand-gray-700">
+                        {{ __('Add to cart') }}
+                    </button>
+                </form>
 
-                <button type="submit" class="w-full sm:w-auto px-8 py-3 bg-brand-yellow text-brand-black font-bold rounded-md hover:bg-brand-yellow-dark">
-                    {{ __('Add to cart') }}
-                </button>
-            </form>
+                <x-menu-item-error-modal />
+            </div>
         </div>
     </div>
 
@@ -91,4 +112,6 @@
             </div>
         </section>
     @endif
+
+    @include('partials.menu-item-form-script')
 </x-customer-layout>

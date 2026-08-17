@@ -14,6 +14,7 @@ use App\Services\Orders\Data\DeliveryAddressData;
 use App\Services\Orders\Data\PlaceOrderData;
 use App\Services\Orders\Data\PlaceOrderItemData;
 use App\Services\Orders\OrderCreationService;
+use App\Services\Shifts\ShiftService;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -32,9 +33,16 @@ use Illuminate\View\View;
  */
 class PosController extends Controller
 {
-    public function index(BranchContext $context, PosCartService $cart): View|RedirectResponse
+    public function index(Request $request, BranchContext $context, PosCartService $cart, ShiftService $shifts): View|RedirectResponse
     {
         Gate::authorize('orders.create');
+
+        // POS is not an owner feature — the business overview is where
+        // they land instead (see OrderDashboardController::index() for the
+        // Orders-board equivalent of this same rule).
+        if ($context->hasRoleAtAnyBranch($request->user(), 'owner')) {
+            return redirect()->route('dashboard.performance');
+        }
 
         $branch = $context->branch();
 
@@ -69,6 +77,9 @@ class PosController extends Controller
 
         $deliveryAreas = DeliveryArea::where('is_active', true)->orderBy('name')->get();
 
+        $user = $request->user();
+        $isStaff = $context->primaryRoleFor($user, $branch->id) === 'staff';
+
         return view('pos.index', [
             'branch' => $branch,
             'categories' => $categories,
@@ -76,6 +87,12 @@ class PosController extends Controller
             'deliveryAvailable' => $deliveryAreas->isNotEmpty(),
             'ratePerKmPesewas' => DeliveryFeeCalculator::RATE_PER_KM_PESEWAS,
             'cart' => $this->cartPayload($cart),
+            'isStaff' => $isStaff,
+            'forceShiftStart' => $isStaff && ! $shifts->activeFor($user),
+            // Manager reaches this page via the dedicated Orders nav item
+            // (dashboard.orders.live), never route('dashboard') — that now
+            // redirects manager to the business overview instead.
+            'ordersUrl' => $isStaff ? route('dashboard') : route('dashboard.orders.live'),
         ]);
     }
 
@@ -161,6 +178,12 @@ class PosController extends Controller
             'name' => ['nullable', 'string', 'max:255'],
             'fulfilment_type' => ['required', 'in:pickup,delivery'],
             'payment_method' => ['required', 'in:cash,momo'],
+            // Momo only, and optional even then — staff may skip it during a
+            // rush and enter it later via orders.confirm_momo_payment. The
+            // frontend only ever shows this field for momo, but validation
+            // doesn't need to enforce that: OrderCreationService ignores it
+            // for any other payment_method (see PlaceOrderData docblock).
+            'payment_reference' => ['nullable', 'string', 'max:255'],
             'instructions' => ['nullable', 'string', 'max:1000'],
         ];
 
@@ -211,6 +234,7 @@ class PosController extends Controller
                 channel: 'pos',
                 actorType: $context->primaryRoleFor($user, $branch->id),
                 actorId: $user->id,
+                paymentReference: $validated['payment_reference'] ?? null,
             ));
         } catch (OrderPlacementException $e) {
             return response()->json(['message' => $e->getMessage()], 422);

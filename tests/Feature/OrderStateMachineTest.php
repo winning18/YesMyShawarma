@@ -10,7 +10,9 @@ use App\Models\Shift;
 use App\Models\User;
 use App\Services\Delivery\DeliveryFeeCalculator;
 use App\Services\Orders\OrderStateMachine;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 class OrderStateMachineTest extends TestCase
@@ -26,6 +28,8 @@ class OrderStateMachineTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->seed(RolesAndPermissionsSeeder::class);
 
         $this->machine = app(OrderStateMachine::class);
 
@@ -123,6 +127,30 @@ class OrderStateMachineTest extends TestCase
         ]);
     }
 
+    public function test_delivered_transition_marks_a_manually_settled_order_as_paid(): void
+    {
+        // Regression: payment_status stayed 'pending' forever for cash/momo
+        // orders — nothing ever flipped it, even though payments.md says the
+        // rider settling on delivery transitions payment_status to 'paid' at
+        // the same time the order transitions to 'delivered'.
+        $order = $this->makeOrder('dispatched');
+        $this->assertSame('pending', $order->payment_status);
+
+        $result = $this->machine->transition($order, 'delivered', 'rider', actorId: 1);
+
+        $this->assertSame('paid', $result->payment_status);
+    }
+
+    public function test_delivered_transition_does_not_touch_payment_status_for_paystack_orders(): void
+    {
+        $order = $this->makeOrder('dispatched');
+        $order->update(['payment_method' => 'paystack', 'payment_status' => 'paid']);
+
+        $result = $this->machine->transition($order, 'delivered', 'rider', actorId: 1);
+
+        $this->assertSame('paid', $result->payment_status);
+    }
+
     public function test_pickup_order_reaching_delivered_leaves_fee_at_zero(): void
     {
         $order = $this->makeOrder('dispatched');
@@ -206,6 +234,8 @@ class OrderStateMachineTest extends TestCase
     public function test_ready_transition_auto_assigns_an_on_shift_rider_for_delivery_orders(): void
     {
         $rider = User::factory()->create();
+        app(PermissionRegistrar::class)->setPermissionsTeamId($this->branch->id);
+        $rider->assignRole('rider');
         Shift::create(['user_id' => $rider->id, 'branch_id' => $this->branch->id, 'started_at' => now()]);
 
         $order = $this->makeOrder('preparing');
@@ -218,6 +248,8 @@ class OrderStateMachineTest extends TestCase
     public function test_ready_transition_does_not_assign_a_rider_to_a_pickup_order(): void
     {
         $rider = User::factory()->create();
+        app(PermissionRegistrar::class)->setPermissionsTeamId($this->branch->id);
+        $rider->assignRole('rider');
         Shift::create(['user_id' => $rider->id, 'branch_id' => $this->branch->id, 'started_at' => now()]);
 
         $order = $this->makeOrder('preparing');

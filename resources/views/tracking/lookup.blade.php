@@ -28,12 +28,23 @@
             {{ __('Enter the phone number and order reference from your confirmation to find your order.') }}
         </p>
 
-        <form method="POST" action="{{ route('tracking.find') }}" class="space-y-4 max-w-sm">
+        <form
+            method="POST" action="{{ route('tracking.find') }}" class="space-y-4 max-w-sm"
+            x-data="{ phone: phoneField(@js(old('phone', ''))) }"
+            @submit="if (! phone.valid) $event.preventDefault()"
+        >
             @csrf
 
             <div>
                 <label class="block text-sm font-medium mb-1">{{ __('Phone number') }}</label>
-                <input type="tel" name="phone" required value="{{ old('phone') }}" class="w-full rounded-md border-brand-gray-300">
+                <input
+                    type="tel" name="phone" inputmode="numeric" autocomplete="tel" required
+                    :value="phone.formatted" @input="phone.onInput($event)" @blur="phone.onBlur()"
+                    placeholder="024-123-4567" maxlength="12"
+                    class="w-full rounded-md"
+                    :class="phone.invalid ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300'"
+                >
+                <p class="text-xs mt-1 text-brand-red" x-show="phone.invalid">{{ __('Enter a 10-digit phone number.') }}</p>
             </div>
 
             <div>
@@ -45,6 +56,8 @@
                 {{ __('Find my order') }}
             </button>
         </form>
+
+        @include('partials.phone-input-script')
 
         <p class="text-sm text-brand-gray-500 mt-6">
             {{ __('Have an account?') }}

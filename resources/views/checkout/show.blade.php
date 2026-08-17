@@ -9,6 +9,19 @@
         </div>
     @endif
 
+    @unless ($branchOpen)
+        <div class="mb-6 rounded-lg bg-brand-yellow-light border border-brand-yellow text-brand-black text-sm px-4 py-3">
+            <p class="font-semibold">{{ __("We're currently closed.") }}</p>
+            <p>
+                @if ($nextOpeningLabel)
+                    {{ __('You can still place your order — we\'ll start preparing it when we reopen :time.', ['time' => $nextOpeningLabel]) }}
+                @else
+                    {{ __('You can still place your order — we\'ll start preparing it at our next opening.') }}
+                @endif
+            </p>
+        </div>
+    @endunless
+
     {{--
         One shared Alpine scope for the whole page (not just the form) —
         the Order Summary column needs to react to fulfilmentType and
@@ -34,7 +47,7 @@
             promoMessage: '',
             reviewing: false,
             name: @js(old('name', $customer->name ?? '')),
-            phone: @js(old('phone', $customer->phone ?? '')),
+            phone: phoneField(@js(old('phone', $customer->phone ?? ''))),
             landmark: @js(old('landmark', '')),
             ghanapostCode: @js(old('ghanapost_code', '')),
             areaOther: @js(old('area_other', '')),
@@ -44,8 +57,24 @@
                 if (this.areaSelection === 'other') return this.areaOther || '{{ __('Not specified') }}';
                 return this.deliveryAreaNames[this.areaSelection] || '';
             },
+            // Drives both the disabled/greyed-out state of 'Review order'
+            // and startReview()'s own gate below — payment method and
+            // fulfilment type always carry a valid default (a radio pair,
+            // never genuinely empty), so only the fields a customer can
+            // actually leave incomplete are checked here.
+            get formValid() {
+                if (this.name.trim() === '' || !this.phone.valid) return false;
+
+                if (this.fulfilmentType === 'delivery') {
+                    if (this.areaSelection === '') return false;
+                    if (this.areaSelection === 'other' && this.areaOther.trim() === '') return false;
+                    if (this.landmark.trim() === '') return false;
+                }
+
+                return true;
+            },
             startReview() {
-                if (!this.$refs.form.reportValidity()) return;
+                if (!this.formValid || !this.$refs.form.reportValidity()) return;
                 this.reviewing = true;
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             },
@@ -89,7 +118,7 @@
                             Accept: 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
                         },
-                        body: JSON.stringify({ code: this.discountCode, phone: this.phone }),
+                        body: JSON.stringify({ code: this.discountCode, phone: this.phone.raw }),
                     });
                     const payload = await response.json();
 
@@ -123,7 +152,7 @@
 
                 <div x-show="!reviewing">
                 <div>
-                    <label class="block text-sm font-medium mb-1">{{ __('Name') }}</label>
+                    <label class="block text-sm font-medium mb-1">{{ __('Name') }} <span class="text-brand-red">*</span></label>
                     <input
                         type="text" name="name" required
                         x-model="name"
@@ -135,20 +164,21 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium mb-1">{{ __('Phone number') }}</label>
+                    <label class="block text-sm font-medium mb-1">{{ __('Phone number') }} <span class="text-brand-red">*</span></label>
                     <input
-                        type="tel" name="phone" required
-                        x-model="phone"
-                        value="{{ old('phone', $customer->phone ?? '') }}"
-                        placeholder="{{ __('e.g. 024 123 4567') }}"
-                        class="w-full rounded-md {{ $errors->has('phone') ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300' }}"
+                        type="tel" name="phone" inputmode="numeric" autocomplete="tel" required
+                        :value="phone.formatted" @input="phone.onInput($event)" @blur="phone.onBlur()"
+                        placeholder="024-123-4567" maxlength="12"
+                        class="w-full rounded-md"
+                        :class="(phone.invalid || {{ $errors->has('phone') ? 'true' : 'false' }}) ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300'"
                     >
+                    <p class="text-xs text-brand-red mt-1" x-show="phone.invalid">{{ __('Enter a 10-digit phone number.') }}</p>
                     @error('phone') <p class="text-sm text-brand-red mt-1">{{ $message }}</p> @enderror
                 </div>
 
                 @if ($deliveryAvailable)
                     <div>
-                        <label class="block text-sm font-medium mb-2">{{ __('Fulfilment') }}</label>
+                        <label class="block text-sm font-medium mb-2">{{ __('Fulfilment') }} <span class="text-brand-red">*</span></label>
                         <div class="flex gap-6 text-sm">
                             <label class="flex items-center gap-2">
                                 <input type="radio" name="fulfilment_type" value="pickup" x-model="fulfilmentType">
@@ -163,7 +193,7 @@
 
                     <div x-show="fulfilmentType === 'delivery'" x-cloak class="space-y-3 border border-brand-gray-100 rounded-lg p-4">
                         <div>
-                            <label class="block text-sm font-medium mb-1">{{ __('Delivery area') }}</label>
+                            <label class="block text-sm font-medium mb-1">{{ __('Delivery area') }} <span class="text-brand-red">*</span></label>
                             <select
                                 name="area_id"
                                 x-model="areaSelection"
@@ -182,7 +212,7 @@
                             <div x-show="areaSelection === 'other'" x-cloak class="mt-2">
                                 <input
                                     type="text" name="area_other" x-model="areaOther" value="{{ old('area_other') }}"
-                                    placeholder="{{ __('Type your area name') }}"
+                                    placeholder="{{ __('Type your area name') }}" maxlength="100"
                                     class="w-full rounded-md {{ $errors->has('area_other') ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300' }}"
                                 >
                                 @error('area_other') <p class="text-sm text-brand-red mt-1">{{ $message }}</p> @enderror
@@ -200,7 +230,7 @@
                             @error('ghanapost_code') <p class="text-sm text-brand-red mt-1">{{ $message }}</p> @enderror
                         </div>
                         <div>
-                            <label class="block text-sm font-medium mb-1">{{ __('Landmark') }}</label>
+                            <label class="block text-sm font-medium mb-1">{{ __('Landmark') }} <span class="text-brand-red">*</span></label>
                             <input
                                 type="text" name="landmark" x-model="landmark" value="{{ old('landmark') }}"
                                 placeholder="{{ __('e.g. Opposite the blue gate, near the church') }}"
@@ -227,11 +257,11 @@
 
                 <div>
                     <label class="block text-sm font-medium mb-1">{{ __('Instructions (optional)') }}</label>
-                    <textarea name="instructions" x-model="instructions" rows="3" class="w-full rounded-md border-brand-gray-300" placeholder="{{ __('e.g. call on arrival, leave at the gate…') }}">{{ old('instructions') }}</textarea>
+                    <textarea name="instructions" x-model="instructions" rows="3" maxlength="1000" class="w-full rounded-md border-brand-gray-300" placeholder="{{ __('e.g. call on arrival, leave at the gate…') }}">{{ old('instructions') }}</textarea>
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium mb-2">{{ __('Payment method') }}</label>
+                    <label class="block text-sm font-medium mb-2">{{ __('Payment method') }} <span class="text-brand-red">*</span></label>
                     <div class="flex gap-6 text-sm">
                         <label class="flex items-center gap-2">
                             <input type="radio" name="payment_method" value="cash" x-model="paymentMethod">
@@ -261,7 +291,7 @@
                         </div>
                         <div class="flex justify-between">
                             <dt class="text-brand-gray-500">{{ __('Phone number') }}</dt>
-                            <dd x-text="phone"></dd>
+                            <dd x-text="phone.formatted"></dd>
                         </div>
                         <div class="flex justify-between">
                             <dt class="text-brand-gray-500">{{ __('Fulfilment') }}</dt>
@@ -317,8 +347,9 @@
                 </div>
 
                 <button
-                    type="button" x-show="!reviewing" @click="startReview()"
-                    class="w-full px-6 py-3 bg-brand-yellow text-brand-black font-semibold rounded-md hover:bg-brand-yellow-dark"
+                    type="button" x-show="!reviewing" @click="startReview()" :disabled="!formValid"
+                    :class="formValid ? 'bg-brand-yellow text-brand-black hover:bg-brand-yellow-dark cursor-pointer' : 'bg-brand-gray-100 text-brand-gray-400 cursor-not-allowed'"
+                    class="w-full px-6 py-3 font-semibold rounded-md transition"
                 >
                     {{ __('Review order') }}
                 </button>
@@ -331,12 +362,25 @@
             <ul class="text-sm space-y-3 mb-4">
                 @foreach ($lines as $line)
                     <li>
-                        <div class="flex justify-between">
-                            <span>{{ $line['quantity'] }}x {{ $line['name_snapshot'] }}</span>
-                            <span>GH₵{{ number_format($line['line_total'] / 100, 2) }}</span>
+                        <div class="flex items-center gap-3">
+                            @if ($line['image_url'])
+                                <img src="{{ $line['image_url'] }}" alt="{{ $line['name_snapshot'] }}" class="w-12 h-12 rounded-md object-cover bg-brand-gray-100 shrink-0">
+                            @else
+                                <div class="w-12 h-12 rounded-md bg-brand-gray-100 flex items-center justify-center shrink-0" role="img" aria-label="{{ $line['name_snapshot'] }}">
+                                    <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5 text-brand-gray-300">
+                                        <path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z" stroke="currentColor" stroke-width="1.5" />
+                                        <circle cx="9" cy="10.5" r="1.5" stroke="currentColor" stroke-width="1.5" />
+                                        <path d="m5 16 4.5-4 3 2.5L16 11l3 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                                    </svg>
+                                </div>
+                            @endif
+                            <div class="flex-1 flex justify-between">
+                                <span>{{ $line['quantity'] }}x {{ $line['name_snapshot'] }}</span>
+                                <span>GH₵{{ number_format($line['line_total'] / 100, 2) }}</span>
+                            </div>
                         </div>
                         @foreach ($line['options'] as $option)
-                            <div class="flex justify-between text-brand-gray-500 pl-4">
+                            <div class="flex justify-between text-brand-gray-500 pl-[60px]">
                                 <span>{{ $option['name_snapshot'] }}</span>
                                 <span>+GH₵{{ number_format($option['price_delta_snapshot'] / 100, 2) }}</span>
                             </div>
@@ -367,7 +411,7 @@
             </div>
 
             @if ($deliveryAvailable)
-                <p x-show="fulfilmentType !== 'delivery' || estimatedFee === null" class="text-xs text-brand-gray-500 mt-2">
+                <p x-show="fulfilmentType === 'delivery' && estimatedFee === null" class="text-xs text-brand-gray-500 mt-2">
                     {{ __('Delivery fee will be calculated upon rider arrival.') }}
                 </p>
             @endif
@@ -391,4 +435,6 @@
             </div>
         </div>
     </div>
+
+    @include('partials.phone-input-script')
 </x-customer-layout>

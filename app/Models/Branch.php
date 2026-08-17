@@ -44,6 +44,11 @@ class Branch extends Model
         return $this->hasMany(Shift::class);
     }
 
+    public function workingHours(): HasMany
+    {
+        return $this->hasMany(BranchWorkingHour::class);
+    }
+
     public function imageUrl(): ?string
     {
         return $this->image_path ? Storage::disk('public')->url($this->image_path) : null;

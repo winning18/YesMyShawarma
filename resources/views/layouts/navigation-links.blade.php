@@ -4,14 +4,42 @@
     nav item only ever needs adding in one place.
 --}}
 {{--
-    Dashboard — the live acknowledgement/in-progress board. Its own header
-    (dashboard._channel-header) carries the red Orders / green POS toggle,
-    so this single link is where incoming orders get acknowledged and
-    where POS is reached from.
+    Dashboard means something different per role (OrderDashboardController):
+    staff's is the live acknowledgement/in-progress board — its own header
+    (dashboard._channel-header) carries the red Orders / green POS toggle.
+    Owner/manager land on the business overview (PerformanceController)
+    instead — POS, Orders and shifts are not what either of them operates;
+    manager reaches the actual board via the Orders link below, owner has
+    no path to it in this nav at all.
+
+    Greyed out (not a link at all) for staff with no active shift — they
+    can't access the dashboard until they start one (the sidebar's own
+    shift widget, always rendered above/below this list, is how) or log in
+    again next working day.
 --}}
-<x-sidebar-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-    {{ __('Dashboard') }}
-</x-sidebar-link>
+@if (($isStaff ?? false) && ! ($hasActiveShift ?? false))
+    <span
+        class="flex items-center px-3 py-2 rounded-md rounded-l-none border-l-4 border-transparent text-sm font-medium text-gray-300 cursor-not-allowed select-none"
+        title="{{ __('Start a shift to access the dashboard.') }}"
+    >{{ __('Dashboard') }}</span>
+@else
+    <x-sidebar-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
+        {{ __('Dashboard') }}
+    </x-sidebar-link>
+@endif
+
+{{--
+    Manager only — the live acknowledgement/in-progress board + POS,
+    unchanged from what used to live at "Dashboard" for them. Staff never
+    needs this (their Dashboard link already goes straight there); owner
+    never gets it at all (PosController/OrderDashboardController redirect
+    owner away from these routes regardless of how they're reached).
+--}}
+@if ($isManager ?? false)
+    <x-sidebar-link :href="route('dashboard.orders.live')" :active="request()->routeIs('dashboard.orders.live', 'dashboard.pos.index')">
+        {{ __('Orders') }}
+    </x-sidebar-link>
+@endif
 
 {{--
     Order History > Web / POS — each channel opens its own filtered record
@@ -46,12 +74,6 @@
         >{{ __('POS') }}</a>
     </div>
 </div>
-
-@can('dashboard.performance')
-    <x-sidebar-link :href="route('dashboard.performance')" :active="request()->routeIs('dashboard.performance')">
-        {{ __('Performance') }}
-    </x-sidebar-link>
-@endcan
 
 {{--
     Menu Editor > Branch / Menu / Categories / Modifiers / Item availability
@@ -149,8 +171,82 @@
     </x-sidebar-link>
 @endcan
 
-@can('users.manage')
+{{--
+    orders.refund (owner/manager/general_manager — full rights) or
+    orders.refund_request (staff — request + complete an approved one,
+    view-only otherwise) — everyone who can touch a refund at all gets
+    this tab. RefundController::index() scopes what each of them actually
+    sees; the view itself hides Approve/Deny from anyone without
+    orders.refund.
+--}}
+@canany(['orders.refund', 'orders.refund_request'])
+    <x-sidebar-link :href="route('dashboard.refunds.index')" :active="request()->routeIs('dashboard.refunds.*')">
+        {{ __('Refunds') }}
+    </x-sidebar-link>
+@endcanany
+
+{{--
+    Weekly opening schedule, owner+manager only — reuses
+    reports.view_financial (already exactly that audience) rather than a
+    dedicated permission. Its own sidebar item, not a Reports and invoices
+    tab, so it needed its own route namespace (dashboard.working-hours.*)
+    rather than dashboard.reports.* — sharing that prefix would have made
+    the Reports and invoices link above light up as active on this page
+    too, since its :active check is a wildcard.
+--}}
+@can('reports.view_financial')
+    <x-sidebar-link :href="route('dashboard.working-hours.index')" :active="request()->routeIs('dashboard.working-hours.*')">
+        {{ __('Working Hours') }}
+    </x-sidebar-link>
+@endcan
+
+{{--
+    users.create_operational (general_manager) reaches the same index/create
+    screens as users.manage (owner) — see UserManagementController's
+    authorizeView()/authorizeCreate() — so it needs the same nav entry, or
+    the "add a staff/rider" capability would have no way to be discovered.
+    A plain manager (users.transfer_branch only, no create ability) still
+    has no link here — same as before this role existed.
+--}}
+@canany(['users.manage', 'users.create_operational'])
     <x-sidebar-link :href="route('dashboard.users.index')" :active="request()->routeIs('dashboard.users.*')">
         {{ __('Users') }}
     </x-sidebar-link>
+@endcanany
+
+{{--
+    Settings > General / Staff members — same collapsible-group pattern as
+    Menu Editor above. Staff members (the public "Meet our staff" roster on
+    the About page) lives here rather than its own top-level sidebar item
+    since it's business-wide configuration content, not an operational
+    resource — same audience (settings.manage: owner/manager/
+    general_manager) as the existing order-reference-prefix settings.
+--}}
+@can('settings.manage')
+    @php
+        $onSettingsSection = request()->routeIs('dashboard.settings.*', 'dashboard.staff-members.*');
+    @endphp
+    <div x-data="{ settingsOpen: {{ $onSettingsSection ? 'true' : 'false' }} }">
+        <button
+            type="button"
+            @click="settingsOpen = ! settingsOpen"
+            class="w-full flex items-center justify-between px-3 py-2 rounded-md rounded-l-none border-l-4 text-sm font-medium transition duration-150 ease-in-out {{ $onSettingsSection ? 'border-indigo-400 bg-indigo-50 text-indigo-700 font-semibold' : 'border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
+        >
+            <span>{{ __('Settings') }}</span>
+            <svg class="w-4 h-4 shrink-0 transition-transform" :class="{ 'rotate-180': settingsOpen }" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+        </button>
+
+        <div x-show="settingsOpen" x-cloak class="mt-1 ml-3 pl-3 border-l border-gray-100 space-y-1">
+            <a
+                href="{{ route('dashboard.settings.index') }}"
+                class="block px-3 py-1.5 rounded-md text-sm transition duration-150 ease-in-out {{ request()->routeIs('dashboard.settings.*') ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
+            >{{ __('General') }}</a>
+            <a
+                href="{{ route('dashboard.staff-members.index') }}"
+                class="block px-3 py-1.5 rounded-md text-sm transition duration-150 ease-in-out {{ request()->routeIs('dashboard.staff-members.*') ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
+            >{{ __('Staff members') }}</a>
+        </div>
+    </div>
 @endcan

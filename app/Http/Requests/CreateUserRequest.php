@@ -33,7 +33,7 @@ class CreateUserRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class)],
             'phone' => ['nullable', 'string', Rule::unique(User::class)],
-            'role' => ['required', 'string', Rule::in(['staff', 'rider', 'manager', 'owner'])],
+            'role' => ['required', 'string', Rule::in(['staff', 'rider', 'manager', 'general_manager', 'owner'])],
             'branch_id' => ['required', 'integer', 'exists:branches,id'],
         ];
     }

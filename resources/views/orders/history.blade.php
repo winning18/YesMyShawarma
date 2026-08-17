@@ -7,6 +7,11 @@
                 default => __('Order history'),
             },
             'active' => 'orders',
+            'isStaff' => $isStaff,
+            'forceShiftStart' => $forceShiftStart,
+            'ordersUrl' => $ordersUrl,
+            'hideOperationalControls' => $hideOperationalControls,
+            'branchId' => $branchId,
         ])
     </x-slot>
 
@@ -169,6 +174,4 @@
             {{ $orders->links() }}
         </div>
     </div>
-
-    @include('partials.shift-widget-script')
 </x-app-layout>

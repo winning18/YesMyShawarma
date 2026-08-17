@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\EnsurePasswordIsChanged;
+use App\Http\Middleware\RedirectStaffToUnacceptedWebOrders;
 use App\Http\Middleware\ResolveCurrentBranch;
 use App\Http\Middleware\TrackVisitorSession;
 use Illuminate\Foundation\Application;
@@ -20,6 +22,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'branch' => ResolveCurrentBranch::class,
             'track.visit' => TrackVisitorSession::class,
+            'password.change_required' => EnsurePasswordIsChanged::class,
+            'staff.web_orders_check' => RedirectStaffToUnacceptedWebOrders::class,
         ]);
 
         // Laravel's default "guest" redirect target is a hardcoded

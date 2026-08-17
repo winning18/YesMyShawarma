@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateOptionGroupRequest;
 use App\Http\Requests\UpdateOptionRequest;
 use App\Models\Option;
 use App\Models\OptionGroup;
+use App\Support\Money;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
@@ -86,7 +87,7 @@ class OptionGroupManagementController extends Controller
 
         $optionGroup->options()->create([
             'name' => $validated['name'],
-            'price_delta' => (int) round($validated['price_delta'] * 100),
+            'price_delta' => Money::toPesewas($validated['price_delta']),
         ]);
 
         return redirect()->route('dashboard.option-groups.edit', $optionGroup)
@@ -102,7 +103,7 @@ class OptionGroupManagementController extends Controller
 
         $option->update([
             'name' => $validated['name'],
-            'price_delta' => (int) round($validated['price_delta'] * 100),
+            'price_delta' => Money::toPesewas($validated['price_delta']),
             'is_active' => $request->boolean('is_active'),
         ]);
 

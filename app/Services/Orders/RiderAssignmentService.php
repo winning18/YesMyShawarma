@@ -6,13 +6,18 @@ use App\Events\OrderAssignedToRider;
 use App\Models\Order;
 use App\Models\Shift;
 use App\Models\User;
+use App\Services\Branches\BranchContext;
 use App\Services\Shifts\ShiftService;
+use App\Support\SafeBroadcast;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class RiderAssignmentService
 {
-    public function __construct(private readonly ShiftService $shifts) {}
+    public function __construct(
+        private readonly ShiftService $shifts,
+        private readonly BranchContext $branchContext,
+    ) {}
 
     /**
      * Called from OrderStateMachine when a delivery order reaches "ready".
@@ -31,9 +36,19 @@ class RiderAssignmentService
     public function autoAssign(Order $order): ?User
     {
         return DB::transaction(function () use ($order) {
+            // shifts carries no role column of its own — staff and riders
+            // both start/end shifts through the exact same mechanism
+            // (schema.md), so an unfiltered "who's on shift" query here
+            // would auto-assign a staff member as the order's "rider" the
+            // moment they're on shift and not already carrying an order.
+            // Same fix as RiderAvailabilityController's dropdown, applied
+            // to the other place this same shift/role gap could bite.
+            $riderIds = $this->branchContext->usersWithRole('rider', $order->branch_id)->pluck('id');
+
             $candidateIds = Shift::query()
                 ->where('branch_id', $order->branch_id)
                 ->whereNull('ended_at')
+                ->whereIn('user_id', $riderIds)
                 ->pluck('user_id');
 
             if ($candidateIds->isEmpty()) {
@@ -112,8 +127,11 @@ class RiderAssignmentService
             ],
         ]);
 
+        // SafeBroadcast::afterCommit, not a bare DB::afterCommit — see its
+        // own docblock for why a broadcast failure must never surface as a
+        // failure of the assignment itself.
         $orderId = $order->id;
         $riderId = $rider->id;
-        DB::afterCommit(fn () => OrderAssignedToRider::dispatch($orderId, $riderId));
+        SafeBroadcast::afterCommit(fn () => OrderAssignedToRider::dispatch($orderId, $riderId));
     }
 }

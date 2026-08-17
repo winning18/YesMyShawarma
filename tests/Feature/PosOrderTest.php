@@ -73,6 +73,19 @@ class PosOrderTest extends TestCase
             ->assertSee('Chicken Shawarma');
     }
 
+    public function test_pos_page_includes_the_order_alert_widget_for_the_current_branch(): void
+    {
+        $staff = $this->makeStaff();
+
+        $response = $this->actingAs($staff)->get(route('dashboard.pos.index'));
+
+        // Staff working POS has no reason to be looking at the Orders
+        // board — this is what tells them a web order just came in
+        // without switching tabs (real-time alert + sound, not just the
+        // page itself refreshing).
+        $response->assertSee("orderAlertWidget({$this->branch->id})", false);
+    }
+
     public function test_rider_cannot_view_the_pos_page(): void
     {
         $rider = User::factory()->create();
@@ -81,30 +94,17 @@ class PosOrderTest extends TestCase
         $this->actingAs($rider)->get(route('dashboard.pos.index'))->assertForbidden();
     }
 
-    public function test_owner_with_no_branch_selected_is_sent_to_pick_one(): void
+    public function test_owner_is_redirected_away_from_pos_to_the_business_overview(): void
     {
+        // POS is not an owner feature at all, regardless of branch
+        // selection state — unlike every other multi-branch role, owner
+        // never gets sent to pick one for POS's sake, because they never
+        // reach POS in the first place.
         $owner = User::factory()->create();
         $this->assignRoleAt($owner, 'owner', $this->branch);
 
-        // Owner never gets forced through branch selection (ResolveCurrentBranch) —
-        // POS specifically needs one physical branch, so it redirects here
-        // instead of dead-ending on a bare 403.
         $this->actingAs($owner)->get(route('dashboard.pos.index'))
-            ->assertRedirect(route('branches.select'));
-    }
-
-    public function test_owner_lands_back_on_pos_after_picking_a_branch(): void
-    {
-        $owner = User::factory()->create();
-        $this->assignRoleAt($owner, 'owner', $this->branch);
-
-        // Visiting POS with no branch resolved stores it as the "intended"
-        // page (redirect()->guest()) before bouncing to branch selection.
-        $this->actingAs($owner)->get(route('dashboard.pos.index'));
-
-        $this->actingAs($owner)
-            ->post(route('branches.select.store'), ['branch_id' => $this->branch->id])
-            ->assertRedirect(route('dashboard.pos.index'));
+            ->assertRedirect(route('dashboard.performance'));
     }
 
     public function test_adding_an_item_returns_the_updated_cart_summary(): void

@@ -7,7 +7,7 @@
     </div>
 
     <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-        @include('layouts.navigation-links')
+        @include('layouts.navigation-links', ['isStaff' => $navIsStaff, 'hasActiveShift' => $navHasActiveShift, 'isManager' => $navIsManager])
     </nav>
 
     <div class="border-t border-gray-100 p-3 shrink-0">
@@ -77,7 +77,7 @@
         </div>
 
         <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1" @click="sidebarOpen = false">
-            @include('layouts.navigation-links')
+            @include('layouts.navigation-links', ['isStaff' => $navIsStaff, 'hasActiveShift' => $navHasActiveShift, 'isManager' => $navIsManager])
         </nav>
 
         <div class="border-t border-gray-100 p-4 shrink-0">

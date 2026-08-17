@@ -25,6 +25,7 @@ use App\Http\Controllers\PerformanceController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PromotionManagementController;
+use App\Http\Controllers\RefundController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\ReportsInvoicesController;
 use App\Http\Controllers\Rider\AuthenticatedSessionController as RiderAuthenticatedSessionController;
@@ -32,11 +33,14 @@ use App\Http\Controllers\Rider\DashboardController as RiderDashboardController;
 use App\Http\Controllers\Rider\DeliveryHistoryController as RiderDeliveryHistoryController;
 use App\Http\Controllers\Rider\ProfileController as RiderProfileController;
 use App\Http\Controllers\RiderAvailabilityController;
+use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\ShiftController;
+use App\Http\Controllers\StaffMemberManagementController;
 use App\Http\Controllers\TodayReportController;
 use App\Http\Controllers\TrackingController;
 use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\WeeklyReportController;
+use App\Http\Controllers\WorkingHoursController;
 use Illuminate\Support\Facades\Route;
 
 // track.visit records an anonymous first-party-cookie visit for every
@@ -89,11 +93,12 @@ Route::middleware('auth:customer')->group(function () {
     Route::post('/customer/logout', [CustomerAuthenticatedSessionController::class, 'destroy'])->name('customer.logout');
 });
 
-Route::middleware(['auth', 'verified', 'branch'])->group(function () {
+Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'staff.web_orders_check'])->group(function () {
     Route::get('/dashboard', [OrderDashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/performance', [PerformanceController::class, 'index'])->name('dashboard.performance');
     Route::get('/dashboard/orders', [OrderDashboardController::class, 'data'])->name('dashboard.orders.data');
     Route::get('/dashboard/orders/history', [OrderHistoryController::class, 'index'])->name('dashboard.orders.history');
+    Route::get('/dashboard/orders/live', [OrderDashboardController::class, 'live'])->name('dashboard.orders.live');
     Route::get('/dashboard/orders/{order}', [OrderHistoryController::class, 'show'])->name('dashboard.orders.show');
 
     Route::get('/dashboard/pos', [PosController::class, 'index'])->name('dashboard.pos.index');
@@ -107,6 +112,13 @@ Route::middleware(['auth', 'verified', 'branch'])->group(function () {
     Route::post('/dashboard/orders/{order}/advance', [OrderActionController::class, 'advance'])->name('orders.advance');
     Route::post('/dashboard/orders/{order}/cancel', [OrderActionController::class, 'cancel'])->name('orders.cancel');
     Route::post('/dashboard/orders/{order}/assign-rider', [OrderActionController::class, 'assignRider'])->name('orders.assign_rider');
+    Route::post('/dashboard/orders/{order}/confirm-momo-payment', [OrderActionController::class, 'confirmMomoPayment'])->name('orders.confirm_momo_payment');
+    Route::post('/dashboard/orders/{order}/refunds', [RefundController::class, 'store'])->name('orders.refunds.store');
+
+    Route::get('/dashboard/refunds', [RefundController::class, 'index'])->name('dashboard.refunds.index');
+    Route::post('/dashboard/refunds/{refund}/approve', [RefundController::class, 'approve'])->name('dashboard.refunds.approve');
+    Route::post('/dashboard/refunds/{refund}/deny', [RefundController::class, 'deny'])->name('dashboard.refunds.deny');
+    Route::post('/dashboard/refunds/{refund}/complete', [RefundController::class, 'complete'])->name('dashboard.refunds.complete');
 
     Route::get('/dashboard/riders', [RiderAvailabilityController::class, 'index'])->name('dashboard.riders');
 
@@ -120,6 +132,8 @@ Route::middleware(['auth', 'verified', 'branch'])->group(function () {
     Route::get('/dashboard/users/{user}/edit', [UserManagementController::class, 'edit'])->name('dashboard.users.edit');
     Route::post('/dashboard/users/{user}/roles', [UserManagementController::class, 'addRole'])->name('dashboard.users.roles.add');
     Route::delete('/dashboard/users/{user}/roles', [UserManagementController::class, 'removeRole'])->name('dashboard.users.roles.remove');
+    Route::post('/dashboard/users/{user}/change-branch', [UserManagementController::class, 'changeBranch'])->name('dashboard.users.change_branch');
+    Route::delete('/dashboard/users/{user}', [UserManagementController::class, 'destroy'])->name('dashboard.users.destroy');
 
     Route::get('/dashboard/branches', [BranchManagementController::class, 'index'])->name('dashboard.branches.index');
     Route::get('/dashboard/branches/create', [BranchManagementController::class, 'create'])->name('dashboard.branches.create');
@@ -129,6 +143,21 @@ Route::middleware(['auth', 'verified', 'branch'])->group(function () {
     Route::post('/dashboard/branches/{branch}/toggle-accepting-orders', [BranchManagementController::class, 'toggleAcceptingOrders'])->name('dashboard.branches.toggle-accepting-orders');
     Route::post('/dashboard/branches/{branch}/image', [BranchManagementController::class, 'updateImage'])->name('dashboard.branches.image.update');
     Route::delete('/dashboard/branches/{branch}/image', [BranchManagementController::class, 'destroyImage'])->name('dashboard.branches.image.destroy');
+
+    Route::get('/dashboard/working-hours', [WorkingHoursController::class, 'index'])->name('dashboard.working-hours.index');
+    Route::put('/dashboard/working-hours', [WorkingHoursController::class, 'update'])->name('dashboard.working-hours.update');
+
+    Route::get('/dashboard/settings', [SettingsController::class, 'index'])->name('dashboard.settings.index');
+    Route::put('/dashboard/settings', [SettingsController::class, 'update'])->name('dashboard.settings.update');
+
+    Route::get('/dashboard/staff-members', [StaffMemberManagementController::class, 'index'])->name('dashboard.staff-members.index');
+    Route::get('/dashboard/staff-members/create', [StaffMemberManagementController::class, 'create'])->name('dashboard.staff-members.create');
+    Route::post('/dashboard/staff-members', [StaffMemberManagementController::class, 'store'])->name('dashboard.staff-members.store');
+    Route::get('/dashboard/staff-members/{staffMember}/edit', [StaffMemberManagementController::class, 'edit'])->name('dashboard.staff-members.edit');
+    Route::put('/dashboard/staff-members/{staffMember}', [StaffMemberManagementController::class, 'update'])->name('dashboard.staff-members.update');
+    Route::post('/dashboard/staff-members/{staffMember}/image', [StaffMemberManagementController::class, 'updateImage'])->name('dashboard.staff-members.image.update');
+    Route::delete('/dashboard/staff-members/{staffMember}/image', [StaffMemberManagementController::class, 'destroyImage'])->name('dashboard.staff-members.image.destroy');
+    Route::delete('/dashboard/staff-members/{staffMember}', [StaffMemberManagementController::class, 'destroy'])->name('dashboard.staff-members.destroy');
 
     Route::get('/dashboard/promotions', [PromotionManagementController::class, 'index'])->name('dashboard.promotions.index');
     Route::get('/dashboard/promotions/create', [PromotionManagementController::class, 'create'])->name('dashboard.promotions.create');
@@ -196,7 +225,7 @@ Route::middleware('guest')->prefix('rider')->name('rider.')->group(function () {
     Route::post('/login', [RiderAuthenticatedSessionController::class, 'store']);
 });
 
-Route::middleware(['auth', 'verified', 'branch'])->prefix('rider')->name('rider.')->group(function () {
+Route::middleware(['auth', 'verified', 'branch', 'password.change_required'])->prefix('rider')->name('rider.')->group(function () {
     Route::get('/', [RiderDashboardController::class, 'index'])->name('dashboard');
     Route::get('/orders', [RiderDashboardController::class, 'data'])->name('orders.data');
     Route::get('/history', [RiderDeliveryHistoryController::class, 'index'])->name('history');

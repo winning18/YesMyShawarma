@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Promotion;
 use App\Models\PromotionRedemption;
+use App\Models\Refund;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -201,9 +202,8 @@ class ReportsTest extends TestCase
         $manager = User::factory()->create();
         $this->assignRoleAt($manager, 'manager', $this->branch);
 
-        $this->makeOrder($this->branch, 'delivered', 5000, ['payment_method' => 'cash']);
+        $cashOrder = $this->makeOrder($this->branch, 'delivered', 5000, ['payment_method' => 'cash']);
         $this->makeOrder($this->branch, 'delivered', 3000, ['payment_method' => 'paystack']);
-        $this->makeOrder($this->branch, 'refunded', 2000);
         $this->makeOrder($this->branch, 'cancelled', 9000);
 
         $discounted = $this->makeOrder($this->branch, 'delivered', 4500, ['payment_method' => 'cash']);
@@ -213,11 +213,20 @@ class ReportsTest extends TestCase
             'customer_id' => $discounted->customer_id, 'amount_discounted' => 500,
         ]);
 
+        // Refunds are subtracted from the day they're *completed*, never
+        // by excluding the order via its own status — see
+        // OrderReportService::financialSummary()'s docblock.
+        Refund::create([
+            'order_id' => $cashOrder->id, 'branch_id' => $this->branch->id,
+            'amount' => 2000, 'reason' => 'Customer complaint', 'status' => 'completed',
+            'requested_by' => $manager->id, 'completed_by' => $manager->id, 'completed_at' => now(),
+        ]);
+
         $response = $this->actingAs($manager)->get(route('dashboard.reports.index'));
         $financial = $response->viewData('financial');
 
-        // 5000 + 3000 + 4500 (refunded and cancelled excluded)
-        $this->assertSame(12500, $financial['revenue_total']);
+        // 5000 + 3000 + 4500 (cancelled excluded) - 2000 refund
+        $this->assertSame(10500, $financial['revenue_total']);
         $this->assertSame(500, $financial['discount_total']);
         $this->assertSame(2000, $financial['refund_total']);
         // 5000 (plain cash order) + 4500 (discounted cash order) — the

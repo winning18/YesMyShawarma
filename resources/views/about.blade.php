@@ -67,29 +67,43 @@
         </div>
     </section>
 
-    {{-- Meet our staff --}}
-    <section class="mb-14 pt-14 border-t border-brand-gray-100">
-        <h2 class="text-lg font-bold mb-4 text-center">{{ __('Meet our staff') }}</h2>
-        {{--
-            No real staff roster yet — 9 placeholder cards, same pattern as
-            the branch/menu image placeholders. Swap names, roles and photos
-            in once available.
-        --}}
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
-            @for ($i = 0; $i < 9; $i++)
-                <div>
-                    <div class="aspect-square rounded-xl bg-brand-gray-100 flex items-center justify-center">
-                        <svg viewBox="0 0 24 24" fill="none" class="w-16 h-16 text-brand-gray-300">
-                            <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.5" />
-                            <path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-                        </svg>
+    {{--
+        Meet our staff — real roster (StaffMemberManagementController,
+        managed from Settings > Staff members), same "only show what
+        actually exists" convention as the home page hero (which only
+        shows categories with an uploaded photo). No placeholders once
+        this exists: the section simply doesn't render until someone's
+        been added.
+    --}}
+    @if ($staffMembers->isNotEmpty())
+        <section class="mb-14 pt-14 border-t border-brand-gray-100">
+            <h2 class="text-lg font-bold mb-4 text-center">{{ __('Meet our staff') }}</h2>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                @foreach ($staffMembers as $staffMember)
+                    <div>
+                        @if ($staffMember->photoUrl())
+                            <img
+                                src="{{ $staffMember->photoUrl() }}" alt="{{ $staffMember->name }}" loading="lazy"
+                                class="aspect-square w-full object-cover rounded-xl bg-brand-gray-100"
+                            >
+                        @else
+                            <div class="aspect-square rounded-xl bg-brand-gray-100 flex items-center justify-center">
+                                <svg viewBox="0 0 24 24" fill="none" class="w-16 h-16 text-brand-gray-300">
+                                    <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.5" />
+                                    <path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                                </svg>
+                            </div>
+                        @endif
+                        <p class="font-semibold text-center mt-3">{{ $staffMember->name }}</p>
+                        @if ($staffMember->title)
+                            <p class="text-sm text-brand-gray-500 text-center">{{ $staffMember->title }}</p>
+                        @endif
                     </div>
-                    <p class="font-semibold text-center mt-3">[{{ __('Staff name') }}]</p>
-                    <p class="text-sm text-brand-gray-500 text-center">[{{ __('Position') }}]</p>
-                </div>
-            @endfor
-        </div>
-    </section>
+                @endforeach
+            </div>
+        </section>
+    @endif
 
     {{-- Newsletter --}}
     <section class="pt-14 border-t border-brand-gray-100">

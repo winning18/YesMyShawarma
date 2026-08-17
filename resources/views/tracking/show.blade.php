@@ -1,4 +1,17 @@
 <x-customer-layout :title="'Track order '.$order->reference.' · '.config('app.name')">
+    @if ($branchWasClosed)
+        <div class="max-w-5xl mx-auto mb-6 rounded-lg bg-brand-yellow-light border border-brand-yellow text-brand-black text-sm px-4 py-3">
+            <p class="font-semibold">{{ __("We're currently closed.") }}</p>
+            <p>
+                @if ($nextOpeningLabel)
+                    {{ __('This order will be prepared when we reopen :time.', ['time' => $nextOpeningLabel]) }}
+                @else
+                    {{ __('This order will be prepared at our next opening.') }}
+                @endif
+            </p>
+        </div>
+    @endif
+
     <div
         x-data="orderTracker(@js($order->track_token), '{{ route('tracking.data', $order) }}')"
         x-init="init()"

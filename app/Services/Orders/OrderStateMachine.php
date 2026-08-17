@@ -6,6 +6,7 @@ use App\Events\OrderStatusChanged;
 use App\Exceptions\InvalidOrderTransitionException;
 use App\Models\Order;
 use App\Services\Delivery\DeliveryFeeCalculator;
+use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
 
 class OrderStateMachine
@@ -78,17 +79,25 @@ class OrderStateMachine
             throw InvalidOrderTransitionException::missingActor();
         }
 
-        $from = $order->status;
+        return DB::transaction(function () use ($order, $to, $actorType, $actorId, $meta, $cancellationReason, $shiftId) {
+            // Lock the row for the duration of the transaction and sync onto
+            // the authoritative current status before deciding anything — a
+            // concurrent transition (e.g. a duplicate webhook delivery
+            // processed by another worker, or a double-clicked action) may
+            // have already changed it since $order was loaded.
+            $locked = Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
+            $order->setRawAttributes($locked->getAttributes(), true);
 
-        if (! $this->canTransition($from, $to)) {
-            throw InvalidOrderTransitionException::forTransition($from, $to);
-        }
+            $from = $order->status;
 
-        if ($to === 'cancelled' && ! $cancellationReason) {
-            throw InvalidOrderTransitionException::missingCancellationReason();
-        }
+            if (! $this->canTransition($from, $to)) {
+                throw InvalidOrderTransitionException::forTransition($from, $to);
+            }
 
-        return DB::transaction(function () use ($order, $from, $to, $actorType, $actorId, $meta, $cancellationReason, $shiftId) {
+            if ($to === 'cancelled' && ! $cancellationReason) {
+                throw InvalidOrderTransitionException::missingCancellationReason();
+            }
+
             $order->status = $to;
 
             if ($column = self::TIMESTAMP_COLUMNS[$to] ?? null) {
@@ -127,6 +136,18 @@ class OrderStateMachine
                 }
             }
 
+            // payments.md: cash collected at the door is reconciled the
+            // moment the rider confirms they've got it, at the same instant
+            // the order transitions to 'delivered' — a pickup+cash order is
+            // already 'paid' from OrderCreationService, so this only ever
+            // does something for delivery+cash. Deliberately momo-exclusive:
+            // momo is reconciled by transaction ID (PaymentConfirmationService
+            // ::confirmMomo()), not by delivery — flipping it here too would
+            // mark a momo order "paid" with no transaction ID ever entered.
+            if ($to === 'delivered' && $order->payment_method === 'cash') {
+                $order->payment_status = 'paid';
+            }
+
             $order->save();
 
             $order->events()->create([
@@ -138,14 +159,15 @@ class OrderStateMachine
                 'meta' => $meta,
             ]);
 
-            // Deferred to the outermost transaction's commit — callers such
-            // as ProcessPaystackWebhook wrap this in their own transaction,
-            // and a queued broadcast job must never risk running before
-            // that outer transaction has actually committed.
+            // SafeBroadcast::afterCommit, not a bare DB::afterCommit — see
+            // its own docblock. Deferred to the outermost transaction's
+            // commit either way: callers such as ProcessPaystackWebhook
+            // wrap this in their own transaction, and this must never risk
+            // running before that outer transaction has actually committed.
             $orderId = $order->id;
             $branchId = $order->branch_id;
             $trackToken = $order->track_token;
-            DB::afterCommit(fn () => OrderStatusChanged::dispatch($orderId, $branchId, $to, $trackToken));
+            SafeBroadcast::afterCommit(fn () => OrderStatusChanged::dispatch($orderId, $branchId, $to, $trackToken));
 
             // Pickup orders reach "ready" too, but never need a rider
             // (orders.md: "Pickup orders skip the rider entirely"). Nobody

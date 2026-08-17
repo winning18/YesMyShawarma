@@ -13,6 +13,7 @@ use App\Models\Option;
 use App\Models\OptionGroup;
 use App\Services\Branches\BranchContext;
 use App\Services\Media\ImageUploadService;
+use App\Support\Money;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -115,7 +116,7 @@ class MenuItemManagementController extends Controller
                 'name' => $validated['name'],
                 'slug' => $this->uniqueSlug($validated['name']),
                 'description' => $validated['description'] ?? null,
-                'base_price' => (int) round($validated['base_price'] * 100),
+                'base_price' => Money::toPesewas($validated['base_price']),
                 'sort_order' => $validated['sort_order'] ?? 0,
                 'is_active' => $request->boolean('is_active'),
             ]);
@@ -242,7 +243,7 @@ class MenuItemManagementController extends Controller
                 'name' => $validated['name'],
                 'slug' => $validated['slug'],
                 'description' => $validated['description'] ?? null,
-                'base_price' => (int) round($validated['base_price'] * 100),
+                'base_price' => Money::toPesewas($validated['base_price']),
                 'sort_order' => $validated['sort_order'] ?? 0,
                 'is_active' => $request->boolean('is_active'),
             ]);

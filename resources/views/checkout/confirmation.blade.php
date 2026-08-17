@@ -10,7 +10,9 @@
             {{ __('Thank you, :name!', ['name' => $order->customer->name ?? __('there')]) }}
         </h1>
         <p class="text-brand-gray-500 mt-1">
-            @if ($order->fulfilment_type === 'delivery')
+            @if ($branchWasClosed)
+                {{ __('Something delicious is headed your way soon.') }}
+            @elseif ($order->fulfilment_type === 'delivery')
                 {{ __("We've received your order and will get it on its way soon.") }}
             @else
                 {{ __("We've received your order and will start preparing it right away.") }}
@@ -21,6 +23,19 @@
         <p class="text-lg font-semibold">{{ $order->reference }}</p>
     </div>
 
+    @if ($branchWasClosed)
+        <div class="max-w-xl mx-auto mt-6 rounded-lg bg-brand-yellow-light border border-brand-yellow text-brand-black text-sm px-4 py-3 text-left">
+            <p class="font-semibold">{{ __("We're currently closed.") }}</p>
+            <p>
+                @if ($nextOpeningLabel)
+                    {{ __('Your order is confirmed and will be prepared when we reopen :time.', ['time' => $nextOpeningLabel]) }}
+                @else
+                    {{ __('Your order is confirmed and will be prepared at our next opening.') }}
+                @endif
+            </p>
+        </div>
+    @endif
+
     <div class="max-w-xl mx-auto mt-8 border border-brand-gray-100 rounded-lg p-6 text-left">
         <h2 class="font-semibold mb-3">{{ __('Order summary') }}</h2>
         <p class="text-sm text-brand-gray-500 mb-3">{{ $order->branch->name }}</p>
@@ -28,12 +43,25 @@
         <ul class="text-sm space-y-3 mb-4">
             @foreach ($order->items as $item)
                 <li>
-                    <div class="flex justify-between">
-                        <span>{{ $item->quantity }}x {{ $item->name_snapshot }}</span>
-                        <span>GH₵{{ number_format($item->line_total / 100, 2) }}</span>
+                    <div class="flex items-center gap-3">
+                        @if ($item->menuItem?->imageUrl())
+                            <img src="{{ $item->menuItem->imageUrl() }}" alt="{{ $item->name_snapshot }}" class="w-12 h-12 rounded-md object-cover bg-brand-gray-100 shrink-0">
+                        @else
+                            <div class="w-12 h-12 rounded-md bg-brand-gray-100 flex items-center justify-center shrink-0" role="img" aria-label="{{ $item->name_snapshot }}">
+                                <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5 text-brand-gray-300">
+                                    <path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z" stroke="currentColor" stroke-width="1.5" />
+                                    <circle cx="9" cy="10.5" r="1.5" stroke="currentColor" stroke-width="1.5" />
+                                    <path d="m5 16 4.5-4 3 2.5L16 11l3 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                                </svg>
+                            </div>
+                        @endif
+                        <div class="flex-1 flex justify-between">
+                            <span>{{ $item->quantity }}x {{ $item->name_snapshot }}</span>
+                            <span>GH₵{{ number_format($item->line_total / 100, 2) }}</span>
+                        </div>
                     </div>
                     @foreach ($item->options as $option)
-                        <div class="flex justify-between text-brand-gray-500 pl-4">
+                        <div class="flex justify-between text-brand-gray-500 pl-[60px]">
                             <span>{{ $option->name_snapshot }}</span>
                             <span>+GH₵{{ number_format($option->price_delta_snapshot / 100, 2) }}</span>
                         </div>

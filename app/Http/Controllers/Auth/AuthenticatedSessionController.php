@@ -40,6 +40,7 @@ class AuthenticatedSessionController extends Controller
         $user = $request->user();
         $hasStaffRole = $context->hasRoleAtAnyBranch($user, 'owner')
             || $context->hasRoleAtAnyBranch($user, 'manager')
+            || $context->hasRoleAtAnyBranch($user, 'general_manager')
             || $context->hasRoleAtAnyBranch($user, 'staff');
         $riderOnly = ! $hasStaffRole && $context->hasRoleAtAnyBranch($user, 'rider');
 
@@ -67,6 +68,6 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerateToken();
 
-        return redirect('/');
+        return redirect()->route('login');
     }
 }

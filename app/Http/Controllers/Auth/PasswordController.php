@@ -20,9 +20,15 @@ class PasswordController extends Controller
             'password' => ['required', Password::defaults(), 'confirmed'],
         ]);
 
-        $request->user()->update([
+        // forceFill, not update() — must_change_password isn't in User's
+        // #[Fillable(...)] (see UserManagementService), and belongs here
+        // regardless of which form set the password: a legitimate
+        // self-service change satisfies the "must change" requirement even
+        // if it didn't go through ForcePasswordChangeController.
+        $request->user()->forceFill([
             'password' => Hash::make($validated['password']),
-        ]);
+            'must_change_password' => false,
+        ])->save();
 
         return back()->with('status', 'password-updated');
     }

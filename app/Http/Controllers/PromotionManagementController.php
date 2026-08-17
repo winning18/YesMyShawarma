@@ -6,6 +6,7 @@ use App\Http\Requests\StorePromotionRequest;
 use App\Http\Requests\UpdatePromotionRequest;
 use App\Models\Branch;
 use App\Models\Promotion;
+use App\Support\Money;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
@@ -40,9 +41,9 @@ class PromotionManagementController extends Controller
             'code' => $validated['code'],
             'type' => $validated['type'],
             'value' => $validated['type'] === 'fixed'
-                ? (int) round($validated['value'] * 100)
+                ? Money::toPesewas($validated['value'])
                 : (int) $validated['value'],
-            'min_order_total' => isset($validated['min_order_total']) ? (int) round($validated['min_order_total'] * 100) : null,
+            'min_order_total' => isset($validated['min_order_total']) ? Money::toPesewas($validated['min_order_total']) : null,
             'starts_at' => $validated['starts_at'] ?? null,
             'ends_at' => $validated['ends_at'] ?? null,
             'max_redemptions' => $validated['max_redemptions'] ?? null,
@@ -76,9 +77,9 @@ class PromotionManagementController extends Controller
             'code' => $validated['code'],
             'type' => $validated['type'],
             'value' => $validated['type'] === 'fixed'
-                ? (int) round($validated['value'] * 100)
+                ? Money::toPesewas($validated['value'])
                 : (int) $validated['value'],
-            'min_order_total' => isset($validated['min_order_total']) ? (int) round($validated['min_order_total'] * 100) : null,
+            'min_order_total' => isset($validated['min_order_total']) ? Money::toPesewas($validated['min_order_total']) : null,
             'starts_at' => $validated['starts_at'] ?? null,
             'ends_at' => $validated['ends_at'] ?? null,
             'max_redemptions' => $validated['max_redemptions'] ?? null,

@@ -10,4 +10,9 @@ class ShiftException extends Exception
     {
         return new self('You already have an open shift — end it before starting another.');
     }
+
+    public static function mustBeOnShiftToAccept(): self
+    {
+        return new self('Start your shift before accepting orders.');
+    }
 }

@@ -5,7 +5,7 @@
 @endphp
 
 <div>
-    <x-input-label for="category_id" :value="__('Category')" />
+    <x-input-label for="category_id" :value="__('Category')" required />
     <select id="category_id" name="category_id" class="mt-1 block w-full rounded-md border-gray-300" required>
         @foreach ($categories as $category)
             <option value="{{ $category->id }}" @selected(old('category_id', $menuItem?->category_id) == $category->id)>{{ $category->name }}</option>
@@ -15,14 +15,14 @@
 </div>
 
 <div>
-    <x-input-label for="name" :value="__('Name')" />
+    <x-input-label for="name" :value="__('Name')" required />
     <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="$value('name')" required autofocus />
     <x-input-error class="mt-2" :messages="$errors->get('name')" />
 </div>
 
 @isset($menuItem)
     <div>
-        <x-input-label for="slug" :value="__('Slug')" />
+        <x-input-label for="slug" :value="__('Slug')" required />
         <x-text-input id="slug" name="slug" type="text" class="mt-1 block w-full" :value="$value('slug')" required />
         <x-input-error class="mt-2" :messages="$errors->get('slug')" />
     </div>
@@ -35,7 +35,7 @@
 </div>
 
 <div>
-    <x-input-label for="base_price" :value="__('Base price (GH₵)')" />
+    <x-input-label for="base_price" :value="__('Base price (GH₵)')" required />
     <x-text-input
         id="base_price" name="base_price" type="number" step="0.01" min="0.01" class="mt-1 block w-full"
         :value="old('base_price', $menuItem ? number_format($menuItem->base_price / 100, 2, '.', '') : '')" required

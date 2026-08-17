@@ -75,6 +75,28 @@ class OrderHistoryTest extends TestCase
         $this->actingAs($staff)->get(route('dashboard.orders.history'))->assertOk();
     }
 
+    public function test_order_history_includes_the_order_alert_widget_for_staff(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+
+        $this->actingAs($staff)->get(route('dashboard.orders.history'))
+            ->assertSee("orderAlertWidget({$this->branch->id})", false);
+    }
+
+    public function test_order_history_hides_the_order_alert_widget_from_owner(): void
+    {
+        $owner = User::factory()->create();
+        $this->assignRoleAt($owner, 'owner', $this->branch);
+
+        // Owner never operates the live board — hideOperationalControls
+        // drops the alert (and its Echo subscription) along with the
+        // shift widget and Orders/POS toggle, same reasoning throughout
+        // dashboard/_channel-header.blade.php.
+        $this->actingAs($owner)->get(route('dashboard.orders.history'))
+            ->assertDontSee('orderAlertWidget', false);
+    }
+
     public function test_history_includes_completed_orders_unlike_the_live_board(): void
     {
         $staff = User::factory()->create();

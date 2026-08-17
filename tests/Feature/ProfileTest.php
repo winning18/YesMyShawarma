@@ -76,7 +76,9 @@ class ProfileTest extends TestCase
             ->assertRedirect('/');
 
         $this->assertGuest();
-        $this->assertNull($user->fresh());
+        // users is soft-deleted (schema.md) — the row still exists, just
+        // trashed, rather than gone entirely.
+        $this->assertTrue($user->fresh()->trashed());
     }
 
     public function test_correct_password_must_be_provided_to_delete_account(): void

@@ -40,6 +40,23 @@ class CustomerAuthTest extends TestCase
         $this->assertNotNull($existing->fresh()->password);
     }
 
+    public function test_registering_an_existing_guest_row_updates_their_name(): void
+    {
+        // Same underlying bug as CheckoutFlowTest's regression: a guest row
+        // created earlier under a placeholder/wrong name must not keep that
+        // name forever — registering is an explicit "this is my name" input.
+        $existing = Customer::create(['phone' => '+233241111111', 'name' => 'Placeholder Name']);
+
+        $this->post(route('customer.register'), [
+            'name' => 'Ama Owusu',
+            'phone' => '0241111111',
+            'password' => 'secret123',
+            'password_confirmation' => 'secret123',
+        ])->assertRedirect(route('home'));
+
+        $this->assertSame('Ama Owusu', $existing->fresh()->name);
+    }
+
     public function test_registering_an_already_registered_phone_is_rejected(): void
     {
         Customer::create(['phone' => '+233241111111', 'password' => 'existing-password']);

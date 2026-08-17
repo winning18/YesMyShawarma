@@ -4,7 +4,7 @@
 @endphp
 
 <div>
-    <x-input-label for="name" :value="__('Name')" />
+    <x-input-label for="name" :value="__('Name')" required />
     <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="$value('name')" required autofocus />
     <x-input-error class="mt-2" :messages="$errors->get('name')" />
 </div>
@@ -18,7 +18,7 @@
 
 @isset($category)
     <div>
-        <x-input-label for="slug" :value="__('Slug')" />
+        <x-input-label for="slug" :value="__('Slug')" required />
         <x-text-input id="slug" name="slug" type="text" class="mt-1 block w-full" :value="$value('slug')" required />
         <x-input-error class="mt-2" :messages="$errors->get('slug')" />
     </div>

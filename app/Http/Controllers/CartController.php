@@ -50,7 +50,7 @@ class CartController extends Controller
             $validated['option_ids'] ?? [],
         );
 
-        return back()->with('status', 'Added to cart.');
+        return back()->with('added_to_cart', true);
     }
 
     public function updateQuantity(Request $request, string $line, CartService $cart): RedirectResponse

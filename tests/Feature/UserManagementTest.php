@@ -5,9 +5,8 @@ namespace Tests\Feature;
 use App\Models\Branch;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
-use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -50,12 +49,21 @@ class UserManagementTest extends TestCase
         $this->actingAs($owner)->get(route('dashboard.users.index'))->assertOk();
     }
 
-    public function test_manager_cannot_view_the_users_index(): void
+    public function test_manager_can_view_the_users_index_but_not_create_users(): void
     {
+        // A manager is here for exactly one thing — transferring a
+        // staff/rider's branch (users.transfer_branch) — not the full
+        // create/delete/role-management surface users.manage grants.
         $manager = User::factory()->create();
         $this->assignRoleAt($manager, 'manager', $this->branch);
 
-        $this->actingAs($manager)->get(route('dashboard.users.index'))->assertForbidden();
+        $this->actingAs($manager)->get(route('dashboard.users.index'))
+            ->assertOk()
+            ->assertDontSee(route('dashboard.users.create'));
+
+        $this->actingAs($manager)->post(route('dashboard.users.store'), [
+            'name' => 'Someone New', 'email' => 'someone@example.com', 'role' => 'staff', 'branch_id' => $this->branch->id,
+        ])->assertForbidden();
     }
 
     public function test_staff_cannot_view_the_users_index(): void
@@ -66,9 +74,8 @@ class UserManagementTest extends TestCase
         $this->actingAs($staff)->get(route('dashboard.users.index'))->assertForbidden();
     }
 
-    public function test_owner_can_create_a_user_with_a_role_and_is_sent_a_reset_link(): void
+    public function test_owner_can_create_a_user_with_a_role_and_gets_a_one_time_password(): void
     {
-        Notification::fake();
         $owner = $this->makeOwner();
 
         $response = $this->actingAs($owner)->post(route('dashboard.users.store'), [
@@ -85,11 +92,14 @@ class UserManagementTest extends TestCase
         $response->assertRedirect(route('dashboard.users.edit', $newUser));
         $this->assertSame('+233241234567', $newUser->phone);
         $this->assertNotNull($newUser->email_verified_at);
+        $this->assertTrue($newUser->must_change_password);
 
         app(PermissionRegistrar::class)->setPermissionsTeamId($this->branch->id);
         $this->assertTrue($newUser->hasRole('rider'));
 
-        Notification::assertSentTo($newUser, ResetPassword::class);
+        $temporaryPassword = $response->getSession()->get('temporary_password');
+        $this->assertNotNull($temporaryPassword);
+        $this->assertTrue(Hash::check($temporaryPassword, $newUser->password));
     }
 
     public function test_duplicate_email_is_rejected(): void
@@ -166,5 +176,94 @@ class UserManagementTest extends TestCase
 
         app(PermissionRegistrar::class)->setPermissionsTeamId($this->branch->id);
         $this->assertFalse($otherOwner->fresh()->hasRole('owner'));
+    }
+
+    public function test_owner_can_delete_a_user(): void
+    {
+        $owner = $this->makeOwner();
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+
+        $this->actingAs($owner)->delete(route('dashboard.users.destroy', $staff))
+            ->assertRedirect(route('dashboard.users.index'));
+
+        $this->assertSoftDeleted('users', ['id' => $staff->id]);
+    }
+
+    public function test_deleting_a_user_scrubs_their_pii(): void
+    {
+        $owner = $this->makeOwner();
+        $staff = User::factory()->create([
+            'name' => 'Kojo Staff', 'email' => 'kojo@example.com', 'phone' => '+233241234567',
+        ]);
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+
+        $this->actingAs($owner)->delete(route('dashboard.users.destroy', $staff));
+
+        $trashed = $staff->fresh();
+        $this->assertNotSame('Kojo Staff', $trashed->name);
+        $this->assertNotSame('kojo@example.com', $trashed->email);
+        $this->assertNull($trashed->phone);
+    }
+
+    public function test_a_deleted_users_email_and_phone_can_be_reused_on_a_new_account(): void
+    {
+        $owner = $this->makeOwner();
+        $staff = User::factory()->create(['email' => 'kojo@example.com', 'phone' => '+233241234567']);
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+
+        $this->actingAs($owner)->delete(route('dashboard.users.destroy', $staff));
+
+        $this->actingAs($owner)->post(route('dashboard.users.store'), [
+            'name' => 'New Kojo',
+            'email' => 'kojo@example.com',
+            'phone' => '0241234567',
+            'role' => 'staff',
+            'branch_id' => $this->branch->id,
+        ])->assertSessionHasNoErrors()->assertRedirect();
+
+        $this->assertDatabaseHas('users', ['email' => 'kojo@example.com', 'name' => 'New Kojo']);
+    }
+
+    public function test_deleted_user_no_longer_appears_in_the_index(): void
+    {
+        $owner = $this->makeOwner();
+        $staff = User::factory()->create(['name' => 'Kojo Staff']);
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+
+        $this->actingAs($owner)->delete(route('dashboard.users.destroy', $staff));
+
+        // The delete redirect's own flash message names the deleted user
+        // ("Kojo Staff has been deleted.") — that flash only survives one
+        // request, so a second, unrelated request is the one that actually
+        // proves the list itself no longer renders them.
+        $this->actingAs($owner)->get(route('dashboard.users.index'));
+
+        $this->actingAs($owner)->get(route('dashboard.users.index'))
+            ->assertDontSee('Kojo Staff');
+    }
+
+    public function test_owner_cannot_delete_their_own_account(): void
+    {
+        $owner = $this->makeOwner();
+
+        $response = $this->actingAs($owner)->delete(route('dashboard.users.destroy', $owner));
+
+        $response->assertSessionHasErrors('user');
+        $this->assertNull($owner->fresh()->deleted_at);
+    }
+
+    public function test_manager_cannot_delete_a_user(): void
+    {
+        $manager = User::factory()->create();
+        $this->assignRoleAt($manager, 'manager', $this->branch);
+
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+
+        $this->actingAs($manager)->delete(route('dashboard.users.destroy', $staff))
+            ->assertForbidden();
+
+        $this->assertNull($staff->fresh()->deleted_at);
     }
 }

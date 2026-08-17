@@ -12,16 +12,27 @@ use App\Services\Delivery\DeliveryFeeCalculator;
 use App\Services\Menu\MenuPricingService;
 use App\Services\Orders\Data\PlaceOrderData;
 use App\Services\Promotions\PromotionService;
+use App\Services\Settings\SettingsService;
+use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class OrderCreationService
 {
+    /**
+     * Ambiguous characters (0/O, 1/I/L) excluded — same reasoning as
+     * UserManagementService's temporary-password alphabet: this gets read
+     * off a screen or a printed receipt and typed back in by hand (order
+     * lookup, tracking).
+     */
+    private const REFERENCE_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+
     public function __construct(
         private readonly CustomerService $customers,
         private readonly MenuPricingService $pricing,
         private readonly DeliveryFeeCalculator $feeCalculator,
         private readonly PromotionService $promotions,
+        private readonly SettingsService $settings,
     ) {}
 
     /**
@@ -48,9 +59,15 @@ class OrderCreationService
      *   section): $data->branchId is assumed already resolved by the
      *   caller. delivery_areas is just a named-area label for the rider now,
      *   not a routing or pricing mechanism.
-     * - branch opens_at/closes_at time-window: only the is_active /
-     *   is_accepting_orders flags are enforced; opening-hours enforcement
-     *   interacts with scheduled_for in a way that isn't specified yet.
+     * - branch_working_hours: outside opening hours does NOT block
+     *   placement — see WorkingHoursService::isOpenAt(). A closed branch
+     *   still takes the order (it lands in 'paid', same as any other order,
+     *   the existing "awaiting staff" state), it just isn't escalated
+     *   (EscalateUnacknowledgedOrders) while closed, and the caller is
+     *   expected to have already told the customer it'll be handled at the
+     *   next opening — see CheckoutController::show()/confirmation(). Only
+     *   is_active / is_accepting_orders (the manual kill switch) actually
+     *   blocks placement here.
      * - unavailable_until auto-restore: checked live off is_available as
      *   currently stored, not recomputed from unavailable_until here — the
      *   restore job itself is a separate scheduled-job deliverable.
@@ -103,8 +120,24 @@ class OrderCreationService
             $manuallySettled = in_array($data->paymentMethod, Order::MANUALLY_SETTLED_PAYMENT_METHODS, true);
             $initialStatus = $manuallySettled ? 'paid' : 'pending_payment';
 
+            // payment_status timing differs by method (payments.md):
+            // - cash collected in person (pickup) is reconciled the moment
+            //   staff takes it — the same instant the order is placed.
+            // - cash collected at the door (delivery) can't be reconciled
+            //   until the rider actually gets there — stays 'pending' until
+            //   OrderStateMachine's delivered transition confirms it.
+            // - momo is reconciled by transaction ID, not by when/how it's
+            //   collected — 'paid' immediately if staff entered one now,
+            //   'pending' if they skipped it (busy-hour flow; entered later
+            //   via PaymentConfirmationService::confirmMomo()).
+            $initialPaymentStatus = match (true) {
+                $data->paymentMethod === 'cash' && $data->fulfilmentType === 'pickup' => 'paid',
+                $data->paymentMethod === 'momo' && $data->paymentReference !== null => 'paid',
+                default => 'pending',
+            };
+
             $order = new Order([
-                'reference' => $this->generateReference(),
+                'reference' => $this->generateReference($data->channel),
                 'track_token' => Str::random(32),
                 'customer_id' => $customer->id,
                 'branch_id' => $branch->id,
@@ -115,7 +148,7 @@ class OrderCreationService
                 'promotion_id' => $promotion?->id,
                 'total' => $total,
                 'payment_method' => $data->paymentMethod,
-                'payment_status' => 'pending',
+                'payment_status' => $initialPaymentStatus,
                 'channel' => $data->channel,
                 'delivery_address_snapshot' => $addressSnapshot,
                 'instructions' => $data->instructions,
@@ -147,9 +180,11 @@ class OrderCreationService
             if ($manuallySettled) {
                 $order->payments()->create([
                     'provider' => $data->paymentMethod,
+                    'provider_reference' => $data->paymentMethod === 'momo' ? $data->paymentReference : null,
                     'amount' => $total,
                     'currency' => 'GHS',
-                    'status' => 'pending',
+                    'status' => $initialPaymentStatus,
+                    'verified_at' => $initialPaymentStatus === 'paid' ? now() : null,
                 ]);
             }
 
@@ -161,12 +196,12 @@ class OrderCreationService
                 'meta' => ['action' => 'placed'],
             ]);
 
-            // Deferred to the outermost transaction's commit — a queued
-            // broadcast job must never risk running before the order it
-            // refers to actually exists.
+            // SafeBroadcast::afterCommit, not a bare DB::afterCommit — see
+            // its own docblock for why a broadcast failure must never
+            // surface as a failure of order placement itself.
             $orderId = $order->id;
             $branchId = $order->branch_id;
-            DB::afterCommit(fn () => OrderPlaced::dispatch($orderId, $branchId));
+            SafeBroadcast::afterCommit(fn () => OrderPlaced::dispatch($orderId, $branchId));
 
             return $order->fresh(['items.options', 'events', 'payments']);
         });
@@ -226,10 +261,29 @@ class OrderCreationService
         ];
     }
 
-    private function generateReference(): string
+    /**
+     * $channel ('web'|'pos') picks which admin-editable prefix applies —
+     * see SettingsController. Defaults (YMGS-WEB / YMGS-POS) apply until
+     * an owner sets their own, so a fresh install works with no seeding
+     * required. The random suffix means a collision is astronomically
+     * unlikely at this business's order volume, but orders.reference is
+     * still a unique column — regenerating on the rare clash is cheap
+     * insurance against a placement failing outright over it.
+     */
+    private function generateReference(string $channel): string
     {
-        // Placeholder scheme — no numbering format is specified anywhere in
-        // the rules. Swap for whatever per-branch/daily sequence is wanted.
-        return 'ORD-'.now()->format('ymd').'-'.strtoupper(Str::random(6));
+        $prefix = $channel === 'pos'
+            ? $this->settings->get(SettingsService::ORDER_REFERENCE_PREFIX_POS, 'YMGS-POS')
+            : $this->settings->get(SettingsService::ORDER_REFERENCE_PREFIX_WEB, 'YMGS-WEB');
+
+        do {
+            $code = collect(range(1, 6))
+                ->map(fn () => self::REFERENCE_CODE_ALPHABET[random_int(0, strlen(self::REFERENCE_CODE_ALPHABET) - 1)])
+                ->implode('');
+
+            $reference = "{$prefix}-{$code}";
+        } while (Order::where('reference', $reference)->exists());
+
+        return $reference;
     }
 }

@@ -2,9 +2,11 @@
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">{{ __('Users') }}</h2>
-            <a href="{{ route('dashboard.users.create') }}" class="px-3 py-1.5 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-900">
-                {{ __('Add user') }}
-            </a>
+            @if ($canCreate)
+                <a href="{{ route('dashboard.users.create') }}" class="px-3 py-1.5 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-900">
+                    {{ __('Add user') }}
+                </a>
+            @endif
         </div>
     </x-slot>
 
@@ -23,7 +25,7 @@
                         <div class="mt-2 flex flex-wrap gap-2">
                             @forelse ($row['roles'] as $assignment)
                                 <span class="text-xs px-2 py-1 rounded-md bg-gray-100 text-gray-700">
-                                    {{ $assignment['role'] }}{{ $assignment['branch'] ? ' · '.$assignment['branch']->name : '' }}
+                                    {{ str($assignment['role'])->headline() }}{{ $assignment['branch'] ? ' · '.$assignment['branch']->name : '' }}
                                 </span>
                             @empty
                                 <span class="text-xs text-gray-400">{{ __('No roles assigned') }}</span>
