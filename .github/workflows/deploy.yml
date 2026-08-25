@@ -19,6 +19,22 @@ jobs:
       - name: Install Composer dependencies
         run: composer install --no-interaction --prefer-dist
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build frontend assets
+        run: npm run build
+
+      - name: Prepare .env for testing
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+
       - name: Run tests
         run: php artisan test
 
