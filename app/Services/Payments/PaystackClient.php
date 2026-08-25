@@ -46,6 +46,24 @@ class PaystackClient
     }
 
     /**
+     * Asks Paystack directly what actually happened to a transaction —
+     * server-to-server, authenticated with our own secret key, never fed
+     * by anything the client supplied. See payments.md's "narrow,
+     * deliberate exception" for why this exists alongside the webhook
+     * rather than instead of it.
+     *
+     * @return array<string, mixed>
+     */
+    public function verifyTransaction(string $reference): array
+    {
+        return Http::withToken($this->secretKey)
+            ->baseUrl($this->baseUrl)
+            ->get("/transaction/verify/{$reference}")
+            ->throw()
+            ->json();
+    }
+
+    /**
      * Paystack signs webhook bodies with HMAC-SHA512 over the raw payload
      * using the secret key (see payments.md: "Verify the signature on every
      * request before parsing the body"). hash_equals is timing-safe.

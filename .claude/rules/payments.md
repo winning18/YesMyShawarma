@@ -33,8 +33,10 @@ whatever string is stored here — a new value shows up as its own row with no c
 
 ## The webhook is the only source of truth
 
-**Never mark an order paid from a client-side callback or a redirect return.** Both are
-trivially forged and both fire before the money settles.
+**Never mark an order paid because of what a client-side callback or a redirect return says.**
+The query string Paystack appends to the callback URL (`?reference=...&trxref=...`) is
+trivially forged and fires before the money settles — never branch on it, never treat its
+presence as meaning anything.
 
 Flow:
 
@@ -42,7 +44,21 @@ Flow:
 2. Customer pays
 3. Paystack POSTs the webhook
 4. Verify the signature, then transition to `paid`
-5. The redirect page merely polls order status — it decides nothing
+5. The redirect page itself decides nothing from what's in the URL
+
+**Narrow, deliberate exception** — the redirect *landing* (not its query string) may trigger a
+fresh server-to-server call to Paystack's own `GET /transaction/verify/:reference`
+(`PaystackClient::verifyTransaction()`), authenticated with our secret key, to ask Paystack
+directly rather than assume the webhook already landed. This exists because webhook delivery
+isn't instant or 100% guaranteed, and a customer sitting on a blank "confirming..." page for a
+webhook that's delayed (or, rarely, lost) is a real cost. The distinction that keeps this
+inside the spirit of the rule above: **nothing about the redirect itself — not its arrival, not
+its query string — is ever trusted as proof.** Only Paystack's own authoritative response to
+our own outbound API call can. That response is fed through the exact same
+`PaystackPaymentService::confirmPayment()` method the webhook calls, under the same
+`payments`-row lock and the same idempotency check — whichever of the two (webhook or
+verify-on-return) gets there first does the real work; the other is a safe no-op. See
+`CheckoutController::paystackReturn()`.
 
 ## Webhook requirements
 

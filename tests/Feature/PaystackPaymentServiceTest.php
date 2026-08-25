@@ -6,6 +6,7 @@ use App\Exceptions\PaymentException;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Order;
+use App\Services\Payments\PaystackClient;
 use App\Services\Payments\PaystackPaymentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -127,5 +128,83 @@ class PaystackPaymentServiceTest extends TestCase
         $this->expectException(PaymentException::class);
 
         $this->service->initializeForOrder($order, 'https://example.test/callback');
+    }
+
+    public function test_verify_transaction_calls_the_expected_endpoint(): void
+    {
+        Http::fake([
+            'api.paystack.co/transaction/verify/*' => Http::response([
+                'status' => true,
+                'data' => ['status' => 'success', 'amount' => 7000, 'reference' => 'REF999'],
+            ], 200),
+        ]);
+
+        $result = app(PaystackClient::class)->verifyTransaction('REF999');
+
+        $this->assertSame('success', $result['data']['status']);
+
+        Http::assertSent(fn ($request) => $request->url() === 'https://api.paystack.co/transaction/verify/REF999'
+            && $request->method() === 'GET'
+        );
+    }
+
+    public function test_confirm_payment_transitions_the_order_to_paid(): void
+    {
+        $customer = Customer::create(['phone' => '+233241115555']);
+        $order = $this->makeOrder($customer);
+        $order->payments()->create([
+            'provider' => 'paystack', 'provider_reference' => 'REF-CONFIRM',
+            'amount' => 7000, 'currency' => 'GHS', 'status' => 'pending',
+        ]);
+
+        $this->service->confirmPayment('REF-CONFIRM', 7000, ['event' => 'charge.success']);
+
+        $order->refresh();
+        $this->assertSame('paid', $order->status);
+        $this->assertSame('paid', $order->payment_status);
+        $this->assertDatabaseHas('payments', ['provider_reference' => 'REF-CONFIRM', 'status' => 'paid']);
+    }
+
+    public function test_confirm_payment_is_idempotent_when_called_twice(): void
+    {
+        // The actual race-safety claim this whole feature rests on: the
+        // webhook and the return-from-Paystack verify path both call this
+        // exact method — whichever gets here first must do the real work,
+        // the other must be a provable no-op, not a second transition.
+        $customer = Customer::create(['phone' => '+233241116666']);
+        $order = $this->makeOrder($customer);
+        $order->payments()->create([
+            'provider' => 'paystack', 'provider_reference' => 'REF-TWICE',
+            'amount' => 7000, 'currency' => 'GHS', 'status' => 'pending',
+        ]);
+
+        $this->service->confirmPayment('REF-TWICE', 7000, ['source' => 'first']);
+        $this->service->confirmPayment('REF-TWICE', 7000, ['source' => 'second']);
+
+        $this->assertDatabaseCount('order_events', 1);
+        $this->assertDatabaseHas('payments', ['provider_reference' => 'REF-TWICE', 'status' => 'paid']);
+    }
+
+    public function test_confirm_payment_flags_an_amount_mismatch_without_transitioning(): void
+    {
+        $customer = Customer::create(['phone' => '+233241117777']);
+        $order = $this->makeOrder($customer);
+        $order->payments()->create([
+            'provider' => 'paystack', 'provider_reference' => 'REF-MISMATCH',
+            'amount' => 7000, 'currency' => 'GHS', 'status' => 'pending',
+        ]);
+
+        $this->service->confirmPayment('REF-MISMATCH', 100, ['event' => 'charge.success']);
+
+        $order->refresh();
+        $this->assertSame('pending_payment', $order->status);
+        $this->assertDatabaseHas('payments', ['provider_reference' => 'REF-MISMATCH', 'status' => 'amount_mismatch']);
+    }
+
+    public function test_confirm_payment_for_an_unknown_reference_does_not_crash(): void
+    {
+        $this->service->confirmPayment('DOES-NOT-EXIST', 7000, ['event' => 'charge.success']);
+
+        $this->assertTrue(true);
     }
 }

@@ -6,7 +6,7 @@ use App\Jobs\ProcessPaystackWebhook;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Order;
-use App\Services\Orders\OrderStateMachine;
+use App\Services\Payments\PaystackPaymentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -52,7 +52,7 @@ class ProcessPaystackWebhookTest extends TestCase
 
     private function handleWebhook(array $payload): void
     {
-        (new ProcessPaystackWebhook($payload))->handle(app(OrderStateMachine::class));
+        (new ProcessPaystackWebhook($payload))->handle(app(PaystackPaymentService::class));
     }
 
     public function test_successful_charge_transitions_order_to_paid(): void

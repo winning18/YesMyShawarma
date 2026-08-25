@@ -72,6 +72,8 @@ Route::middleware('track.visit')->group(function () {
     Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
     Route::post('/checkout/apply-promo', [CheckoutController::class, 'applyPromoCode'])->name('checkout.apply-promo');
     Route::get('/checkout/{order:track_token}/confirmation', [CheckoutController::class, 'confirmation'])->name('checkout.confirmation');
+    Route::get('/checkout/{order:track_token}/paystack-return', [CheckoutController::class, 'paystackReturn'])->name('checkout.paystack-return');
+    Route::get('/checkout/{order:track_token}/declined', [CheckoutController::class, 'declined'])->name('checkout.declined');
 
     Route::get('/track', [TrackingController::class, 'lookup'])->name('tracking.lookup');
     Route::post('/track/find', [TrackingController::class, 'find'])->name('tracking.find');

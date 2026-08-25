@@ -13,6 +13,7 @@ use App\Services\Orders\Data\DeliveryAddressData;
 use App\Services\Orders\Data\PlaceOrderData;
 use App\Services\Branches\WorkingHoursService;
 use App\Services\Orders\OrderCreationService;
+use App\Services\Payments\PaystackClient;
 use App\Services\Payments\PaystackPaymentService;
 use App\Services\Promotions\PromotionService;
 use App\Services\Visitors\VisitorSessionService;
@@ -155,14 +156,11 @@ class CheckoutController extends Controller
         $cart->clear();
 
         if ($validated['payment_method'] === 'paystack') {
-            // "The redirect page merely polls order status — it decides
-            // nothing" (payments.md) — the tracking page already does
-            // exactly that, so it doubles as the Paystack callback target.
-            // The confirmation/thank-you page is cash-only: it states the
-            // order is placed, which is only true immediately for cash
-            // (paid at creation) — a Paystack order is still
-            // pending_payment until the webhook fires.
-            $result = $paystack->initializeForOrder($order, route('tracking.show', $order));
+            // paystackReturn() decides nothing from the redirect itself —
+            // it triggers a fresh server-to-server verify call and only
+            // acts on Paystack's own answer. See payments.md's "narrow,
+            // deliberate exception" and CheckoutController::paystackReturn().
+            $result = $paystack->initializeForOrder($order, route('checkout.paystack-return', $order));
 
             return redirect()->away($result['authorization_url']);
         }
@@ -211,8 +209,19 @@ class CheckoutController extends Controller
         ]);
     }
 
-    public function confirmation(Order $order, WorkingHoursService $workingHours): View
+    /**
+     * Guards against a Paystack order reaching this page before payment is
+     * actually confirmed — a direct URL, a bookmark, or the browser back
+     * button could all land here independent of paystackReturn() below.
+     * Cash orders are never pending_payment by the time this page exists
+     * for them, so this never affects that path.
+     */
+    public function confirmation(Order $order, WorkingHoursService $workingHours): View|RedirectResponse
     {
+        if ($order->payment_method === 'paystack' && $order->status === 'pending_payment') {
+            return redirect()->route('checkout.paystack-return', $order);
+        }
+
         $order->load(['items.options', 'items.menuItem', 'branch', 'customer']);
         $branchWasClosed = ! $workingHours->isOpenAt($order->branch, $order->placed_at);
 
@@ -221,5 +230,54 @@ class CheckoutController extends Controller
             'branchWasClosed' => $branchWasClosed,
             'nextOpeningLabel' => $branchWasClosed ? $workingHours->nextOpening($order->branch, $order->placed_at)?->format('l g:ia') : null,
         ]);
+    }
+
+    /**
+     * Where Paystack's callback_url points for every order this app
+     * initialises (see store() above). Decides nothing from the redirect
+     * itself — see payments.md's "narrow, deliberate exception" — only
+     * from Paystack's own answer to a fresh server-to-server verify call.
+     */
+    public function paystackReturn(Order $order, PaystackClient $client, PaystackPaymentService $paystack): RedirectResponse
+    {
+        if ($order->status !== 'pending_payment') {
+            // Already resolved — most likely the webhook won the race, the
+            // common case. Whatever it resolved to (paid, or something
+            // else entirely) is exactly what the confirmation-page guard
+            // above is for; no need to duplicate that logic here.
+            return redirect()->route('checkout.confirmation', $order);
+        }
+
+        $payment = $order->payments()->where('provider', 'paystack')->latest()->first();
+
+        if (! $payment) {
+            return redirect()->route('checkout.declined', $order);
+        }
+
+        $verification = $client->verifyTransaction($payment->provider_reference);
+        $status = $verification['data']['status'] ?? null;
+
+        if ($status === 'success') {
+            $paystack->confirmPayment(
+                $payment->provider_reference,
+                (int) ($verification['data']['amount'] ?? 0),
+                $verification,
+            );
+
+            return redirect()->route('checkout.confirmation', $order);
+        }
+
+        if (in_array($status, ['failed', 'abandoned'], true)) {
+            return redirect()->route('checkout.declined', $order);
+        }
+
+        // Still processing (rare) — the tracking page already handles an
+        // unresolved order honestly, with no claim either way.
+        return redirect()->route('tracking.show', $order);
+    }
+
+    public function declined(Order $order): View
+    {
+        return view('checkout.declined', ['order' => $order]);
     }
 }

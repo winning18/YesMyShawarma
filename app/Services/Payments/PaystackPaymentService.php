@@ -2,14 +2,22 @@
 
 namespace App\Services\Payments;
 
+use App\Exceptions\InvalidOrderTransitionException;
 use App\Exceptions\PaymentException;
 use App\Models\Customer;
 use App\Models\Order;
+use App\Models\Payment;
+use App\Services\Orders\OrderStateMachine;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class PaystackPaymentService
 {
-    public function __construct(private readonly PaystackClient $client) {}
+    public function __construct(
+        private readonly PaystackClient $client,
+        private readonly OrderStateMachine $stateMachine,
+    ) {}
 
     /**
      * Order creation (OrderCreationService) leaves `pending_payment` orders
@@ -59,6 +67,79 @@ class PaystackPaymentService
             'authorization_url' => $response['data']['authorization_url'],
             'reference' => $reference,
         ];
+    }
+
+    /**
+     * The single place a Paystack payment actually gets confirmed — called
+     * both by the webhook job (ProcessPaystackWebhook) and by
+     * CheckoutController::paystackReturn()'s narrow verify-on-return
+     * exception (payments.md: "The webhook is the only source of truth").
+     * Idempotent and lock-guarded so whichever of the two gets here first
+     * does the real work; the other is a safe no-op — never two
+     * implementations that could drift or race against each other.
+     *
+     * @param  array<string, mixed>  $rawPayload
+     */
+    public function confirmPayment(string $reference, int $amountReceived, array $rawPayload): void
+    {
+        $payment = Payment::where('provider', 'paystack')
+            ->where('provider_reference', $reference)
+            ->first();
+
+        if (! $payment) {
+            Log::error('Paystack confirmation for unknown payment reference', ['reference' => $reference]);
+
+            return;
+        }
+
+        DB::transaction(function () use ($payment, $amountReceived, $rawPayload) {
+            // Lock before the idempotency check, not after — see
+            // ProcessPaystackWebhook's original docblock for why: two
+            // concurrent confirmations for the same reference (a webhook
+            // retry racing the customer's own browser return, say) must
+            // never both read status !== 'paid' before either commits.
+            $payment = Payment::whereKey($payment->id)->lockForUpdate()->firstOrFail();
+
+            if ($payment->status === 'paid') {
+                return;
+            }
+
+            // Store the raw payload before acting on it, regardless of what
+            // happens next — per payments.md, it's the only record that
+            // matters if a dispute arrives later.
+            $payment->update(['raw_payload' => $rawPayload]);
+
+            $order = $payment->order;
+
+            if ($amountReceived !== $order->total) {
+                Log::critical('Paystack payment amount mismatch — order left in pending_payment', [
+                    'order_id' => $order->id,
+                    'payment_id' => $payment->id,
+                    'expected_total' => $order->total,
+                    'amount_received' => $amountReceived,
+                ]);
+
+                $payment->update(['status' => 'amount_mismatch']);
+
+                return;
+            }
+
+            $payment->update(['status' => 'paid', 'verified_at' => now()]);
+
+            try {
+                $this->stateMachine->transition($order, 'paid', 'system');
+            } catch (InvalidOrderTransitionException $e) {
+                Log::critical('Paystack payment could not transition order to paid', [
+                    'order_id' => $order->id,
+                    'current_status' => $order->status,
+                    'message' => $e->getMessage(),
+                ]);
+
+                return;
+            }
+
+            $order->update(['payment_status' => 'paid']);
+        });
     }
 
     /**
