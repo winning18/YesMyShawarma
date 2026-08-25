@@ -18,7 +18,10 @@ class DatabaseSeeder extends Seeder
         $this->call(BranchSeeder::class);
         $this->call(MenuSeeder::class);
         $this->call(DeliveryAreaSeeder::class);
+        $this->call(StaffSeeder::class);
         $this->call(RiderSeeder::class);
+        $this->call(ManagerSeeder::class);
+        $this->call(GeneralManagerSeeder::class);
         $this->call(OwnerSeeder::class);
     }
 }
