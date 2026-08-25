@@ -70,6 +70,66 @@ class CustomerPagesTest extends TestCase
         $this->get(route('home'))->assertSee('Wrapped fresh, packed with flavour.');
     }
 
+    public function test_home_page_marquee_links_to_an_available_item_when_a_branch_is_selected(): void
+    {
+        $category = Category::create(['name' => 'Shawarma', 'slug' => 'shawarma']);
+        $item = MenuItem::create([
+            'category_id' => $category->id, 'name' => 'Chicken Shawarma', 'slug' => 'chicken-shawarma',
+            'base_price' => 3500, 'sort_order' => 1,
+        ]);
+        $this->branch->menuItems()->attach($item->id, ['is_available' => true]);
+
+        $response = $this->withSession(['customer_branch_id' => $this->branch->id])->get(route('home'));
+
+        $response->assertOk();
+        $response->assertSee(route('menu.show', $item), false);
+        $response->assertDontSee('Sold out');
+    }
+
+    // Regression: the marquee used to link every globally-active item
+    // straight to its product page regardless of branch availability —
+    // clicking a sold-out item 404'd on a live server, since
+    // MenuController@show 404s on anything not available at the
+    // customer's selected branch. It must stay visible (grayed out, no
+    // link) instead of producing a dead link.
+    public function test_home_page_marquee_grays_out_an_item_unavailable_at_the_selected_branch(): void
+    {
+        $category = Category::create(['name' => 'Shawarma', 'slug' => 'shawarma']);
+        $item = MenuItem::create([
+            'category_id' => $category->id, 'name' => 'Chicken Shawarma', 'slug' => 'chicken-shawarma',
+            'base_price' => 3500, 'sort_order' => 1,
+        ]);
+        $this->branch->menuItems()->attach($item->id, ['is_available' => false]);
+
+        $response = $this->withSession(['customer_branch_id' => $this->branch->id])->get(route('home'));
+
+        $response->assertOk();
+        $response->assertSee('Chicken Shawarma');
+        $response->assertSee('Sold out');
+        $response->assertDontSee(route('menu.show', $item), false);
+    }
+
+    public function test_home_page_marquee_shows_items_as_available_when_no_branch_is_selected_yet(): void
+    {
+        // No branch chosen yet — availability is inherently unknown
+        // (branch_menu_item is per-branch), so every globally-active item
+        // still shows a working link; MenuController@show's own
+        // resolveBranch sends the visitor to pick a branch first rather
+        // than 404ing.
+        $category = Category::create(['name' => 'Shawarma', 'slug' => 'shawarma']);
+        $item = MenuItem::create([
+            'category_id' => $category->id, 'name' => 'Chicken Shawarma', 'slug' => 'chicken-shawarma',
+            'base_price' => 3500, 'sort_order' => 1,
+        ]);
+        $this->branch->menuItems()->attach($item->id, ['is_available' => false]);
+
+        $response = $this->get(route('home'));
+
+        $response->assertOk();
+        $response->assertSee(route('menu.show', $item), false);
+        $response->assertDontSee('Sold out');
+    }
+
     public function test_branches_page_renders(): void
     {
         $this->get(route('branches.index'))->assertOk()->assertSee('Ga Odumase');

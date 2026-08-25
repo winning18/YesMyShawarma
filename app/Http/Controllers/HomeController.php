@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
 use App\Models\Category;
 use App\Models\MenuItem;
+use App\Services\Customers\CustomerBranchSelection;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
@@ -24,7 +26,7 @@ class HomeController extends Controller
         ['title' => 'Drinks', 'slugs' => ['drinks'], 'direction' => 'right'],
     ];
 
-    public function index(): View
+    public function index(CustomerBranchSelection $selection): View
     {
         // Every category is hero-slide-eligible (Hero Slider dashboard
         // page), but only ones staff actually gave a photo appear on the
@@ -43,23 +45,33 @@ class HomeController extends Controller
 
         return view('home', [
             'heroSlides' => $heroSlides,
-            'menuSliders' => $this->menuSliders(),
+            'menuSliders' => $this->menuSliders($selection->current()),
         ]);
     }
 
-    private function menuSliders(): Collection
+    private function menuSliders(?Branch $branch): Collection
     {
         return collect(self::MENU_SLIDERS)
             ->map(fn (array $slider) => [
                 'title' => $slider['title'],
                 'direction' => $slider['direction'],
-                'items' => $this->itemsForSlugs($slider['slugs']),
+                'items' => $this->itemsForSlugs($slider['slugs'], $branch),
             ])
             ->filter(fn (array $slider) => $slider['items']->isNotEmpty())
             ->values();
     }
 
-    private function itemsForSlugs(array $slugs): Collection
+    /**
+     * Items stay on the marquee even when sold out — see
+     * home.blade.php's gray-out treatment — only $item->is_active (a
+     * permanent removal, not a stock state) drops an item entirely.
+     * Availability is branch_menu_item's pivot (schema.md), so it can
+     * only be known once a branch is selected (MenuController's own
+     * resolveBranch pattern); with none selected yet every active item is
+     * treated as available, matching menu.show's own redirect-to-branch
+     * behaviour for that case.
+     */
+    private function itemsForSlugs(array $slugs, ?Branch $branch): Collection
     {
         $categoryIds = Category::whereIn('slug', $slugs)->pluck('id');
 
@@ -67,9 +79,20 @@ class HomeController extends Controller
             return collect();
         }
 
-        return MenuItem::whereIn('category_id', $categoryIds)
+        $items = MenuItem::whereIn('category_id', $categoryIds)
             ->where('is_active', true)
             ->orderBy('sort_order')
             ->get();
+
+        $availableIds = $branch
+            ? $branch->menuItems()
+                ->whereIn('menu_items.id', $items->pluck('id'))
+                ->wherePivot('is_available', true)
+                ->pluck('menu_items.id')
+            : $items->pluck('id');
+
+        return $items->each(
+            fn (MenuItem $item) => $item->isAvailable = $availableIds->contains($item->id)
+        );
     }
 }

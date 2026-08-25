@@ -136,6 +136,13 @@
             selection first if the visitor hasn't chosen one yet
             (MenuController@show) — clicking a specific item can't skip
             that step since price/availability are branch-scoped.
+
+            A sold-out item ($item->isAvailable false — set in
+            HomeController@itemsForSlugs from the selected branch's
+            branch_menu_item pivot) stays visible but grayed out and
+            unlinked instead: clicking through would otherwise 404, since
+            MenuController@show 404s on an item that isn't available at
+            the customer's selected branch.
         --}}
         @foreach ($menuSliders as $slider)
             <section class="mb-12">
@@ -143,11 +150,24 @@
                 <div class="overflow-hidden">
                     <div class="flex gap-4 w-max {{ $slider['direction'] === 'left' ? 'marquee-track-left' : 'marquee-track' }}">
                         @foreach ($slider['items']->concat($slider['items']) as $item)
-                            <a href="{{ route('menu.show', $item) }}" class="block w-40 shrink-0 group">
-                                <x-product-image :item="$item" class="w-40 h-40 mb-2 rounded-lg group-hover:opacity-90 transition" />
-                                <p class="text-sm font-semibold truncate text-brand-white">{{ $item->name }}</p>
-                                <p class="text-sm text-brand-gray-300">GH₵{{ number_format($item->base_price / 100, 2) }}</p>
-                            </a>
+                            @if ($item->isAvailable)
+                                <a href="{{ route('menu.show', $item) }}" class="block w-40 shrink-0 group">
+                                    <x-product-image :item="$item" class="w-40 h-40 mb-2 rounded-lg group-hover:opacity-90 transition" />
+                                    <p class="text-sm font-semibold truncate text-brand-white">{{ $item->name }}</p>
+                                    <p class="text-sm text-brand-gray-300">GH₵{{ number_format($item->base_price / 100, 2) }}</p>
+                                </a>
+                            @else
+                                <div class="block w-40 shrink-0 relative" aria-disabled="true">
+                                    <div class="relative">
+                                        <x-product-image :item="$item" class="w-40 h-40 mb-2 rounded-lg opacity-40 grayscale" />
+                                        <span class="absolute top-2 left-2 bg-brand-black/80 text-brand-white text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded">
+                                            {{ __('Sold out') }}
+                                        </span>
+                                    </div>
+                                    <p class="text-sm font-semibold truncate text-brand-gray-400">{{ $item->name }}</p>
+                                    <p class="text-sm text-brand-gray-500">GH₵{{ number_format($item->base_price / 100, 2) }}</p>
+                                </div>
+                            @endif
                         @endforeach
                     </div>
                 </div>
