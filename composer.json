@@ -13,6 +13,7 @@
         "laravel/sanctum": "^4.3",
         "laravel/tinker": "^3.0",
         "phpoffice/phpspreadsheet": "^5.0",
+        "resend/resend-php": "^1.10",
         "spatie/laravel-permission": "^8.3"
     },
     "require-dev": {
