@@ -27,7 +27,7 @@ class PaystackReturnTest extends TestCase
 
     private function makeOrder(string $status = 'pending_payment'): Order
     {
-        $customer = Customer::create(['phone' => '+233241111111']);
+        $customer = Customer::create(['phone' => '+2332'.random_int(10000000, 99999999)]);
 
         $order = Order::create([
             'reference' => 'ORD-'.uniqid(),
@@ -166,5 +166,49 @@ class PaystackReturnTest extends TestCase
         $this->get(route('checkout.confirmation', $order))
             ->assertOk()
             ->assertSee($order->reference);
+    }
+
+    // Regression: an earlier version of this guard only checked
+    // `!== 'pending_payment'`, so an abandoned order (never paid) fell
+    // through as "resolved" and rendered the confirmed "Thank you!" page —
+    // caught live against production before anyone else could hit it.
+    public function test_an_abandoned_order_never_shows_the_confirmed_page(): void
+    {
+        $order = $this->makeOrder('abandoned');
+
+        $this->get(route('checkout.confirmation', $order))
+            ->assertRedirect(route('checkout.paystack-return', $order));
+
+        $this->get(route('checkout.paystack-return', $order))
+            ->assertRedirect(route('checkout.declined', $order));
+    }
+
+    public function test_a_status_only_reachable_from_paid_goes_to_tracking_not_declined_or_confirmation(): void
+    {
+        // rejected/cancelled/failed/refunded all imply payment DID succeed
+        // (orders.md's TRANSITIONS graph) — declined's "you were not
+        // charged" would be factually wrong, and confirmation's "thank
+        // you" would misrepresent an order that didn't go through. Only
+        // the tracking page tells this story correctly.
+        foreach (['rejected', 'cancelled', 'failed', 'refunded'] as $status) {
+            $order = $this->makeOrder($status);
+
+            $this->get(route('checkout.paystack-return', $order))
+                ->assertRedirect(route('tracking.show', $order));
+
+            $this->get(route('checkout.confirmation', $order))
+                ->assertRedirect(route('checkout.paystack-return', $order));
+        }
+    }
+
+    public function test_confirmed_downstream_statuses_all_render_the_confirmation_page(): void
+    {
+        foreach (['paid', 'accepted', 'preparing', 'ready', 'dispatched', 'delivered'] as $status) {
+            $order = $this->makeOrder($status);
+
+            $this->get(route('checkout.confirmation', $order))
+                ->assertOk()
+                ->assertSee($order->reference);
+        }
     }
 }

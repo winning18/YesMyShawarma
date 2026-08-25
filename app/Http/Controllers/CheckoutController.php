@@ -210,15 +210,29 @@ class CheckoutController extends Controller
     }
 
     /**
+     * Statuses that mean a Paystack order was genuinely, successfully paid
+     * — 'paid' itself, plus everything downstream of it in the state
+     * machine (orders.md's TRANSITIONS graph). Deliberately NOT just
+     * "!== pending_payment": 'abandoned' isn't paid either, and
+     * 'rejected'/'cancelled'/'failed'/'refunded' are all only reachable
+     * FROM 'paid' (money was captured, something happened afterward) —
+     * lumping either group in with "confirmed" would be a real false
+     * positive, exactly what this whole flow exists to prevent.
+     *
+     * @var list<string>
+     */
+    private const PAYSTACK_CONFIRMED_STATUSES = ['paid', 'accepted', 'preparing', 'ready', 'dispatched', 'delivered'];
+
+    /**
      * Guards against a Paystack order reaching this page before payment is
      * actually confirmed — a direct URL, a bookmark, or the browser back
      * button could all land here independent of paystackReturn() below.
-     * Cash orders are never pending_payment by the time this page exists
-     * for them, so this never affects that path.
+     * Cash orders are never anything but a confirmed status by the time
+     * this page exists for them, so this never affects that path.
      */
     public function confirmation(Order $order, WorkingHoursService $workingHours): View|RedirectResponse
     {
-        if ($order->payment_method === 'paystack' && $order->status === 'pending_payment') {
+        if ($order->payment_method === 'paystack' && ! in_array($order->status, self::PAYSTACK_CONFIRMED_STATUSES, true)) {
             return redirect()->route('checkout.paystack-return', $order);
         }
 
@@ -240,39 +254,54 @@ class CheckoutController extends Controller
      */
     public function paystackReturn(Order $order, PaystackClient $client, PaystackPaymentService $paystack): RedirectResponse
     {
-        if ($order->status !== 'pending_payment') {
-            // Already resolved — most likely the webhook won the race, the
-            // common case. Whatever it resolved to (paid, or something
-            // else entirely) is exactly what the confirmation-page guard
-            // above is for; no need to duplicate that logic here.
+        if (in_array($order->status, self::PAYSTACK_CONFIRMED_STATUSES, true)) {
+            // Already resolved paid — most likely the webhook won the race,
+            // the common case.
             return redirect()->route('checkout.confirmation', $order);
         }
 
-        $payment = $order->payments()->where('provider', 'paystack')->latest()->first();
+        if ($order->status === 'pending_payment') {
+            $payment = $order->payments()->where('provider', 'paystack')->latest()->first();
 
-        if (! $payment) {
+            if (! $payment) {
+                return redirect()->route('checkout.declined', $order);
+            }
+
+            $verification = $client->verifyTransaction($payment->provider_reference);
+            $status = $verification['data']['status'] ?? null;
+
+            if ($status === 'success') {
+                $paystack->confirmPayment(
+                    $payment->provider_reference,
+                    (int) ($verification['data']['amount'] ?? 0),
+                    $verification,
+                );
+
+                return redirect()->route('checkout.confirmation', $order);
+            }
+
+            if (in_array($status, ['failed', 'abandoned'], true)) {
+                return redirect()->route('checkout.declined', $order);
+            }
+
+            // Still processing (rare) — the tracking page already handles
+            // an unresolved order honestly, with no claim either way.
+            return redirect()->route('tracking.show', $order);
+        }
+
+        if ($order->status === 'abandoned') {
+            // The 30-minute scheduled job (orders.md) beat the customer
+            // back here — payment genuinely never happened in time.
             return redirect()->route('checkout.declined', $order);
         }
 
-        $verification = $client->verifyTransaction($payment->provider_reference);
-        $status = $verification['data']['status'] ?? null;
-
-        if ($status === 'success') {
-            $paystack->confirmPayment(
-                $payment->provider_reference,
-                (int) ($verification['data']['amount'] ?? 0),
-                $verification,
-            );
-
-            return redirect()->route('checkout.confirmation', $order);
-        }
-
-        if (in_array($status, ['failed', 'abandoned'], true)) {
-            return redirect()->route('checkout.declined', $order);
-        }
-
-        // Still processing (rare) — the tracking page already handles an
-        // unresolved order honestly, with no claim either way.
+        // rejected / cancelled / failed / refunded — every one of these is
+        // only reachable FROM 'paid' (orders.md's TRANSITIONS graph), so
+        // payment did succeed; this was never a declined-payment situation,
+        // something happened to the order afterward. The tracking page
+        // already tells that story correctly — the declined page (whose
+        // whole message is "you were not charged") would be actively wrong
+        // here, and confirmation's cheerful "thank you" would be too.
         return redirect()->route('tracking.show', $order);
     }
 
