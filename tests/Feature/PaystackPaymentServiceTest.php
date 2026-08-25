@@ -100,7 +100,7 @@ class PaystackPaymentServiceTest extends TestCase
 
         $this->service->initializeForOrder($order, 'https://example.test/callback');
 
-        Http::assertSent(fn ($request) => str_ends_with($request['email'], '@guests.yesmyshawarma.invalid'));
+        Http::assertSent(fn ($request) => str_ends_with($request['email'], '@guests.yesmyshawarma.com'));
     }
 
     public function test_rejects_a_cash_order(): void

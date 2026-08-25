@@ -64,11 +64,21 @@ class PaystackPaymentService
     /**
      * Paystack's initialize endpoint requires an email; customers here are
      * phone-first and email is optional (CLAUDE.md's identity model). This
-     * placeholder only satisfies that API contract — .invalid is the
-     * RFC 2606 reserved TLD for addresses that must never resolve.
+     * placeholder only satisfies that API contract.
+     *
+     * Was originally "@guests.yesmyshawarma.invalid" — RFC 2606's reserved
+     * TLD for addresses that must never resolve, the semantically correct
+     * choice on paper. Confirmed live against Paystack (test keys, real
+     * API call, not a guess): they reject it outright with "Invalid Email
+     * Address Passed", 400. Paystack validates the TLD is a real one, not
+     * just the address shape — a subdomain of a domain we actually own
+     * satisfies that without needing a real mailbox behind it. Any receipt
+     * Paystack sends here bounces silently, which is fine: nothing in this
+     * app depends on that email arriving, order confirmation is our own
+     * SMS/tracking-page flow regardless of payment method.
      */
     private function placeholderEmail(Customer $customer): string
     {
-        return "customer-{$customer->id}@guests.yesmyshawarma.invalid";
+        return "customer-{$customer->id}@guests.yesmyshawarma.com";
     }
 }
