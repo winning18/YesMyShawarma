@@ -23,6 +23,7 @@ class ContactFormTest extends TestCase
 
         Mail::assertSent(ContactMessageSubmitted::class, fn ($mail) => $mail->hasTo('yesmyshawarma@gmail.com')
             && $mail->hasTo('yesmygrill@gmail.com')
+            && $mail->hasTo('info@yesmyshawarma.com')
             && $mail->name === 'Ama'
             && $mail->email === 'ama@example.com'
         );

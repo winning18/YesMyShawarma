@@ -8,16 +8,14 @@ use Illuminate\Support\Facades\Mail;
 class ContactMessageService
 {
     /**
-     * Business inboxes that receive every contact form submission. Mail is
-     * unconfigured in this environment (MAIL_MAILER=log) — same deferred
-     * pattern as the SMS Notifier contract, real sending starts working the
-     * moment SMTP credentials are set without any code change here.
+     * Business inboxes that receive every contact form submission.
      *
      * @var list<string>
      */
     private const RECIPIENTS = [
         'yesmyshawarma@gmail.com',
         'yesmygrill@gmail.com',
+        'info@yesmyshawarma.com',
     ];
 
     public function send(string $name, ?string $email, ?string $phone, string $message): void
