@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Branch;
+use App\Models\StaffMember;
 use Illuminate\View\View;
 
 class AboutController extends Controller
@@ -17,6 +18,7 @@ class AboutController extends Controller
             'branchCount' => Branch::count(),
             'yearsOfOperation' => now()->year - self::FOUNDING_YEAR,
             'customerCountLabel' => self::CUSTOMER_COUNT_LABEL,
+            'staffMembers' => StaffMember::where('is_active', true)->orderBy('sort_order')->orderBy('name')->get(),
         ]);
     }
 }

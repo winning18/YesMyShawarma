@@ -3,10 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\Branch;
+use App\Models\BranchWorkingHour;
 use App\Models\Category;
 use App\Models\MenuItem;
 use App\Models\OptionGroup;
+use App\Models\StaffMember;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class CustomerPagesTest extends TestCase
@@ -25,9 +28,46 @@ class CustomerPagesTest extends TestCase
         ]);
     }
 
-    public function test_home_page_renders_with_branches(): void
+    protected function tearDown(): void
     {
-        $this->get(route('home'))->assertOk()->assertSee('Ga Odumase');
+        Carbon::setTestNow();
+        parent::tearDown();
+    }
+
+    public function test_home_page_renders(): void
+    {
+        $this->get(route('home'))->assertOk();
+    }
+
+    public function test_home_page_hero_only_shows_categories_with_an_uploaded_photo(): void
+    {
+        Category::create(['name' => 'Shawarma', 'slug' => 'shawarma', 'hero_image_path' => 'category-hero/1.jpg']);
+        Category::create(['name' => 'Salads', 'slug' => 'salads']);
+
+        $response = $this->get(route('home'));
+
+        $response->assertSee('Shawarma');
+        $response->assertDontSee('Salads');
+    }
+
+    public function test_home_page_hero_excludes_inactive_categories(): void
+    {
+        Category::create([
+            'name' => 'Discontinued Wraps', 'slug' => 'discontinued-wraps',
+            'hero_image_path' => 'category-hero/1.jpg', 'is_active' => false,
+        ]);
+
+        $this->get(route('home'))->assertDontSee('Discontinued Wraps');
+    }
+
+    public function test_home_page_hero_shows_the_categorys_tagline(): void
+    {
+        Category::create([
+            'name' => 'Shawarma', 'slug' => 'shawarma', 'hero_image_path' => 'category-hero/1.jpg',
+            'tagline' => 'Wrapped fresh, packed with flavour.',
+        ]);
+
+        $this->get(route('home'))->assertSee('Wrapped fresh, packed with flavour.');
     }
 
     public function test_branches_page_renders(): void
@@ -35,14 +75,112 @@ class CustomerPagesTest extends TestCase
         $this->get(route('branches.index'))->assertOk()->assertSee('Ga Odumase');
     }
 
+    public function test_branches_page_shows_accepting_orders_when_open(): void
+    {
+        Carbon::setTestNow(Carbon::now('Africa/Accra')->next(Carbon::MONDAY)->setTime(15, 0));
+        BranchWorkingHour::create(['branch_id' => $this->branch->id, 'day_of_week' => 1, 'opens_at' => '10:00', 'closes_at' => '22:00']);
+
+        $this->get(route('branches.index'))
+            ->assertOk()
+            ->assertSee('Accepting orders')
+            ->assertDontSee('Closed — opens');
+    }
+
+    public function test_branches_page_shows_closed_with_opening_time_when_outside_working_hours(): void
+    {
+        Carbon::setTestNow(Carbon::now('Africa/Accra')->next(Carbon::MONDAY)->setTime(8, 0));
+        BranchWorkingHour::create(['branch_id' => $this->branch->id, 'day_of_week' => 1, 'opens_at' => '10:00', 'closes_at' => '22:00']);
+
+        $this->get(route('branches.index'))
+            ->assertOk()
+            ->assertSee('Closed — opens Monday 10:00am')
+            ->assertDontSee('Accepting orders');
+    }
+
+    public function test_branches_page_shows_paused_regardless_of_working_hours(): void
+    {
+        Carbon::setTestNow(Carbon::now('Africa/Accra')->next(Carbon::MONDAY)->setTime(15, 0));
+        BranchWorkingHour::create(['branch_id' => $this->branch->id, 'day_of_week' => 1, 'opens_at' => '10:00', 'closes_at' => '22:00']);
+        $this->branch->update(['is_accepting_orders' => false]);
+
+        $this->get(route('branches.index'))
+            ->assertOk()
+            ->assertSee('Not accepting orders right now')
+            ->assertDontSee('Accepting orders')
+            ->assertDontSee('Closed — opens');
+    }
+
+    public function test_the_currently_selected_branch_is_highlighted_on_the_branches_page(): void
+    {
+        $otherBranch = Branch::create([
+            'name' => 'Pokuase', 'slug' => 'pokuase', 'phone' => '+233200000002', 'address' => 'Pokuase, Accra',
+            'lat' => 5.7, 'lng' => -0.29, 'opens_at' => '19:00', 'closes_at' => '00:00',
+        ]);
+
+        // this->branch ("Ga Odumase") is selected, not the other branch —
+        // assert the badge sits between the two branch cards in the
+        // rendered HTML, i.e. attached to Ga Odumase's card specifically
+        // rather than merely present somewhere on the page. Positions are
+        // measured from the start of the card grid, not the whole page —
+        // the search bar above it embeds every branch's name/address
+        // up front (client-side search index, same pattern as the menu
+        // page), which would otherwise make the other branch's name look
+        // like it precedes the badge even though its actual card doesn't.
+        $this->get(route('branches.pick', $this->branch));
+
+        $content = $this->get(route('branches.index'))->assertOk()->getContent();
+        $gridStart = strpos($content, 'grid grid-cols-1 md:grid-cols-2');
+
+        $selectedNamePos = strpos($content, $this->branch->name, $gridStart);
+        $badgePos = strpos($content, 'Currently selected', $gridStart);
+        $otherNamePos = strpos($content, $otherBranch->name, $gridStart);
+
+        $this->assertNotFalse($badgePos, 'Expected the "Currently selected" badge to be present.');
+        $this->assertGreaterThan($selectedNamePos, $badgePos, 'Expected the badge to render after the selected branch\'s name.');
+        $this->assertLessThan($otherNamePos, $badgePos, 'Expected the badge to render before the other, unselected branch\'s section.');
+    }
+
     public function test_contact_page_renders(): void
     {
         $this->get(route('contact'))->assertOk()->assertSee('+233 (0) 243 635 265');
     }
 
+    public function test_contact_page_shows_closed_with_opening_time_when_outside_working_hours(): void
+    {
+        Carbon::setTestNow(Carbon::now('Africa/Accra')->next(Carbon::MONDAY)->setTime(8, 0));
+        BranchWorkingHour::create(['branch_id' => $this->branch->id, 'day_of_week' => 1, 'opens_at' => '10:00', 'closes_at' => '22:00']);
+
+        $this->get(route('contact'))
+            ->assertOk()
+            ->assertSee('Closed — opens Monday 10:00am')
+            ->assertDontSee('Accepting orders');
+    }
+
     public function test_about_page_renders(): void
     {
         $this->get(route('about'))->assertOk();
+    }
+
+    public function test_about_page_hides_meet_our_staff_when_no_staff_members_exist(): void
+    {
+        $this->get(route('about'))->assertOk()->assertDontSee('Meet our staff');
+    }
+
+    public function test_about_page_shows_active_staff_members_in_sort_order(): void
+    {
+        StaffMember::create(['name' => 'Zoe Mensah', 'title' => 'Rider', 'sort_order' => 2, 'is_active' => true]);
+        StaffMember::create(['name' => 'Ama Owusu', 'title' => 'Branch Manager', 'sort_order' => 1, 'is_active' => true]);
+        StaffMember::create(['name' => 'Kojo Boateng', 'title' => 'Retired', 'sort_order' => 0, 'is_active' => false]);
+
+        $content = $this->get(route('about'))->assertOk()
+            ->assertSee('Meet our staff')
+            ->assertSee('Ama Owusu')
+            ->assertSee('Branch Manager')
+            ->assertSee('Zoe Mensah')
+            ->assertDontSee('Kojo Boateng')
+            ->getContent();
+
+        $this->assertLessThan(strpos($content, 'Zoe Mensah'), strpos($content, 'Ama Owusu'));
     }
 
     public function test_selecting_a_branch_then_visiting_menu_shows_its_items(): void
@@ -108,6 +246,78 @@ class CustomerPagesTest extends TestCase
         $this->branch->update(['is_active' => false]);
 
         $this->get(route('menu.index'))->assertRedirect(route('branches.index'));
+    }
+
+    public function test_product_page_shows_the_item_its_extras_and_drinks_as_optional_addons(): void
+    {
+        $shawarma = Category::create(['name' => 'Shawarma', 'slug' => 'shawarma']);
+        $drinks = Category::create(['name' => 'Drinks', 'slug' => 'drinks']);
+
+        $item = MenuItem::create([
+            'category_id' => $shawarma->id, 'name' => 'Chicken Shawarma', 'slug' => 'chicken-shawarma', 'base_price' => 5000,
+        ]);
+        $drink = MenuItem::create([
+            'category_id' => $drinks->id, 'name' => 'Mango', 'slug' => 'mango', 'base_price' => 2000,
+        ]);
+        $this->branch->menuItems()->attach([$item->id, $drink->id], ['is_available' => true]);
+
+        $extras = OptionGroup::create(['name' => 'Extras', 'min_select' => 0, 'max_select' => 5]);
+        $item->optionGroups()->attach($extras->id, ['sort_order' => 1]);
+
+        $this->get(route('branches.pick', $this->branch));
+
+        $this->get(route('menu.show', $item))
+            ->assertOk()
+            ->assertSee('Chicken Shawarma')
+            ->assertSee('Extras')
+            ->assertSee('Drinks')
+            ->assertSee('Mango');
+    }
+
+    public function test_product_page_excludes_itself_from_its_own_drinks_addon_list(): void
+    {
+        $drinks = Category::create(['name' => 'Drinks', 'slug' => 'drinks']);
+        $mango = MenuItem::create([
+            'category_id' => $drinks->id, 'name' => 'Mango', 'slug' => 'mango', 'base_price' => 2000,
+        ]);
+        $orange = MenuItem::create([
+            'category_id' => $drinks->id, 'name' => 'Orange', 'slug' => 'orange', 'base_price' => 2000,
+        ]);
+        $this->branch->menuItems()->attach([$mango->id, $orange->id], ['is_available' => true]);
+
+        $this->get(route('branches.pick', $this->branch));
+        $response = $this->get(route('menu.show', $mango));
+
+        $response->assertOk()->assertSee('Orange');
+
+        // Only Orange should get a "+ Add" quick-add card in the Drinks
+        // cross-sell section — Mango appearing there too (as well as in
+        // the page's own title/heading) would mean the "exclude itself"
+        // filter isn't working.
+        $this->assertSame(1, substr_count($response->getContent(), '+ Add'));
+    }
+
+    public function test_product_page_without_a_selected_branch_redirects_to_branches(): void
+    {
+        $category = Category::create(['name' => 'Shawarma', 'slug' => 'shawarma']);
+        $item = MenuItem::create([
+            'category_id' => $category->id, 'name' => 'Chicken Shawarma', 'slug' => 'chicken-shawarma', 'base_price' => 5000,
+        ]);
+
+        $this->get(route('menu.show', $item))->assertRedirect(route('branches.index'));
+    }
+
+    public function test_product_page_404s_when_unavailable_at_the_selected_branch(): void
+    {
+        $category = Category::create(['name' => 'Shawarma', 'slug' => 'shawarma']);
+        $item = MenuItem::create([
+            'category_id' => $category->id, 'name' => 'Chicken Shawarma', 'slug' => 'chicken-shawarma', 'base_price' => 5000,
+        ]);
+        $this->branch->menuItems()->attach($item->id, ['is_available' => false]);
+
+        $this->get(route('branches.pick', $this->branch));
+
+        $this->get(route('menu.show', $item))->assertNotFound();
     }
 
     public function test_option_groups_render_in_their_configured_pivot_order(): void

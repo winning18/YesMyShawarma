@@ -25,6 +25,27 @@ class PaystackClient
     }
 
     /**
+     * $amount is in pesewas, same subunit Paystack expects everywhere else
+     * in this client (see initializeTransaction) — omitted entirely for a
+     * full refund of the original transaction, which is why $amount is
+     * only added to the payload via array_filter when it's actually given.
+     *
+     * @return array<string, mixed>
+     */
+    public function refundTransaction(string $transactionReference, ?int $amount = null, ?string $merchantNote = null): array
+    {
+        return Http::withToken($this->secretKey)
+            ->baseUrl($this->baseUrl)
+            ->post('/refund', array_filter([
+                'transaction' => $transactionReference,
+                'amount' => $amount,
+                'merchant_note' => $merchantNote,
+            ], fn ($value) => $value !== null))
+            ->throw()
+            ->json();
+    }
+
+    /**
      * Paystack signs webhook bodies with HMAC-SHA512 over the raw payload
      * using the secret key (see payments.md: "Verify the signature on every
      * request before parsing the body"). hash_equals is timing-safe.

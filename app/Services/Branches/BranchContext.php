@@ -66,6 +66,58 @@ class BranchContext
     }
 
     /**
+     * Every branch_id the user holds $role at specifically — narrower than
+     * branchIdsFor(), which returns branches held at any role at all.
+     * This is general_manager's multi-branch oversight set (see
+     * PerformanceController): it must never include a branch they hold
+     * some other role at but not general_manager itself.
+     */
+    public function branchIdsForRole(User $user, string $role): Collection
+    {
+        $teamKey = config('permission.column_names.team_foreign_key');
+
+        return DB::table(config('permission.table_names.model_has_roles').' as mhr')
+            ->join(config('permission.table_names.roles').' as roles', 'roles.id', '=', 'mhr.role_id')
+            ->where('mhr.model_id', $user->id)
+            ->where('mhr.model_type', $user->getMorphClass())
+            ->where('roles.name', $role)
+            ->where('roles.guard_name', 'web')
+            // Qualified with the mhr. prefix — teams mode adds this same
+            // column to *both* model_has_roles and roles (a role can be
+            // team-scoped too), so an unqualified pluck is ambiguous the
+            // moment this query joins roles in.
+            ->pluck("mhr.{$teamKey}")
+            ->filter()
+            ->unique()
+            ->values();
+    }
+
+    /**
+     * Branches the user may pick from the branch switcher. Owner is granted
+     * every branch implicitly (see hasRoleAtAnyBranch), so restricting them
+     * to branchIdsFor()'s literal model_has_roles rows — correct for every
+     * other role — would silently hide any branch they don't happen to hold
+     * an explicit role row at.
+     */
+    public function selectableBranchIdsFor(User $user): Collection
+    {
+        if ($this->hasRoleAtAnyBranch($user, 'owner')) {
+            return Branch::pluck('id');
+        }
+
+        return $this->branchIdsFor($user);
+    }
+
+    public function selectableBranchesFor(User $user): Collection
+    {
+        if ($this->hasRoleAtAnyBranch($user, 'owner')) {
+            return Branch::all();
+        }
+
+        return $this->branchesFor($user);
+    }
+
+    /**
      * spatie's teams mode makes model_has_roles.branch_id NOT NULL and part of
      * its primary key — there is no such thing as a team-unscoped role row, so
      * $user->hasRole() only ever matches once a specific team id is already
@@ -122,14 +174,24 @@ class BranchContext
         $previousTeamId = $registrar->getPermissionsTeamId();
         $registrar->setPermissionsTeamId($branchId);
 
+        // spatie's hasRole()/can() lazy-load and cache the roles/permissions
+        // relations on the model instance (loadMissing) — that cache is NOT
+        // team-aware, so switching team id without clearing it lets a check
+        // made under one team silently reuse a relation loaded under a
+        // different one. Whichever team-scoped check ran first within a
+        // request would otherwise "win" for every later check on the same
+        // $user instance, regardless of which team id is actually current.
+        $user->unsetRelation('roles')->unsetRelation('permissions');
+
         try {
-            foreach (['manager', 'staff', 'rider'] as $role) {
+            foreach (['general_manager', 'manager', 'staff', 'rider'] as $role) {
                 if ($user->hasRole($role)) {
                     return $role;
                 }
             }
         } finally {
             $registrar->setPermissionsTeamId($previousTeamId);
+            $user->unsetRelation('roles')->unsetRelation('permissions');
         }
 
         return 'staff';

@@ -37,7 +37,12 @@ class ResolveCurrentBranch
             if ($branchIds->count() === 1) {
                 $this->context->setCurrent($branchIds->first());
             } elseif (! $branchIds->contains($this->context->id())) {
-                return redirect()->route('branches.select');
+                // guest() (not route()) remembers the page the user was
+                // actually headed to, so BranchSelectionController::store()
+                // can send them straight there instead of always landing on
+                // Dashboard regardless of what they clicked — the "click POS,
+                // pick a branch, land back on Orders" bug.
+                return redirect()->guest(route('branches.select'));
             }
         }
 

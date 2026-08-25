@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Resources\OrderTrackingResource;
 use App\Models\Customer;
 use App\Models\Order;
+use App\Services\Branches\WorkingHoursService;
 use App\Services\Customers\CustomerService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,14 +15,24 @@ use Illuminate\View\View;
 
 class TrackingController extends Controller
 {
-    public function show(Order $order): View
+    public function show(Order $order, WorkingHoursService $workingHours): View
     {
-        return view('tracking.show', ['order' => $order]);
+        // A fixed fact about this specific order's placement — computed
+        // once here rather than folded into OrderTrackingResource's live-
+        // polled payload, since (unlike status) it never changes after
+        // the order is placed.
+        $branchWasClosed = ! $workingHours->isOpenAt($order->branch, $order->placed_at);
+
+        return view('tracking.show', [
+            'order' => $order,
+            'branchWasClosed' => $branchWasClosed,
+            'nextOpeningLabel' => $branchWasClosed ? $workingHours->nextOpening($order->branch, $order->placed_at)?->format('l g:ia') : null,
+        ]);
     }
 
     public function data(Order $order): JsonResource
     {
-        return new OrderTrackingResource($order->load(['items', 'branch']));
+        return new OrderTrackingResource($order->load(['items.menuItem', 'items.options', 'branch', 'rider', 'customer']));
     }
 
     /**

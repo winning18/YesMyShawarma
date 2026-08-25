@@ -14,13 +14,42 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'reference', 'track_token', 'customer_id', 'branch_id',
     'fulfilment_type',
     'subtotal', 'discount_total', 'delivery_fee', 'total',
-    'payment_method', 'payment_status', 'delivery_address_snapshot',
-    'scheduled_for',
+    'promotion_id', 'payment_method', 'payment_status', 'channel', 'delivery_address_snapshot',
+    'instructions', 'scheduled_for',
 ])]
 #[ScopedBy([BranchScope::class])]
 class Order extends Model
 {
     use HasFactory;
+
+    /**
+     * @var list<string>
+     */
+    public const NON_REVENUE_STATUSES = ['cancelled', 'rejected', 'abandoned', 'refunded'];
+
+    /**
+     * Every status in the state machine (see .claude/rules/orders.md),
+     * state-diagram order — the full set a history filter needs to offer,
+     * as distinct from OrderStateMachine::TRANSITIONS which only encodes
+     * legal from→to edges.
+     *
+     * @var list<string>
+     */
+    public const STATUSES = [
+        'pending_payment', 'paid', 'accepted', 'preparing', 'ready', 'dispatched', 'delivered',
+        'rejected', 'cancelled', 'failed', 'abandoned', 'refunded',
+    ];
+
+    /**
+     * Methods settled by a person, not a gateway — no online transaction to
+     * wait on, so the order enters straight at 'paid' (OrderCreationService)
+     * instead of 'pending_payment'. Momo here is an in-house manual
+     * payment (staff confirm the customer sent it) — not Paystack; only
+     * 'paystack' itself goes through PaystackPaymentService.
+     *
+     * @var list<string>
+     */
+    public const MANUALLY_SETTLED_PAYMENT_METHODS = ['cash', 'momo'];
 
     protected function casts(): array
     {
@@ -52,6 +81,11 @@ class Order extends Model
         return $this->belongsTo(User::class, 'rider_id');
     }
 
+    public function promotion(): BelongsTo
+    {
+        return $this->belongsTo(Promotion::class);
+    }
+
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class);
@@ -65,5 +99,10 @@ class Order extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    public function refunds(): HasMany
+    {
+        return $this->hasMany(Refund::class);
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Services\Branches\BranchContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -24,7 +25,7 @@ class ProfileController extends Controller
     /**
      * Update the user's profile information.
      */
-    public function update(ProfileUpdateRequest $request): RedirectResponse
+    public function update(ProfileUpdateRequest $request, BranchContext $context): RedirectResponse
     {
         $request->user()->fill($request->validated());
 
@@ -34,7 +35,13 @@ class ProfileController extends Controller
 
         $request->user()->save();
 
-        return Redirect::route('profile.edit')->with('status', 'profile-updated');
+        // Shared route (see Rider\ProfileController) — a rider submitting
+        // this form has no reason to land on the staff profile page.
+        $editRoute = $context->hasRoleAtAnyBranch($request->user(), 'rider')
+            ? 'rider.profile.edit'
+            : 'profile.edit';
+
+        return Redirect::route($editRoute)->with('status', 'profile-updated');
     }
 
     /**

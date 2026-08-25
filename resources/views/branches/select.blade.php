@@ -9,6 +9,8 @@
         <div class="max-w-xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
+                    <x-auth-session-status class="mb-4" :status="session('status')" />
+
                     <p class="mb-4 text-sm text-gray-600">
                         {{ __('Your account holds roles at more than one branch. Pick which one you\'re working from.') }}
                     </p>

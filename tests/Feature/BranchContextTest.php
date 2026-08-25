@@ -74,7 +74,10 @@ class BranchContextTest extends TestCase
 
         $this->assertSame($this->eastLegon->id, session('current_branch_id'));
 
-        $this->actingAs($manager)->get('/dashboard')->assertOk();
+        // Manager's Dashboard is the business overview, not the live board
+        // — see OrderDashboardController.
+        $this->actingAs($manager)->get('/dashboard')->assertRedirect(route('dashboard.performance'));
+        $this->actingAs($manager)->get(route('dashboard.performance'))->assertOk();
     }
 
     public function test_manager_cannot_select_a_branch_they_have_no_role_at(): void
@@ -97,10 +100,38 @@ class BranchContextTest extends TestCase
         $owner = User::factory()->create();
         $this->assignRoleAt($owner, 'owner', $this->osu);
 
+        // Redirects to the business overview (OrderDashboardController) —
+        // a different, expected redirect, not the "forced to pick a
+        // branch" one this test actually guards against.
         $response = $this->actingAs($owner)->get('/dashboard');
 
-        $response->assertOk();
+        $response->assertRedirect(route('dashboard.performance'));
         $this->assertNull(session('current_branch_id'));
+
+        $this->actingAs($owner)->get(route('dashboard.performance'))->assertOk();
+    }
+
+    public function test_owner_can_select_a_branch_they_hold_no_explicit_role_at(): void
+    {
+        $owner = User::factory()->create();
+        $this->assignRoleAt($owner, 'owner', $this->osu);
+
+        $this->actingAs($owner)
+            ->post(route('branches.select.store'), ['branch_id' => $this->eastLegon->id])
+            ->assertRedirect(route('dashboard'));
+
+        $this->assertSame($this->eastLegon->id, session('current_branch_id'));
+    }
+
+    public function test_owners_branch_picker_lists_every_branch(): void
+    {
+        $owner = User::factory()->create();
+        $this->assignRoleAt($owner, 'owner', $this->osu);
+
+        $this->actingAs($owner)->get(route('branches.select'))
+            ->assertOk()
+            ->assertSee('Osu')
+            ->assertSee('East Legon');
     }
 
     public function test_user_with_no_branch_role_is_forbidden(): void

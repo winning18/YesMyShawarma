@@ -13,18 +13,34 @@
         @csrf
     </form>
 
-    <form method="post" action="{{ route('profile.update') }}" class="mt-6 space-y-6">
+    <form
+        method="post" action="{{ route('profile.update') }}" class="mt-6 space-y-6"
+        x-data="{ phone: phoneField(@js(old('phone', $user->phone))) }"
+    >
         @csrf
         @method('patch')
 
         <div>
-            <x-input-label for="name" :value="__('Name')" />
+            <x-input-label for="name" :value="__('Name')" required />
             <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $user->name)" required autofocus autocomplete="name" />
             <x-input-error class="mt-2" :messages="$errors->get('name')" />
         </div>
 
         <div>
-            <x-input-label for="email" :value="__('Email')" />
+            <x-input-label for="phone" :value="__('Phone number')" />
+            <input
+                id="phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel"
+                :value="phone.formatted" @input="phone.onInput($event)" @blur="phone.onBlur()"
+                placeholder="024-123-4567" maxlength="12"
+                class="mt-1 block w-full rounded-md shadow-sm"
+                :class="phone.raw.length > 0 && !phone.valid ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'"
+            >
+            <p class="text-xs text-red-600 mt-1" x-show="phone.raw.length > 0 && !phone.valid">{{ __('Enter a 10-digit phone number, or leave it blank.') }}</p>
+            <x-input-error class="mt-2" :messages="$errors->get('phone')" />
+        </div>
+
+        <div>
+            <x-input-label for="email" :value="__('Email')" required />
             <x-text-input id="email" name="email" type="email" class="mt-1 block w-full" :value="old('email', $user->email)" required autocomplete="username" />
             <x-input-error class="mt-2" :messages="$errors->get('email')" />
 
@@ -61,4 +77,6 @@
             @endif
         </div>
     </form>
+
+    @include('partials.phone-input-script')
 </section>

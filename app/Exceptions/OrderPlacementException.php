@@ -36,15 +36,20 @@ class OrderPlacementException extends Exception
         return new self('A delivery address is required for delivery orders.');
     }
 
-    public static function noDeliveryZoneMatch(): self
+    public static function invalidDeliveryArea(): self
     {
-        return new self("This address is outside the branch's delivery area.");
+        return new self('Please select a valid delivery area.');
     }
 
-    public static function belowZoneMinimum(int $minOrderTotalPesewas): self
+    public static function belowMinimumOrderTotal(int $minOrderTotalPesewas): self
     {
         $cedis = number_format($minOrderTotalPesewas / 100, 2);
 
-        return new self("Minimum order for delivery to this address is GHS {$cedis}.");
+        return new self("Minimum order for delivery is GHS {$cedis}.");
+    }
+
+    public static function invalidPromoCode(string $reason): self
+    {
+        return new self($reason);
     }
 }

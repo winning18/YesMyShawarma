@@ -22,14 +22,20 @@ class RolesAndPermissionsSeeder extends Seeder
             'orders.accept',
             'orders.reject',
             'orders.advance_status',
+            'orders.assign_rider',
+            'orders.create',
+            'orders.refund_request',
             'menu.toggle_availability',
             'reports.view_operational',
         ],
         'rider' => [
             'orders.view',
             'orders.advance_status',
-            'orders.claim',
         ],
+        // orders.refund (not the weaker orders.refund_request) — manager
+        // has the exact same refund rights as owner: approve/deny a
+        // staff-submitted request, or refund a customer directly with no
+        // approval step at all. See payments.md's Refunds section.
         'manager' => [
             'orders.view',
             'orders.accept',
@@ -38,12 +44,45 @@ class RolesAndPermissionsSeeder extends Seeder
             'orders.assign_rider',
             'orders.void',
             'orders.discount',
+            'orders.create',
+            'orders.refund',
             'menu.toggle_availability',
             'menu.edit_content',
             'reports.view_operational',
             'reports.view_financial',
             'promotions.manage',
             'customers.view',
+            'users.transfer_branch',
+            'dashboard.performance',
+            'settings.manage',
+        ],
+        // Same operational permission set as 'manager' (including
+        // orders.refund — see above), at every branch they're assigned to
+        // (not one at a time via the branch switcher like a regular
+        // manager — see PerformanceController's multi-branch aggregate),
+        // plus the ability to create staff/rider accounts
+        // (users.create_operational), which a regular manager still
+        // cannot do at all.
+        'general_manager' => [
+            'orders.view',
+            'orders.accept',
+            'orders.reject',
+            'orders.advance_status',
+            'orders.assign_rider',
+            'orders.void',
+            'orders.discount',
+            'orders.create',
+            'orders.refund',
+            'menu.toggle_availability',
+            'menu.edit_content',
+            'reports.view_operational',
+            'reports.view_financial',
+            'promotions.manage',
+            'customers.view',
+            'users.transfer_branch',
+            'users.create_operational',
+            'dashboard.performance',
+            'settings.manage',
         ],
         'owner' => [
             'orders.view',
@@ -54,15 +93,18 @@ class RolesAndPermissionsSeeder extends Seeder
             'orders.void',
             'orders.refund',
             'orders.discount',
+            'orders.create',
             'menu.toggle_availability',
             'menu.edit_content',
-            'menu.edit_price',
             'reports.view_operational',
             'reports.view_financial',
             'promotions.manage',
             'customers.view',
             'users.manage',
+            'users.transfer_branch',
             'branches.manage',
+            'dashboard.performance',
+            'settings.manage',
         ],
     ];
 

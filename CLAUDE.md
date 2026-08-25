@@ -145,7 +145,6 @@ Flag these rather than assuming an answer.
 
 - SMS provider for escalation and order confirmations
 - Whether rider payouts are tracked in-platform or handled offline
-- Whether managers can edit prices (currently owner-only)
 - Delivery fee model: flat per zone, or distance-banded
 
 ---

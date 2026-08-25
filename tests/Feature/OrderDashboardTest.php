@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Order;
+use App\Models\Shift;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -81,10 +82,78 @@ class OrderDashboardTest extends TestCase
         $this->assertFalse($ids->contains($otherBranchOrder->id));
     }
 
+    public function test_staff_sees_customer_name_phone_and_delivery_location_but_not_coordinates(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branchA);
+
+        $customer = Customer::create(['phone' => '+233241111111', 'name' => 'Ama Owusu']);
+        $order = Order::create([
+            'reference' => 'ORD-'.uniqid(),
+            'track_token' => bin2hex(random_bytes(16)),
+            'customer_id' => $customer->id,
+            'branch_id' => $this->branchA->id,
+            'fulfilment_type' => 'delivery',
+            'subtotal' => 3500,
+            'total' => 3500,
+            'payment_method' => 'cash',
+            'payment_status' => 'paid',
+            'delivery_address_snapshot' => [
+                'area_name' => 'Osu', 'landmark' => 'Near the blue gate',
+                'ghanapost_code' => 'GA-123-4567', 'lat' => 5.55, 'lng' => -0.19,
+            ],
+        ]);
+        $order->status = 'paid';
+        $order->placed_at = now();
+        $order->save();
+
+        $response = $this->actingAs($staff)->getJson(route('dashboard.orders.data'));
+        $data = collect($response->json('data'))->firstWhere('id', $order->id);
+
+        $this->assertSame('Ama Owusu', $data['customer_name']);
+        $this->assertSame('+233241111111', $data['customer_phone']);
+        $this->assertSame('Osu', $data['delivery_address']['area_name']);
+        $this->assertSame('Near the blue gate', $data['delivery_address']['landmark']);
+        $this->assertNull($data['delivery_address']['lat']);
+        $this->assertNull($data['delivery_address']['lng']);
+    }
+
+    public function test_manager_sees_customer_info_but_not_coordinates(): void
+    {
+        $manager = User::factory()->create();
+        $this->assignRoleAt($manager, 'manager', $this->branchA);
+
+        $customer = Customer::create(['phone' => '+233241111111', 'name' => 'Ama Owusu']);
+        $order = Order::create([
+            'reference' => 'ORD-'.uniqid(),
+            'track_token' => bin2hex(random_bytes(16)),
+            'customer_id' => $customer->id,
+            'branch_id' => $this->branchA->id,
+            'fulfilment_type' => 'delivery',
+            'subtotal' => 3500,
+            'total' => 3500,
+            'payment_method' => 'cash',
+            'payment_status' => 'paid',
+            'delivery_address_snapshot' => ['area_name' => 'Osu', 'landmark' => 'Near the blue gate', 'lat' => 5.55, 'lng' => -0.19],
+        ]);
+        $order->status = 'paid';
+        $order->placed_at = now();
+        $order->save();
+
+        $response = $this->actingAs($manager)->getJson(route('dashboard.orders.data'));
+        $data = collect($response->json('data'))->firstWhere('id', $order->id);
+
+        $this->assertSame('Ama Owusu', $data['customer_name']);
+        $this->assertSame('+233241111111', $data['customer_phone']);
+        $this->assertNull($data['delivery_address']['lat']);
+        $this->assertNull($data['delivery_address']['lng']);
+    }
+
     public function test_staff_can_accept_and_reject_orders(): void
     {
         $staff = User::factory()->create();
         $this->assignRoleAt($staff, 'staff', $this->branchA);
+        Shift::create(['user_id' => $staff->id, 'branch_id' => $this->branchA->id, 'started_at' => now()]);
 
         $order = $this->makeOrder($this->branchA);
 
@@ -99,6 +168,34 @@ class OrderDashboardTest extends TestCase
             ->postJson(route('orders.reject', $rejectOrder))
             ->assertOk()
             ->assertJsonPath('data.status', 'rejected');
+    }
+
+    public function test_staff_cannot_accept_an_order_without_an_active_shift(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branchA);
+
+        $order = $this->makeOrder($this->branchA);
+
+        $this->actingAs($staff)
+            ->postJson(route('orders.accept', $order))
+            ->assertUnprocessable()
+            ->assertJsonPath('message', 'Start your shift before accepting orders.');
+
+        $this->assertSame('paid', $order->fresh()->status);
+    }
+
+    public function test_staff_with_a_shift_at_a_different_branch_cannot_accept(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branchA);
+        Shift::create(['user_id' => $staff->id, 'branch_id' => $this->branchB->id, 'started_at' => now()]);
+
+        $order = $this->makeOrder($this->branchA);
+
+        $this->actingAs($staff)
+            ->postJson(route('orders.accept', $order))
+            ->assertUnprocessable();
     }
 
     public function test_staff_cannot_cancel_an_order(): void
@@ -203,5 +300,62 @@ class OrderDashboardTest extends TestCase
         $this->actingAs($staff)
             ->postJson(route('orders.advance', $order), ['to' => 'not-a-real-status'])
             ->assertUnprocessable();
+    }
+
+    public function test_dashboard_data_includes_preparing_at_derived_from_order_events(): void
+    {
+        // No dedicated preparing_at column — derived from order_events
+        // (see OrderResource), so this exercises the real transition path
+        // (OrderStateMachine via the advance endpoint) rather than faking
+        // the status directly, to prove the derivation actually works off
+        // a real event row, not just a hand-inserted one.
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branchA);
+        Shift::create(['user_id' => $staff->id, 'branch_id' => $this->branchA->id, 'started_at' => now()]);
+
+        $order = $this->makeOrder($this->branchA, 'accepted');
+
+        $this->actingAs($staff)->postJson(route('orders.advance', $order), ['to' => 'preparing'])->assertOk();
+
+        $response = $this->actingAs($staff)->getJson(route('dashboard.orders.data'));
+        $data = collect($response->json('data'))->firstWhere('id', $order->id);
+
+        $this->assertNotNull($data['preparing_at']);
+
+        $expected = $order->events()->where('to_status', 'preparing')->first()->created_at;
+        $this->assertSame($expected->toIso8601String(), $data['preparing_at']);
+    }
+
+    public function test_dashboard_data_omits_preparing_at_for_orders_never_prepared(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branchA);
+
+        $order = $this->makeOrder($this->branchA, 'accepted');
+
+        $response = $this->actingAs($staff)->getJson(route('dashboard.orders.data'));
+        $data = collect($response->json('data'))->firstWhere('id', $order->id);
+
+        $this->assertNull($data['preparing_at'] ?? null);
+    }
+
+    public function test_a_dispatched_delivery_can_be_marked_failed(): void
+    {
+        // Regression: 'failed' was missing from advance()'s allowed target
+        // list even though OrderStateMachine allows dispatched -> failed —
+        // there was no way to ever reach it, and refunded is only reachable
+        // from failed/rejected/cancelled, so a failed delivery could never
+        // be refunded either.
+        $rider = User::factory()->create();
+        $this->assignRoleAt($rider, 'rider', $this->branchA);
+
+        $order = $this->makeOrder($this->branchA, 'dispatched');
+        $order->rider_id = $rider->id;
+        $order->save();
+
+        $this->actingAs($rider)
+            ->postJson(route('orders.advance', $order), ['to' => 'failed'])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'failed');
     }
 }

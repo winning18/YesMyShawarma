@@ -16,16 +16,38 @@ class OrderTrackingResource extends JsonResource
             'reference' => $this->reference,
             'status' => $this->status,
             'fulfilment_type' => $this->fulfilment_type,
+            'subtotal' => $this->subtotal,
+            'discount_total' => $this->discount_total,
+            'delivery_fee' => $this->delivery_fee,
             'total' => $this->total,
+            'payment_method' => $this->payment_method,
+            'delivery_address' => $this->fulfilment_type === 'delivery' ? [
+                'area_name' => $this->delivery_address_snapshot['area_name'] ?? null,
+                'landmark' => $this->delivery_address_snapshot['landmark'] ?? null,
+            ] : null,
             'cancellation_reason' => $this->cancellation_reason,
             'branch' => $this->whenLoaded('branch', fn () => [
                 'name' => $this->branch->name,
                 'phone' => $this->branch->phone,
                 'address' => $this->branch->address,
             ]),
+            'customer' => $this->whenLoaded('customer', fn () => [
+                'name' => $this->customer->name,
+                'phone' => $this->customer->phone,
+            ]),
+            'rider' => $this->whenLoaded('rider', fn () => $this->rider ? [
+                'name' => $this->rider->name,
+                'phone' => $this->rider->phone,
+            ] : null),
             'items' => $this->whenLoaded('items', fn () => $this->items->map(fn ($item) => [
                 'name' => $item->name_snapshot,
                 'quantity' => $item->quantity,
+                'line_total' => $item->line_total,
+                'image_url' => $item->menuItem?->imageUrl(),
+                'options' => $item->relationLoaded('options') ? $item->options->map(fn ($option) => [
+                    'name' => $option->name_snapshot,
+                    'price_delta' => $option->price_delta_snapshot,
+                ]) : [],
             ])),
             'timeline' => [
                 'placed_at' => $this->placed_at?->toIso8601String(),

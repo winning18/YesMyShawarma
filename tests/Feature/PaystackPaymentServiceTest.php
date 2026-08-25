@@ -113,4 +113,19 @@ class PaystackPaymentServiceTest extends TestCase
 
         $this->service->initializeForOrder($order, 'https://example.test/callback');
     }
+
+    public function test_rejects_a_momo_order(): void
+    {
+        // POS's momo is an in-house manual payment (Order::MANUALLY_
+        // SETTLED_PAYMENT_METHODS) — it must never reach Paystack.
+        Http::fake();
+
+        $customer = Customer::create(['phone' => '+233241114444']);
+        $order = $this->makeOrder($customer);
+        $order->update(['payment_method' => 'momo']);
+
+        $this->expectException(PaymentException::class);
+
+        $this->service->initializeForOrder($order, 'https://example.test/callback');
+    }
 }

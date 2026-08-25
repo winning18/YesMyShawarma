@@ -6,8 +6,13 @@ use App\Exceptions\InvalidOrderTransitionException;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Order;
+use App\Models\Shift;
+use App\Models\User;
+use App\Services\Delivery\DeliveryFeeCalculator;
 use App\Services\Orders\OrderStateMachine;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 class OrderStateMachineTest extends TestCase
@@ -24,7 +29,9 @@ class OrderStateMachineTest extends TestCase
     {
         parent::setUp();
 
-        $this->machine = new OrderStateMachine;
+        $this->seed(RolesAndPermissionsSeeder::class);
+
+        $this->machine = app(OrderStateMachine::class);
 
         $this->branch = Branch::create([
             'name' => 'Osu', 'slug' => 'osu', 'phone' => '+233200000001', 'address' => 'A',
@@ -70,6 +77,89 @@ class OrderStateMachineTest extends TestCase
             'actor_type' => 'staff',
             'actor_id' => 1,
         ]);
+    }
+
+    public function test_delivered_transition_computes_and_stores_the_distance_based_delivery_fee(): void
+    {
+        $order = $this->makeOrder('dispatched');
+        $order->update([
+            'delivery_address_snapshot' => [
+                'area_id' => null, 'area_name' => null,
+                'ghanapost_code' => 'GA-123-4567', 'landmark' => 'Near the mall',
+                'lat' => 5.51, 'lng' => -0.11,
+            ],
+        ]);
+        $order->payments()->create(['provider' => 'cash', 'amount' => $order->total, 'currency' => 'GHS', 'status' => 'pending']);
+
+        $expectedFee = app(DeliveryFeeCalculator::class)->calculate($order->branch, 5.51, -0.11);
+
+        $result = $this->machine->transition($order, 'delivered', 'rider', actorId: 1);
+
+        $this->assertSame($expectedFee, $result->delivery_fee);
+        $this->assertSame(3500 + $expectedFee, $result->total);
+        $this->assertDatabaseHas('payments', [
+            'order_id' => $order->id, 'provider' => 'cash', 'amount' => $result->total,
+        ]);
+    }
+
+    public function test_delivered_transition_reconciles_a_momo_payment_row_too(): void
+    {
+        // Momo behaves exactly like cash here — Order::MANUALLY_SETTLED_
+        // PAYMENT_METHODS, both settled in person, neither known to have
+        // its final fee until the trip's actually made.
+        $order = $this->makeOrder('dispatched');
+        $order->update([
+            'payment_method' => 'momo',
+            'delivery_address_snapshot' => [
+                'area_id' => null, 'area_name' => null,
+                'ghanapost_code' => 'GA-123-4567', 'landmark' => 'Near the mall',
+                'lat' => 5.51, 'lng' => -0.11,
+            ],
+        ]);
+        $order->payments()->create(['provider' => 'momo', 'amount' => $order->total, 'currency' => 'GHS', 'status' => 'pending']);
+
+        $expectedFee = app(DeliveryFeeCalculator::class)->calculate($order->branch, 5.51, -0.11);
+
+        $result = $this->machine->transition($order, 'delivered', 'rider', actorId: 1);
+
+        $this->assertDatabaseHas('payments', [
+            'order_id' => $order->id, 'provider' => 'momo', 'amount' => $result->total,
+        ]);
+    }
+
+    public function test_delivered_transition_marks_a_manually_settled_order_as_paid(): void
+    {
+        // Regression: payment_status stayed 'pending' forever for cash/momo
+        // orders — nothing ever flipped it, even though payments.md says the
+        // rider settling on delivery transitions payment_status to 'paid' at
+        // the same time the order transitions to 'delivered'.
+        $order = $this->makeOrder('dispatched');
+        $this->assertSame('pending', $order->payment_status);
+
+        $result = $this->machine->transition($order, 'delivered', 'rider', actorId: 1);
+
+        $this->assertSame('paid', $result->payment_status);
+    }
+
+    public function test_delivered_transition_does_not_touch_payment_status_for_paystack_orders(): void
+    {
+        $order = $this->makeOrder('dispatched');
+        $order->update(['payment_method' => 'paystack', 'payment_status' => 'paid']);
+
+        $result = $this->machine->transition($order, 'delivered', 'rider', actorId: 1);
+
+        $this->assertSame('paid', $result->payment_status);
+    }
+
+    public function test_pickup_order_reaching_delivered_leaves_fee_at_zero(): void
+    {
+        $order = $this->makeOrder('dispatched');
+        $order->update(['fulfilment_type' => 'pickup']);
+
+        $result = $this->machine->transition($order, 'delivered', 'rider', actorId: 1);
+
+        $this->assertSame(0, $result->delivery_fee);
+        $this->assertSame(3500, $result->total);
     }
 
     public function test_illegal_transition_throws(): void
@@ -139,5 +229,34 @@ class OrderStateMachineTest extends TestCase
         $this->expectException(InvalidOrderTransitionException::class);
 
         $this->machine->transition($order, 'refunded', 'owner', actorId: 1);
+    }
+
+    public function test_ready_transition_auto_assigns_an_on_shift_rider_for_delivery_orders(): void
+    {
+        $rider = User::factory()->create();
+        app(PermissionRegistrar::class)->setPermissionsTeamId($this->branch->id);
+        $rider->assignRole('rider');
+        Shift::create(['user_id' => $rider->id, 'branch_id' => $this->branch->id, 'started_at' => now()]);
+
+        $order = $this->makeOrder('preparing');
+
+        $result = $this->machine->transition($order, 'ready', 'staff', actorId: 1);
+
+        $this->assertSame($rider->id, $result->rider_id);
+    }
+
+    public function test_ready_transition_does_not_assign_a_rider_to_a_pickup_order(): void
+    {
+        $rider = User::factory()->create();
+        app(PermissionRegistrar::class)->setPermissionsTeamId($this->branch->id);
+        $rider->assignRole('rider');
+        Shift::create(['user_id' => $rider->id, 'branch_id' => $this->branch->id, 'started_at' => now()]);
+
+        $order = $this->makeOrder('preparing');
+        $order->update(['fulfilment_type' => 'pickup']);
+
+        $result = $this->machine->transition($order, 'ready', 'staff', actorId: 1);
+
+        $this->assertNull($result->rider_id);
     }
 }

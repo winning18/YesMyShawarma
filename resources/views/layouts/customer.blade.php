@@ -14,8 +14,34 @@
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="font-customer antialiased {{ $bodyClass }} text-brand-black">
-        <header class="bg-brand-black" x-data="{ open: false }">
+    <body class="font-customer antialiased {{ $bodyClass }} text-brand-black min-h-screen flex flex-col">
+        {{--
+            Full-screen page loader. No real vector source exists for the
+            logo (only the PNG exports), so this uses the real logo image
+            as-is plus a hand-authored SVG spinner rather than a fabricated
+            vector trace of the wordmark. Waits for window's load event
+            (all assets, not just the DOM) before fading out; if that's
+            already fired by the time Alpine attaches (fast/cached loads),
+            it just fades immediately instead of waiting forever.
+        --}}
+        <div
+            x-data="{ show: true }"
+            x-init="document.readyState === 'complete'
+                ? setTimeout(() => show = false, 200)
+                : window.addEventListener('load', () => setTimeout(() => show = false, 200))"
+            x-show="show"
+            x-transition:leave="transition ease-out duration-300"
+            x-transition:leave-end="opacity-0"
+            class="fixed inset-0 z-50 bg-brand-black flex flex-col items-center justify-center gap-6"
+        >
+            <img src="{{ asset('images/logo-web.png') }}" alt="{{ config('app.name') }}" class="h-16 w-auto">
+            <svg viewBox="0 0 24 24" fill="none" class="animate-spin w-8 h-8 text-brand-yellow">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4Z"></path>
+            </svg>
+        </div>
+
+        <header class="bg-brand-black sticky top-0 z-40" x-data="{ open: false }">
             <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
                 <a href="{{ route('home') }}">
                     <img src="{{ asset('images/logo-web.png') }}" alt="{{ config('app.name') }}" class="h-10 w-auto">
@@ -31,8 +57,12 @@
                 </nav>
 
                 <div class="hidden md:flex items-center gap-4">
-                    <a href="{{ route('cart.show') }}" class="relative text-brand-white hover:text-brand-yellow text-sm">
-                        {{ __('Cart') }}
+                    <a href="{{ route('cart.show') }}" class="relative text-brand-white hover:text-brand-yellow" aria-label="{{ __('Cart') }}">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+                            <circle cx="9" cy="21" r="1"></circle>
+                            <circle cx="20" cy="21" r="1"></circle>
+                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                        </svg>
                         @if($cartItemCount > 0)
                             <span class="absolute -top-2 -right-3 bg-brand-yellow text-brand-black text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">{{ $cartItemCount }}</span>
                         @endif
@@ -62,7 +92,14 @@
                 <a href="{{ route('contact') }}" class="block hover:text-brand-yellow {{ request()->routeIs('contact') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Contact us') }}</a>
                 <a href="{{ route('about') }}" class="block hover:text-brand-yellow {{ request()->routeIs('about') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('About us') }}</a>
                 <a href="{{ route('tracking.lookup') }}" class="block hover:text-brand-yellow {{ request()->routeIs('tracking.*') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Track order') }}</a>
-                <a href="{{ route('cart.show') }}" class="block hover:text-brand-yellow">{{ __('Cart') }} ({{ $cartItemCount }})</a>
+                <a href="{{ route('cart.show') }}" class="flex items-center gap-2 hover:text-brand-yellow">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+                        <circle cx="9" cy="21" r="1"></circle>
+                        <circle cx="20" cy="21" r="1"></circle>
+                        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                    </svg>
+                    {{ __('Cart') }} ({{ $cartItemCount }})
+                </a>
                 @auth('customer')
                     <form method="POST" action="{{ route('customer.logout') }}">
                         @csrf
@@ -74,6 +111,10 @@
                 @endauth
             </nav>
         </header>
+
+        @isset($fullHero)
+            {{ $fullHero }}
+        @endisset
 
         @isset($pageHeader)
             <div class="bg-brand-black py-10 border-t border-brand-yellow">
@@ -91,7 +132,25 @@
             </div>
         @endif
 
-        <main class="max-w-5xl mx-auto px-4 py-8">
+        @if (session('added_to_cart'))
+            <div x-data="{ show: true }" x-show="show" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div class="fixed inset-0 bg-black/50" @click="show = false"></div>
+                <div class="relative bg-brand-white rounded-lg shadow-lg max-w-sm w-full p-6 text-center">
+                    <h2 class="text-lg font-bold text-brand-black mb-1">{{ __('Added to cart') }}</h2>
+                    <p class="text-sm text-brand-gray-500 mb-5">{{ __('What would you like to do next?') }}</p>
+                    <div class="grid grid-cols-1 gap-3">
+                        <a href="{{ route('cart.show') }}" class="w-full px-4 py-2.5 bg-brand-yellow text-brand-black text-sm font-semibold rounded-md hover:bg-brand-yellow-dark">
+                            {{ __('Go to cart') }}
+                        </a>
+                        <button type="button" @click="show = false" class="w-full px-4 py-2.5 border border-brand-gray-300 text-sm font-semibold rounded-md hover:bg-brand-gray-100">
+                            {{ __('Continue shopping') }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        @endif
+
+        <main class="{{ $mainClass }} w-full mx-auto px-4 py-8 flex-1">
             {{ $slot }}
         </main>
 
