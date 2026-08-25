@@ -2,19 +2,21 @@
 
 namespace App\Contracts;
 
-use App\Models\User;
-
 /**
- * SMS provider is still an open decision (see CLAUDE.md's Open Decisions).
- * Everything that needs to escalate to a human — order acknowledgement
- * escalation today, order confirmations later — depends on this contract
- * instead of a concrete provider, so swapping in a real one later touches
- * one binding, not every call site.
+ * SMS provider is Arkesel (see config/services.php) — everything that needs
+ * to reach a human by SMS, staff escalation and customer order updates
+ * alike, depends on this contract instead of a concrete provider, so
+ * swapping providers later touches one binding, not every call site.
+ *
+ * Takes a phone number rather than a User/Customer model on purpose:
+ * nothing here needs anything else off either model, and phone is the one
+ * thing they'd otherwise have in common — typing this to a model would mean
+ * conflating User and Customer, which permissions.md rules out entirely.
  */
 interface Notifier
 {
     /**
      * @param  array<string, mixed>  $context
      */
-    public function notify(User $user, string $message, array $context = []): void;
+    public function notify(string $phone, string $message, array $context = []): void;
 }

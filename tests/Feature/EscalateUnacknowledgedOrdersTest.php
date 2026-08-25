@@ -87,7 +87,7 @@ class EscalateUnacknowledgedOrdersTest extends TestCase
 
         $this->mock(Notifier::class, function ($mock) use ($manager) {
             $mock->shouldReceive('notify')->once()
-                ->with(\Mockery::on(fn (User $u) => $u->id === $manager->id), \Mockery::type('string'), \Mockery::type('array'));
+                ->with($manager->phone, \Mockery::type('string'), \Mockery::type('array'));
         });
 
         $this->artisan('orders:escalate-unacknowledged')->assertSuccessful();
@@ -108,7 +108,7 @@ class EscalateUnacknowledgedOrdersTest extends TestCase
 
         $this->mock(Notifier::class, function ($mock) use ($generalManager) {
             $mock->shouldReceive('notify')->once()
-                ->with(\Mockery::on(fn (User $u) => $u->id === $generalManager->id), \Mockery::type('string'), \Mockery::type('array'));
+                ->with($generalManager->phone, \Mockery::type('string'), \Mockery::type('array'));
         });
 
         $this->artisan('orders:escalate-unacknowledged')->assertSuccessful();
@@ -131,8 +131,8 @@ class EscalateUnacknowledgedOrdersTest extends TestCase
         $notified = [];
         $this->mock(Notifier::class, function ($mock) use (&$notified) {
             $mock->shouldReceive('notify')->twice()
-                ->with(\Mockery::on(function (User $u) use (&$notified) {
-                    $notified[] = $u->id;
+                ->with(\Mockery::on(function (string $phone) use (&$notified) {
+                    $notified[] = $phone;
 
                     return true;
                 }), \Mockery::type('string'), \Mockery::type('array'));
@@ -140,7 +140,7 @@ class EscalateUnacknowledgedOrdersTest extends TestCase
 
         $this->artisan('orders:escalate-unacknowledged')->assertSuccessful();
 
-        $this->assertEqualsCanonicalizing([$manager->id, $generalManager->id], $notified);
+        $this->assertEqualsCanonicalizing([$manager->phone, $generalManager->phone], $notified);
     }
 
     public function test_does_not_escalate_the_same_threshold_twice(): void
@@ -222,7 +222,7 @@ class EscalateUnacknowledgedOrdersTest extends TestCase
 
         $this->mock(Notifier::class, function ($mock) use ($manager) {
             $mock->shouldReceive('notify')->once()
-                ->with(\Mockery::on(fn (User $u) => $u->id === $manager->id), \Mockery::type('string'), \Mockery::type('array'));
+                ->with($manager->phone, \Mockery::type('string'), \Mockery::type('array'));
         });
 
         $this->artisan('orders:escalate-unacknowledged')->assertSuccessful();

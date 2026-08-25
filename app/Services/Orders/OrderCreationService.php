@@ -10,6 +10,7 @@ use App\Models\Order;
 use App\Services\Customers\CustomerService;
 use App\Services\Delivery\DeliveryFeeCalculator;
 use App\Services\Menu\MenuPricingService;
+use App\Services\Notifications\CustomerOrderNotifier;
 use App\Services\Orders\Data\PlaceOrderData;
 use App\Services\Promotions\PromotionService;
 use App\Services\Settings\SettingsService;
@@ -33,6 +34,7 @@ class OrderCreationService
         private readonly DeliveryFeeCalculator $feeCalculator,
         private readonly PromotionService $promotions,
         private readonly SettingsService $settings,
+        private readonly CustomerOrderNotifier $notifier,
     ) {}
 
     /**
@@ -202,6 +204,17 @@ class OrderCreationService
             $orderId = $order->id;
             $branchId = $order->branch_id;
             SafeBroadcast::afterCommit(fn () => OrderPlaced::dispatch($orderId, $branchId));
+
+            // Deferred to commit for the same reason as the broadcast above
+            // — never notify the customer about an order that a later step
+            // in this same transaction might still roll back. Only the
+            // manually-settled path (cash/momo confirmed now): a Paystack
+            // order is still 'pending_payment' at this point and gets its
+            // "placed" SMS from OrderStateMachine instead, once the webhook
+            // actually confirms it.
+            if ($manuallySettled) {
+                DB::afterCommit(fn () => $this->notifier->placed($order));
+            }
 
             return $order->fresh(['items.options', 'events', 'payments']);
         });

@@ -92,7 +92,7 @@ class EscalateUnacknowledgedOrders extends Command
 
             foreach ($recipients as $user) {
                 $notifier->notify(
-                    $user,
+                    $user->phone,
                     "Order {$order->reference} has been unacknowledged for {$thresholdMinutes}+ minutes.",
                     ['order_id' => $order->id, 'branch_id' => $order->branch_id],
                 );

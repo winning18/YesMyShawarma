@@ -6,6 +6,7 @@ use App\Contracts\Notifier;
 use App\Models\User;
 use App\Services\Branches\BranchContext;
 use App\Services\Cart\CartService;
+use App\Services\Notifications\ArkeselNotifier;
 use App\Services\Notifications\LogNotifier;
 use App\Services\Payments\PaystackClient;
 use App\Services\Shifts\ShiftService;
@@ -26,7 +27,13 @@ class AppServiceProvider extends ServiceProvider
             baseUrl: config('services.paystack.base_url'),
         ));
 
-        $this->app->bind(Notifier::class, LogNotifier::class);
+        // Real SMS only once Arkesel is actually configured — local/testing
+        // environments fall back to logging, same reasoning as
+        // PaystackClient above needing no key to boot.
+        $this->app->bind(
+            Notifier::class,
+            fn () => config('services.arkesel.api_key') ? new ArkeselNotifier : new LogNotifier,
+        );
     }
 
     /**

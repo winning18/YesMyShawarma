@@ -6,6 +6,7 @@ use App\Events\OrderStatusChanged;
 use App\Exceptions\InvalidOrderTransitionException;
 use App\Models\Order;
 use App\Services\Delivery\DeliveryFeeCalculator;
+use App\Services\Notifications\CustomerOrderNotifier;
 use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
 
@@ -14,6 +15,7 @@ class OrderStateMachine
     public function __construct(
         private readonly DeliveryFeeCalculator $feeCalculator,
         private readonly RiderAssignmentService $riderAssignment,
+        private readonly CustomerOrderNotifier $notifier,
     ) {}
 
     /**
@@ -176,6 +178,27 @@ class OrderStateMachine
             if ($to === 'ready' && $order->fulfilment_type === 'delivery') {
                 $this->riderAssignment->autoAssign($order);
             }
+
+            // Deferred to commit, same reasoning as the broadcast above.
+            // $from === 'pending_payment' on the paid case specifically:
+            // that's the Paystack path (webhook-confirmed) — the
+            // manually-settled path (cash/momo) never transitions INTO
+            // 'paid' at all, it's created there directly (see
+            // OrderCreationService), so the two "placed" notification paths
+            // never overlap. 'ready' only notifies for pickup (delivery's
+            // 'ready' isn't customer-meaningful yet — the rider doesn't
+            // have it), 'dispatched' only for delivery (for pickup it means
+            // "already collected" per orders.md, not "on its way").
+            DB::afterCommit(function () use ($order, $to, $from) {
+                match (true) {
+                    $to === 'paid' && $from === 'pending_payment' => $this->notifier->placed($order),
+                    $to === 'accepted' => $this->notifier->received($order),
+                    $to === 'ready' && $order->fulfilment_type === 'pickup' => $this->notifier->readyForPickup($order),
+                    $to === 'dispatched' && $order->fulfilment_type === 'delivery' => $this->notifier->dispatched($order),
+                    $to === 'delivered' => $this->notifier->delivered($order),
+                    default => null,
+                };
+            });
 
             return $order->refresh();
         });

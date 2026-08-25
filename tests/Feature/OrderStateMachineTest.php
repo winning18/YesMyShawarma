@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Contracts\Notifier;
 use App\Exceptions\InvalidOrderTransitionException;
 use App\Models\Branch;
 use App\Models\Customer;
@@ -258,5 +259,100 @@ class OrderStateMachineTest extends TestCase
         $result = $this->machine->transition($order, 'ready', 'staff', actorId: 1);
 
         $this->assertNull($result->rider_id);
+    }
+
+    public function test_paystack_order_reaching_paid_from_pending_payment_sends_the_customer_a_placed_sms(): void
+    {
+        // The manually-settled "placed" SMS fires from OrderCreationService
+        // instead (see OrderCreationServiceTest) — this is specifically the
+        // Paystack path, webhook-confirmed after the order already existed
+        // as pending_payment. The two never overlap: an order is either
+        // created already-paid, or created pending and transitions here,
+        // never both.
+        $order = $this->makeOrder('pending_payment');
+
+        $this->mock(Notifier::class, function ($mock) {
+            $mock->shouldReceive('notify')->once()
+                ->with('+233241111111', \Mockery::type('string'), \Mockery::type('array'));
+        });
+
+        app(OrderStateMachine::class)->transition($order, 'paid', 'system');
+    }
+
+    public function test_accepted_transition_sends_the_customer_a_received_sms(): void
+    {
+        $order = $this->makeOrder('paid');
+
+        $this->mock(Notifier::class, function ($mock) {
+            $mock->shouldReceive('notify')->once()
+                ->with('+233241111111', \Mockery::type('string'), \Mockery::type('array'));
+        });
+
+        app(OrderStateMachine::class)->transition($order, 'accepted', 'staff', actorId: 1);
+    }
+
+    public function test_ready_transition_sends_a_ready_for_pickup_sms_for_pickup_orders(): void
+    {
+        $order = $this->makeOrder('preparing');
+        $order->update(['fulfilment_type' => 'pickup']);
+
+        $this->mock(Notifier::class, function ($mock) {
+            $mock->shouldReceive('notify')->once()
+                ->with('+233241111111', \Mockery::on(fn (string $m) => str_contains($m, 'ready for pickup')), \Mockery::type('array'));
+        });
+
+        app(OrderStateMachine::class)->transition($order, 'ready', 'staff', actorId: 1);
+    }
+
+    public function test_ready_transition_does_not_notify_the_customer_for_delivery_orders(): void
+    {
+        // Not customer-meaningful yet for delivery — the rider doesn't have
+        // it. "Dispatched" (below) is the delivery equivalent.
+        $order = $this->makeOrder('preparing');
+
+        $this->mock(Notifier::class, function ($mock) {
+            $mock->shouldNotReceive('notify');
+        });
+
+        app(OrderStateMachine::class)->transition($order, 'ready', 'staff', actorId: 1);
+    }
+
+    public function test_dispatched_transition_sends_an_on_its_way_sms_for_delivery_orders(): void
+    {
+        $order = $this->makeOrder('ready');
+
+        $this->mock(Notifier::class, function ($mock) {
+            $mock->shouldReceive('notify')->once()
+                ->with('+233241111111', \Mockery::on(fn (string $m) => str_contains($m, 'on its way')), \Mockery::type('array'));
+        });
+
+        app(OrderStateMachine::class)->transition($order, 'dispatched', 'rider', actorId: 1);
+    }
+
+    public function test_dispatched_transition_does_not_notify_the_customer_for_pickup_orders(): void
+    {
+        // orders.md: "dispatched" for a pickup order means it was already
+        // collected, not "on its way" — sending that message here would be
+        // wrong. "Delivered" (next) covers pickup's actual completion.
+        $order = $this->makeOrder('ready');
+        $order->update(['fulfilment_type' => 'pickup']);
+
+        $this->mock(Notifier::class, function ($mock) {
+            $mock->shouldNotReceive('notify');
+        });
+
+        app(OrderStateMachine::class)->transition($order, 'dispatched', 'staff', actorId: 1);
+    }
+
+    public function test_delivered_transition_sends_the_customer_a_delivered_sms(): void
+    {
+        $order = $this->makeOrder('dispatched');
+
+        $this->mock(Notifier::class, function ($mock) {
+            $mock->shouldReceive('notify')->once()
+                ->with('+233241111111', \Mockery::type('string'), \Mockery::type('array'));
+        });
+
+        app(OrderStateMachine::class)->transition($order, 'delivered', 'rider', actorId: 1);
     }
 }

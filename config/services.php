@@ -41,4 +41,10 @@ return [
         'base_url' => env('PAYSTACK_BASE_URL', 'https://api.paystack.co'),
     ],
 
+    'arkesel' => [
+        'api_key' => env('ARKESEL_API_KEY'),
+        'sender_id' => env('ARKESEL_SENDER_ID'),
+        'base_url' => env('ARKESEL_BASE_URL', 'https://sms.arkesel.com/api/v2/sms/send'),
+    ],
+
 ];

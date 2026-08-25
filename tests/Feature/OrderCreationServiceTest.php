@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Contracts\Notifier;
 use App\Events\OrderPlaced;
 use App\Exceptions\OrderPlacementException;
 use App\Models\Branch;
@@ -141,6 +142,52 @@ class OrderCreationServiceTest extends TestCase
 
         Event::assertDispatched(OrderPlaced::class, fn (OrderPlaced $event) => $event->orderId === $order->id && $event->branchId === $this->branch->id
         );
+    }
+
+    public function test_a_manually_settled_order_sends_the_customer_a_placed_sms(): void
+    {
+        // Cash/momo orders are created already-'paid' — the "placed" SMS
+        // fires right here, not from OrderStateMachine (that's the Paystack
+        // path, see OrderStateMachineTest). Deferred to the transaction's
+        // commit, same as the OrderPlaced broadcast just above it.
+        $this->mock(Notifier::class, function ($mock) {
+            $mock->shouldReceive('notify')->once()
+                ->with('+233241111111', \Mockery::type('string'), \Mockery::type('array'));
+        });
+
+        app(OrderCreationService::class)->create(new PlaceOrderData(
+            customerPhone: '+233241111111',
+            customerName: 'Ama',
+            branchId: $this->branch->id,
+            fulfilmentType: 'pickup',
+            paymentMethod: 'cash',
+            items: [$this->baseItem([$this->chiliSauce->id])],
+        ));
+    }
+
+    public function test_a_paystack_order_does_not_send_a_placed_sms_yet(): void
+    {
+        // Still pending_payment at creation — the "placed" SMS only fires
+        // once the webhook actually confirms payment (OrderStateMachine).
+        $this->mock(Notifier::class, function ($mock) {
+            $mock->shouldNotReceive('notify');
+        });
+
+        app(OrderCreationService::class)->create(new PlaceOrderData(
+            customerPhone: '+233241111111',
+            customerName: 'Ama',
+            branchId: $this->branch->id,
+            fulfilmentType: 'delivery',
+            paymentMethod: 'paystack',
+            items: [$this->baseItem([$this->chiliSauce->id])],
+            deliveryAddress: new DeliveryAddressData(
+                areaId: $this->area->id,
+                ghanapostCode: 'GA-123-4567',
+                landmark: 'Near the mall',
+                lat: 5.5565,
+                lng: -0.1970,
+            ),
+        ));
     }
 
     public function test_web_order_reference_uses_the_default_web_prefix(): void
