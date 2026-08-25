@@ -109,6 +109,34 @@ class CustomerPagesTest extends TestCase
         $response->assertDontSee(route('menu.show', $item), false);
     }
 
+    // Regression: HomeController used to mark each item's availability
+    // via Collection::each(), which stops iterating the instant a
+    // callback returns exactly false — and isAvailable=false (the
+    // sold-out case) IS exactly false. A sold-out item ordered before
+    // others silently cut the loop short, leaving every later item's
+    // isAvailable unset (falsy in Blade) — the entire rest of the
+    // category rendered grayed out instead of just the one sold-out item.
+    public function test_home_page_marquee_only_grays_out_the_sold_out_item_not_every_item_after_it(): void
+    {
+        $category = Category::create(['name' => 'Shawarma', 'slug' => 'shawarma']);
+        $soldOut = MenuItem::create([
+            'category_id' => $category->id, 'name' => 'Chicken Shawarma', 'slug' => 'chicken-shawarma',
+            'base_price' => 3500, 'sort_order' => 1,
+        ]);
+        $stillAvailable = MenuItem::create([
+            'category_id' => $category->id, 'name' => 'Beef Shawarma', 'slug' => 'beef-shawarma',
+            'base_price' => 4000, 'sort_order' => 2,
+        ]);
+        $this->branch->menuItems()->attach($soldOut->id, ['is_available' => false]);
+        $this->branch->menuItems()->attach($stillAvailable->id, ['is_available' => true]);
+
+        $response = $this->withSession(['customer_branch_id' => $this->branch->id])->get(route('home'));
+
+        $response->assertOk();
+        $response->assertSee(route('menu.show', $stillAvailable), false);
+        $response->assertDontSee(route('menu.show', $soldOut), false);
+    }
+
     public function test_home_page_marquee_shows_items_as_available_when_no_branch_is_selected_yet(): void
     {
         // No branch chosen yet — availability is inherently unknown

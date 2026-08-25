@@ -91,8 +91,16 @@ class HomeController extends Controller
                 ->pluck('menu_items.id')
             : $items->pluck('id');
 
-        return $items->each(
-            fn (MenuItem $item) => $item->isAvailable = $availableIds->contains($item->id)
-        );
+        // map(), not each() — each() stops iterating the instant a
+        // callback returns exactly false, and $item->isAvailable = false
+        // (the sold-out case) IS exactly false, so a single sold-out item
+        // used to silently cut the loop short and leave every item after
+        // it with isAvailable unset — read as falsy by Blade, graying out
+        // the rest of the category too.
+        return $items->map(function (MenuItem $item) use ($availableIds) {
+            $item->isAvailable = $availableIds->contains($item->id);
+
+            return $item;
+        });
     }
 }
