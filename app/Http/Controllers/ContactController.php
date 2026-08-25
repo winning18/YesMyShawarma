@@ -18,6 +18,7 @@ class ContactController extends Controller
             // See BranchesController::index() — same reasoning.
             $branch->is_open_now = $workingHours->isOpenNow($branch);
             $branch->next_opening_label = $branch->is_open_now ? null : $workingHours->nextOpening($branch)?->format('l g:ia');
+            $branch->todays_hours_label = $workingHours->todayLabel($branch);
         });
 
         return view('contact', [

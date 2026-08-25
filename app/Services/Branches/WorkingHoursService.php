@@ -138,6 +138,38 @@ class WorkingHoursService
     }
 
     /**
+     * Human-readable hours for $branch today, per its own weekly schedule
+     * — what the customer-facing branch card shows instead of the flat,
+     * same-every-day Branch::opens_at/closes_at columns. Mirrors
+     * isOpenAt()'s exact reading of "unconfigured" vs "closed today":
+     * null means there is nothing admin-set to show at all (zero rows for
+     * the branch — the "Working Hours" page has never been touched), a
+     * missing or null-times row for today means closed today.
+     */
+    public function todayLabel(Branch $branch, ?Carbon $at = null): ?string
+    {
+        $rows = BranchWorkingHour::where('branch_id', $branch->id)->get()->keyBy('day_of_week');
+
+        if ($rows->isEmpty()) {
+            return null;
+        }
+
+        $local = ($at ?? now())->copy()->timezone('Africa/Accra');
+        $today = $rows->get((int) $local->isoWeekday());
+
+        if (! $today || ! $today->opens_at || ! $today->closes_at) {
+            return null;
+        }
+
+        // Carbon::parse(), not createFromFormat('H:i:s', ...) — save()
+        // normalises to "H:i:s" before it ever reaches the database, but
+        // rows created directly (tests, tinker) may still be plain "H:i",
+        // and parse() reads either without throwing.
+        return Carbon::parse($today->opens_at)->format('g:ia')
+            .' – '.Carbon::parse($today->closes_at)->format('g:ia');
+    }
+
+    /**
      * The next moment $branch opens at/after $from — null if nothing's
      * configured at all (isOpenAt would already say "open" in that case,
      * so this is only ever asked when there genuinely is a schedule to

@@ -4,8 +4,8 @@
     Shared by branches/index.blade.php and contact.blade.php — a change
     here (design, badge logic, buttons) applies to both at once rather
     than two copies drifting apart. $branch is expected to carry the
-    transient is_open_now/next_opening_label attributes set by
-    BranchesController/ContactController (see WorkingHoursService).
+    transient is_open_now/next_opening_label/todays_hours_label attributes
+    set by BranchesController/ContactController (see WorkingHoursService).
 --}}
 <div
     x-data="{ showMap: false }"
@@ -24,11 +24,21 @@
         </div>
         <p class="text-sm text-brand-gray-500 mb-3">{{ $branch->address }}</p>
 
-        <div class="text-sm mb-3">
-            <span class="font-medium">{{ __('Hours') }}:</span>
-            {{ \Illuminate\Support\Carbon::parse($branch->opens_at)->format('g:ia') }}
-            – {{ \Illuminate\Support\Carbon::parse($branch->closes_at)->format('g:ia') }}
-        </div>
+        {{--
+            Sourced from the branch's own admin-set weekly schedule
+            (WorkingHoursService::todayLabel — the "Working Hours"
+            dashboard page), never the flat Branch::opens_at/closes_at
+            columns this used to read straight from — that pair is a
+            same-every-day seed/fallback value, not what an admin actually
+            configures per branch. Omitted entirely (rather than showing a
+            guess) when the branch's schedule hasn't been set up yet.
+        --}}
+        @if ($branch->todays_hours_label)
+            <div class="text-sm mb-3">
+                <span class="font-medium">{{ __('Hours today') }}:</span>
+                {{ $branch->todays_hours_label }}
+            </div>
+        @endif
 
         <div class="mb-5">
             @if (! $branch->is_accepting_orders)

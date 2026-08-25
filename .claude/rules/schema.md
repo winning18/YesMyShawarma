@@ -21,10 +21,25 @@ Column lists are indicative. **Propose migrations before writing them.**
 branches
   id, name, slug, phone, address, ghanapost_code, lat, lng,
   opens_at, closes_at, is_accepting_orders, is_active
+
+branch_working_hours
+  id, branch_id, day_of_week (1=Mon..7=Sun), opens_at, closes_at
 ```
 
 `is_accepting_orders` is a manual kill switch separate from opening hours — staff use it when
 the kitchen is overwhelmed.
+
+`branches.opens_at`/`closes_at` are a flat, same-every-day fallback — required at branch
+creation, editable on the branch's own edit form, but otherwise inert. **They gate nothing and
+customers never see them.** The real weekly schedule is `branch_working_hours`, one row per
+`(branch_id, day_of_week)`, edited from its own "Working Hours" dashboard page
+(`WorkingHoursService`) — this is what `isOpenAt()`/`isOpenNow()`/`nextOpening()` read for order
+gating and what the customer-facing branch card's "Hours today" line reads for display
+(`WorkingHoursService::todayLabel()`). A day with no row at all means "never configured"; a row
+that exists with both `opens_at`/`closes_at` null means "deliberately closed that day" — two
+different signals sharing the same null value, disambiguated only by row presence. A branch
+with zero `branch_working_hours` rows fails open (`isOpenAt()` always true) so a branch that has
+never touched the feature behaves exactly as before it existed.
 
 ## Menu
 

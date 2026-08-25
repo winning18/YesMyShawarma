@@ -198,6 +198,51 @@ class CustomerPagesTest extends TestCase
             ->assertDontSee('Closed — opens');
     }
 
+    // Regression: the branch card used to print Branch::opens_at/closes_at
+    // directly — a flat, same-every-day seed value with no admin editor —
+    // instead of the branch's actual admin-configurable weekly schedule
+    // (the "Working Hours" dashboard page, WorkingHoursService). The
+    // branch was seeded with opens_at=14:00/closes_at=00:00 here on
+    // purpose (see setUp) so this test fails loudly if that flat value
+    // ever leaks back onto the page.
+    public function test_branches_page_shows_todays_admin_set_hours_not_the_flat_seeded_columns(): void
+    {
+        Carbon::setTestNow(Carbon::now('Africa/Accra')->next(Carbon::MONDAY)->setTime(15, 0));
+        BranchWorkingHour::create(['branch_id' => $this->branch->id, 'day_of_week' => 1, 'opens_at' => '10:00', 'closes_at' => '22:00']);
+
+        $response = $this->get(route('branches.index'))->assertOk();
+
+        $response->assertSee('Hours today');
+        $response->assertSee('10:00am');
+        $response->assertSee('10:00pm');
+        // The flat columns this branch was seeded with (setUp: 14:00/00:00)
+        // must never appear — that would mean the old hardcoded path won.
+        $response->assertDontSee('2:00pm');
+        $response->assertDontSee('12:00am');
+    }
+
+    public function test_branches_page_hides_the_hours_line_when_no_working_hours_are_configured_yet(): void
+    {
+        // No BranchWorkingHour rows at all for $this->branch — the
+        // "Working Hours" page has never been touched for it. Nothing
+        // admin-set exists to show, so the line should be omitted rather
+        // than falling back to a guess.
+        $this->get(route('branches.index'))
+            ->assertOk()
+            ->assertDontSee('Hours today');
+    }
+
+    public function test_branches_page_hides_the_hours_line_on_a_day_the_branch_is_marked_closed(): void
+    {
+        Carbon::setTestNow(Carbon::now('Africa/Accra')->next(Carbon::MONDAY)->setTime(15, 0));
+        // Both null — schema.md's documented "closed that day" signal.
+        BranchWorkingHour::create(['branch_id' => $this->branch->id, 'day_of_week' => 1, 'opens_at' => null, 'closes_at' => null]);
+
+        $this->get(route('branches.index'))
+            ->assertOk()
+            ->assertDontSee('Hours today');
+    }
+
     public function test_the_currently_selected_branch_is_highlighted_on_the_branches_page(): void
     {
         $otherBranch = Branch::create([

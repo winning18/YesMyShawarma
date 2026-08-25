@@ -20,6 +20,7 @@ class BranchesController extends Controller
             // just because nobody's paused it.
             $branch->is_open_now = $workingHours->isOpenNow($branch);
             $branch->next_opening_label = $branch->is_open_now ? null : $workingHours->nextOpening($branch)?->format('l g:ia');
+            $branch->todays_hours_label = $workingHours->todayLabel($branch);
         });
 
         return view('branches.index', [

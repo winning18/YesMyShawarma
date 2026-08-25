@@ -257,6 +257,30 @@ class WorkingHoursTest extends TestCase
         $this->assertFalse(app(WorkingHoursService::class)->isOpenNow($this->osu));
     }
 
+    public function test_today_label_is_null_when_nothing_is_configured(): void
+    {
+        // Osu has zero branch_working_hours rows — nothing admin-set
+        // exists to show, so the branch card must have nothing to render
+        // rather than falling back to a guess.
+        $this->assertNull(app(WorkingHoursService::class)->todayLabel($this->osu));
+    }
+
+    public function test_today_label_is_null_on_a_day_the_branch_is_closed(): void
+    {
+        Carbon::setTestNow(Carbon::now('Africa/Accra')->next(Carbon::MONDAY)->setTime(15, 0));
+        BranchWorkingHour::create(['branch_id' => $this->osu->id, 'day_of_week' => 1, 'opens_at' => null, 'closes_at' => null]);
+
+        $this->assertNull(app(WorkingHoursService::class)->todayLabel($this->osu));
+    }
+
+    public function test_today_label_formats_todays_configured_window(): void
+    {
+        Carbon::setTestNow(Carbon::now('Africa/Accra')->next(Carbon::MONDAY)->setTime(15, 0));
+        BranchWorkingHour::create(['branch_id' => $this->osu->id, 'day_of_week' => 1, 'opens_at' => '14:00', 'closes_at' => '23:30']);
+
+        $this->assertSame('2:00pm – 11:30pm', app(WorkingHoursService::class)->todayLabel($this->osu));
+    }
+
     public function test_next_opening_finds_the_next_configured_day_and_time(): void
     {
         Carbon::setTestNow(Carbon::now('Africa/Accra')->next(Carbon::WEDNESDAY)->setTime(9, 0));
