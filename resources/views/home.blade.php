@@ -1,4 +1,4 @@
-<x-customer-layout body-class="bg-brand-black">
+<x-customer-layout body-class="bg-brand-black" :og-image="data_get($heroSlides->first(), 'imageUrl')">
     <x-slot name="fullHero">
         {{--
             Full-bleed hero slider — each slide is a featured category with

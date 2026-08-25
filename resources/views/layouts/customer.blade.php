@@ -7,6 +7,30 @@
 
         <title>{{ $title ?? config('app.name') }}</title>
 
+        {{--
+            Link-preview tags — without these, WhatsApp/Facebook/iMessage
+            etc fall back to grabbing the first <img> on the page (the
+            header logo), which is why every shared link used to show the
+            same logo regardless of what it linked to. $ogImage/
+            $ogDescription are per-page (see CustomerLayout — a product
+            page passes its own photo); the fallback here is the one
+            default used by every page that doesn't set its own.
+        --}}
+        @php
+            $ogImageUrl = $ogImage ?? asset('images/logo-web.png');
+            $ogDescriptionText = $ogDescription ?? __('Shawarma, burgers and more — order online for pickup from our Accra branches.');
+        @endphp
+        <meta property="og:type" content="website">
+        <meta property="og:site_name" content="{{ config('app.name') }}">
+        <meta property="og:title" content="{{ $title ?? config('app.name') }}">
+        <meta property="og:description" content="{{ $ogDescriptionText }}">
+        <meta property="og:image" content="{{ $ogImageUrl }}">
+        <meta property="og:url" content="{{ url()->current() }}">
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:title" content="{{ $title ?? config('app.name') }}">
+        <meta name="twitter:description" content="{{ $ogDescriptionText }}">
+        <meta name="twitter:image" content="{{ $ogImageUrl }}">
+
         <link rel="icon" type="image/png" href="{{ asset('images/favicon.png') }}">
 
         <link rel="preconnect" href="https://fonts.bunny.net">

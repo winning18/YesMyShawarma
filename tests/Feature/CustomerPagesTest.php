@@ -70,6 +70,16 @@ class CustomerPagesTest extends TestCase
         $this->get(route('home'))->assertSee('Wrapped fresh, packed with flavour.');
     }
 
+    public function test_home_page_uses_the_first_hero_slides_photo_as_the_link_preview_image(): void
+    {
+        Category::create(['name' => 'Shawarma', 'slug' => 'shawarma', 'hero_image_path' => 'category-hero/1.jpg', 'sort_order' => 1]);
+        Category::create(['name' => 'Burgers', 'slug' => 'burgers', 'hero_image_path' => 'category-hero/2.jpg', 'sort_order' => 2]);
+
+        $response = $this->get(route('home'))->assertOk();
+
+        $response->assertSee('property="og:image" content="'.\Illuminate\Support\Facades\Storage::disk('public')->url('category-hero/1.jpg').'"', false);
+    }
+
     public function test_home_page_marquee_links_to_an_available_item_when_a_branch_is_selected(): void
     {
         $category = Category::create(['name' => 'Shawarma', 'slug' => 'shawarma']);
@@ -428,6 +438,40 @@ class CustomerPagesTest extends TestCase
         // the page's own title/heading) would mean the "exclude itself"
         // filter isn't working.
         $this->assertSame(1, substr_count($response->getContent(), '+ Add'));
+    }
+
+    // A shared product link must preview as that product, not the site
+    // logo every crawler used to fall back to (the first <img> on the
+    // page) with no og:image tag at all.
+    public function test_product_page_uses_its_own_photo_as_the_link_preview_image(): void
+    {
+        $category = Category::create(['name' => 'Shawarma', 'slug' => 'shawarma']);
+        $item = MenuItem::create([
+            'category_id' => $category->id, 'name' => 'Chicken Shawarma', 'slug' => 'chicken-shawarma',
+            'base_price' => 5000, 'image_path' => 'menu-items/chicken-shawarma.jpg', 'description' => 'Grilled chicken, fresh veg, garlic sauce.',
+        ]);
+        $this->branch->menuItems()->attach($item->id, ['is_available' => true]);
+        $this->get(route('branches.pick', $this->branch));
+
+        $response = $this->get(route('menu.show', $item))->assertOk();
+
+        $response->assertSee('property="og:image" content="'.$item->imageUrl().'"', false);
+        $response->assertSee('name="twitter:image" content="'.$item->imageUrl().'"', false);
+        $response->assertSee('property="og:description" content="Grilled chicken, fresh veg, garlic sauce."', false);
+    }
+
+    public function test_product_page_falls_back_to_the_default_preview_image_when_it_has_no_photo(): void
+    {
+        $category = Category::create(['name' => 'Shawarma', 'slug' => 'shawarma']);
+        $item = MenuItem::create([
+            'category_id' => $category->id, 'name' => 'Chicken Shawarma', 'slug' => 'chicken-shawarma', 'base_price' => 5000,
+        ]);
+        $this->branch->menuItems()->attach($item->id, ['is_available' => true]);
+        $this->get(route('branches.pick', $this->branch));
+
+        $response = $this->get(route('menu.show', $item))->assertOk();
+
+        $response->assertSee('property="og:image" content="'.asset('images/logo-web.png').'"', false);
     }
 
     public function test_product_page_without_a_selected_branch_redirects_to_branches(): void

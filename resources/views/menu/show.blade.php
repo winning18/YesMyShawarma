@@ -1,4 +1,8 @@
-<x-customer-layout title="{{ $item->name }} · {{ config('app.name') }}">
+<x-customer-layout
+    title="{{ $item->name }} · {{ config('app.name') }}"
+    :og-image="$item->imageUrl()"
+    :og-description="$item->description ? Str::limit($item->description, 160) : null"
+>
     <a href="{{ route('menu.index') }}" class="text-sm underline text-brand-gray-500">&larr; {{ __('Back to menu') }}</a>
 
     @if ($errors->any())
