@@ -179,7 +179,7 @@
         </main>
 
         <footer class="mt-12 bg-brand-black border-t border-brand-yellow">
-            <div class="max-w-5xl mx-auto px-4 py-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 text-sm text-brand-gray-300">
+            <div class="max-w-5xl mx-auto px-4 py-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 text-sm text-brand-gray-300">
                 <div>
                     <img src="{{ asset('images/logo-web.png') }}" alt="{{ config('app.name') }}" class="h-9 w-auto mb-4">
                     <p class="text-brand-gray-300">
@@ -198,6 +198,16 @@
                         <a href="{{ route('tracking.lookup') }}" class="block hover:text-brand-yellow transition">{{ __('Track order') }}</a>
                         <a href="{{ route('faq') }}" class="block hover:text-brand-yellow transition">{{ __('FAQ') }}</a>
                         <a href="{{ route('reviews.index') }}" class="block hover:text-brand-yellow transition">{{ __('Reviews') }}</a>
+                    </nav>
+                </div>
+
+                <div>
+                    <p class="font-semibold text-brand-yellow uppercase text-xs tracking-wide mb-4">{{ __('Policy') }}</p>
+                    <nav class="space-y-2">
+                        <a href="{{ route('policy.terms') }}" class="block hover:text-brand-yellow transition">{{ __('Terms & Conditions') }}</a>
+                        <a href="{{ route('policy.refunds') }}" class="block hover:text-brand-yellow transition">{{ __('Refund Policy') }}</a>
+                        <a href="{{ route('policy.privacy') }}" class="block hover:text-brand-yellow transition">{{ __('Privacy Policy') }}</a>
+                        <a href="{{ route('policy.cookies') }}" class="block hover:text-brand-yellow transition">{{ __('Cookie Policy') }}</a>
                     </nav>
                 </div>
 

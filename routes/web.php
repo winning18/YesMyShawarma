@@ -23,6 +23,7 @@ use App\Http\Controllers\OrderActionController;
 use App\Http\Controllers\OrderDashboardController;
 use App\Http\Controllers\OrderHistoryController;
 use App\Http\Controllers\PerformanceController;
+use App\Http\Controllers\PolicyController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PromotionManagementController;
@@ -86,6 +87,11 @@ Route::middleware('track.visit')->group(function () {
     Route::post('/track/{order:track_token}/review', [TrackingController::class, 'storeReview'])->name('tracking.review.store');
 
     Route::get('/reviews', [ReviewsController::class, 'index'])->name('reviews.index');
+
+    Route::get('/terms-and-conditions', [PolicyController::class, 'terms'])->name('policy.terms');
+    Route::get('/refund-policy', [PolicyController::class, 'refunds'])->name('policy.refunds');
+    Route::get('/privacy-policy', [PolicyController::class, 'privacy'])->name('policy.privacy');
+    Route::get('/cookie-policy', [PolicyController::class, 'cookies'])->name('policy.cookies');
 });
 
 // Distinct /customer/* paths — staff auth already owns /login, /register,
