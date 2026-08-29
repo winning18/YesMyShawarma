@@ -3,13 +3,13 @@
 
     {{-- Mission and vision --}}
     <section class="mb-14">
-        <div class="space-y-8">
+        <div class="space-y-8 text-center">
             <div>
-                <p class="font-semibold text-brand-yellow-dark uppercase text-xs tracking-wide mb-3">{{ __('Mission') }}</p>
+                <h2 class="text-lg font-bold mb-3">{{ __('Mission') }}</h2>
                 <p class="text-brand-black">{{ __("We're here to turn a simple craving into a reliable favourite, delivering bold, quality meals quickly and consistently across every neighbourhood we reach.") }}</p>
             </div>
             <div>
-                <p class="font-semibold text-brand-yellow-dark uppercase text-xs tracking-wide mb-3">{{ __('Vision') }}</p>
+                <h2 class="text-lg font-bold mb-3">{{ __('Vision') }}</h2>
                 <p class="text-brand-black">{{ __('To be the first name Ghanaians think of when they crave quality authentic meals, growing from Accra across the country and beyond.') }}</p>
             </div>
         </div>
@@ -22,8 +22,8 @@
         <div class="text-brand-black leading-relaxed space-y-4 mb-10">
             <p>{{ __('Yes! My Shawarma began as a bold idea inside Yes! My Grill to serve exceptional shawarma wraps built on two things too often missing from fast food: real health and true value for money.') }}</p>
             <p>{{ __("We started small. One joint, one conviction: that a shawarma could be crafted, not just assembled. Our wraps tasted different, and at first, different drew questions. Some customers weren't sure what to make of a flavour that didn't copy everyone else. But we kept serving, kept explaining, and something began to shift. One bite at a time, people understood, this wasn't just another wrap. This was a recipe with a craft behind it, a quality they couldn't get anywhere else. The questions turned into cravings, and the first-timers turned into regulars.") }}</p>
-            <p>{{ __("Those returning customers gave us our first real hope, and they've carried us ever since. We served over 5,000 in-house orders before our second branch even opened, launching in December and opening our second location by March. Today we run three branches and counting, with more strategic locations on the way to bring our wraps to even more of Accra.") }}</p>
-            <p>{{ __("Along the way, we've built more than a menu. We've created jobs for over many Ghanaian youth, and together we show up every day to deliver the same thing: the best service, aimed squarely at one goal, a customer who leaves satisfied and comes back for more.") }}</p>
+            <p>{{ __("Those returning customers gave us our first real hope, and they've carried us ever since. ") }}<span class="font-bold">{{ __('We served over 5,000 in-house orders before our second branch even opened') }}</span>{{ __(', launching in December and opening our second location by March. Today we run ') }}<span class="font-bold">{{ __('three branches') }}</span>{{ __(' and counting, with more strategic locations on the way to bring our wraps to even more of Accra.') }}</p>
+            <p>{{ __("Along the way, we've built more than a menu. ") }}<span class="font-bold">{{ __("We've created jobs for many Ghanaian youth") }}</span>{{ __(', and together we show up every day to deliver the same thing: the best service, aimed squarely at one goal, a customer who leaves satisfied and comes back for more.') }}</p>
             <p>{{ __("We're famous for our recipe, and we're proud of it. We're not like every other food joint. Our craft is our own and that's exactly the point. We're just getting started.") }}</p>
             <p class="font-semibold">{{ __("One bite, and you'll want more.") }}</p>
         </div>
