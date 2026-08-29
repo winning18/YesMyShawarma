@@ -1,33 +1,32 @@
 <x-customer-layout title="About us · {{ config('app.name') }}">
     <x-slot name="pageHeader">{{ __('About us') }}</x-slot>
 
-    {{-- About the business --}}
+    {{-- Mission and vision --}}
     <section class="mb-14 max-w-3xl mx-auto">
-        <h2 class="text-lg font-bold mb-4 text-center">{{ __('Our story') }}</h2>
-        {{--
-            Placeholder copy — no real founding story has been provided yet.
-            Bracketed on purpose so it reads as unfinished rather than as an
-            asserted fact about the business. Replace with the real text
-            whenever it's ready.
-        --}}
-        <div class="text-brand-black text-center space-y-4">
-            <p>
-                [{{ __('Add your founding story here — how :name started, what makes the food and the branches special, and what the business stands for.', ['name' => config('app.name')]) }}]
-            </p>
-            <p>
-                {{ __(':name serves shawarma, burgers, sandwiches, hot dogs, loaded fries and drinks from branches in Accra — Ga Odumase and Pokuase Y-Junction.', ['name' => config('app.name')]) }}
-            </p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-10 text-center">
+            <div>
+                <p class="font-semibold text-brand-yellow-dark uppercase text-xs tracking-wide mb-3">{{ __('Mission') }}</p>
+                <p class="text-brand-black">{{ __("We're here to turn a simple craving into a reliable favourite, delivering bold, quality meals quickly and consistently across every neighbourhood we reach.") }}</p>
+            </div>
+            <div>
+                <p class="font-semibold text-brand-yellow-dark uppercase text-xs tracking-wide mb-3">{{ __('Vision') }}</p>
+                <p class="text-brand-black">{{ __('To be the first name Ghanaians think of when they crave quality authentic meals, growing from Accra across the country and beyond.') }}</p>
+            </div>
         </div>
     </section>
 
     {{-- Our success story --}}
     <section class="mb-14 pt-14 border-t border-brand-gray-100">
-        <h2 class="text-lg font-bold mb-4 text-center">{{ __('Our success story') }}</h2>
+        <h2 class="text-lg font-bold mb-6 text-center">{{ __('Our success story') }}</h2>
 
-        {{-- Placeholder — same bracketed convention as "Our story" above. --}}
-        <p class="text-center text-brand-gray-500 text-sm mb-6 max-w-2xl mx-auto">
-            [{{ __('Add a closing line here about your growth and what keeps customers coming back.') }}]
-        </p>
+        <div class="text-brand-black leading-relaxed space-y-4 max-w-2xl mx-auto mb-10">
+            <p>{{ __('Yes! My Shawarma began as a bold idea inside Yes! My Grill to serve exceptional shawarma wraps built on two things too often missing from fast food: real health and true value for money.') }}</p>
+            <p>{{ __("We started small. One joint, one conviction: that a shawarma could be crafted, not just assembled. Our wraps tasted different, and at first, different drew questions. Some customers weren't sure what to make of a flavour that didn't copy everyone else. But we kept serving, kept explaining, and something began to shift. One bite at a time, people understood, this wasn't just another wrap. This was a recipe with a craft behind it, a quality they couldn't get anywhere else. The questions turned into cravings, and the first-timers turned into regulars.") }}</p>
+            <p>{{ __("Those returning customers gave us our first real hope, and they've carried us ever since. We served over 5,000 in-house orders before our second branch even opened, launching in December and opening our second location by March. Today we run three branches and counting, with more strategic locations on the way to bring our wraps to even more of Accra.") }}</p>
+            <p>{{ __("Along the way, we've built more than a menu. We've created jobs for over many Ghanaian youth, and together we show up every day to deliver the same thing: the best service, aimed squarely at one goal, a customer who leaves satisfied and comes back for more.") }}</p>
+            <p>{{ __("We're famous for our recipe, and we're proud of it. We're not like every other food joint. Our craft is our own and that's exactly the point. We're just getting started.") }}</p>
+            <p class="font-semibold text-center">{{ __("One bite, and you'll want more.") }}</p>
+        </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
             <div class="bg-brand-black rounded-xl p-6 text-brand-white text-center">
