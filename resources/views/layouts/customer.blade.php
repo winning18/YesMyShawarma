@@ -210,6 +210,63 @@
                     <a href="tel:+233531907747" class="block hover:text-brand-yellow transition"><span class="font-bold text-brand-white">Pokuase</span><br>+233 (0) 531 907 747</a>
                 </div>
             </div>
+
+            {{--
+                FAQ — native <details>/<summary> rather than an Alpine
+                accordion: no JS needed to render or expand it, which
+                matters on the throttled-3G budget this site is built to
+                (see CLAUDE.md's performance budget). Tailwind's
+                group-open: variant (supported since 3.1, installed here)
+                handles the plus-to-cross rotation.
+            --}}
+            <div class="max-w-5xl mx-auto px-4 pb-12 pt-10 border-t border-brand-gray-700">
+                <p class="font-semibold text-brand-yellow uppercase text-xs tracking-wide mb-4">{{ __('Frequently asked questions') }}</p>
+                <div class="max-w-3xl divide-y divide-brand-gray-700">
+                    <details class="group py-3">
+                        <summary class="flex items-center justify-between gap-4 cursor-pointer list-none text-brand-white text-sm font-medium marker:content-none [&::-webkit-details-marker]:hidden">
+                            {{ __('Do I need an account to order?') }}
+                            <span class="shrink-0 text-brand-yellow font-bold transition-transform group-open:rotate-45">+</span>
+                        </summary>
+                        <p class="mt-2 text-sm text-brand-gray-300">{{ __('No — check out as a guest with just your phone number. If you set a password later using that same number, your past orders are automatically linked to the new account.') }}</p>
+                    </details>
+                    <details class="group py-3">
+                        <summary class="flex items-center justify-between gap-4 cursor-pointer list-none text-brand-white text-sm font-medium marker:content-none [&::-webkit-details-marker]:hidden">
+                            {{ __('How can I pay?') }}
+                            <span class="shrink-0 text-brand-yellow font-bold transition-transform group-open:rotate-45">+</span>
+                        </summary>
+                        <p class="mt-2 text-sm text-brand-gray-300">{{ __('Cash on pickup or delivery, or pay online upfront with Paystack — cards and Mobile Money (MoMo) are both supported.') }}</p>
+                    </details>
+                    <details class="group py-3">
+                        <summary class="flex items-center justify-between gap-4 cursor-pointer list-none text-brand-white text-sm font-medium marker:content-none [&::-webkit-details-marker]:hidden">
+                            {{ __('Do you deliver, or is it pickup only?') }}
+                            <span class="shrink-0 text-brand-yellow font-bold transition-transform group-open:rotate-45">+</span>
+                        </summary>
+                        <p class="mt-2 text-sm text-brand-gray-300">{{ __('Both. Pickup is always available at any branch. Delivery is offered where we have an active delivery area, with the fee worked out by distance from the branch at checkout.') }}</p>
+                    </details>
+                    <details class="group py-3">
+                        <summary class="flex items-center justify-between gap-4 cursor-pointer list-none text-brand-white text-sm font-medium marker:content-none [&::-webkit-details-marker]:hidden">
+                            {{ __('How do I track my order?') }}
+                            <span class="shrink-0 text-brand-yellow font-bold transition-transform group-open:rotate-45">+</span>
+                        </summary>
+                        <p class="mt-2 text-sm text-brand-gray-300">{{ __('Your order confirmation includes a tracking link. You can also look it up anytime from Track order using the phone number you ordered with.') }}</p>
+                    </details>
+                    <details class="group py-3">
+                        <summary class="flex items-center justify-between gap-4 cursor-pointer list-none text-brand-white text-sm font-medium marker:content-none [&::-webkit-details-marker]:hidden">
+                            {{ __('Which branches can I order from?') }}
+                            <span class="shrink-0 text-brand-yellow font-bold transition-transform group-open:rotate-45">+</span>
+                        </summary>
+                        <p class="mt-2 text-sm text-brand-gray-300">{{ __('Ga Odumase and Pokuase Y-Junction are open now, with another branch on the way. Opening hours for each are shown on the Branches page.') }}</p>
+                    </details>
+                    <details class="group py-3">
+                        <summary class="flex items-center justify-between gap-4 cursor-pointer list-none text-brand-white text-sm font-medium marker:content-none [&::-webkit-details-marker]:hidden">
+                            {{ __("Something's wrong with my order — what do I do?") }}
+                            <span class="shrink-0 text-brand-yellow font-bold transition-transform group-open:rotate-45">+</span>
+                        </summary>
+                        <p class="mt-2 text-sm text-brand-gray-300">{{ __('Call or WhatsApp the branch you ordered from, or send a message through Contact us — our team will sort out a refund or replacement.') }}</p>
+                    </details>
+                </div>
+            </div>
+
             <div class="max-w-5xl mx-auto px-4 py-4 border-t border-brand-gray-700 text-sm text-brand-gray-300 text-center">
                 &copy; {{ now()->year }} {{ config('app.name') }}
             </div>
