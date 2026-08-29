@@ -29,6 +29,8 @@ use App\Http\Controllers\PromotionManagementController;
 use App\Http\Controllers\RefundController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\ReportsInvoicesController;
+use App\Http\Controllers\ReviewManagementController;
+use App\Http\Controllers\ReviewsController;
 use App\Http\Controllers\Rider\AuthenticatedSessionController as RiderAuthenticatedSessionController;
 use App\Http\Controllers\Rider\DashboardController as RiderDashboardController;
 use App\Http\Controllers\Rider\DeliveryHistoryController as RiderDeliveryHistoryController;
@@ -81,6 +83,9 @@ Route::middleware('track.visit')->group(function () {
     Route::post('/track/find', [TrackingController::class, 'find'])->name('tracking.find');
     Route::get('/track/{order:track_token}', [TrackingController::class, 'show'])->name('tracking.show');
     Route::get('/track/{order:track_token}/data', [TrackingController::class, 'data'])->name('tracking.data');
+    Route::post('/track/{order:track_token}/review', [TrackingController::class, 'storeReview'])->name('tracking.review.store');
+
+    Route::get('/reviews', [ReviewsController::class, 'index'])->name('reviews.index');
 });
 
 // Distinct /customer/* paths — staff auth already owns /login, /register,
@@ -123,6 +128,10 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::post('/dashboard/refunds/{refund}/approve', [RefundController::class, 'approve'])->name('dashboard.refunds.approve');
     Route::post('/dashboard/refunds/{refund}/deny', [RefundController::class, 'deny'])->name('dashboard.refunds.deny');
     Route::post('/dashboard/refunds/{refund}/complete', [RefundController::class, 'complete'])->name('dashboard.refunds.complete');
+
+    Route::get('/dashboard/reviews', [ReviewManagementController::class, 'index'])->name('dashboard.reviews.index');
+    Route::post('/dashboard/reviews/{review}/approve', [ReviewManagementController::class, 'approve'])->name('dashboard.reviews.approve');
+    Route::post('/dashboard/reviews/{review}/reject', [ReviewManagementController::class, 'reject'])->name('dashboard.reviews.reject');
 
     Route::get('/dashboard/riders', [RiderAvailabilityController::class, 'index'])->name('dashboard.riders');
 

@@ -21,6 +21,14 @@ class BranchesController extends Controller
             $branch->is_open_now = $workingHours->isOpenNow($branch);
             $branch->next_opening_label = $branch->is_open_now ? null : $workingHours->nextOpening($branch)?->format('l g:ia');
             $branch->todays_hours_label = $workingHours->todayLabel($branch);
+
+            // Only ever approved reviews — pending/rejected ones stay
+            // staff-only (dashboard.reviews.index). Only a handful of
+            // branches exist, so three small per-branch queries here stay
+            // in the same performance class as the calls above.
+            $branch->reviews_count = $branch->approvedReviews()->count();
+            $branch->reviews_avg_rating = $branch->approvedReviews()->avg('rating');
+            $branch->recent_reviews = $branch->approvedReviews()->latest('moderated_at')->limit(3)->get();
         });
 
         return view('branches.index', [

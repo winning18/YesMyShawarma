@@ -13,7 +13,7 @@
     @endif
 
     <div
-        x-data="orderTracker(@js($order->track_token), '{{ route('tracking.data', $order) }}')"
+        x-data="orderTracker(@js($order->track_token), '{{ route('tracking.data', $order) }}', '{{ route('tracking.review.store', $order) }}')"
         x-init="init()"
     >
         <template x-if="!loaded">
@@ -58,6 +58,55 @@
                                 </template>
                             </ol>
                         </template>
+
+                        <div x-show="order.review_eligible" x-cloak class="mt-6 border-t border-brand-gray-100 pt-6">
+                            <template x-if="!order.review">
+                                <div>
+                                    <h2 class="font-semibold mb-2">{{ __('How was your order?') }}</h2>
+                                    <div class="flex items-center gap-1 mb-3" role="radiogroup" aria-label="{{ __('Rating') }}">
+                                        <template x-for="star in [1, 2, 3, 4, 5]" :key="star">
+                                            <button
+                                                type="button"
+                                                class="text-2xl leading-none"
+                                                :class="(reviewHoverRating || reviewRating) >= star ? 'text-brand-yellow-dark' : 'text-brand-gray-300'"
+                                                @click="reviewRating = star"
+                                                @mouseenter="reviewHoverRating = star"
+                                                @mouseleave="reviewHoverRating = 0"
+                                                :aria-label="star + ' {{ __('stars') }}'"
+                                                x-text="(reviewHoverRating || reviewRating) >= star ? '★' : '☆'"
+                                            ></button>
+                                        </template>
+                                    </div>
+                                    <textarea
+                                        x-model="reviewComment" rows="3" maxlength="2000"
+                                        placeholder="{{ __('Tell us more (optional)') }}"
+                                        class="w-full rounded-md border-brand-gray-300 text-sm focus:border-brand-yellow focus:ring-brand-yellow mb-3"
+                                    ></textarea>
+                                    <p x-show="reviewError" x-cloak x-text="reviewError" class="text-sm text-brand-red mb-2"></p>
+                                    <button
+                                        type="button"
+                                        @click="submitReview()"
+                                        :disabled="reviewRating === 0 || reviewSubmitting"
+                                        :class="reviewRating === 0 || reviewSubmitting ? 'opacity-50 cursor-not-allowed' : ''"
+                                        class="px-5 py-2 bg-brand-yellow text-brand-black text-sm font-semibold rounded-md hover:bg-brand-yellow-dark"
+                                    >
+                                        {{ __('Submit review') }}
+                                    </button>
+                                </div>
+                            </template>
+
+                            <template x-if="order.review">
+                                <div>
+                                    <h2 class="font-semibold mb-2">{{ __('Thanks for your feedback!') }}</h2>
+                                    <div class="flex items-center gap-1 text-brand-yellow-dark mb-1">
+                                        <template x-for="star in [1, 2, 3, 4, 5]" :key="star">
+                                            <span x-text="order.review.rating >= star ? '★' : '☆'"></span>
+                                        </template>
+                                    </div>
+                                    <p x-show="order.review.comment" class="text-sm text-brand-gray-500" x-text="order.review.comment"></p>
+                                </div>
+                            </template>
+                        </div>
                     </div>
 
                     <div class="space-y-6">
@@ -163,17 +212,55 @@
     </div>
 
     <script>
-        function orderTracker(trackToken, dataUrl) {
+        function orderTracker(trackToken, dataUrl, reviewUrl) {
             return {
                 loaded: false,
                 order: null,
                 steps: [],
+
+                reviewRating: 0,
+                reviewHoverRating: 0,
+                reviewComment: '',
+                reviewSubmitting: false,
+                reviewError: null,
 
                 init() {
                     this.fetchData();
 
                     window.Echo.channel(`order.${trackToken}`)
                         .listen('.OrderStatusChanged', () => this.fetchData());
+                },
+
+                async submitReview() {
+                    if (this.reviewRating === 0 || this.reviewSubmitting) return;
+
+                    this.reviewSubmitting = true;
+                    this.reviewError = null;
+
+                    try {
+                        const response = await fetch(reviewUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                Accept: 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            },
+                            body: JSON.stringify({ rating: this.reviewRating, comment: this.reviewComment || null }),
+                        });
+
+                        const payload = await response.json().catch(() => null);
+
+                        if (!response.ok) {
+                            this.reviewError = payload?.message ?? '{{ __('Something went wrong — please try again.') }}';
+                            return;
+                        }
+
+                        this.order.review = payload.review;
+                    } catch (e) {
+                        this.reviewError = '{{ __('Something went wrong — please try again.') }}';
+                    } finally {
+                        this.reviewSubmitting = false;
+                    }
                 },
 
                 async fetchData() {

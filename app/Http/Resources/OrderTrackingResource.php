@@ -26,6 +26,17 @@ class OrderTrackingResource extends JsonResource
                 'landmark' => $this->delivery_address_snapshot['landmark'] ?? null,
             ] : null,
             'cancellation_reason' => $this->cancellation_reason,
+            // Pickup orders never reach "delivered" — see ReviewService's
+            // isEligible() docblock for why this isn't just
+            // status === 'delivered'. Never expose the review's moderation
+            // status to the customer — they only ever see submitted vs
+            // not, never whether staff approved or rejected it.
+            'review_eligible' => $this->status === 'delivered'
+                || ($this->fulfilment_type === 'pickup' && $this->status === 'dispatched'),
+            'review' => $this->whenLoaded('review', fn () => $this->review ? [
+                'rating' => $this->review->rating,
+                'comment' => $this->review->comment,
+            ] : null),
             'branch' => $this->whenLoaded('branch', fn () => [
                 'name' => $this->branch->name,
                 'phone' => $this->branch->phone,

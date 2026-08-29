@@ -19,6 +19,10 @@ class ContactController extends Controller
             $branch->is_open_now = $workingHours->isOpenNow($branch);
             $branch->next_opening_label = $branch->is_open_now ? null : $workingHours->nextOpening($branch)?->format('l g:ia');
             $branch->todays_hours_label = $workingHours->todayLabel($branch);
+
+            $branch->reviews_count = $branch->approvedReviews()->count();
+            $branch->reviews_avg_rating = $branch->approvedReviews()->avg('rating');
+            $branch->recent_reviews = $branch->approvedReviews()->latest('moderated_at')->limit(3)->get();
         });
 
         return view('contact', [

@@ -197,6 +197,7 @@
                         <a href="{{ route('about') }}" class="block hover:text-brand-yellow transition">{{ __('About us') }}</a>
                         <a href="{{ route('tracking.lookup') }}" class="block hover:text-brand-yellow transition">{{ __('Track order') }}</a>
                         <a href="{{ route('faq') }}" class="block hover:text-brand-yellow transition">{{ __('FAQ') }}</a>
+                        <a href="{{ route('reviews.index') }}" class="block hover:text-brand-yellow transition">{{ __('Reviews') }}</a>
                     </nav>
                 </div>
 

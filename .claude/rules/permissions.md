@@ -35,6 +35,7 @@ Roles: `staff`, `rider`, `manager`, `general_manager`, `owner`.
 | `reports.view_financial` | — | — | ✓ | ✓ | ✓ |
 | `promotions.manage` | — | — | ✓ | ✓ | ✓ |
 | `customers.view` | — | — | ✓ | ✓ | ✓ |
+| `reviews.moderate` | — | — | ✓ | ✓ | ✓ |
 | `users.manage` | — | — | — | — | ✓ |
 | `users.create_operational` | — | — | — | ✓ | — |
 | `users.transfer_branch` | — | — | ✓ | ✓ | ✓ |
@@ -66,6 +67,15 @@ plus two behavioural differences that aren't expressible as flat permissions:
 
 The money-touching permissions — `void`, `refund`, `discount` — are deliberately
 separated so they can be audited independently. Never fold them into a broader permission.
+
+`reviews.moderate` (`ReviewManagementController`/`ReviewPolicy`) gates approving or rejecting a
+customer-submitted review before it's shown publicly. Same audience and same branch-scoping
+shape as `orders.refund`: a `manager` only moderates reviews at their own branch, a
+`general_manager` at every branch they hold that role at, `owner` everywhere —
+`ReviewPolicy::checkAtReviewBranch()` checks against the review's own `branch_id`, never the
+ambient session branch, same as `RefundPolicy::checkAtRefundBranch()`. `staff` and `rider` hold
+nothing here; moderating public-facing content is a business-reputation decision, not an
+operational one.
 
 `settings.manage` (`SettingsController`, `StaffMemberManagementController`) is held by
 `owner`/`manager`/`general_manager` — business-wide configuration (the order reference

@@ -128,7 +128,6 @@ Do not start a phase before the previous one works.
 Do not build these. If a task seems to require one, stop and raise it.
 
 - Loyalty points or stamp cards
-- Ratings and reviews
 - Live rider GPS tracking on a map
 - Multi-currency
 - Inventory or stock depletion

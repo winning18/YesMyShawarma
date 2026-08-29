@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\ReviewException;
 use App\Http\Resources\OrderTrackingResource;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Services\Branches\WorkingHoursService;
 use App\Services\Customers\CustomerService;
+use App\Services\Orders\ReviewService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -32,7 +35,34 @@ class TrackingController extends Controller
 
     public function data(Order $order): JsonResource
     {
-        return new OrderTrackingResource($order->load(['items.menuItem', 'items.options', 'branch', 'rider', 'customer']));
+        return new OrderTrackingResource($order->load(['items.menuItem', 'items.options', 'branch', 'rider', 'customer', 'review']));
+    }
+
+    /**
+     * Public, token-gated (no login) — same trust model as show()/data()
+     * above. Fetch-based (see tracking/show.blade.php's orderTracker()),
+     * not a full-page POST, so failures come back as JSON rather than a
+     * redirect-with-errors.
+     */
+    public function storeReview(Request $request, Order $order, ReviewService $reviews): JsonResponse
+    {
+        $validated = $request->validate([
+            'rating' => ['required', 'integer', 'min:1', 'max:5'],
+            'comment' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        try {
+            $review = $reviews->submit($order, $validated['rating'], $validated['comment'] ?? null);
+        } catch (ReviewException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'review' => [
+                'rating' => $review->rating,
+                'comment' => $review->comment,
+            ],
+        ]);
     }
 
     /**

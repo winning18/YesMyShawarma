@@ -25,6 +25,22 @@
         <p class="text-sm text-brand-gray-500 mb-3">{{ $branch->address }}</p>
 
         {{--
+            Only shown once the branch has at least one approved review —
+            same "only show what actually exists" convention as the home
+            page hero and the About page staff roster, rather than a
+            placeholder/zero-state. $branch->reviews_count/reviews_avg_rating
+            are transient attributes set by BranchesController/
+            ContactController, same pattern as is_open_now above.
+        --}}
+        @if (($branch->reviews_count ?? 0) > 0)
+            <div class="flex items-center gap-1 text-sm mb-3">
+                <span class="text-brand-yellow-dark">★</span>
+                <span class="font-semibold">{{ number_format($branch->reviews_avg_rating, 1) }}</span>
+                <span class="text-brand-gray-500">({{ __(':count reviews', ['count' => $branch->reviews_count]) }})</span>
+            </div>
+        @endif
+
+        {{--
             Sourced from the branch's own admin-set weekly schedule
             (WorkingHoursService::todayLabel — the "Working Hours"
             dashboard page), never the flat Branch::opens_at/closes_at

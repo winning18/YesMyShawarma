@@ -165,6 +165,12 @@
     </x-sidebar-link>
 @endcan
 
+@can('reviews.moderate')
+    <x-sidebar-link :href="route('dashboard.reviews.index')" :active="request()->routeIs('dashboard.reviews.*')">
+        {{ __('Reviews') }}
+    </x-sidebar-link>
+@endcan
+
 @can('reports.view_operational')
     <x-sidebar-link :href="route('dashboard.reports.index')" :active="request()->routeIs('dashboard.reports.*')">
         {{ __('Reports and invoices') }}
