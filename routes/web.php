@@ -11,6 +11,7 @@ use App\Http\Controllers\ContactController;
 use App\Http\Controllers\Customer\Auth\AuthenticatedSessionController as CustomerAuthenticatedSessionController;
 use App\Http\Controllers\Customer\Auth\RegisteredUserController as CustomerRegisteredUserController;
 use App\Http\Controllers\CustomerManagementController;
+use App\Http\Controllers\FaqController;
 use App\Http\Controllers\HeroSliderController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MenuController;
@@ -60,6 +61,7 @@ Route::middleware('track.visit')->group(function () {
     Route::get('/contact', [ContactController::class, 'index'])->name('contact');
     Route::post('/contact', [ContactController::class, 'submit'])->name('contact.submit');
     Route::get('/about', [AboutController::class, 'index'])->name('about');
+    Route::get('/faq', [FaqController::class, 'index'])->name('faq');
 
     Route::post('/newsletter/subscribe', [NewsletterController::class, 'subscribe'])->name('newsletter.subscribe');
 
