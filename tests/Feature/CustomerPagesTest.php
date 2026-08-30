@@ -304,6 +304,14 @@ class CustomerPagesTest extends TestCase
         $this->get(route('about'))->assertOk();
     }
 
+    public function test_policy_pages_render(): void
+    {
+        $this->get(route('policy.terms'))->assertOk();
+        $this->get(route('policy.refunds'))->assertOk();
+        $this->get(route('policy.cookies'))->assertOk();
+        $this->get(route('policy.privacy'))->assertOk()->assertSee('Privacy Policy')->assertSee('Paystack');
+    }
+
     public function test_about_page_hides_meet_our_staff_when_no_staff_members_exist(): void
     {
         $this->get(route('about'))->assertOk()->assertDontSee('Meet our staff');
