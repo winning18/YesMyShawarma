@@ -46,7 +46,7 @@ class CustomerPagesTest extends TestCase
     {
         $this->get(route('home'))
             ->assertOk()
-            ->assertSee('<title>Yes My Shawarma — Shawarma, Burgers &amp; More in Accra</title>', false);
+            ->assertSee('<title>'.config('app.name').' — Shawarma, Burgers &amp; More in Accra</title>', false);
     }
 
     public function test_home_page_hero_only_shows_categories_with_an_uploaded_photo(): void
