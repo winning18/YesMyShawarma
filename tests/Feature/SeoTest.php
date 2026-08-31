@@ -114,6 +114,28 @@ class SeoTest extends TestCase
         $this->assertSame('https://schema.org/InStock', $json['offers']['availability']);
     }
 
+    public function test_home_page_head_has_manifest_and_apple_touch_icon_links(): void
+    {
+        $response = $this->get(route('home'))->assertOk();
+
+        $response->assertSee('<link rel="apple-touch-icon" href="'.asset('images/apple-touch-icon.png').'">', false);
+        $response->assertSee('<link rel="manifest" href="'.asset('site.webmanifest').'">', false);
+    }
+
+    // Regression: the branded 404 view needs session/auth (the customer
+    // layout's header checks @auth('customer') for login/signup links),
+    // but a completely unmatched URI bypasses the 'web' middleware group
+    // (no session) by default — crashed with "Session store not set on
+    // request" until Route::fallback() picked it up as a real, fully
+    // middleware-wrapped route instead.
+    public function test_an_unknown_url_shows_the_branded_404_page(): void
+    {
+        $response = $this->get('/this-page-does-not-exist-at-all');
+
+        $response->assertNotFound();
+        $response->assertSee("We couldn&#039;t find that page", false);
+    }
+
     /**
      * @return array<string, mixed>|null
      */

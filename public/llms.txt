@@ -1,0 +1,28 @@
+# Yes My Shawarma
+
+> Yes My Shawarma is a shawarma, burger, and fast-food restaurant with multiple branches in Accra, Ghana, offering online ordering for pickup and delivery.
+
+## Ordering
+
+- [Menu](https://www.yesmyshawarma.com/menu): Full menu of shawarma, burgers, hot dogs, loaded fries, sandwiches, and drinks, with prices in Ghanaian cedis (GHS).
+- [Branches](https://www.yesmyshawarma.com/branches): Branch locations, addresses, phone numbers, and opening hours across Accra.
+- [Track an order](https://www.yesmyshawarma.com/track): Look up the status of an existing order.
+
+## About
+
+- [About us](https://www.yesmyshawarma.com/about): Background on the business and its story.
+- [Contact us](https://www.yesmyshawarma.com/contact): Contact form and branch phone numbers.
+- [FAQ](https://www.yesmyshawarma.com/faq): Answers to common ordering questions.
+- [Customer reviews](https://www.yesmyshawarma.com/reviews): Public customer reviews and ratings.
+
+## Policies
+
+- [Terms & Conditions](https://www.yesmyshawarma.com/terms-and-conditions)
+- [Refund Policy](https://www.yesmyshawarma.com/refund-policy)
+- [Privacy Policy](https://www.yesmyshawarma.com/privacy-policy)
+- [Cookie Policy](https://www.yesmyshawarma.com/cookie-policy)
+
+## Notes
+
+- Payment: cash on pickup/delivery, or online via card/Mobile Money through Paystack.
+- Delivery is available in select areas of Accra; pickup is available at every branch during its opening hours.

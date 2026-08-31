@@ -1,4 +1,14 @@
-<x-customer-layout body-class="bg-brand-black" :og-image="data_get($heroSlides->first(), 'imageUrl')">
+{{--
+    Only page with no title before this — every other page follows
+    "{page} · {app.name}", but the homepage IS the app name, so it gets
+    its own descriptive, keyword-bearing title instead of falling back to
+    the bare site name (CustomerLayout's default when $title is null).
+--}}
+<x-customer-layout
+    :title="__(':name — Shawarma, Burgers & More in Accra', ['name' => config('app.name')])"
+    body-class="bg-brand-black"
+    :og-image="data_get($heroSlides->first(), 'imageUrl')"
+>
     @foreach ($restaurantSchema as $branchSchema)
         <script type="application/ld+json">{!! json_encode($branchSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}</script>
     @endforeach

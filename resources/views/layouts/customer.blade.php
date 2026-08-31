@@ -38,6 +38,14 @@
         <meta name="twitter:image" content="{{ $ogImageUrl }}">
 
         <link rel="icon" type="image/png" href="{{ asset('images/favicon.png') }}">
+        <link rel="apple-touch-icon" href="{{ asset('images/apple-touch-icon.png') }}">
+        {{--
+            Icons + theme color only — this is not the full CLAUDE.md PWA
+            requirement (that also needs a service worker for offline menu
+            caching, a separate piece of work). Lets a phone add the site
+            to its home screen with a real icon in the meantime.
+        --}}
+        <link rel="manifest" href="{{ asset('site.webmanifest') }}">
 
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700&display=swap" rel="stylesheet" />

@@ -39,6 +39,16 @@ class CustomerPagesTest extends TestCase
         $this->get(route('home'))->assertOk();
     }
 
+    // Regression: the homepage was the only page with no <title> set at
+    // all, falling back to the bare site name with no descriptive or
+    // location-bearing text for search results.
+    public function test_home_page_has_a_descriptive_title(): void
+    {
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertSee('<title>Yes My Shawarma — Shawarma, Burgers &amp; More in Accra</title>', false);
+    }
+
     public function test_home_page_hero_only_shows_categories_with_an_uploaded_photo(): void
     {
         Category::create(['name' => 'Shawarma', 'slug' => 'shawarma', 'hero_image_path' => 'category-hero/1.jpg']);

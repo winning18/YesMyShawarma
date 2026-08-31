@@ -268,3 +268,13 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__.'/auth.php';
+
+// The branded 404 view (resources/views/errors/404.blade.php) needs
+// session/auth — the customer layout's header checks @auth('customer')
+// for the login/signup links. A completely unmatched URI bypasses the
+// 'web' middleware group entirely by default (no session, no auth),
+// which is why Route::fallback() exists: it's a real route within this
+// same file, so it gets the full middleware stack like everything else
+// here. Deliberately last in the file — a fallback only ever matches
+// once every other route has already failed to.
+Route::fallback(fn () => response()->view('errors.404', [], 404));
