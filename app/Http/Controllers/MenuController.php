@@ -81,28 +81,75 @@ class MenuController extends Controller
             'branch' => $branch,
             'item' => $item,
             'drinks' => $drinks,
+            'productSchema' => $this->productSchema($item),
         ]);
     }
 
     /**
-     * Shared by index() and show() — both require the same active,
-     * currently-selected branch and the same "send them to pick one"
-     * fallback when that's not true.
+     * Product structured data (schema.org) for this item's own page —
+     * lets Google show price/availability directly in search results.
+     * $item is already scoped to wherePivot('is_available', true) by the
+     * time this runs (a 404 happens otherwise), so availability here is
+     * always InStock — there's no other state this method ever sees.
+     */
+    private function productSchema(MenuItem $item): array
+    {
+        $schema = [
+            '@context' => 'https://schema.org',
+            '@type' => 'Product',
+            'name' => $item->name,
+            'offers' => [
+                '@type' => 'Offer',
+                'priceCurrency' => 'GHS',
+                'price' => number_format($item->base_price / 100, 2, '.', ''),
+                'availability' => 'https://schema.org/InStock',
+            ],
+        ];
+
+        if ($item->description) {
+            $schema['description'] = $item->description;
+        }
+
+        if ($item->imageUrl()) {
+            $schema['image'] = $item->imageUrl();
+        }
+
+        return $schema;
+    }
+
+    /**
+     * Shared by index() and show(). A visitor with no branch selected yet
+     * — including every search-engine crawler, which never carries a
+     * session — used to be redirected to /branches with no menu content
+     * at all, making /menu and every /menu/{item} page unindexable. Now
+     * silently defaults to (and persists) the first active branch instead,
+     * exactly like HomeController's marquee already treats "no branch
+     * selected" as "show it anyway" rather than hiding content. Real
+     * visitors still see the branch switcher and can pick their actual
+     * branch at any time; this only changes what's shown before they do.
      */
     private function resolveBranch(CustomerBranchSelection $selection): Branch|RedirectResponse
     {
         $branch = $selection->current();
 
-        if (! $branch) {
-            return redirect()->route('branches.index')->with('status', 'Choose a branch to see its menu.');
-        }
-
         // A branch selected earlier in this session may have been
         // deactivated since — CustomerBranchSelection has no opinion on
         // that (it's a plain "what's selected" accessor), so it's checked
-        // at the point of use instead.
-        if (! $branch->is_active) {
+        // at the point of use instead. Still a real redirect case (not a
+        // crawlability concern): only reachable once a branch was already
+        // explicitly selected, not on a fresh, session-less visit.
+        if ($branch && ! $branch->is_active) {
             return redirect()->route('branches.index')->with('status', 'That branch is no longer available — please choose another.');
+        }
+
+        if (! $branch) {
+            $branch = Branch::where('is_active', true)->orderBy('id')->first();
+
+            if (! $branch) {
+                return redirect()->route('branches.index')->with('status', 'Choose a branch to see its menu.');
+            }
+
+            $selection->set($branch->id);
         }
 
         return $branch;

@@ -1,8 +1,16 @@
-@props(['branch'])
-
+{{--
+    $webpUrl (App\View\Components\BranchImage, backing this file) — see
+    product-image.blade.php's own comment; same GD-based on-demand WebP
+    sibling, same <picture>/fallback pattern.
+--}}
 @if ($branch->imageUrl())
-    <img src="{{ $branch->imageUrl() }}" alt="{{ $branch->name }}" loading="lazy"
-        {{ $attributes->merge(['class' => 'object-cover rounded-md bg-brand-gray-100']) }}>
+    <picture>
+        @if ($webpUrl)
+            <source srcset="{{ $webpUrl }}" type="image/webp">
+        @endif
+        <img src="{{ $branch->imageUrl() }}" alt="{{ $branch->name }}" loading="lazy"
+            {{ $attributes->merge(['class' => 'object-cover rounded-md bg-brand-gray-100']) }}>
+    </picture>
 @else
     <div
         {{ $attributes->merge(['class' => 'bg-brand-gray-100 flex items-center justify-center']) }}

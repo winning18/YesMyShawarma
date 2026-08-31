@@ -152,8 +152,8 @@ class CustomerPagesTest extends TestCase
         // No branch chosen yet — availability is inherently unknown
         // (branch_menu_item is per-branch), so every globally-active item
         // still shows a working link; MenuController@show's own
-        // resolveBranch sends the visitor to pick a branch first rather
-        // than 404ing.
+        // resolveBranch now defaults to the first active branch rather
+        // than redirecting away from the page entirely.
         $category = Category::create(['name' => 'Shawarma', 'slug' => 'shawarma']);
         $item = MenuItem::create([
             'category_id' => $category->id, 'name' => 'Chicken Shawarma', 'slug' => 'chicken-shawarma',
@@ -347,8 +347,25 @@ class CustomerPagesTest extends TestCase
         $this->get(route('menu.index'))->assertOk()->assertSee('Chicken Shawarma');
     }
 
-    public function test_menu_without_a_selected_branch_redirects_to_branches(): void
+    // Regression: /menu used to redirect to /branches with no menu content
+    // at all whenever no branch was selected — meaning a search-engine
+    // crawler (which never carries a session) could never index real menu
+    // content. It now silently defaults to the first active branch instead.
+    public function test_menu_without_a_selected_branch_defaults_to_the_first_active_branch(): void
     {
+        $category = Category::create(['name' => 'Shawarma', 'slug' => 'shawarma']);
+        $item = MenuItem::create([
+            'category_id' => $category->id, 'name' => 'Chicken Shawarma', 'slug' => 'chicken-shawarma', 'base_price' => 5000,
+        ]);
+        $this->branch->menuItems()->attach($item->id, ['is_available' => true]);
+
+        $this->get(route('menu.index'))->assertOk()->assertSee('Chicken Shawarma');
+    }
+
+    public function test_menu_defaults_to_no_branch_when_none_are_active(): void
+    {
+        $this->branch->update(['is_active' => false]);
+
         $this->get(route('menu.index'))->assertRedirect(route('branches.index'));
     }
 
@@ -451,6 +468,18 @@ class CustomerPagesTest extends TestCase
     // A shared product link must preview as that product, not the site
     // logo every crawler used to fall back to (the first <img> on the
     // page) with no og:image tag at all.
+    // Regression: no page had a <meta name="description"> at all, so
+    // search engines generated their own (often awkward) result-snippet
+    // text. Reuses the same $ogDescription value already computed for
+    // social-share previews rather than needing a second, separate value.
+    public function test_home_page_has_a_meta_description_and_canonical_link(): void
+    {
+        $response = $this->get(route('home'))->assertOk();
+
+        $response->assertSee('<meta name="description" content="Shawarma, burgers and more', false);
+        $response->assertSee('<link rel="canonical" href="'.route('home').'"', false);
+    }
+
     public function test_product_page_uses_its_own_photo_as_the_link_preview_image(): void
     {
         $category = Category::create(['name' => 'Shawarma', 'slug' => 'shawarma']);
@@ -482,12 +511,27 @@ class CustomerPagesTest extends TestCase
         $response->assertSee('property="og:image" content="'.asset('images/logo-web.png').'"', false);
     }
 
-    public function test_product_page_without_a_selected_branch_redirects_to_branches(): void
+    // Same regression as the menu index: a crawler (or any first-time
+    // visitor) with no session-selected branch used to get redirected away
+    // from every single product page instead of seeing its real content.
+    public function test_product_page_without_a_selected_branch_defaults_to_the_first_active_branch(): void
     {
         $category = Category::create(['name' => 'Shawarma', 'slug' => 'shawarma']);
         $item = MenuItem::create([
             'category_id' => $category->id, 'name' => 'Chicken Shawarma', 'slug' => 'chicken-shawarma', 'base_price' => 5000,
         ]);
+        $this->branch->menuItems()->attach($item->id, ['is_available' => true]);
+
+        $this->get(route('menu.show', $item))->assertOk()->assertSee('Chicken Shawarma');
+    }
+
+    public function test_product_page_redirects_when_no_branch_is_active(): void
+    {
+        $category = Category::create(['name' => 'Shawarma', 'slug' => 'shawarma']);
+        $item = MenuItem::create([
+            'category_id' => $category->id, 'name' => 'Chicken Shawarma', 'slug' => 'chicken-shawarma', 'base_price' => 5000,
+        ]);
+        $this->branch->update(['is_active' => false]);
 
         $this->get(route('menu.show', $item))->assertRedirect(route('branches.index'));
     }

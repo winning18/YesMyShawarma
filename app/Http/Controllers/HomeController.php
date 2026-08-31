@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Branch;
 use App\Models\Category;
 use App\Models\MenuItem;
+use App\Services\Branches\WorkingHoursService;
 use App\Services\Customers\CustomerBranchSelection;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
@@ -26,7 +27,13 @@ class HomeController extends Controller
         ['title' => 'Drinks', 'slugs' => ['drinks'], 'direction' => 'right'],
     ];
 
-    public function index(CustomerBranchSelection $selection): View
+    /** ISO weekday (WorkingHoursService's own 1=Mon..7=Sun) to schema.org's plain day name. */
+    private const ISO_DAYS = [
+        1 => 'Monday', 2 => 'Tuesday', 3 => 'Wednesday', 4 => 'Thursday',
+        5 => 'Friday', 6 => 'Saturday', 7 => 'Sunday',
+    ];
+
+    public function index(CustomerBranchSelection $selection, WorkingHoursService $workingHours): View
     {
         // Every category is hero-slide-eligible (Hero Slider dashboard
         // page), but only ones staff actually gave a photo appear on the
@@ -46,7 +53,68 @@ class HomeController extends Controller
         return view('home', [
             'heroSlides' => $heroSlides,
             'menuSliders' => $this->menuSliders($selection->current()),
+            'restaurantSchema' => $this->restaurantSchema($workingHours),
         ]);
+    }
+
+    /**
+     * Restaurant structured data (schema.org) for every active branch —
+     * lets Google show address/phone/hours directly in search results and
+     * Maps. Real data throughout: address/phone/geo from the branch's own
+     * row, hours from branch_working_hours (WorkingHoursService — the
+     * admin-set weekly schedule, same source branch-card.blade.php's
+     * "Hours today" reads, never the flat opens_at/closes_at columns).
+     * A branch with no configured schedule yet simply omits
+     * openingHoursSpecification rather than guessing.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function restaurantSchema(WorkingHoursService $workingHours): array
+    {
+        return Branch::where('is_active', true)->get()
+            ->map(function (Branch $branch) use ($workingHours) {
+                $hours = $workingHours->forBranch($branch->id)
+                    ->filter(fn (array $day) => $day['opens_at'] && $day['closes_at'])
+                    ->map(fn (array $day) => [
+                        '@type' => 'OpeningHoursSpecification',
+                        'dayOfWeek' => self::ISO_DAYS[$day['day_of_week']],
+                        'opens' => substr($day['opens_at'], 0, 5),
+                        'closes' => substr($day['closes_at'], 0, 5),
+                    ])
+                    ->values();
+
+                $schema = [
+                    '@context' => 'https://schema.org',
+                    '@type' => 'Restaurant',
+                    'name' => config('app.name').' — '.$branch->name,
+                    'telephone' => $branch->phone,
+                    'address' => [
+                        '@type' => 'PostalAddress',
+                        'streetAddress' => $branch->address,
+                        'addressLocality' => 'Accra',
+                        'addressCountry' => 'GH',
+                    ],
+                    'geo' => [
+                        '@type' => 'GeoCoordinates',
+                        'latitude' => (float) $branch->lat,
+                        'longitude' => (float) $branch->lng,
+                    ],
+                    'priceRange' => 'GH₵',
+                    'url' => route('branches.index'),
+                ];
+
+                if ($branch->imageUrl()) {
+                    $schema['image'] = $branch->imageUrl();
+                }
+
+                if ($hours->isNotEmpty()) {
+                    $schema['openingHoursSpecification'] = $hours->all();
+                }
+
+                return $schema;
+            })
+            ->values()
+            ->all();
     }
 
     private function menuSliders(?Branch $branch): Collection

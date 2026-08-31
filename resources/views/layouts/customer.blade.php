@@ -14,12 +14,18 @@
             same logo regardless of what it linked to. $ogImage/
             $ogDescription are per-page (see CustomerLayout — a product
             page passes its own photo); the fallback here is the one
-            default used by every page that doesn't set its own.
+            default used by every page that doesn't set its own. The same
+            $ogDescriptionText also fills the plain <meta name="description">
+            search engines use for the result snippet — no page had one at
+            all before this, so Google was generating its own (often
+            awkward) snippet text from whatever it found on the page.
         --}}
         @php
             $ogImageUrl = $ogImage ?? asset('images/logo-web.png');
             $ogDescriptionText = $ogDescription ?? __('Shawarma, burgers and more — order online for pickup from our Accra branches.');
         @endphp
+        <meta name="description" content="{{ $ogDescriptionText }}">
+        <link rel="canonical" href="{{ url()->current() }}">
         <meta property="og:type" content="website">
         <meta property="og:site_name" content="{{ config('app.name') }}">
         <meta property="og:title" content="{{ $title ?? config('app.name') }}">

@@ -1,5 +1,3 @@
-@props(['item'])
-
 {{--
     No default width here on purpose — the caller always supplies one (e.g.
     class="w-16"). A previous version baked "w-full" into these defaults,
@@ -9,14 +7,26 @@
     stylesheet happened to place last in the cascade won, which turned out
     to be w-full, ballooning every placeholder to nearly the card's full
     width and squeezing item names into unreadable narrow columns.
+
+    $webpUrl (App\View\Components\ProductImage, backing this file) is a
+    same-content .webp sibling generated on demand from the original
+    upload via GD (WebpConverter) — no new dependency, GD already ships
+    everywhere this app runs. Wrapped in <picture> so browsers without
+    WebP support silently fall back to the original file; nothing here
+    ever depends on the conversion having succeeded.
 --}}
 @if ($item->imageUrl())
-    <img
-        src="{{ $item->imageUrl() }}"
-        alt="{{ $item->name }}"
-        loading="lazy"
-        {{ $attributes->merge(['class' => 'aspect-square object-cover rounded-md bg-brand-gray-100']) }}
-    >
+    <picture>
+        @if ($webpUrl)
+            <source srcset="{{ $webpUrl }}" type="image/webp">
+        @endif
+        <img
+            src="{{ $item->imageUrl() }}"
+            alt="{{ $item->name }}"
+            loading="lazy"
+            {{ $attributes->merge(['class' => 'aspect-square object-cover rounded-md bg-brand-gray-100']) }}
+        >
+    </picture>
 @else
     <div
         {{ $attributes->merge(['class' => 'aspect-square rounded-md bg-brand-gray-100 flex items-center justify-center']) }}

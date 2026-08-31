@@ -3,6 +3,8 @@
     :og-image="$item->imageUrl()"
     :og-description="$item->description ? Str::limit($item->description, 160) : null"
 >
+    <script type="application/ld+json">{!! json_encode($productSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}</script>
+
     <a href="{{ route('menu.index') }}" class="text-sm underline text-brand-gray-500">&larr; {{ __('Back to menu') }}</a>
 
     @if ($errors->any())

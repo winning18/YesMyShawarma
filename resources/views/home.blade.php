@@ -1,4 +1,8 @@
 <x-customer-layout body-class="bg-brand-black" :og-image="data_get($heroSlides->first(), 'imageUrl')">
+    @foreach ($restaurantSchema as $branchSchema)
+        <script type="application/ld+json">{!! json_encode($branchSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}</script>
+    @endforeach
+
     <x-slot name="fullHero">
         {{--
             Full-bleed hero slider — each slide is a featured category with

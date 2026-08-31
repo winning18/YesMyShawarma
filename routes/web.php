@@ -37,7 +37,9 @@ use App\Http\Controllers\Rider\DashboardController as RiderDashboardController;
 use App\Http\Controllers\Rider\DeliveryHistoryController as RiderDeliveryHistoryController;
 use App\Http\Controllers\Rider\ProfileController as RiderProfileController;
 use App\Http\Controllers\RiderAvailabilityController;
+use App\Http\Controllers\RobotsController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\ShiftController;
 use App\Http\Controllers\StaffMemberManagementController;
 use App\Http\Controllers\TodayReportController;
@@ -47,11 +49,15 @@ use App\Http\Controllers\WeeklyReportController;
 use App\Http\Controllers\WorkingHoursController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
+Route::get('/robots.txt', [RobotsController::class, 'index'])->name('robots');
+
 // track.visit records an anonymous first-party-cookie visit for every
 // page in the actual browse-to-order funnel — home through tracking —
 // so the Performance page's conversion rate (orders ÷ visits) means
 // something. Deliberately not applied anywhere under /dashboard, /rider,
-// or the customer auth routes below.
+// or the customer auth routes below. /sitemap.xml above is deliberately
+// outside this group too — a crawler fetching it isn't a customer visit.
 Route::middleware('track.visit')->group(function () {
     Route::get('/', [HomeController::class, 'index'])->name('home');
 
