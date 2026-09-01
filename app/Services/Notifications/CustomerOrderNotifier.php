@@ -4,6 +4,7 @@ namespace App\Services\Notifications;
 
 use App\Contracts\Notifier;
 use App\Models\Order;
+use App\Models\Refund;
 
 /**
  * The four customer-facing order-status SMS points — see orders.md's state
@@ -41,6 +42,18 @@ class CustomerOrderNotifier
     public function delivered(Order $order): void
     {
         $this->send($order, "Your order {$order->reference} has been delivered. Enjoy!");
+    }
+
+    public function refundProcessed(Refund $refund): void
+    {
+        $order = $refund->order;
+        $amount = number_format($refund->amount / 100, 2);
+
+        $this->notifier->notify(
+            $order->customer->phone,
+            "Your refund of GHS {$amount} for order {$order->reference} has been processed.",
+            ['order_id' => $order->id, 'refund_id' => $refund->id],
+        );
     }
 
     private function send(Order $order, string $message): void

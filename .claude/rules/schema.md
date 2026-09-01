@@ -209,6 +209,31 @@ promotion_redemptions  id, promotion_id, order_id, customer_id, amount_discounte
 
 Do not add promo types beyond percentage and fixed without being asked.
 
+## Visitor tracking
+
+```
+visitor_sessions  id, token (unique), ip_address, user_agent, referrer,
+                  branch_id, order_id (unique), created_at, updated_at
+page_views        id, visitor_session_id, path, duration_seconds, viewed_at
+```
+
+Anonymous, cookie-based, customer-site-only (`TrackVisitorSession`, attached only to the public
+route group — never staff/POS/rider). `token` is a random value handed out as the `visitor_token`
+cookie; `created_at`/`updated_at` are first-seen/last-seen. `branch_id`/`order_id` stay null
+until the session converts (its first order — `whereNull('order_id')` guards against
+re-attributing an already-converted session to a second order).
+
+`ip_address`/`user_agent`/`referrer` are set once, at row creation, from the request that
+started the session — never overwritten by a later visit from the same returning token, since
+they describe how the visit began. `page_views` is one row per GET request in the tracked
+group; `duration_seconds` starts null and is filled in later by a `sendBeacon()` call fired as
+the visitor leaves the page (`customer.blade.php`), so it stays null if the beacon never lands.
+
+All of this is gated on the Cookie Policy's consent choice: a `cookie_consent=decline` cookie
+(set via `PolicyController::updateCookieConsent`) stops `TrackVisitorSession` from recording
+anything at all for that request, and forgets an existing `visitor_token` cookie the moment
+someone declines.
+
 ## Settings
 
 ```

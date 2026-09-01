@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\Category;
 use App\Models\MenuItem;
 use App\Models\Order;
+use App\Models\PageView;
 use App\Models\VisitorSession;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -16,11 +17,59 @@ class VisitorTrackingTest extends TestCase
 
     public function test_visiting_the_customer_site_sets_a_visitor_cookie_and_records_a_session(): void
     {
-        $response = $this->get(route('home'));
+        $response = $this->withHeader('User-Agent', 'TestBrowser/1.0')
+            ->withHeader('Referer', 'https://google.com')
+            ->get(route('home'));
 
         $response->assertOk();
         $this->assertDatabaseCount('visitor_sessions', 1);
         $this->assertNotNull($response->getCookie('visitor_token'));
+
+        $session = VisitorSession::first();
+        $this->assertSame('TestBrowser/1.0', $session->user_agent);
+        $this->assertSame('https://google.com', $session->referrer);
+        $this->assertNotNull($session->ip_address);
+    }
+
+    public function test_a_get_request_records_a_page_view(): void
+    {
+        $this->get(route('home'));
+
+        $this->assertDatabaseCount('page_views', 1);
+        $this->assertSame('/', PageView::first()->path);
+        $this->assertNull(PageView::first()->duration_seconds);
+    }
+
+    public function test_a_post_request_does_not_record_a_page_view(): void
+    {
+        $this->post(route('cookie-consent.update'), ['choice' => 'accept']);
+
+        $this->assertDatabaseCount('page_views', 0);
+    }
+
+    public function test_the_duration_beacon_updates_the_matching_page_view(): void
+    {
+        $home = $this->get(route('home'));
+        $token = $home->getCookie('visitor_token')->getValue();
+        $pageView = PageView::first();
+
+        $this->withCookie('visitor_token', $token)
+            ->post(route('page-views.duration', $pageView), ['duration_seconds' => 42])
+            ->assertNoContent();
+
+        $this->assertSame(42, $pageView->fresh()->duration_seconds);
+    }
+
+    public function test_the_duration_beacon_ignores_a_mismatched_visitor_token(): void
+    {
+        $this->get(route('home'));
+        $pageView = PageView::first();
+
+        $this->withCookie('visitor_token', 'someone-elses-token')
+            ->post(route('page-views.duration', $pageView), ['duration_seconds' => 42])
+            ->assertNoContent();
+
+        $this->assertNull($pageView->fresh()->duration_seconds);
     }
 
     public function test_repeat_visits_with_the_same_cookie_do_not_create_duplicate_sessions(): void

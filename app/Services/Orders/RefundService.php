@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Refund;
 use App\Models\Scopes\BranchScope;
 use App\Models\User;
+use App\Services\Notifications\CustomerOrderNotifier;
 use App\Services\Payments\PaystackClient;
 use Illuminate\Support\Facades\DB;
 
@@ -31,7 +32,10 @@ use Illuminate\Support\Facades\DB;
  */
 class RefundService
 {
-    public function __construct(private readonly PaystackClient $paystack) {}
+    public function __construct(
+        private readonly PaystackClient $paystack,
+        private readonly CustomerOrderNotifier $notifier,
+    ) {}
 
     /**
      * order.total minus every refund actually completed against it —
@@ -129,7 +133,7 @@ class RefundService
 
     public function complete(Refund $refund, User $actor, string $actorType, ?int $shiftId = null): Refund
     {
-        return DB::transaction(function () use ($refund, $actor, $actorType, $shiftId) {
+        $completed = DB::transaction(function () use ($refund, $actor, $actorType, $shiftId) {
             // Lock the order row for the duration of the transaction —
             // same reasoning as OrderStateMachine::transition(): two
             // completions racing each other must never together refund
@@ -184,6 +188,10 @@ class RefundService
 
             return $refund->fresh();
         });
+
+        $this->notifier->refundProcessed($completed);
+
+        return $completed;
     }
 
     private function assertRefundable(Order $order, int $amount, ?int $excludingRefundId = null): void

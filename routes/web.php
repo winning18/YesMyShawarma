@@ -23,6 +23,7 @@ use App\Http\Controllers\OrderActionController;
 use App\Http\Controllers\OrderDashboardController;
 use App\Http\Controllers\OrderHistoryController;
 use App\Http\Controllers\PerformanceController;
+use App\Http\Controllers\PageViewController;
 use App\Http\Controllers\PolicyController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\ProfileController;
@@ -101,6 +102,9 @@ Route::middleware('track.visit')->group(function () {
     Route::get('/refund-policy', [PolicyController::class, 'refunds'])->name('policy.refunds');
     Route::get('/privacy-policy', [PolicyController::class, 'privacy'])->name('policy.privacy');
     Route::get('/cookie-policy', [PolicyController::class, 'cookies'])->name('policy.cookies');
+    Route::post('/cookie-consent', [PolicyController::class, 'updateCookieConsent'])->name('cookie-consent.update');
+
+    Route::post('/page-views/{pageView}/duration', [PageViewController::class, 'recordDuration'])->name('page-views.duration');
 });
 
 // Distinct /customer/* paths — staff auth already owns /login, /register,

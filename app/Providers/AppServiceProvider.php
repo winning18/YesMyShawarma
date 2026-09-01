@@ -52,6 +52,7 @@ class AppServiceProvider extends ServiceProvider
 
         View::composer('layouts.customer', function ($view) {
             $view->with('cartItemCount', app(CartService::class)->count());
+            $view->with('cookieConsentGiven', request()->cookie('cookie_consent') !== null);
         });
 
         // Rendered on every staff-dashboard page regardless of which

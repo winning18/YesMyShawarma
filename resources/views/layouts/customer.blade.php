@@ -192,6 +192,33 @@
             {{ $slot }}
         </main>
 
+        <div
+            x-data="{ show: {{ $cookieConsentGiven ? 'false' : 'true' }} }"
+            x-on:open-cookie-banner.window="show = true"
+            x-show="show"
+            x-cloak
+            class="fixed inset-x-0 bottom-0 z-50 bg-brand-black border-t border-brand-yellow px-4 py-4"
+        >
+            <div class="max-w-5xl mx-auto flex flex-col sm:flex-row items-center gap-4 text-sm text-brand-gray-300">
+                <p class="flex-1">
+                    {{ __('We use a first-party cookie to see how visitors use our site. You can accept or decline it — the site works either way.') }}
+                    <a href="{{ route('policy.cookies') }}" class="underline hover:text-brand-yellow">{{ __('Learn more') }}</a>
+                </p>
+                <div class="flex gap-2 shrink-0">
+                    <form method="POST" action="{{ route('cookie-consent.update') }}">
+                        @csrf
+                        <input type="hidden" name="choice" value="decline">
+                        <button type="submit" class="px-4 py-2 border border-brand-gray-500 text-brand-white text-sm font-semibold rounded-md hover:bg-brand-gray-800">{{ __('Decline') }}</button>
+                    </form>
+                    <form method="POST" action="{{ route('cookie-consent.update') }}">
+                        @csrf
+                        <input type="hidden" name="choice" value="accept">
+                        <button type="submit" class="px-4 py-2 bg-brand-yellow text-brand-black text-sm font-semibold rounded-md hover:bg-brand-yellow-dark">{{ __('Accept') }}</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <footer class="mt-12 bg-brand-black border-t border-brand-yellow">
             <div class="max-w-5xl mx-auto px-4 py-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 text-sm text-brand-gray-300">
                 <div>
@@ -222,6 +249,7 @@
                         <a href="{{ route('policy.refunds') }}" class="block hover:text-brand-yellow transition">{{ __('Refund Policy') }}</a>
                         <a href="{{ route('policy.privacy') }}" class="block hover:text-brand-yellow transition">{{ __('Privacy Policy') }}</a>
                         <a href="{{ route('policy.cookies') }}" class="block hover:text-brand-yellow transition">{{ __('Cookie Policy') }}</a>
+                        <button type="button" @click="$dispatch('open-cookie-banner')" class="block hover:text-brand-yellow transition text-left">{{ __('Cookie preferences') }}</button>
                     </nav>
                 </div>
 
@@ -240,5 +268,44 @@
                 &copy; {{ now()->year }} {{ config('app.name') }}
             </div>
         </footer>
+
+        @if ($pageViewId = request()->attributes->get('page_view_id'))
+            {{--
+                Times how long this page stayed open, for the Privacy
+                Policy's "pages you view and how long you spend on them".
+                sendBeacon fires on the way out (pagehide covers back/
+                forward-cache navigations that visibilitychange alone can
+                miss) and never blocks the page from actually unloading —
+                zero impact on the interactive-time budget. The CSRF token
+                travels in the body rather than a header because sendBeacon
+                can't set custom headers; Laravel's VerifyCsrfToken already
+                falls back to the _token input field for exactly this case.
+            --}}
+            <script>
+                (function () {
+                    var pageViewId = {{ (int) $pageViewId }};
+                    var startedAt = performance.now();
+                    var sent = false;
+
+                    function reportDuration() {
+                        if (sent) return;
+                        sent = true;
+
+                        var seconds = Math.round((performance.now() - startedAt) / 1000);
+                        var body = new Blob(
+                            ['_token=' + encodeURIComponent('{{ csrf_token() }}') + '&duration_seconds=' + seconds],
+                            { type: 'application/x-www-form-urlencoded' }
+                        );
+
+                        navigator.sendBeacon('/page-views/' + pageViewId + '/duration', body);
+                    }
+
+                    document.addEventListener('visibilitychange', function () {
+                        if (document.visibilityState === 'hidden') reportDuration();
+                    });
+                    window.addEventListener('pagehide', reportDuration);
+                })();
+            </script>
+        @endif
     </body>
 </html>

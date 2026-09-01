@@ -14,6 +14,14 @@ use Symfony\Component\HttpFoundation\Response;
  * counts a staff member's own dashboard use as a "visit". A year-long
  * cookie so a returning customer isn't miscounted as a brand new visitor
  * a week later; the cookie itself carries no PII, just a random token.
+ *
+ * Honours the Cookie Policy's consent choice (PolicyController::updateCookieConsent):
+ * an explicit "decline" stops this cookie being set or renewed. Absent a
+ * choice, tracking runs as it always has — the policy promises visitors
+ * *can* decline, not that tracking is opt-in from a cookie nobody has
+ * seen yet, and pre-consent opt-in would silently zero out the Performance
+ * dashboard's Traffic tab for every visitor who never sees or answers the
+ * banner.
  */
 class TrackVisitorSession
 {
@@ -23,11 +31,20 @@ class TrackVisitorSession
 
     public function handle(Request $request, Closure $next): Response
     {
+        if ($request->cookie('cookie_consent') === 'decline') {
+            return $next($request);
+        }
+
         $token = $request->cookie(VisitorSessionService::COOKIE);
         $isNewToken = ! $token;
         $token ??= $this->visitors->resolveToken($request);
 
-        $this->visitors->recordVisit($token);
+        $session = $this->visitors->recordVisit($token, $request);
+
+        if ($request->isMethod('get')) {
+            $pageView = $this->visitors->recordPageView($session, $request);
+            $request->attributes->set('page_view_id', $pageView->id);
+        }
 
         $response = $next($request);
 

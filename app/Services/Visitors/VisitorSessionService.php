@@ -3,6 +3,7 @@
 namespace App\Services\Visitors;
 
 use App\Models\Order;
+use App\Models\PageView;
 use App\Models\VisitorSession;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -27,11 +28,33 @@ class VisitorSessionService
     /**
      * Creates the row on a brand new token, otherwise just bumps
      * updated_at ("last seen") — Eloquent's save() always re-touches
-     * updated_at even when no other attribute changed.
+     * updated_at even when no other attribute changed. ip_address/
+     * user_agent/referrer are Privacy-Policy-listed usage data describing
+     * how the visit *started* — set only at creation, never overwritten
+     * by a later visit from the same returning token.
      */
-    public function recordVisit(string $token): void
+    public function recordVisit(string $token, Request $request): VisitorSession
     {
-        VisitorSession::firstOrCreate(['token' => $token])->touch();
+        $session = VisitorSession::firstOrCreate(['token' => $token], [
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'referrer' => $request->headers->get('referer'),
+        ]);
+
+        $session->touch();
+
+        return $session;
+    }
+
+    /**
+     * One row per page load, only ever for a GET request (see
+     * TrackVisitorSession) — a form POST isn't a "page you view".
+     * duration_seconds starts null and is filled in later by the
+     * sendBeacon() call in customer.blade.php, if it lands at all.
+     */
+    public function recordPageView(VisitorSession $session, Request $request): PageView
+    {
+        return $session->pageViews()->create(['path' => $request->path()]);
     }
 
     /**

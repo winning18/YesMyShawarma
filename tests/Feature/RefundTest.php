@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Contracts\Notifier;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Order;
@@ -168,6 +169,21 @@ class RefundTest extends TestCase
 
         $this->assertDatabaseHas('payments', [
             'order_id' => $order->id, 'provider' => 'cash', 'amount' => 2000, 'status' => 'refunded',
+        ]);
+    }
+
+    public function test_completing_a_refund_sms_notifies_the_customer(): void
+    {
+        $owner = $this->makeOwner();
+        $order = $this->makePaidOrder(5000, 'cash');
+
+        $this->mock(Notifier::class, function ($mock) use ($order) {
+            $mock->shouldReceive('notify')->once()
+                ->with($order->customer->phone, \Mockery::type('string'), ['order_id' => $order->id, 'refund_id' => 1]);
+        });
+
+        $this->actingAs($owner)->post(route('orders.refunds.store', $order), [
+            'amount' => '20.00', 'reason' => 'Goodwill refund.',
         ]);
     }
 
