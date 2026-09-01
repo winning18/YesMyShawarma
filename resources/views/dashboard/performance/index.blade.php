@@ -13,6 +13,12 @@
                 href="{{ route('dashboard.performance', ['tab' => 'operations', 'range' => $rangeKey]) }}"
                 class="pb-3 text-sm font-semibold border-b-2 -mb-px {{ $tab === 'operations' ? 'border-green-600 text-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700' }}"
             >{{ __('Operations') }}</a>
+            @if ($isOwner)
+                <a
+                    href="{{ route('dashboard.performance', ['tab' => 'traffic', 'range' => $rangeKey]) }}"
+                    class="pb-3 text-sm font-semibold border-b-2 -mb-px {{ $tab === 'traffic' ? 'border-green-600 text-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700' }}"
+                >{{ __('Traffic') }}</a>
+            @endif
         </div>
 
         <form method="GET" action="{{ route('dashboard.performance') }}" class="flex flex-wrap items-center gap-3">
@@ -37,6 +43,8 @@
 
         @if ($tab === 'sales')
             @include('dashboard.performance.partials.sales')
+        @elseif ($tab === 'traffic')
+            @include('dashboard.performance.partials.traffic')
         @else
             @include('dashboard.performance.partials.operations')
         @endif

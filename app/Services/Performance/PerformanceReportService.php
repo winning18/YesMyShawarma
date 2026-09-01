@@ -133,6 +133,75 @@ class PerformanceReportService
     }
 
     /**
+     * The Traffic tab (owner-only — see PerformanceController): site-wide
+     * visit counts. Deliberately never branch-scoped, unlike every other
+     * KPI on this page — a visitor_sessions row only gains a branch_id on
+     * conversion (schema: browsing isn't scoped to a branch upfront), so
+     * "this branch's traffic" isn't a question the data can answer at all,
+     * only "this branch's converted visits" could be, which would mix a
+     * branch-scoped number into an otherwise site-wide report. Kept
+     * consistently site-wide rather than half-scoping it.
+     *
+     * "Returning" means a token that already existed before $from and was
+     * touched again (TrackVisitorSession updates updated_at on every
+     * request) within the window — the only "came back" signal this
+     * anonymous, login-free tracking can honestly offer.
+     */
+    public function visitorTraffic(Carbon $from, Carbon $to): array
+    {
+        [$previousFrom, $previousTo] = $this->previousPeriod($from, $to);
+
+        $currentNew = VisitorSession::whereBetween('created_at', [$from, $to])->count();
+        $previousNew = VisitorSession::whereBetween('created_at', [$previousFrom, $previousTo])->count();
+
+        $currentReturning = VisitorSession::where('created_at', '<', $from)
+            ->whereBetween('updated_at', [$from, $to])
+            ->count();
+        $previousReturning = VisitorSession::where('created_at', '<', $previousFrom)
+            ->whereBetween('updated_at', [$previousFrom, $previousTo])
+            ->count();
+
+        $currentConverted = VisitorSession::whereBetween('created_at', [$from, $to])->whereNotNull('order_id')->count();
+        $previousConverted = VisitorSession::whereBetween('created_at', [$previousFrom, $previousTo])->whereNotNull('order_id')->count();
+
+        $currentConversionRate = $currentNew > 0 ? round($currentConverted / $currentNew * 100, 1) : null;
+        $previousConversionRate = $previousNew > 0 ? round($previousConverted / $previousNew * 100, 1) : null;
+
+        $currentByDay = $this->orderReports->fillDays(
+            $from, $to,
+            $this->orderReports->groupByAccraDay(VisitorSession::whereBetween('created_at', [$from, $to])->get(), 'created_at')->map->count()
+        );
+        $previousByDay = $this->orderReports->fillDays(
+            $previousFrom, $previousTo,
+            $this->orderReports->groupByAccraDay(VisitorSession::whereBetween('created_at', [$previousFrom, $previousTo])->get(), 'created_at')->map->count()
+        );
+
+        return [
+            'new_visits' => [
+                'value' => $currentNew,
+                'change_pct' => $this->percentChange($currentNew, $previousNew),
+            ],
+            'returning_visits' => [
+                'value' => $currentReturning,
+                'change_pct' => $this->percentChange($currentReturning, $previousReturning),
+            ],
+            'converted_visits' => [
+                'value' => $currentConverted,
+                'change_pct' => $this->percentChange($currentConverted, $previousConverted),
+            ],
+            'conversion' => [
+                'value' => $currentConversionRate,
+                'change_pct' => $this->percentChange($currentConversionRate, $previousConversionRate),
+            ],
+            'chart' => [
+                'labels' => $currentByDay->keys()->map(fn (string $day) => Carbon::parse($day)->format('d M'))->all(),
+                'current' => $currentByDay->values()->all(),
+                'previous' => $previousByDay->values()->all(),
+            ],
+        ];
+    }
+
+    /**
      * Of the visitor sessions first seen in this window, what share ever
      * placed an order (whereNotNull('order_id'), set no matter which day
      * within — or after — the window the order itself landed on). Null

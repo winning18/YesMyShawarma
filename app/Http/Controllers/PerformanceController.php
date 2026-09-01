@@ -51,7 +51,7 @@ class PerformanceController extends Controller
         $branchId = $context->id();
 
         $validated = $request->validate([
-            'tab' => ['nullable', 'in:sales,operations'],
+            'tab' => ['nullable', 'in:sales,operations,traffic'],
             'range' => ['nullable', 'in:today,7,30'],
             'sort' => ['nullable', 'in:amount_sold,item_sales'],
             'dir' => ['nullable', 'in:asc,desc'],
@@ -59,6 +59,17 @@ class PerformanceController extends Controller
         ]);
 
         $tab = $validated['tab'] ?? 'sales';
+
+        // Traffic is site-wide, never branch-scoped (see
+        // PerformanceReportService::visitorTraffic()'s docblock) — there's
+        // no coherent "this branch's traffic" reading of the data, so
+        // unlike the Sales/Operations tabs a plain manager or
+        // general_manager never gets it, only the owner. Tampered input
+        // is silently dropped back to Sales, same "not trusted" treatment
+        // as a general_manager submitting another branch's id above.
+        if ($tab === 'traffic' && ! $isOwner) {
+            $tab = 'sales';
+        }
         $rangeKey = $validated['range'] ?? '7';
         $days = self::RANGE_DAYS[$rangeKey];
 
@@ -105,6 +116,8 @@ class PerformanceController extends Controller
             $data['itemSales'] = $performance->itemSales($from->clone()->utc(), $to->clone()->utc(), $sort, $dir, ignoreBranchScope: $isOwner, branchId: $branchId, branchIds: $scopeBranchIds);
             $data['sort'] = $sort;
             $data['dir'] = $dir;
+        } elseif ($tab === 'traffic') {
+            $data['traffic'] = $performance->visitorTraffic($from->clone()->utc(), $to->clone()->utc());
         } else {
             $utcFrom = $from->clone()->utc();
             $utcTo = $to->clone()->utc();

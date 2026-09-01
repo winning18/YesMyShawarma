@@ -346,4 +346,92 @@ class PerformanceTest extends TestCase
 
         $this->assertNull($response->viewData('summary')['conversion']['value']);
     }
+
+    public function test_owner_sees_the_traffic_tab_and_manager_does_not(): void
+    {
+        $owner = $this->makeOwner();
+        $manager = User::factory()->create();
+        $this->assignRoleAt($manager, 'manager', $this->osu);
+
+        $this->actingAs($owner)->get(route('dashboard.performance'))->assertSee('Traffic');
+        $this->actingAs($manager)->get(route('dashboard.performance'))->assertDontSee('Traffic');
+    }
+
+    // A manager/general_manager requesting ?tab=traffic directly is
+    // silently dropped back to Sales — the same "tampered input isn't
+    // trusted" treatment as a general_manager submitting another branch's
+    // id for the Operations filter, rather than a 403.
+    public function test_requesting_the_traffic_tab_as_a_non_owner_falls_back_to_sales(): void
+    {
+        $manager = User::factory()->create();
+        $this->assignRoleAt($manager, 'manager', $this->osu);
+
+        $response = $this->actingAs($manager)->get(route('dashboard.performance', ['tab' => 'traffic']));
+
+        $response->assertOk();
+        $this->assertSame('sales', $response->viewData('tab'));
+        $this->assertArrayNotHasKey('traffic', $response->original->getData());
+    }
+
+    public function test_traffic_tab_counts_new_visits_in_the_period(): void
+    {
+        $owner = $this->makeOwner();
+
+        VisitorSession::create(['token' => 'a']);
+        VisitorSession::create(['token' => 'b']);
+        $old = VisitorSession::create(['token' => 'c']);
+        $old->forceFill(['created_at' => now()->subDays(5), 'updated_at' => now()->subDays(5)])->save();
+
+        $response = $this->actingAs($owner)->get(route('dashboard.performance', ['tab' => 'traffic', 'range' => 'today']));
+
+        $this->assertSame(2, $response->viewData('traffic')['new_visits']['value']);
+    }
+
+    public function test_traffic_tab_counts_a_visitor_who_came_back_as_returning(): void
+    {
+        $owner = $this->makeOwner();
+
+        // First seen 5 days ago, active again just now — a real
+        // "came back" signal, the only one this anonymous tracking has.
+        $returning = VisitorSession::create(['token' => 'returning-visitor']);
+        $returning->forceFill(['created_at' => now()->subDays(5)])->save();
+
+        // First seen just now — a genuinely new visit, not returning.
+        VisitorSession::create(['token' => 'brand-new']);
+
+        $response = $this->actingAs($owner)->get(route('dashboard.performance', ['tab' => 'traffic', 'range' => 'today']));
+
+        $traffic = $response->viewData('traffic');
+        $this->assertSame(1, $traffic['returning_visits']['value']);
+        $this->assertSame(1, $traffic['new_visits']['value']);
+    }
+
+    public function test_traffic_tab_shows_converted_visits_and_conversion_rate(): void
+    {
+        $owner = $this->makeOwner();
+
+        VisitorSession::create(['token' => 'a', 'order_id' => $this->makeOrder($this->osu, 'delivered', 5000)->id]);
+        VisitorSession::create(['token' => 'b']);
+
+        $response = $this->actingAs($owner)->get(route('dashboard.performance', ['tab' => 'traffic', 'range' => 'today']));
+
+        $traffic = $response->viewData('traffic');
+        $this->assertSame(1, $traffic['converted_visits']['value']);
+        $this->assertSame(50.0, $traffic['conversion']['value']);
+    }
+
+    public function test_traffic_tab_is_never_branch_scoped(): void
+    {
+        $owner = $this->makeOwner();
+        $this->assignRoleAt($owner, 'owner', $this->eastLegon);
+
+        VisitorSession::create(['token' => 'a']);
+        VisitorSession::create(['token' => 'b']);
+
+        $response = $this->actingAs($owner)
+            ->withSession(['current_branch_id' => $this->eastLegon->id])
+            ->get(route('dashboard.performance', ['tab' => 'traffic', 'range' => 'today']));
+
+        $this->assertSame(2, $response->viewData('traffic')['new_visits']['value']);
+    }
 }

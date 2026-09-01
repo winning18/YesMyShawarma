@@ -168,7 +168,12 @@ class OrderReportService
         return $query->get(['id', 'status', 'fulfilment_type', 'payment_method', 'channel', 'total', 'placed_at', 'accepted_at', 'ready_at', 'dispatched_at', 'delivered_at']);
     }
 
-    private function groupByAccraDay(Collection $items, string $dateColumn = 'placed_at'): Collection
+    /**
+     * Public — PerformanceReportService reuses this exact bucketing for
+     * visitor-traffic-by-day rather than duplicating it, since it already
+     * holds this service as a dependency.
+     */
+    public function groupByAccraDay(Collection $items, string $dateColumn = 'placed_at'): Collection
     {
         return $items->groupBy(fn ($item) => $item->{$dateColumn}->timezone('Africa/Accra')->toDateString());
     }
@@ -178,7 +183,7 @@ class OrderReportService
      * so the report shows a continuous range rather than silently skipping
      * quiet days.
      */
-    private function fillDays(Carbon $from, Carbon $to, Collection $byDay): Collection
+    public function fillDays(Carbon $from, Carbon $to, Collection $byDay): Collection
     {
         $period = CarbonPeriod::create($from->clone()->timezone('Africa/Accra'), $to->clone()->timezone('Africa/Accra'));
 
