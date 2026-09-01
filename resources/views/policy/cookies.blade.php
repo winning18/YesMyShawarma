@@ -2,44 +2,52 @@
     <x-slot name="pageHeader">{{ __('Cookie Policy') }}</x-slot>
 
     <div class="max-w-3xl mx-auto text-brand-black">
-        <p class="text-sm text-brand-gray-500 mb-8">{{ __('Last updated: :date', ['date' => now()->format('j F Y')]) }}</p>
+        <p class="text-sm text-brand-gray-500 mb-8">{{ __('Last updated: 2 September 2026') }}</p>
 
         <p class="leading-relaxed mb-4">
-            {{ __('A cookie is a small file a website stores on your device. We keep our use of them to what actually makes the site work.') }}
+            {{ __('At Yes! My Shawarma, we care about your privacy and want to be open about the technologies we use. This Cookie Policy explains what cookies are, how we use them, and the choices you have.') }}
         </p>
 
-        <h2 class="text-lg font-bold mt-8 mb-3">{{ __('Cookies we use') }}</h2>
-        <ul class="list-disc pl-5 space-y-2 leading-relaxed mb-4">
-            <li>
-                <span class="font-semibold">{{ __('Session cookie (essential).') }}</span>
-                {{ __('Keeps your cart, selected branch, and login state as you move around the site. Without it, checkout won\'t work.') }}
-            </li>
-            <li>
-                <span class="font-semibold">{{ __('Visitor cookie (analytics).') }}</span>
-                {{ __("A first-party cookie, kept for up to a year, that carries no personal information — just a random token so we can count visits and see how many visitors go on to order. It's never used to identify you personally or shared with anyone outside our own reporting.") }}
-            </li>
-        </ul>
-
-        <h2 class="text-lg font-bold mt-8 mb-3">{{ __('Paystack') }}</h2>
+        <h2 class="text-lg font-bold mt-8 mb-3">{{ __('1. What are cookies?') }}</h2>
         <p class="leading-relaxed mb-4">
-            {{ __("If you pay by card or Mobile Money, you're taken to Paystack's own secure payment page to complete it. That page is run by Paystack and is covered by their own cookie and privacy policy, not ours.") }}
+            {{ __("Cookies are small text files placed on your device — your computer, tablet, or phone — when you visit a website. They're widely used to help websites work properly and to give site owners useful information. Cookies let us recognise your device and remember things like your preferences and past actions, so your next visit is smoother.") }}
         </p>
 
-        <h2 class="text-lg font-bold mt-8 mb-3">{{ __('Managing cookies') }}</h2>
+        <h2 class="text-lg font-bold mt-8 mb-3">{{ __('2. How we use cookies') }}</h2>
+        <p class="leading-relaxed mb-2">{{ __('We use cookies to improve your browsing experience and make our services better. The cookies we use fall into these categories:') }}</p>
+        <ol class="list-decimal pl-5 space-y-2 leading-relaxed mb-4">
+            <li><strong>{{ __('Essential cookies.') }}</strong> {{ __("These are needed for our website to work. They help you move around the site and use key features such as secure areas and your cart. Without them, parts of the site simply won't function.") }}</li>
+            <li><strong>{{ __('Performance cookies.') }}</strong> {{ __('These tell us how visitors use our site — which pages are popular, where people run into trouble — so we can keep improving how it works.') }}</li>
+            <li><strong>{{ __('Functional cookies.') }}</strong> {{ __('These remember your choices, such as your language or region, so we can give you a more personal experience.') }}</li>
+            <li><strong>{{ __('Targeting cookies.') }}</strong> {{ __('These help us show you offers and adverts that are relevant to you, limit how often you see the same ad, and measure how well our campaigns perform.') }}</li>
+        </ol>
+
+        <h2 class="text-lg font-bold mt-8 mb-3">{{ __('3. Third-party cookies') }}</h2>
         <p class="leading-relaxed mb-4">
-            {{ __('Most browsers let you view, block, or delete cookies from their settings. Blocking the session cookie will stop the cart and checkout from working properly.') }}
+            {{ __('Some cookies are set by trusted third parties acting on our behalf. For example, we may use analytics tools such as Google Analytics to understand how our site is used, and our payment provider (Paystack) may set cookies to process your payment securely. These third parties may use cookies to collect information about your activity across different websites. Their use of your information is governed by their own privacy and cookie policies.') }}
         </p>
 
-        <h2 class="text-lg font-bold mt-8 mb-3">{{ __('Changes to this policy') }}</h2>
+        <h2 class="text-lg font-bold mt-8 mb-3">{{ __('4. Your consent and choices') }}</h2>
         <p class="leading-relaxed mb-4">
-            {{ __('We may update this policy from time to time; the date at the top of this page will always reflect the latest version.') }}
+            {{ __("When you first visit our website, we'll ask for your consent to use non-essential cookies (performance, functional, and targeting). You can accept, decline, or adjust your choices at any time. Essential cookies don't require consent, because the site can't run without them.") }}
         </p>
 
-        <h2 class="text-lg font-bold mt-8 mb-3">{{ __('Questions') }}</h2>
+        <h2 class="text-lg font-bold mt-8 mb-3">{{ __('5. Managing cookies') }}</h2>
         <p class="leading-relaxed mb-4">
-            {{ __('Reach us anytime through our') }}
-            <a href="{{ route('contact') }}" class="underline hover:text-brand-yellow-dark">{{ __('Contact us') }}</a>
-            {{ __('page.') }}
+            {{ __('You can also control cookies through your browser settings, where most browsers let you view, manage, delete, or block cookies for any website. Keep in mind that if you block or delete certain cookies, some features of our site may not work as they should.') }}
+        </p>
+
+        <h2 class="text-lg font-bold mt-8 mb-3">{{ __('6. Changes to this Cookie Policy') }}</h2>
+        <p class="leading-relaxed mb-4">
+            {{ __('We may update this Cookie Policy from time to time to reflect changes in our practices or the law. When we do, we\'ll revise the "Last updated" date at the top of this page.') }}
+        </p>
+
+        <h2 class="text-lg font-bold mt-8 mb-3">{{ __('7. Contact us') }}</h2>
+        <p class="leading-relaxed mb-4">
+            {{ __('If you have any questions about how we use cookies, please contact us at') }}
+            <a href="mailto:info@yesmyshawarma.com" class="underline hover:text-brand-yellow-dark">info@yesmyshawarma.com</a>
+            {{ __('or on') }}
+            <a href="tel:+233243635265" class="underline hover:text-brand-yellow-dark">024 363 5265</a>.
         </p>
     </div>
 </x-customer-layout>
