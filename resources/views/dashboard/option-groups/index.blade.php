@@ -26,7 +26,7 @@
                     @endif
                 </p>
                 <p class="text-sm text-gray-500">
-                    {{ __('Select :min–:max', ['min' => $group->min_select, 'max' => $group->max_select]) }}
+                    {{ __('Select :min to :max', ['min' => $group->min_select, 'max' => $group->max_select]) }}
                     · {{ $group->options_count }} {{ __('options') }}
                 </p>
                 <a href="{{ route('dashboard.option-groups.edit', $group) }}" class="text-sm text-gray-600 hover:underline">

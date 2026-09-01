@@ -15,7 +15,7 @@
 </head>
 <body>
     <h1>{{ config('app.name') }}</h1>
-    <p class="subtitle">{{ __('Weekly sales report') }} — {{ $summary['start']->format('d/m/Y') }} – {{ $summary['end']->format('d/m/Y') }}</p>
+    <p class="subtitle">{{ __('Weekly sales report') }}: {{ $summary['start']->format('d/m/Y') }} {{ __('to') }} {{ $summary['end']->format('d/m/Y') }}</p>
 
     <table>
         <thead>

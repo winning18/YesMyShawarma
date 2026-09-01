@@ -19,9 +19,9 @@
 
         <div x-show="error" x-cloak class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3 mb-3" x-text="error"></div>
 
-        <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Starting cash (GHS) — optional') }}</label>
+        <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Starting cash (GHS), optional') }}</label>
         <input type="number" step="0.01" min="0" x-model="startingCash" class="w-full rounded-md border-gray-300 text-sm" placeholder="0.00">
-        <p class="text-xs text-gray-400 mb-4">{{ __('For making change — this is not counted as part of today\'s sales.') }}</p>
+        <p class="text-xs text-gray-400 mb-4">{{ __('For making change. This is not counted as part of today\'s sales.') }}</p>
 
         <div class="flex gap-2 justify-end">
             <button
@@ -51,7 +51,7 @@
         </p>
 
         <label class="block text-xs font-medium text-gray-500 mb-1">
-            <span x-text="requireTotalSalesOnEnd ? '{{ __('Total sales (GHS)') }}' : '{{ __('Total sales (GHS) — optional') }}'"></span>
+            <span x-text="requireTotalSalesOnEnd ? '{{ __('Total sales (GHS)') }}' : '{{ __('Total sales (GHS), optional') }}'"></span>
         </label>
         <input
             type="number" step="0.01" min="0" x-model="totalSales"
@@ -59,8 +59,8 @@
             class="w-full rounded-md border-gray-300 text-sm" placeholder="0.00"
         >
         <p class="text-xs text-gray-400 mb-4">
-            {{ __('Total sales for the shift — separate from any starting cash you entered.') }}
-            <span x-show="requireTotalSalesOnEnd"> {{ __("Can't be less than today's recorded sales — entering more is fine and gets noted in the Today report.") }}</span>
+            {{ __('Total sales for the shift, separate from any starting cash you entered.') }}
+            <span x-show="requireTotalSalesOnEnd"> {{ __("Can't be less than today's recorded sales. Entering more is fine and gets noted in the Today report.") }}</span>
         </p>
 
         <div class="flex gap-2 justify-end">

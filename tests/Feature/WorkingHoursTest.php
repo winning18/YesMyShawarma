@@ -278,7 +278,7 @@ class WorkingHoursTest extends TestCase
         Carbon::setTestNow(Carbon::now('Africa/Accra')->next(Carbon::MONDAY)->setTime(15, 0));
         BranchWorkingHour::create(['branch_id' => $this->osu->id, 'day_of_week' => 1, 'opens_at' => '14:00', 'closes_at' => '23:30']);
 
-        $this->assertSame('2:00pm – 11:30pm', app(WorkingHoursService::class)->todayLabel($this->osu));
+        $this->assertSame('2:00pm to 11:30pm', app(WorkingHoursService::class)->todayLabel($this->osu));
     }
 
     public function test_next_opening_finds_the_next_configured_day_and_time(): void

@@ -48,7 +48,7 @@ class AuthenticatedSessionController extends Controller
             Auth::guard('web')->logout();
 
             throw ValidationException::withMessages([
-                'email' => __('This account is a rider account — please use the rider login instead.'),
+                'email' => __('This account is a rider account. Please use the rider login instead.'),
             ]);
         }
 

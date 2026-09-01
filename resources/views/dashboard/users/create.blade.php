@@ -58,7 +58,7 @@
             </div>
 
             <p class="text-sm text-gray-500">
-                {{ __("A one-time password will be generated for them — you'll see it once on the next screen to pass along yourself.") }}
+                {{ __("A one-time password will be generated for them. You'll see it once on the next screen to pass along yourself.") }}
             </p>
 
             <x-primary-button>{{ __('Create user') }}</x-primary-button>

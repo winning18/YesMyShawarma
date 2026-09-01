@@ -45,7 +45,7 @@ class RegisteredUserController extends Controller
         $existing = Customer::where('phone', $phone)->first();
 
         if ($existing && $existing->password) {
-            return back()->withErrors(['phone' => 'This phone number is already registered — please log in instead.']);
+            return back()->withErrors(['phone' => 'This phone number is already registered. Please log in instead.']);
         }
 
         $customer = $customers->findOrCreateByPhone($phone, $validated['name']);

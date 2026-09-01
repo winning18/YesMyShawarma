@@ -42,7 +42,7 @@
 
 <div x-data="branchLocationPicker(@js($pickerLat), @js($pickerLng))">
     <x-input-label :value="__('Location')" />
-    <p class="text-sm text-gray-500 mb-2">{{ __('Search an address, drop the pin, drag it into place, or use your current location — the coordinates below update automatically. You can also type them in directly.') }}</p>
+    <p class="text-sm text-gray-500 mb-2">{{ __('Search an address, drop the pin, drag it into place, or use your current location. The coordinates below update automatically. You can also type them in directly.') }}</p>
 
     <div class="flex flex-wrap gap-2 mb-2">
         <input

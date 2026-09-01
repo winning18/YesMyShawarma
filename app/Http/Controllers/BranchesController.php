@@ -43,7 +43,7 @@ class BranchesController extends Controller
         // UI filter — nothing stopped this route being hit directly for an
         // inactive branch's id.
         if (! $branch->is_active) {
-            return redirect()->route('branches.index')->with('status', 'That branch is no longer available — please choose another.');
+            return redirect()->route('branches.index')->with('status', 'That branch is no longer available. Please choose another.');
         }
 
         $selection->set($branch->id);

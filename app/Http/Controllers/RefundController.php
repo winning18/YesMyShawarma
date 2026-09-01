@@ -112,7 +112,7 @@ class RefundController extends Controller
 
         $message = $refund->status === Refund::STATUS_COMPLETED
             ? __('Refund processed.')
-            : __('Refund requested — awaiting approval.');
+            : __('Refund requested, awaiting approval.');
 
         return back()->with('status', $message);
     }
@@ -129,7 +129,7 @@ class RefundController extends Controller
             return back()->withErrors(['refund' => $e->getMessage()]);
         }
 
-        return back()->with('status', __('Refund approved — staff can now complete it.'));
+        return back()->with('status', __('Refund approved. Staff can now complete it.'));
     }
 
     public function deny(Request $request, Refund $refund, RefundService $refunds): RedirectResponse

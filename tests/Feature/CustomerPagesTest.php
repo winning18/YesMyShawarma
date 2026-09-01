@@ -46,7 +46,7 @@ class CustomerPagesTest extends TestCase
     {
         $this->get(route('home'))
             ->assertOk()
-            ->assertSee('<title>'.config('app.name').' — Shawarma, Burgers &amp; More in Accra</title>', false);
+            ->assertSee('<title>'.config('app.name').': Shawarma, Burgers &amp; More in Accra</title>', false);
     }
 
     public function test_home_page_hero_only_shows_categories_with_an_uploaded_photo(): void
@@ -191,7 +191,7 @@ class CustomerPagesTest extends TestCase
         $this->get(route('branches.index'))
             ->assertOk()
             ->assertSee('Accepting orders')
-            ->assertDontSee('Closed — opens');
+            ->assertDontSee('Closed, opens');
     }
 
     public function test_branches_page_shows_closed_with_opening_time_when_outside_working_hours(): void
@@ -201,7 +201,7 @@ class CustomerPagesTest extends TestCase
 
         $this->get(route('branches.index'))
             ->assertOk()
-            ->assertSee('Closed — opens Monday 10:00am')
+            ->assertSee('Closed, opens Monday 10:00am')
             ->assertDontSee('Accepting orders');
     }
 
@@ -215,7 +215,7 @@ class CustomerPagesTest extends TestCase
             ->assertOk()
             ->assertSee('Not accepting orders right now')
             ->assertDontSee('Accepting orders')
-            ->assertDontSee('Closed — opens');
+            ->assertDontSee('Closed, opens');
     }
 
     // Regression: the branch card used to print Branch::opens_at/closes_at
@@ -305,7 +305,7 @@ class CustomerPagesTest extends TestCase
 
         $this->get(route('contact'))
             ->assertOk()
-            ->assertSee('Closed — opens Monday 10:00am')
+            ->assertSee('Closed, opens Monday 10:00am')
             ->assertDontSee('Accepting orders');
     }
 

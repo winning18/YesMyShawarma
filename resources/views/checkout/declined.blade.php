@@ -8,7 +8,7 @@
 
         <h1 class="text-2xl font-bold mt-4">{{ __('Payment not completed') }}</h1>
         <p class="text-brand-gray-500 mt-1">
-            {{ __("We couldn't confirm your payment for this order — you have not been charged, and nothing has been sent to the kitchen.") }}
+            {{ __("We couldn't confirm your payment for this order. You have not been charged, and nothing has been sent to the kitchen.") }}
         </p>
 
         <p class="text-sm text-brand-gray-500 mt-4">{{ __('Order reference') }}</p>
@@ -34,6 +34,6 @@
     </div>
 
     <p class="max-w-xl mx-auto mt-4 text-xs text-brand-gray-500 text-center">
-        {{ __("If any amount was deducted from your card or mobile money account, it will be automatically reversed by your provider — get in touch if it doesn't reflect within a few days.") }}
+        {{ __("If any amount was deducted from your card or mobile money account, it will be automatically reversed by your provider. Get in touch if it doesn't reflect within a few days.") }}
     </p>
 </x-customer-layout>

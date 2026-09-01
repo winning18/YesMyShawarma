@@ -19,7 +19,7 @@ class NewsletterController extends Controller
         // See ContactController::submit() — a caught submission looks
         // identical to a real one to the caller, deliberately.
         if ($honeypot->isSpam($request)) {
-            return back()->with('status', __("You're subscribed — thanks for signing up!"));
+            return back()->with('status', __("You're subscribed! Thanks for signing up."));
         }
 
         $validated = $request->validate([
@@ -32,6 +32,6 @@ class NewsletterController extends Controller
 
         $newsletter->subscribe($validated['email']);
 
-        return back()->with('status', __("You're subscribed — thanks for signing up!"));
+        return back()->with('status', __("You're subscribed! Thanks for signing up."));
     }
 }

@@ -10,14 +10,14 @@
 
         <h2 class="text-lg font-bold mt-8 mb-3">{{ __('1. What are cookies?') }}</h2>
         <p class="leading-relaxed mb-4">
-            {{ __("Cookies are small text files placed on your device — your computer, tablet, or phone — when you visit a website. They're widely used to help websites work properly and to give site owners useful information. Cookies let us recognise your device and remember things like your preferences and past actions, so your next visit is smoother.") }}
+            {{ __("Cookies are small text files placed on your device (your computer, tablet, or phone) when you visit a website. They're widely used to help websites work properly and to give site owners useful information. Cookies let us recognise your device and remember things like your preferences and past actions, so your next visit is smoother.") }}
         </p>
 
         <h2 class="text-lg font-bold mt-8 mb-3">{{ __('2. How we use cookies') }}</h2>
         <p class="leading-relaxed mb-2">{{ __('We use cookies to improve your browsing experience and make our services better. The cookies we use fall into these categories:') }}</p>
         <ol class="list-decimal pl-5 space-y-2 leading-relaxed mb-4">
             <li><strong>{{ __('Essential cookies.') }}</strong> {{ __("These are needed for our website to work. They help you move around the site and use key features such as secure areas and your cart. Without them, parts of the site simply won't function.") }}</li>
-            <li><strong>{{ __('Performance cookies.') }}</strong> {{ __('These tell us how visitors use our site — which pages are popular, where people run into trouble — so we can keep improving how it works.') }}</li>
+            <li><strong>{{ __('Performance cookies.') }}</strong> {{ __('These tell us how visitors use our site: which pages are popular, where people run into trouble, so we can keep improving how it works.') }}</li>
             <li><strong>{{ __('Functional cookies.') }}</strong> {{ __('These remember your choices, such as your language or region, so we can give you a more personal experience.') }}</li>
             <li><strong>{{ __('Targeting cookies.') }}</strong> {{ __('These help us show you offers and adverts that are relevant to you, limit how often you see the same ad, and measure how well our campaigns perform.') }}</li>
         </ol>

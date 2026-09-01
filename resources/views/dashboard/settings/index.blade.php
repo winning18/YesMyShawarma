@@ -40,7 +40,7 @@
             </div>
 
             <p class="text-xs text-gray-400">
-                {{ __('Letters, numbers and dashes only. Only applies to new orders — existing references are never changed.') }}
+                {{ __('Letters, numbers and dashes only. Only applies to new orders. Existing references are never changed.') }}
             </p>
 
             <x-primary-button>{{ __('Save settings') }}</x-primary-button>

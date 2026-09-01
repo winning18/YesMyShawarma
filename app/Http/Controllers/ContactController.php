@@ -45,7 +45,7 @@ class ContactController extends Controller
         // see HoneypotGuard's docblock for why silently pretending success
         // is deliberate rather than a validation error.
         if ($honeypot->isSpam($request)) {
-            return back()->with('status', __("Thanks — we've received your message and will get back to you soon."));
+            return back()->with('status', __("Thanks! We've received your message and will get back to you soon."));
         }
 
         $validated = $request->validate([
@@ -66,6 +66,6 @@ class ContactController extends Controller
             $validated['message'],
         );
 
-        return back()->with('status', __("Thanks — we've received your message and will get back to you soon."));
+        return back()->with('status', __("Thanks! We've received your message and will get back to you soon."));
     }
 }

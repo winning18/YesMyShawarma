@@ -14,9 +14,9 @@
             <p class="font-semibold">{{ __("We're currently closed.") }}</p>
             <p>
                 @if ($nextOpeningLabel)
-                    {{ __('You can still place your order — we\'ll start preparing it when we reopen :time.', ['time' => $nextOpeningLabel]) }}
+                    {{ __('You can still place your order. We\'ll start preparing it when we reopen :time.', ['time' => $nextOpeningLabel]) }}
                 @else
-                    {{ __('You can still place your order — we\'ll start preparing it at our next opening.') }}
+                    {{ __('You can still place your order. We\'ll start preparing it at our next opening.') }}
                 @endif
             </p>
         </div>
@@ -80,7 +80,7 @@
             },
             locate() {
                 if (!navigator.geolocation) {
-                    this.locationStatus = '{{ __('Geolocation not supported on this device — delivery fee will be calculated when your rider arrives.') }}';
+                    this.locationStatus = '{{ __('Geolocation not supported on this device. Delivery fee will be calculated when your rider arrives.') }}';
                     return;
                 }
                 this.locationStatus = '{{ __('Locating…') }}';
@@ -89,11 +89,11 @@
                         this.lat = position.coords.latitude;
                         this.lng = position.coords.longitude;
                         this.estimatedFee = this.calculateFee();
-                        this.locationStatus = '{{ __('Location captured — estimated fee added below.') }}';
+                        this.locationStatus = '{{ __('Location captured. Estimated fee added below.') }}';
                     },
                     () => {
                         this.estimatedFee = null;
-                        this.locationStatus = '{{ __('Could not get your location — delivery fee will be calculated when your rider arrives.') }}';
+                        this.locationStatus = '{{ __('Could not get your location. Delivery fee will be calculated when your rider arrives.') }}';
                     }
                 );
             },
@@ -132,7 +132,7 @@
                     this.promoMessage = '{{ __('Code applied.') }}';
                 } catch (e) {
                     this.discountAmount = 0;
-                    this.promoMessage = '{{ __('Could not check this code — try again.') }}';
+                    this.promoMessage = '{{ __('Could not check this code. Try again.') }}';
                 }
             },
             // The only place delivery fee, discount, and subtotal actually
@@ -218,7 +218,7 @@
                                 @error('area_other') <p class="text-sm text-brand-red mt-1">{{ $message }}</p> @enderror
                             </div>
 
-                            <p class="text-xs text-brand-gray-500 mt-1">{{ __("Just tells our rider roughly where you are — your fee is based on your shared location below.") }}</p>
+                            <p class="text-xs text-brand-gray-500 mt-1">{{ __("Just tells our rider roughly where you are. Your fee is based on your shared location below.") }}</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium mb-1">{{ __('GhanaPost GPS code (optional)') }}</label>
@@ -273,7 +273,7 @@
                         </label>
                     </div>
                     <p x-show="fulfilmentType === 'delivery' && paymentMethod === 'paystack' && estimatedFee === null" x-cloak class="text-xs text-brand-gray-500 mt-1">
-                        {{ __("We'll charge the order subtotal now — if your delivery fee ends up being calculated when your rider arrives, that part is settled in cash.") }}
+                        {{ __("We'll charge the order subtotal now. If your delivery fee ends up being calculated when your rider arrives, that part is settled in cash.") }}
                     </p>
                 </div>
                 </div>
@@ -314,7 +314,7 @@
                                 </div>
                                 <div class="flex justify-between">
                                     <dt class="text-brand-gray-500">{{ __('Location') }}</dt>
-                                    <dd x-text="estimatedFee !== null ? '{{ __('Captured') }}' : '{{ __('Not captured — fee calculated on arrival') }}'"></dd>
+                                    <dd x-text="estimatedFee !== null ? '{{ __('Captured') }}' : '{{ __('Not captured, fee calculated on arrival') }}'"></dd>
                                 </div>
                             </div>
                         </template>

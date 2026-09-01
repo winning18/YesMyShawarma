@@ -14,14 +14,14 @@
                 {{ __('Do I need an account to order?') }}
                 <span class="shrink-0 text-brand-yellow-dark font-bold transition-transform group-open:rotate-45">+</span>
             </summary>
-            <p class="mt-2 text-sm text-brand-gray-500">{{ __('No — check out as a guest with just your phone number. If you set a password later using that same number, your past orders are automatically linked to the new account.') }}</p>
+            <p class="mt-2 text-sm text-brand-gray-500">{{ __('No, check out as a guest with just your phone number. If you set a password later using that same number, your past orders are automatically linked to the new account.') }}</p>
         </details>
         <details class="group py-4">
             <summary class="flex items-center justify-between gap-4 cursor-pointer list-none font-medium marker:content-none [&::-webkit-details-marker]:hidden">
                 {{ __('How can I pay?') }}
                 <span class="shrink-0 text-brand-yellow-dark font-bold transition-transform group-open:rotate-45">+</span>
             </summary>
-            <p class="mt-2 text-sm text-brand-gray-500">{{ __('Cash on pickup or delivery, or pay online upfront with Paystack — cards and Mobile Money (MoMo) are both supported.') }}</p>
+            <p class="mt-2 text-sm text-brand-gray-500">{{ __('Cash on pickup or delivery, or pay online upfront with Paystack. Cards and Mobile Money (MoMo) are both supported.') }}</p>
         </details>
         <details class="group py-4">
             <summary class="flex items-center justify-between gap-4 cursor-pointer list-none font-medium marker:content-none [&::-webkit-details-marker]:hidden">
@@ -46,10 +46,10 @@
         </details>
         <details class="group py-4">
             <summary class="flex items-center justify-between gap-4 cursor-pointer list-none font-medium marker:content-none [&::-webkit-details-marker]:hidden">
-                {{ __("Something's wrong with my order — what do I do?") }}
+                {{ __("Something's wrong with my order, what do I do?") }}
                 <span class="shrink-0 text-brand-yellow-dark font-bold transition-transform group-open:rotate-45">+</span>
             </summary>
-            <p class="mt-2 text-sm text-brand-gray-500">{{ __('Call or WhatsApp the branch you ordered from, or send a message through Contact us — our team will sort out a refund or replacement.') }}</p>
+            <p class="mt-2 text-sm text-brand-gray-500">{{ __('Call or WhatsApp the branch you ordered from, or send a message through Contact us, and our team will sort out a refund or replacement.') }}</p>
         </details>
     </div>
 </x-customer-layout>

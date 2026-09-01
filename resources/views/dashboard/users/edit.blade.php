@@ -21,7 +21,7 @@
             <div class="rounded-md bg-amber-50 border border-amber-200 text-amber-900 text-sm px-4 py-3 space-y-1">
                 <p class="font-semibold">{{ __('One-time password') }}</p>
                 <p class="font-mono text-base tracking-wide">{{ session('temporary_password') }}</p>
-                <p>{{ __('Shown once — pass it to :name yourself. They\'ll be forced to set their own on first login.', ['name' => $targetUser->name]) }}</p>
+                <p>{{ __('Shown once. Pass it to :name yourself. They\'ll be forced to set their own on first login.', ['name' => $targetUser->name]) }}</p>
             </div>
         @endif
 
@@ -114,7 +114,7 @@
             <div class="bg-white shadow rounded-lg p-6 border border-red-100">
                 <h3 class="font-semibold text-red-700 mb-1">{{ __('Delete account') }}</h3>
                 <p class="text-sm text-gray-500 mb-4">
-                    {{ __('Removes their access and every role immediately, and clears their name, email and phone — the email and phone become free to use on a new account right away. Past orders and shifts they were attributed to are unaffected.') }}
+                    {{ __('Removes their access and every role immediately, and clears their name, email and phone. The email and phone become free to use on a new account right away. Past orders and shifts they were attributed to are unaffected.') }}
                 </p>
 
                 <form

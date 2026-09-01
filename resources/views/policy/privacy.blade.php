@@ -5,7 +5,7 @@
         <p class="text-sm text-brand-gray-500 mb-8">{{ __('Last updated: 2 September 2026') }}</p>
 
         <p class="leading-relaxed mb-4">
-            {{ __("At Yes! My Shawarma, we take your privacy seriously. This Privacy Policy explains how we collect, use, share, and protect your personal information when you interact with us — through our website, our mobile app, our branches, our ordering channels, or any other platform we operate. By using our services, you confirm that you have read and understood this policy.") }}
+            {{ __("At Yes! My Shawarma, we take your privacy seriously. This Privacy Policy explains how we collect, use, share, and protect your personal information when you interact with us, through our website, our mobile app, our branches, our ordering channels, or any other platform we operate. By using our services, you confirm that you have read and understood this policy.") }}
         </p>
         <p class="leading-relaxed mb-4">
             {{ __('Yes! My Shawarma is operated by Yes! My Grill in Accra, Ghana.') }}
@@ -42,7 +42,7 @@
 
         <h3 class="font-semibold mt-6 mb-2">{{ __('1.2 Payment information') }}</h3>
         <p class="leading-relaxed mb-4">
-            {{ __('To take payment for your orders, we work with Paystack, our secure payment provider, to process card and mobile money transactions. Depending on how you choose to pay, this may involve your mobile money number or card details. Your card and payment credentials are handled directly by Paystack under encryption — we do not store full card numbers on our own systems.') }}
+            {{ __('To take payment for your orders, we work with Paystack, our secure payment provider, to process card and mobile money transactions. Depending on how you choose to pay, this may involve your mobile money number or card details. Your card and payment credentials are handled directly by Paystack under encryption. We do not store full card numbers on our own systems.') }}
         </p>
 
         <h3 class="font-semibold mt-6 mb-2">{{ __('1.3 Order information') }}</h3>

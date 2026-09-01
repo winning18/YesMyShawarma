@@ -34,11 +34,11 @@
                         <tr>
                             <td class="px-4 py-2 text-gray-800">{{ $customer->name ?? __('(no name)') }}</td>
                             <td class="px-4 py-2 text-gray-500">{{ $customer->phone }}</td>
-                            <td class="px-4 py-2 text-gray-500">{{ $customer->location ?? '—' }}</td>
+                            <td class="px-4 py-2 text-gray-500">{{ $customer->location ?? 'N/A' }}</td>
                             <td class="px-4 py-2 text-right text-gray-500">{{ $customer->orders_count }}</td>
                             <td class="px-4 py-2 text-right font-medium text-gray-800">GH₵{{ number_format(($customer->lifetime_value ?? 0) / 100, 2) }}</td>
                             <td class="px-4 py-2 text-gray-500">
-                                {{ $customer->last_order_at ? \Illuminate\Support\Carbon::parse($customer->last_order_at)->timezone('Africa/Accra')->format('d M Y') : '—' }}
+                                {{ $customer->last_order_at ? \Illuminate\Support\Carbon::parse($customer->last_order_at)->timezone('Africa/Accra')->format('d M Y') : 'N/A' }}
                             </td>
                         </tr>
                     @empty

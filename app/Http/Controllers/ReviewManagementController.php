@@ -52,7 +52,7 @@ class ReviewManagementController extends Controller
             return back()->withErrors(['review' => $e->getMessage()]);
         }
 
-        return back()->with('status', __('Review approved — now visible publicly.'));
+        return back()->with('status', __('Review approved, now visible publicly.'));
     }
 
     public function reject(Request $request, Review $review, ReviewService $reviews, BranchContext $context): RedirectResponse

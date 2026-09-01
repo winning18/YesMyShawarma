@@ -251,13 +251,13 @@
                         const payload = await response.json().catch(() => null);
 
                         if (!response.ok) {
-                            this.reviewError = payload?.message ?? '{{ __('Something went wrong — please try again.') }}';
+                            this.reviewError = payload?.message ?? '{{ __('Something went wrong. Please try again.') }}';
                             return;
                         }
 
                         this.order.review = payload.review;
                     } catch (e) {
-                        this.reviewError = '{{ __('Something went wrong — please try again.') }}';
+                        this.reviewError = '{{ __('Something went wrong. Please try again.') }}';
                     } finally {
                         this.reviewSubmitting = false;
                     }

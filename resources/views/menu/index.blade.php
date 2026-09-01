@@ -1,6 +1,6 @@
 <x-customer-layout title="Menu · {{ config('app.name') }}" body-class="menu-hero-bg" main-class="max-w-7xl">
     <div class="text-center mb-6">
-        <h1 class="text-2xl font-bold">{{ __('Menu') }} — {{ $branch->name }}</h1>
+        <h1 class="text-2xl font-bold">{{ __('Menu') }}: {{ $branch->name }}</h1>
         <a href="{{ route('branches.index') }}" class="text-sm underline text-brand-gray-500">{{ __('Change branch') }}</a>
     </div>
 

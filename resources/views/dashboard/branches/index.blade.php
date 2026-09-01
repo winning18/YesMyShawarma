@@ -29,7 +29,7 @@
                                 @endunless
                             </p>
                             <p class="text-sm text-gray-500">{{ $branch->address }} · {{ $branch->phone }}</p>
-                            <p class="text-sm text-gray-500">{{ $branch->opens_at }}–{{ $branch->closes_at }}</p>
+                            <p class="text-sm text-gray-500">{{ $branch->opens_at }} {{ __('to') }} {{ $branch->closes_at }}</p>
                         </div>
 
                         <div class="shrink-0 flex items-center gap-3">

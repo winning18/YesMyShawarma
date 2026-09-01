@@ -126,7 +126,7 @@ class CustomerManagementTest extends TestCase
 
         $found = $response->viewData('customers')->firstWhere('id', $customer->id);
         $this->assertNull($found->location);
-        $response->assertSee('—');
+        $response->assertSee('N/A');
     }
 
     public function test_export_includes_the_location_column(): void

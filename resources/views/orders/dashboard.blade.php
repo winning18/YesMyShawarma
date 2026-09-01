@@ -339,7 +339,7 @@
 
                     return [order.delivery_address.area_name, order.delivery_address.landmark]
                         .filter(Boolean)
-                        .join(' — ');
+                        .join(', ');
                 },
 
                 // Cash still needs collecting on arrival — staff/riders
@@ -348,7 +348,7 @@
                 // wording for cash (delivery vs pickup) matches how the
                 // customer actually chose it at checkout.
                 paymentLabel(order) {
-                    if (order.payment_method === 'paystack') return @js(__('Paid — Paystack'));
+                    if (order.payment_method === 'paystack') return @js(__('Paid via Paystack'));
                     if (order.payment_method === 'momo') return @js(__('Momo'));
 
                     return order.fulfilment_type === 'delivery'

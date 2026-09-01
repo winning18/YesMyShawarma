@@ -16,7 +16,7 @@
                 >
             </div>
             <span class="text-sm text-gray-500 pb-2">
-                {{ $weekStart->format('d/m/Y') }} – {{ $weekEnd->format('d/m/Y') }}
+                {{ $weekStart->format('d/m/Y') }} {{ __('to') }} {{ $weekEnd->format('d/m/Y') }}
             </span>
         </form>
 
@@ -26,7 +26,7 @@
         >{{ __('Download CSV') }}</a>
 
         <p class="text-xs text-gray-400">
-            {{ __('A row per order placed that week — reference, timestamp, customer, status, channel, fulfilment, and total.') }}
+            {{ __('A row per order placed that week: reference, timestamp, customer, status, channel, fulfilment, and total.') }}
         </p>
     </div>
 </x-app-layout>

@@ -96,7 +96,7 @@ class MenuItemScheduleController extends Controller
 
         $menuItem->schedules()->where('branch_id', $branch->id)->delete();
 
-        return back()->with('status', __(':name timetable cleared at :branch — back to manual availability.', [
+        return back()->with('status', __(':name timetable cleared at :branch. Back to manual availability.', [
             'name' => $menuItem->name,
             'branch' => $branch->name,
         ]));

@@ -18,7 +18,7 @@
         </p>
 
         @if ($staffMembers->isEmpty())
-            <p class="text-sm text-gray-500">{{ __('No staff members yet — add one to show them on the About page.') }}</p>
+            <p class="text-sm text-gray-500">{{ __('No staff members yet. Add one to show them on the About page.') }}</p>
         @else
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 @foreach ($staffMembers as $staffMember)

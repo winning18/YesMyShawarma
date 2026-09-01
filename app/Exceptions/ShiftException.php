@@ -8,7 +8,7 @@ class ShiftException extends Exception
 {
     public static function alreadyOnShift(): self
     {
-        return new self('You already have an open shift — end it before starting another.');
+        return new self('You already have an open shift. End it before starting another.');
     }
 
     public static function mustBeOnShiftToAccept(): self

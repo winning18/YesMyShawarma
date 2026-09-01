@@ -106,7 +106,7 @@
             @if ($order->fulfilment_type === 'delivery' && $order->delivery_address_snapshot)
                 <div class="flex justify-between">
                     <span>{{ __('Area') }}</span>
-                    <span class="text-brand-black">{{ $order->delivery_address_snapshot['area_name'] ?? '—' }}</span>
+                    <span class="text-brand-black">{{ $order->delivery_address_snapshot['area_name'] ?? 'N/A' }}</span>
                 </div>
                 @if (! empty($order->delivery_address_snapshot['landmark']))
                     <div class="flex justify-between">

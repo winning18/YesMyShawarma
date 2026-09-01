@@ -86,7 +86,7 @@
 
                     this.recenter(parseFloat(results[0].lat), parseFloat(results[0].lon));
                 } catch (e) {
-                    this.error = @js(__('Search failed — try again.'));
+                    this.error = @js(__('Search failed. Try again.'));
                 } finally {
                     this.searching = false;
                 }

@@ -20,6 +20,6 @@ class RefundException extends Exception
 
     public static function wrongStatus(string $expected, string $actual): self
     {
-        return new self("This refund is \"{$actual}\", not \"{$expected}\" — it can no longer be actioned this way.");
+        return new self("This refund is \"{$actual}\", not \"{$expected}\". It can no longer be actioned this way.");
     }
 }

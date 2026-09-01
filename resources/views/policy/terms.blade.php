@@ -37,7 +37,7 @@
 
         <h2 class="text-lg font-bold mt-8 mb-3">{{ __('6. Intellectual property') }}</h2>
         <p class="leading-relaxed mb-4">
-            {{ __('All content on the Site — including text, graphics, logos, images, and software — belongs to Yes! My Shawarma or its licensors and is protected by copyright and other intellectual property laws. You may not use any of this content without our express written permission.') }}
+            {{ __('All content on the Site, including text, graphics, logos, images, and software, belongs to Yes! My Shawarma or its licensors and is protected by copyright and other intellectual property laws. You may not use any of this content without our express written permission.') }}
         </p>
 
         <h2 class="text-lg font-bold mt-8 mb-3">{{ __('7. Limitation of liability') }}</h2>

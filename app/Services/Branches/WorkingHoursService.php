@@ -166,7 +166,7 @@ class WorkingHoursService
         // rows created directly (tests, tinker) may still be plain "H:i",
         // and parse() reads either without throwing.
         return Carbon::parse($today->opens_at)->format('g:ia')
-            .' – '.Carbon::parse($today->closes_at)->format('g:ia');
+            .' '.__('to').' '.Carbon::parse($today->closes_at)->format('g:ia');
     }
 
     /**

@@ -12,7 +12,7 @@
         @endif
 
         <p class="text-sm text-gray-500">
-            {{ __("Only items you give a schedule are affected — everything else keeps following the manual Available/Sold out toggle. A scheduled item's availability is set automatically every few minutes based on today's day and time; toggling it by hand still works, but the next sync reasserts the schedule.") }}
+            {{ __("Only items you give a schedule are affected. Everything else keeps following the manual Available/Sold out toggle. A scheduled item's availability is set automatically every few minutes based on today's day and time; toggling it by hand still works, but the next sync reasserts the schedule.") }}
         </p>
 
         @forelse ($categories as $group)
@@ -41,10 +41,10 @@
                             @if ($schedules->isNotEmpty())
                                 <p class="text-xs text-gray-500">
                                     {{ $schedules->pluck('day_of_week')->map(fn ($day) => $dayNames[$day])->implode(', ') }}
-                                    · {{ \Illuminate\Support\Carbon::parse($schedules->first()->starts_at)->format('H:i') }}–{{ \Illuminate\Support\Carbon::parse($schedules->first()->ends_at)->format('H:i') }}
+                                    · {{ \Illuminate\Support\Carbon::parse($schedules->first()->starts_at)->format('H:i') }} {{ __('to') }} {{ \Illuminate\Support\Carbon::parse($schedules->first()->ends_at)->format('H:i') }}
                                 </p>
                             @else
-                                <p class="text-xs text-gray-500">{{ __('No schedule — follows manual toggle.') }}</p>
+                                <p class="text-xs text-gray-500">{{ __('No schedule: follows manual toggle.') }}</p>
                             @endif
 
                             <form method="POST" action="{{ route('dashboard.menu-items.schedule.update', $item) }}" class="space-y-2">
@@ -66,7 +66,7 @@
                                         type="time" name="starts_at" required class="w-24 rounded-md border-gray-300 text-xs"
                                         value="{{ $schedules->first() ? \Illuminate\Support\Carbon::parse($schedules->first()->starts_at)->format('H:i') : '' }}"
                                     >
-                                    <span class="text-gray-400 text-xs">–</span>
+                                    <span class="text-gray-400 text-xs">{{ __('to') }}</span>
                                     <input
                                         type="time" name="ends_at" required class="w-24 rounded-md border-gray-300 text-xs"
                                         value="{{ $schedules->first() ? \Illuminate\Support\Carbon::parse($schedules->first()->ends_at)->format('H:i') : '' }}"

@@ -80,11 +80,11 @@
                         <dl class="text-sm space-y-2">
                             <div class="flex justify-between">
                                 <dt class="text-gray-500">{{ __('Area') }}</dt>
-                                <dd class="text-gray-800">{{ $order->delivery_address_snapshot['area_name'] ?? '—' }}</dd>
+                                <dd class="text-gray-800">{{ $order->delivery_address_snapshot['area_name'] ?? 'N/A' }}</dd>
                             </div>
                             <div class="flex justify-between">
                                 <dt class="text-gray-500">{{ __('Landmark') }}</dt>
-                                <dd class="text-gray-800">{{ $order->delivery_address_snapshot['landmark'] ?? '—' }}</dd>
+                                <dd class="text-gray-800">{{ $order->delivery_address_snapshot['landmark'] ?? 'N/A' }}</dd>
                             </div>
                             @if (! empty($order->delivery_address_snapshot['ghanapost_code']))
                                 <div class="flex justify-between">
@@ -115,7 +115,7 @@
                             <li class="flex justify-between">
                                 <span class="text-gray-800 capitalize">
                                     {{ str_replace('_', ' ', $event->to_status) }}
-                                    <span class="text-gray-400">— {{ ucfirst($event->actor_type) }}</span>
+                                    <span class="text-gray-400">({{ ucfirst($event->actor_type) }})</span>
                                 </span>
                                 <span class="text-gray-500">{{ $event->created_at->timezone('Africa/Accra')->format('d M Y, H:i') }}</span>
                             </li>
@@ -222,7 +222,7 @@
                                     <span class="text-gray-800 capitalize">
                                         {{ $payment->provider }}
                                         @if ($payment->provider_reference)
-                                            <span class="text-gray-400 font-normal">— {{ $payment->provider_reference }}</span>
+                                            <span class="text-gray-400 font-normal">({{ $payment->provider_reference }})</span>
                                         @endif
                                     </span>
                                     <span class="text-gray-500 capitalize shrink-0">{{ $payment->status }}</span>

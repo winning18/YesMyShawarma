@@ -5,7 +5,7 @@
     the bare site name (CustomerLayout's default when $title is null).
 --}}
 <x-customer-layout
-    :title="__(':name — Shawarma, Burgers & More in Accra', ['name' => config('app.name')])"
+    :title="__(':name: Shawarma, Burgers & More in Accra', ['name' => config('app.name')])"
     body-class="bg-brand-black"
     :og-image="data_get($heroSlides->first(), 'imageUrl')"
 >

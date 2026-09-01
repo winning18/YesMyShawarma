@@ -26,7 +26,7 @@
     />
     <x-performance.kpi-card
         :label="__('Conversion rate')"
-        :value="$traffic['conversion']['value'] !== null ? number_format($traffic['conversion']['value'], 1).'%' : '—'"
+        :value="$traffic['conversion']['value'] !== null ? number_format($traffic['conversion']['value'], 1).'%' : 'N/A'"
         :change-pct="$traffic['conversion']['change_pct']"
     />
 </div>
@@ -41,5 +41,5 @@
 ])
 
 <p class="text-xs text-gray-400 mt-4">
-    {{ __("Site-wide across every branch — a visit isn't tied to a specific branch until it converts into an order there.") }}
+    {{ __("Site-wide across every branch. A visit isn't tied to a specific branch until it converts into an order there.") }}
 </p>

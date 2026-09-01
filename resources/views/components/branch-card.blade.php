@@ -70,7 +70,7 @@
             @else
                 <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-black bg-brand-gray-100 px-2.5 py-1 rounded-full">
                     <span class="w-1.5 h-1.5 rounded-full bg-brand-gray-500"></span>
-                    {{ $branch->next_opening_label ? __('Closed — opens :time', ['time' => $branch->next_opening_label]) : __('Currently closed') }}
+                    {{ $branch->next_opening_label ? __('Closed, opens :time', ['time' => $branch->next_opening_label]) : __('Currently closed') }}
                 </span>
             @endif
         </div>

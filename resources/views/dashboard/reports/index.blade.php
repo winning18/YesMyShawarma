@@ -42,15 +42,15 @@
                 </div>
                 <div class="bg-white shadow rounded-lg p-4">
                     <p class="text-xs text-gray-500">{{ __('Avg. time to accept') }}</p>
-                    <p class="text-xl font-semibold text-gray-800">{{ $operational['avg_time_to_accept_minutes'] !== null ? $operational['avg_time_to_accept_minutes'].' '.__('min') : '—' }}</p>
+                    <p class="text-xl font-semibold text-gray-800">{{ $operational['avg_time_to_accept_minutes'] !== null ? $operational['avg_time_to_accept_minutes'].' '.__('min') : 'N/A' }}</p>
                 </div>
                 <div class="bg-white shadow rounded-lg p-4">
                     <p class="text-xs text-gray-500">{{ __('Avg. prep time') }}</p>
-                    <p class="text-xl font-semibold text-gray-800">{{ $operational['avg_prep_time_minutes'] !== null ? $operational['avg_prep_time_minutes'].' '.__('min') : '—' }}</p>
+                    <p class="text-xl font-semibold text-gray-800">{{ $operational['avg_prep_time_minutes'] !== null ? $operational['avg_prep_time_minutes'].' '.__('min') : 'N/A' }}</p>
                 </div>
                 <div class="bg-white shadow rounded-lg p-4">
                     <p class="text-xs text-gray-500">{{ __('Avg. delivery time') }}</p>
-                    <p class="text-xl font-semibold text-gray-800">{{ $operational['avg_delivery_time_minutes'] !== null ? $operational['avg_delivery_time_minutes'].' '.__('min') : '—' }}</p>
+                    <p class="text-xl font-semibold text-gray-800">{{ $operational['avg_delivery_time_minutes'] !== null ? $operational['avg_delivery_time_minutes'].' '.__('min') : 'N/A' }}</p>
                 </div>
                 <div class="bg-white shadow rounded-lg p-4">
                     <p class="text-xs text-gray-500">{{ __('Escalations') }}</p>

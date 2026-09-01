@@ -25,6 +25,6 @@
 <div>
     <label class="flex items-center gap-2 text-sm">
         <input type="checkbox" name="is_active" value="1" @checked(old('is_active', $staffMember?->is_active ?? true)) class="rounded border-gray-300">
-        {{ __('Active — shown on the About page') }}
+        {{ __('Active: shown on the About page') }}
     </label>
 </div>

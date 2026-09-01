@@ -22,7 +22,7 @@
         --}}
         @php
             $ogImageUrl = $ogImage ?? asset('images/logo-web.png');
-            $ogDescriptionText = $ogDescription ?? __('Shawarma, burgers and more — order online for pickup from our Accra branches.');
+            $ogDescriptionText = $ogDescription ?? __('Shawarma, burgers and more. Order online for pickup from our Accra branches.');
         @endphp
         <meta name="description" content="{{ $ogDescriptionText }}">
         <link rel="canonical" href="{{ url()->current() }}">
@@ -201,7 +201,7 @@
         >
             <div class="max-w-5xl mx-auto flex flex-col sm:flex-row items-center gap-4 text-sm text-brand-gray-300">
                 <p class="flex-1">
-                    {{ __('We use a first-party cookie to see how visitors use our site. You can accept or decline it — the site works either way.') }}
+                    {{ __('We use a first-party cookie to see how visitors use our site. You can accept or decline it. The site works either way.') }}
                     <a href="{{ route('policy.cookies') }}" class="underline hover:text-brand-yellow">{{ __('Learn more') }}</a>
                 </p>
                 <div class="flex gap-2 shrink-0">
@@ -224,7 +224,7 @@
                 <div>
                     <img src="{{ asset('images/logo-web.png') }}" alt="{{ config('app.name') }}" class="h-9 w-auto mb-4">
                     <p class="text-brand-gray-300">
-                        {{ __('Shawarma, burgers and more — order online for pickup from our Accra branches.') }}
+                        {{ __('Shawarma, burgers and more. Order online for pickup from our Accra branches.') }}
                     </p>
                 </div>
 

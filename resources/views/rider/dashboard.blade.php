@@ -74,7 +74,7 @@
                                         class="text-xs text-amber-700 mt-2"
                                         x-show="!(order.delivery_address?.lat && order.delivery_address?.lng)"
                                     >
-                                        {{ __("Customer didn't share a live location — use the area/landmark above, or call them.") }}
+                                        {{ __("Customer didn't share a live location. Use the area/landmark above, or call them.") }}
                                     </p>
 
                                     <ul class="text-sm text-gray-700 list-disc list-inside mt-2 space-y-0.5">
@@ -197,7 +197,7 @@
 
                 statusLabel(status) {
                     return {
-                        ready: @js(__('Assigned to you — head to the branch')),
+                        ready: @js(__('Assigned to you, head to the branch')),
                         dispatched: @js(__('Out for delivery')),
                     }[status] ?? status;
                 },
@@ -207,7 +207,7 @@
                 // "collect cash at the door" / "already settled online"
                 // distinction, never the pickup wording.
                 paymentLabel(order) {
-                    if (order.payment_method === 'paystack') return @js(__('Paid — Paystack'));
+                    if (order.payment_method === 'paystack') return @js(__('Paid via Paystack'));
                     if (order.payment_method === 'momo') return @js(__('Momo'));
 
                     return @js(__('Cash on delivery'));

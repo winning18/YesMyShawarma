@@ -150,8 +150,8 @@
                                 <td class="px-4 py-2 font-medium">
                                     <a href="{{ route('dashboard.orders.show', $order) }}" class="text-indigo-600 hover:underline">{{ $order->reference }}</a>
                                 </td>
-                                <td class="px-4 py-2 text-gray-500">{{ $order->customer?->name ?? $order->customer?->phone ?? __('—') }}</td>
-                                <td class="px-4 py-2 text-gray-500">{{ $order->delivery_address_snapshot['area_name'] ?? '—' }}</td>
+                                <td class="px-4 py-2 text-gray-500">{{ $order->customer?->name ?? $order->customer?->phone ?? __('N/A') }}</td>
+                                <td class="px-4 py-2 text-gray-500">{{ $order->delivery_address_snapshot['area_name'] ?? 'N/A' }}</td>
                                 <td class="px-4 py-2">
                                     <span class="text-xs font-medium px-2 py-1 rounded-md capitalize {{ $badgeClass }}">{{ str_replace('_', ' ', $order->status) }}</span>
                                 </td>

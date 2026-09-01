@@ -8,7 +8,7 @@ class ReviewException extends Exception
 {
     public static function notYetEligible(): self
     {
-        return new self('This order has not been completed yet — a review can only be left once it has.');
+        return new self('This order has not been completed yet. A review can only be left once it has.');
     }
 
     public static function alreadyReviewed(): self
@@ -23,6 +23,6 @@ class ReviewException extends Exception
 
     public static function wrongStatus(string $expected, string $actual): self
     {
-        return new self("This review is \"{$actual}\", not \"{$expected}\" — it can no longer be actioned this way.");
+        return new self("This review is \"{$actual}\", not \"{$expected}\". It can no longer be actioned this way.");
     }
 }

@@ -47,7 +47,7 @@
                                 </td>
                                 <td class="px-4 py-2 text-gray-500">{{ $review->branch->name }}</td>
                                 <td class="px-4 py-2 text-amber-500">{{ str_repeat('★', $review->rating) }}{{ str_repeat('☆', 5 - $review->rating) }}</td>
-                                <td class="px-4 py-2 text-gray-500 max-w-xs truncate" title="{{ $review->comment }}">{{ $review->comment ?? '—' }}</td>
+                                <td class="px-4 py-2 text-gray-500 max-w-xs truncate" title="{{ $review->comment }}">{{ $review->comment ?? 'N/A' }}</td>
                                 <td class="px-4 py-2 text-gray-500">{{ $review->created_at->timezone('Africa/Accra')->format('d M Y, H:i') }}</td>
                                 <td class="px-4 py-2 text-right">
                                     @if ($review->status === 'pending')

@@ -71,13 +71,13 @@
                                         {{ $shift->ended_at?->timezone('Africa/Accra')->format('H:i') ?? __('Active') }}
                                     </td>
                                     <td class="px-4 py-2 text-right text-gray-800">
-                                        {{ $shift->total_sales !== null ? 'GH₵'.number_format($shift->total_sales / 100, 2) : '—' }}
+                                        {{ $shift->total_sales !== null ? 'GH₵'.number_format($shift->total_sales / 100, 2) : 'N/A' }}
                                     </td>
                                     <td class="px-4 py-2 text-right text-gray-500">
-                                        {{ $shift->system_sales !== null ? 'GH₵'.number_format($shift->system_sales / 100, 2) : '—' }}
+                                        {{ $shift->system_sales !== null ? 'GH₵'.number_format($shift->system_sales / 100, 2) : 'N/A' }}
                                     </td>
                                     <td class="px-4 py-2 text-right font-medium {{ $extra ? 'text-green-700' : 'text-gray-400' }}">
-                                        {{ $extra ? 'GH₵'.number_format($extra / 100, 2) : '—' }}
+                                        {{ $extra ? 'GH₵'.number_format($extra / 100, 2) : 'N/A' }}
                                     </td>
                                 </tr>
                             @endforeach

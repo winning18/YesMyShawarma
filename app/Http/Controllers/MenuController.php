@@ -139,7 +139,7 @@ class MenuController extends Controller
         // crawlability concern): only reachable once a branch was already
         // explicitly selected, not on a fresh, session-less visit.
         if ($branch && ! $branch->is_active) {
-            return redirect()->route('branches.index')->with('status', 'That branch is no longer available — please choose another.');
+            return redirect()->route('branches.index')->with('status', 'That branch is no longer available. Please choose another.');
         }
 
         if (! $branch) {

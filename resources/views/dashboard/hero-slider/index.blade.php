@@ -9,7 +9,7 @@
         @endif
 
         <p class="text-sm text-gray-500">
-            {{ __('Every category can have a hero photo. Only categories with a photo uploaded here actually appear on the home page slider, in this order — a new category is ready to use the moment it exists, no code changes needed.') }}
+            {{ __('Every category can have a hero photo. Only categories with a photo uploaded here actually appear on the home page slider, in this order. A new category is ready to use the moment it exists, no code changes needed.') }}
         </p>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

@@ -86,7 +86,7 @@ class HomeController extends Controller
                 $schema = [
                     '@context' => 'https://schema.org',
                     '@type' => 'Restaurant',
-                    'name' => config('app.name').' — '.$branch->name,
+                    'name' => config('app.name').': '.$branch->name,
                     'telephone' => $branch->phone,
                     'address' => [
                         '@type' => 'PostalAddress',

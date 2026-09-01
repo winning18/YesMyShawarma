@@ -109,7 +109,7 @@
         <div class="bg-brand-black rounded-xl p-8 text-center text-brand-white">
         <h2 class="text-lg font-bold mb-2">{{ __('Join our newsletter') }}</h2>
         <p class="text-sm text-brand-gray-300 mb-6 max-w-md mx-auto">
-            {{ __('Get news on new menu items, offers and branch openings — straight to your inbox.') }}
+            {{ __('Get news on new menu items, offers and branch openings, straight to your inbox.') }}
         </p>
 
         <form method="POST" action="{{ route('newsletter.subscribe') }}" class="max-w-md mx-auto">

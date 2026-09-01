@@ -146,7 +146,7 @@
                                 <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('GhanaPost GPS code (optional)') }}</label>
                                 <input type="text" x-model="ghanapostCode" class="w-full rounded-md border-gray-300 text-sm">
                             </div>
-                            <p class="text-xs text-gray-500">{{ __('No live location capture at POS — the delivery fee is priced when the rider marks it delivered.') }}</p>
+                            <p class="text-xs text-gray-500">{{ __('No live location capture at POS. The delivery fee is priced when the rider marks it delivered.') }}</p>
                         </div>
                     @endif
 
@@ -172,7 +172,7 @@
                                 class="shrink-0 px-3 py-1.5 text-xs text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
                             >{{ __('Skip') }}</button>
                         </div>
-                        <p class="text-xs text-gray-500 mt-1">{{ __("Busy? Leave this blank and enter it later from the order — it won't be marked paid until you do.") }}</p>
+                        <p class="text-xs text-gray-500 mt-1">{{ __("Busy? Leave this blank and enter it later from the order. It won't be marked paid until you do.") }}</p>
                     </div>
 
                     <div>

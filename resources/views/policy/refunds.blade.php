@@ -41,7 +41,7 @@
         <p class="leading-relaxed mb-2">{{ __("Some situations don't qualify for a refund:") }}</p>
         <ul class="list-disc pl-5 space-y-1 leading-relaxed mb-4">
             <li><strong>{{ __('Reported too late.') }}</strong> {{ __('Orders confirmed as delivered that are not reported within the time frames set out above.') }}</li>
-            <li><strong>{{ __('Personal taste.') }}</strong> {{ __("Refunds aren't given for personal preferences — for example, a topping you requested but then didn't enjoy.") }}</li>
+            <li><strong>{{ __('Personal taste.') }}</strong> {{ __("Refunds aren't given for personal preferences, for example a topping you requested but then didn't enjoy.") }}</li>
             <li><strong>{{ __('Third-party orders.') }}</strong> {{ __("If you ordered through a third-party delivery platform rather than directly from us, that platform's own refund policy applies, and refunds must be requested through them.") }}</li>
         </ul>
 
@@ -61,7 +61,7 @@
 
         <h2 class="text-lg font-bold mt-8 mb-3">{{ __('7. Your satisfaction') }}</h2>
         <p class="leading-relaxed mb-4">
-            {{ __('Your satisfaction is what drives us. We take every concern seriously and genuinely welcome your feedback — if you have ideas on how we can serve you better, please tell us.') }}
+            {{ __('Your satisfaction is what drives us. We take every concern seriously and genuinely welcome your feedback. If you have ideas on how we can serve you better, please tell us.') }}
         </p>
 
         <h2 class="text-lg font-bold mt-8 mb-3">{{ __('8. Changes to this policy') }}</h2>

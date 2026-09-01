@@ -21,7 +21,7 @@
     />
     <x-performance.kpi-card
         :label="__('Customer conversion')"
-        :value="$summary['conversion']['value'] !== null ? number_format($summary['conversion']['value'], 1).'%' : '—'"
+        :value="$summary['conversion']['value'] !== null ? number_format($summary['conversion']['value'], 1).'%' : 'N/A'"
         :change-pct="$summary['conversion']['change_pct']"
     />
 </div>
@@ -29,7 +29,7 @@
 @include('dashboard.performance.partials.chart', ['labels' => $summary['chart']['labels'], 'current' => $summary['chart']['current'], 'previous' => $summary['chart']['previous']])
 
 @if ($noPreviousData)
-    <p class="text-xs text-gray-400">{{ __('The dotted line (previous period) has no data yet — comparisons will fill in as more history builds up.') }}</p>
+    <p class="text-xs text-gray-400">{{ __('The dotted line (previous period) has no data yet. Comparisons will fill in as more history builds up.') }}</p>
 @endif
 
 <div class="space-y-4">

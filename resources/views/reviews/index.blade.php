@@ -3,7 +3,7 @@
 
     @if ($reviews->isEmpty())
         <p class="text-center text-brand-gray-500 max-w-md mx-auto">
-            {{ __('No reviews yet — be the first to leave one after your order.') }}
+            {{ __('No reviews yet. Be the first to leave one after your order.') }}
         </p>
     @else
         <div class="max-w-2xl mx-auto space-y-6 mb-8">

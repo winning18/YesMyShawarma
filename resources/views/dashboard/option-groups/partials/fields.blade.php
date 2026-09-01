@@ -25,7 +25,7 @@
 <div>
     <label class="flex items-center gap-2 text-sm">
         <input type="checkbox" name="is_required" value="1" @checked(old('is_required', $optionGroup?->is_required ?? false)) class="rounded border-gray-300">
-        {{ __('Required — the customer must choose before adding this item') }}
+        {{ __('Required: the customer must choose before adding this item') }}
     </label>
 </div>
 

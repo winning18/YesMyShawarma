@@ -105,7 +105,7 @@
                         </form>
                     </div>
                 @empty
-                    <p class="text-sm text-gray-500">{{ __('None configured — this item is recorded under its own name.') }}</p>
+                    <p class="text-sm text-gray-500">{{ __('None configured. This item is recorded under its own name.') }}</p>
                 @endforelse
 
                 <form method="POST" action="{{ route('dashboard.menu-items.components.store', $menuItem) }}" class="flex items-center gap-2 mt-3">
@@ -148,7 +148,7 @@
                     <select name="component_option_id" class="flex-1 rounded-md border-gray-300 text-sm" required>
                         <option value="">{{ __('Select modifier…') }}</option>
                         @foreach ($modifierChoices as $choice)
-                            <option value="{{ $choice->id }}">{{ $choice->optionGroup->name }} — {{ $choice->name }}</option>
+                            <option value="{{ $choice->id }}">{{ $choice->optionGroup->name }}: {{ $choice->name }}</option>
                         @endforeach
                     </select>
                     <input type="number" name="quantity" value="1" min="1" max="20" class="w-16 rounded-md border-gray-300 text-sm">
