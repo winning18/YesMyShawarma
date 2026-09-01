@@ -15,7 +15,7 @@ use Illuminate\View\View;
 
 class UserManagementController extends Controller
 {
-    private const ROLES = ['staff', 'rider', 'manager', 'general_manager', 'owner'];
+    private const ROLES = ['staff', 'rider', 'manager', 'general_manager', 'owner', 'stock_manager'];
 
     /**
      * The only roles a general_manager may create users into — see

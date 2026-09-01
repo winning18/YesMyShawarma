@@ -52,9 +52,18 @@ class AuthenticatedSessionController extends Controller
             ]);
         }
 
+        // A pure stock_manager (no other role) holds no orders.* permission
+        // at all, so the default /dashboard landing page (Gate::authorize
+        // ('viewAny', Order::class) in OrderDashboardController) would 403
+        // them the moment they log in — send them to the one section they
+        // can actually reach instead.
+        $stockManagerOnly = ! $hasStaffRole && ! $riderOnly && $context->hasRoleAtAnyBranch($user, 'stock_manager');
+
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        return redirect()->intended($stockManagerOnly
+            ? route('dashboard.stock.index', absolute: false)
+            : route('dashboard', absolute: false));
     }
 
     /**

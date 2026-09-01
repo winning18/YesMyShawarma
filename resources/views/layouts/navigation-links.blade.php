@@ -207,6 +207,22 @@
 @endcan
 
 {{--
+    stock.manage (owner + stock_manager) reaches the full admin screen
+    (add/edit items, restock, history); stock.record_sale-only holders
+    (staff/manager/general_manager) land on the sales-recording screen
+    instead — RecordSale is the narrower ability, so it's checked second.
+--}}
+@can('stock.manage')
+    <x-sidebar-link :href="route('dashboard.stock.index')" :active="request()->routeIs('dashboard.stock.*')">
+        {{ __('Stock') }}
+    </x-sidebar-link>
+@elsecan('stock.record_sale')
+    <x-sidebar-link :href="route('dashboard.stock.sales')" :active="request()->routeIs('dashboard.stock.*')">
+        {{ __('Stock') }}
+    </x-sidebar-link>
+@endcan
+
+{{--
     users.create_operational (general_manager) reaches the same index/create
     screens as users.manage (owner) — see UserManagementController's
     authorizeView()/authorizeCreate() — so it needs the same nav entry, or

@@ -234,6 +234,32 @@ All of this is gated on the Cookie Policy's consent choice: a `cookie_consent=de
 anything at all for that request, and forgets an existing `visitor_token` cookie the moment
 someone declines.
 
+## Stock
+
+```
+stock_items      id, branch_id, name, unit, quantity (decimal 10,2),
+                 low_stock_threshold (decimal 10,2), low_stock_alerted_at,
+                 created_by (-> users), timestamps
+stock_movements  id, stock_item_id, type (restock|sale), quantity (decimal 10,2),
+                 actor_id (-> users), shift_id (nullable -> shifts), note, created_at
+```
+
+Branch-owned (`BranchScope`, like every other branch-owned table). `stock_items.quantity` is a
+denormalised running total — `stock_movements` is the source of truth, same relationship as
+`orders`/`order_events`. Every quantity change goes through `StockService::restock()` or
+`recordSale()`, both of which write a matching `stock_movements` row before updating the total,
+so the two can never drift; nothing else may write `stock_items.quantity` directly.
+`stock_movements` carries no `branch_id` of its own (reached only via `stock_item_id`), same as
+`order_events` has none of its own. `actor_id` is required, not nullable — every stock change
+must be attributable, no system-authored rows exist here the way `order_events` allows for
+escalation.
+
+`low_stock_alerted_at` de-bounces the owner SMS (`StockAlertNotifier`): set the moment quantity
+crosses below `low_stock_threshold`, cleared by `restock()` once quantity is back at/above
+threshold. Without it, every subsequent sale while already low would re-send the same alert.
+
+See `.claude/rules/permissions.md`'s "Stock management" section for who can do what.
+
 ## Settings
 
 ```

@@ -13,35 +13,37 @@ Uses `spatie/laravel-permission` with **teams enabled, where team = branch**.
 Roles are always resolved in the context of a branch. A user may hold different roles at
 different branches. `owner` is the only role granted across all branches implicitly.
 
-Roles: `staff`, `rider`, `manager`, `general_manager`, `owner`.
+Roles: `staff`, `rider`, `manager`, `general_manager`, `owner`, `stock_manager`.
 
 ## Permission matrix
 
-| Permission | staff | rider | manager | general_manager | owner |
-|---|:--:|:--:|:--:|:--:|:--:|
-| `orders.view` | ✓ | own only | ✓ | ✓ | ✓ |
-| `orders.accept` | ✓ | — | ✓ | ✓ | ✓ |
-| `orders.reject` | ✓ | — | ✓ | ✓ | ✓ |
-| `orders.advance_status` | ✓ | own only | ✓ | ✓ | ✓ |
-| `orders.assign_rider` | ✓ | — | ✓ | ✓ | ✓ |
-| `orders.void` | — | — | ✓ | ✓ | ✓ |
-| `orders.refund` | — | — | ✓ | ✓ | ✓ |
-| `orders.refund_request` | ✓ | — | — | — | — |
-| `orders.discount` | — | — | ✓ | ✓ | ✓ |
-| `orders.create` | ✓ | — | ✓ | ✓ | ✓ |
-| `menu.toggle_availability` | ✓ | — | ✓ | ✓ | ✓ |
-| `menu.edit_content` | — | — | ✓ | ✓ | ✓ |
-| `reports.view_operational` | ✓ | — | ✓ | ✓ | ✓ |
-| `reports.view_financial` | — | — | ✓ | ✓ | ✓ |
-| `promotions.manage` | — | — | ✓ | ✓ | ✓ |
-| `customers.view` | — | — | ✓ | ✓ | ✓ |
-| `reviews.moderate` | — | — | ✓ | ✓ | ✓ |
-| `users.manage` | — | — | — | — | ✓ |
-| `users.create_operational` | — | — | — | ✓ | — |
-| `users.transfer_branch` | — | — | ✓ | ✓ | ✓ |
-| `branches.manage` | — | — | — | — | ✓ |
-| `dashboard.performance` | — | — | ✓ | ✓ | ✓ |
-| `settings.manage` | — | — | ✓ | ✓ | ✓ |
+| Permission | staff | rider | manager | general_manager | owner | stock_manager |
+|---|:--:|:--:|:--:|:--:|:--:|:--:|
+| `orders.view` | ✓ | own only | ✓ | ✓ | ✓ | — |
+| `orders.accept` | ✓ | — | ✓ | ✓ | ✓ | — |
+| `orders.reject` | ✓ | — | ✓ | ✓ | ✓ | — |
+| `orders.advance_status` | ✓ | own only | ✓ | ✓ | ✓ | — |
+| `orders.assign_rider` | ✓ | — | ✓ | ✓ | ✓ | — |
+| `orders.void` | — | — | ✓ | ✓ | ✓ | — |
+| `orders.refund` | — | — | ✓ | ✓ | ✓ | — |
+| `orders.refund_request` | ✓ | — | — | — | — | — |
+| `orders.discount` | — | — | ✓ | ✓ | ✓ | — |
+| `orders.create` | ✓ | — | ✓ | ✓ | ✓ | — |
+| `menu.toggle_availability` | ✓ | — | ✓ | ✓ | ✓ | — |
+| `menu.edit_content` | — | — | ✓ | ✓ | ✓ | — |
+| `reports.view_operational` | ✓ | — | ✓ | ✓ | ✓ | — |
+| `reports.view_financial` | — | — | ✓ | ✓ | ✓ | — |
+| `promotions.manage` | — | — | ✓ | ✓ | ✓ | — |
+| `customers.view` | — | — | ✓ | ✓ | ✓ | — |
+| `reviews.moderate` | — | — | ✓ | ✓ | ✓ | — |
+| `users.manage` | — | — | — | — | ✓ | — |
+| `users.create_operational` | — | — | — | ✓ | — | — |
+| `users.transfer_branch` | — | — | ✓ | ✓ | ✓ | — |
+| `branches.manage` | — | — | — | — | ✓ | — |
+| `dashboard.performance` | — | — | ✓ | ✓ | ✓ | — |
+| `settings.manage` | — | — | ✓ | ✓ | ✓ | — |
+| `stock.manage` | — | — | — | — | ✓ | ✓ |
+| `stock.record_sale` | ✓ | — | ✓ | ✓ | ✓ | ✓ |
 
 `general_manager` holds the exact same permission set as `manager` (see `RolesAndPermissionsSeeder`'s
 `$matrix` — the two lists are meant to be kept identical apart from `users.create_operational`),
@@ -178,6 +180,27 @@ you cannot forget.
 
 Riders get a further restriction: they only ever see orders where `rider_id = auth()->id()`.
 There is no claimable pool — see orders.md's rider assignment section.
+
+## Stock management
+
+`stock.manage` (create/edit stock items, set quantities and low-stock thresholds) is
+`owner`-only in the base matrix, plus the dedicated `stock_manager` role. `stock.record_sale`
+(log a sale against a branch's stock) goes to everyone who works a branch day-to-day —
+`staff`, `manager`, `general_manager`, `owner`, `stock_manager` — deliberately excluding
+`rider`, who never touches ingredient stock.
+
+`stock_manager` exists because this app has **no mechanism to grant a permission to one
+specific user outside a role** (`givePermissionTo()` is never called anywhere except this
+seeder) — "owner can assign anyone to manage stock" therefore has to be a role, not a per-user
+override. It's listed in `UserManagementController::ROLES` and `CreateUserRequest`, so it's
+assignable/creatable through the exact same roster UI as every other role, branch-scoped the
+same way — assigning it at one branch only grants stock rights at that branch, never every
+branch, same as `manager`.
+
+`StockItem` carries its own `branch_id` and the standard `BranchScope`, same as every other
+branch-owned model. `StockMovement` (the append-only ledger backing every restock/sale,
+mirroring `order_events`) carries no `branch_id` of its own — it's reached only through its
+`StockItem`.
 
 ## Guards
 

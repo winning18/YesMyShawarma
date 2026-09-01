@@ -43,6 +43,8 @@ use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\ShiftController;
 use App\Http\Controllers\StaffMemberManagementController;
+use App\Http\Controllers\StockItemController;
+use App\Http\Controllers\StockMovementController;
 use App\Http\Controllers\TodayReportController;
 use App\Http\Controllers\TrackingController;
 use App\Http\Controllers\UserManagementController;
@@ -178,6 +180,17 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
 
     Route::get('/dashboard/working-hours', [WorkingHoursController::class, 'index'])->name('dashboard.working-hours.index');
     Route::put('/dashboard/working-hours', [WorkingHoursController::class, 'update'])->name('dashboard.working-hours.update');
+
+    Route::get('/dashboard/stock', [StockItemController::class, 'index'])->name('dashboard.stock.index');
+    Route::get('/dashboard/stock/create', [StockItemController::class, 'create'])->name('dashboard.stock.create');
+    Route::post('/dashboard/stock', [StockItemController::class, 'store'])->name('dashboard.stock.store');
+    Route::get('/dashboard/stock/{stockItem}/edit', [StockItemController::class, 'edit'])->name('dashboard.stock.edit');
+    Route::put('/dashboard/stock/{stockItem}', [StockItemController::class, 'update'])->name('dashboard.stock.update');
+    Route::post('/dashboard/stock/{stockItem}/restock', [StockItemController::class, 'restock'])->name('dashboard.stock.restock');
+
+    Route::get('/dashboard/stock-sales', [StockMovementController::class, 'index'])->name('dashboard.stock.sales');
+    Route::post('/dashboard/stock-sales/{stockItem}', [StockMovementController::class, 'store'])->name('dashboard.stock.sales.store');
+    Route::get('/dashboard/stock/{stockItem}/history', [StockMovementController::class, 'history'])->name('dashboard.stock.history');
 
     Route::get('/dashboard/settings', [SettingsController::class, 'index'])->name('dashboard.settings.index');
     Route::put('/dashboard/settings', [SettingsController::class, 'update'])->name('dashboard.settings.update');
