@@ -8,7 +8,7 @@
             {{ __("At Yes! My Shawarma, we take your privacy seriously. This Privacy Policy explains how we collect, use, share, and protect your personal information when you interact with us — through our website, our mobile app, our branches, our ordering channels, or any other platform we operate. By using our services, you confirm that you have read and understood this policy.") }}
         </p>
         <p class="leading-relaxed mb-4">
-            {{ __('Yes! My Shawarma is operated by YES! MY GRILL in Accra, Ghana.') }}
+            {{ __('Yes! My Shawarma is operated by Yes! My Grill in Accra, Ghana.') }}
         </p>
 
         <h2 class="text-lg font-bold mt-8 mb-3">{{ __('Table of contents') }}</h2>
