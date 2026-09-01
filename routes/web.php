@@ -68,11 +68,14 @@ Route::middleware('track.visit')->group(function () {
     Route::get('/branches/{branch}/select', [BranchesController::class, 'select'])->name('branches.pick');
 
     Route::get('/contact', [ContactController::class, 'index'])->name('contact');
-    Route::post('/contact', [ContactController::class, 'submit'])->name('contact.submit');
+    // 5/minute per IP — generous for a real visitor (nobody submits a
+    // contact form 5 times in a minute), enough to blunt a scripted flood
+    // on top of HoneypotGuard/TurnstileVerifier's own checks.
+    Route::post('/contact', [ContactController::class, 'submit'])->middleware('throttle:5,1')->name('contact.submit');
     Route::get('/about', [AboutController::class, 'index'])->name('about');
     Route::get('/faq', [FaqController::class, 'index'])->name('faq');
 
-    Route::post('/newsletter/subscribe', [NewsletterController::class, 'subscribe'])->name('newsletter.subscribe');
+    Route::post('/newsletter/subscribe', [NewsletterController::class, 'subscribe'])->middleware('throttle:5,1')->name('newsletter.subscribe');
 
     Route::get('/cart', [CartController::class, 'show'])->name('cart.show');
     Route::post('/cart/add', [CartController::class, 'add'])->name('cart.add');

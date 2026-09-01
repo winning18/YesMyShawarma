@@ -6,6 +6,8 @@ use App\Models\Branch;
 use App\Services\Branches\WorkingHoursService;
 use App\Services\Contact\ContactMessageService;
 use App\Services\Customers\CustomerBranchSelection;
+use App\Services\Spam\HoneypotGuard;
+use App\Services\Spam\TurnstileVerifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -33,14 +35,29 @@ class ContactController extends Controller
         ]);
     }
 
-    public function submit(Request $request, ContactMessageService $messages): RedirectResponse
-    {
+    public function submit(
+        Request $request,
+        ContactMessageService $messages,
+        HoneypotGuard $honeypot,
+        TurnstileVerifier $turnstile,
+    ): RedirectResponse {
+        // A caught submission looks identical to a real one to the caller —
+        // see HoneypotGuard's docblock for why silently pretending success
+        // is deliberate rather than a validation error.
+        if ($honeypot->isSpam($request)) {
+            return back()->with('status', __("Thanks — we've received your message and will get back to you soon."));
+        }
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255', 'required_without:phone'],
             'phone' => ['nullable', 'string', 'max:30', 'required_without:email'],
             'message' => ['required', 'string', 'max:2000'],
         ]);
+
+        if (! $turnstile->verify($request->input('cf-turnstile-response'), $request->ip())) {
+            return back()->withErrors(['message' => __('Please try submitting the form again.')])->withInput();
+        }
 
         $messages->send(
             $validated['name'],

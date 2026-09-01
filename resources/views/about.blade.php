@@ -112,17 +112,23 @@
             {{ __('Get news on new menu items, offers and branch openings — straight to your inbox.') }}
         </p>
 
-        <form method="POST" action="{{ route('newsletter.subscribe') }}" class="flex flex-col sm:flex-row items-stretch justify-center gap-3 max-w-md mx-auto">
+        <form method="POST" action="{{ route('newsletter.subscribe') }}" class="max-w-md mx-auto">
             @csrf
-            <label for="newsletter-email" class="sr-only">{{ __('Email') }}</label>
-            <input
-                type="email" name="email" id="newsletter-email" value="{{ old('email') }}" required
-                placeholder="{{ __('you@example.com') }}"
-                class="flex-1 rounded-md border-brand-gray-300 text-brand-black focus:border-brand-yellow focus:ring-brand-yellow"
-            >
-            <button type="submit" class="px-6 py-2.5 bg-brand-yellow text-brand-black text-sm font-semibold rounded-md hover:bg-brand-yellow-dark shrink-0">
-                {{ __('Subscribe') }}
-            </button>
+            <x-honeypot />
+
+            <div class="flex flex-col sm:flex-row items-stretch justify-center gap-3">
+                <label for="newsletter-email" class="sr-only">{{ __('Email') }}</label>
+                <input
+                    type="email" name="email" id="newsletter-email" value="{{ old('email') }}" required
+                    placeholder="{{ __('you@example.com') }}"
+                    class="flex-1 rounded-md border-brand-gray-300 text-brand-black focus:border-brand-yellow focus:ring-brand-yellow"
+                >
+                <button type="submit" class="px-6 py-2.5 bg-brand-yellow text-brand-black text-sm font-semibold rounded-md hover:bg-brand-yellow-dark shrink-0">
+                    {{ __('Subscribe') }}
+                </button>
+            </div>
+
+            <x-turnstile-widget />
         </form>
         @error('email')
             <p class="text-sm text-brand-red mt-3">{{ $message }}</p>

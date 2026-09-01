@@ -10,9 +10,15 @@ class NewsletterTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** @see ContactFormTest::honeypotPassing() */
+    private function honeypotPassing(array $data = []): array
+    {
+        return array_merge(['form_rendered_at' => now()->subSeconds(5)->timestamp], $data);
+    }
+
     public function test_a_visitor_can_subscribe(): void
     {
-        $this->post(route('newsletter.subscribe'), ['email' => 'ama@example.com'])
+        $this->post(route('newsletter.subscribe'), $this->honeypotPassing(['email' => 'ama@example.com']))
             ->assertRedirect()
             ->assertSessionHas('status');
 
@@ -23,7 +29,7 @@ class NewsletterTest extends TestCase
     {
         NewsletterSubscriber::create(['email' => 'ama@example.com', 'subscribed_at' => now()]);
 
-        $this->post(route('newsletter.subscribe'), ['email' => 'ama@example.com'])
+        $this->post(route('newsletter.subscribe'), $this->honeypotPassing(['email' => 'ama@example.com']))
             ->assertRedirect()
             ->assertSessionHas('status');
 
@@ -32,8 +38,17 @@ class NewsletterTest extends TestCase
 
     public function test_an_invalid_email_is_rejected(): void
     {
-        $this->post(route('newsletter.subscribe'), ['email' => 'not-an-email'])
+        $this->post(route('newsletter.subscribe'), $this->honeypotPassing(['email' => 'not-an-email']))
             ->assertSessionHasErrors('email');
+
+        $this->assertDatabaseCount('newsletter_subscribers', 0);
+    }
+
+    public function test_filling_in_the_honeypot_field_silently_pretends_success(): void
+    {
+        $this->post(route('newsletter.subscribe'), $this->honeypotPassing([
+            'email' => 'bot@example.com', 'website' => 'http://spam.example',
+        ]))->assertRedirect()->assertSessionHas('status');
 
         $this->assertDatabaseCount('newsletter_subscribers', 0);
     }
