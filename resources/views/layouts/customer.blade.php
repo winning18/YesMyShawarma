@@ -48,7 +48,12 @@
         <link rel="manifest" href="{{ asset('site.webmanifest') }}">
 
         <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700&display=swap" rel="stylesheet" />
+        <link
+            href="https://fonts.bunny.net/css?family=inter:400,500,600,700&display=swap"
+            rel="stylesheet"
+            integrity="sha384-hghFbNuIyYt6shX1CElG2rmJNAz8OP4HTdBlz3sBzjbEIiMSf/D0fnGb1+svFRv9"
+            crossorigin="anonymous"
+        />
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>

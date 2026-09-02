@@ -102,12 +102,12 @@
                     this.totalSales = '';
                     this.closingNote = '';
 
-                    // Staff (requireTotalSalesOnEnd) lose dashboard access
-                    // the instant their shift ends, and land on Reports and
-                    // invoices next — the natural place to review the shift
-                    // they just closed out. A real navigation, not a reload:
-                    // reload would leave them stuck on whatever dashboard-
-                    // area page they were just locked out of.
+                    // Some staff lose dashboard access the instant their
+                    // shift ends, and land on Reports and invoices next —
+                    // the natural place to review the shift they just
+                    // closed out. A real navigation, not a reload: reload
+                    // would leave them stuck on whatever dashboard-area
+                    // page they were just locked out of.
                     if (this.requireTotalSalesOnEnd) {
                         window.location.href = '{{ route('dashboard.reports.index') }}';
                     }

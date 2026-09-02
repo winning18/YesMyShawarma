@@ -30,8 +30,7 @@
                         .listen('.OrderStatusChanged', () => this.refresh());
                 } else {
                     // Owner viewing an aggregate, cross-branch view has no
-                    // single channel to subscribe to — same fallback as
-                    // orders/dashboard.blade.php's own polling.
+                    // single channel to subscribe to — fall back to polling.
                     setInterval(() => this.refresh(), 20000);
                 }
             },
@@ -54,10 +53,9 @@
             },
 
             // Repeating audible alarm while any order sits in "paid" — not
-            // a single chime, a loop, per orders.md. alarmAudio.loop
-            // handles the repeat natively; this just starts/stops it on
-            // the pendingCount transition, same shape as the old timer
-            // guard did.
+            // a single chime, a loop. alarmAudio.loop handles the repeat
+            // natively; this just starts/stops it on the pendingCount
+            // transition.
             updateAlarm() {
                 if (this.pendingCount > 0 && this.alarmAudio.paused) {
                     // Autoplay can be blocked before the first user gesture

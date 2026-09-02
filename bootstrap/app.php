@@ -3,6 +3,7 @@
 use App\Http\Middleware\EnsurePasswordIsChanged;
 use App\Http\Middleware\RedirectStaffToUnacceptedWebOrders;
 use App\Http\Middleware\ResolveCurrentBranch;
+use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\TrackVisitorSession;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -19,6 +20,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->append(SecurityHeaders::class);
+
         $middleware->alias([
             'branch' => ResolveCurrentBranch::class,
             'track.visit' => TrackVisitorSession::class,

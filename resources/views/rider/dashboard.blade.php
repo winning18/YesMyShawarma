@@ -118,9 +118,9 @@
                     this.fetchData();
 
                     // Assignment always targets this one rider — no
-                    // branch-wide channel needed for that half (orders.md).
-                    // Status changes on orders already assigned still come
-                    // via the branch channel, same as the staff dashboard.
+                    // branch-wide channel needed for that half. Status
+                    // changes on orders already assigned still come via
+                    // the branch channel, same as the staff dashboard.
                     window.Echo.private(`App.Models.User.${riderId}`)
                         .listen('.OrderAssignedToRider', () => this.fetchData());
 
@@ -203,9 +203,9 @@
                 },
 
                 // A rider only ever sees delivery orders (pickup skips the
-                // rider entirely — orders.md), so this is always the
-                // "collect cash at the door" / "already settled online"
-                // distinction, never the pickup wording.
+                // rider entirely), so this is always the "collect cash at
+                // the door" / "already settled online" distinction, never
+                // the pickup wording.
                 paymentLabel(order) {
                     if (order.payment_method === 'paystack') return @js(__('Paid via Paystack'));
                     if (order.payment_method === 'momo') return @js(__('Momo'));

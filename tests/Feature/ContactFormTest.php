@@ -31,7 +31,7 @@ class ContactFormTest extends TestCase
             'message' => 'Do you deliver to Adenta?',
         ]))->assertRedirect()->assertSessionHas('status');
 
-        Mail::assertSent(ContactMessageSubmitted::class, fn ($mail) => $mail->hasTo('yesmyshawarma@gmail.com')
+        Mail::assertQueued(ContactMessageSubmitted::class, fn ($mail) => $mail->hasTo('yesmyshawarma@gmail.com')
             && $mail->hasTo('yesmygrill@gmail.com')
             && $mail->hasTo('info@yesmyshawarma.com')
             && $mail->name === 'Ama'
@@ -49,7 +49,7 @@ class ContactFormTest extends TestCase
             'message' => 'What time do you close on Sundays?',
         ]))->assertRedirect()->assertSessionHas('status');
 
-        Mail::assertSent(ContactMessageSubmitted::class, fn ($mail) => $mail->phone === '0241234567');
+        Mail::assertQueued(ContactMessageSubmitted::class, fn ($mail) => $mail->phone === '0241234567');
     }
 
     public function test_the_form_requires_either_an_email_or_a_phone(): void

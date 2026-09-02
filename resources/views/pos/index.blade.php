@@ -387,9 +387,9 @@
                     }
                 },
 
-                // Mirrors PosController::store()'s validation rules — a
-                // faster front door only, the server-side check stays the
-                // actual authority. Same reasoning as menu-item-form-script.
+                // Mirrors the server-side validation rules — a faster
+                // front door only, the server-side check stays the actual
+                // authority.
                 validationError() {
                     if (!this.phone.valid) return '{{ __('Enter a valid 10-digit customer phone number.') }}';
 

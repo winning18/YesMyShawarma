@@ -81,9 +81,9 @@
     </div>
 
     <script>
-        // Mirrors UpdateWorkingHoursRequest's required_with (each day's pair
-        // is either both filled or both blank) and after:opens_at rules —
-        // a faster front door only, server-side stays the actual authority.
+        // Mirrors the server-side rules (each day's pair is either both
+        // filled or both blank, and closing must be after opening) — a
+        // faster front door only, server-side stays the actual authority.
         function validateWorkingHours(form) {
             for (const row of form.querySelectorAll('[data-day-row]')) {
                 const [opens, closes] = row.querySelectorAll('input[type=time]');

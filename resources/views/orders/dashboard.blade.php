@@ -217,12 +217,11 @@
                         setInterval(() => this.fetchData(), 20000);
                     }
 
-                    // No broadcast fires when a shift starts (only order
-                    // events are wired up — see realtime.md), so riders is
-                    // otherwise only ever refreshed alongside an order
-                    // fetch. Polled independently here too so "a rider just
-                    // came on shift" is noticed promptly on its own, not
-                    // only whenever the next order event happens to land.
+                    // Riders aren't refreshed in real time otherwise (only
+                    // alongside an order fetch), so they're polled
+                    // independently here too — "a rider just came on shift"
+                    // is noticed promptly on its own, not only whenever the
+                    // next order update happens to land.
                     setInterval(() => this.fetchRiders(), 15000);
 
                     // Drives updateTitle() below too — one shared 1s tick
@@ -255,9 +254,7 @@
                 // On-shift riders for the assign-rider dropdown — refreshed
                 // alongside order data so it doesn't go stale as riders
                 // start/end shifts during the session. Only ever holds
-                // riders (RiderAvailabilityController filters by role) —
-                // never staff, even though shifts themselves carry no role
-                // of their own.
+                // riders, never staff.
                 async fetchRiders() {
                     const wasEmpty = this.riders.length === 0;
 
@@ -330,10 +327,9 @@
                 },
 
                 // Semantic address only (area, landmark) — never the raw
-                // lat/lng the customer shared at checkout. OrderResource
-                // only includes that coordinate for a rider viewing their
-                // own delivery, never in what staff/managers' dashboard
-                // fetches here.
+                // coordinates the customer shared at checkout. Staff and
+                // managers don't need exact GPS to hand an order off; a
+                // rider sees the precise location on their own delivery.
                 deliveryLine(order) {
                     if (order.fulfilment_type !== 'delivery' || !order.delivery_address) return '';
 
@@ -364,14 +360,13 @@
                     await this.post(`/dashboard/orders/${orderId}/advance`, { to });
                 },
 
-                // Mirrors rider/dashboard.blade.php's advancePrimary — staff
-                // can also mark a dispatched order delivered from here, and
-                // cash-on-delivery still needs the same explicit "money in
-                // hand" confirmation before payment_status flips to paid.
+                // Staff can also mark a dispatched order delivered from
+                // here, and cash-on-delivery still needs the same explicit
+                // "money in hand" confirmation before it's counted as paid.
                 // Never fires for pickup: nextStatus() never targets
                 // 'delivered' directly for a pickup order (see below), and
-                // pickup+cash is already reconciled at placement — see
-                // OrderCreationService — so there's nothing to confirm here.
+                // pickup+cash is already reconciled at placement, so
+                // there's nothing to confirm here.
                 async advancePrimary(order) {
                     const to = this.nextStatus(order);
                     if (!to) return;
@@ -384,14 +379,10 @@
                     await this.advance(order.id, to);
 
                     // Pickup has no rider and no separate "dispatched"
-                    // concept exposed to staff — orders.md's "ready ->
-                    // dispatched on collection" already means dispatched
-                    // *is* the collection event for pickup, so one click
-                    // here ("Picked up") completes the order in full
-                    // rather than leaving it stranded at 'dispatched'
-                    // forever (which would never leave the live board —
-                    // only 'delivered' does). Two real order_events rows
-                    // still get written, same as any other transition.
+                    // concept exposed to staff — "dispatched" already means
+                    // collected for pickup, so one click here ("Picked up")
+                    // completes the order in full rather than leaving it
+                    // stranded (only 'delivered' leaves the live board).
                     if (order.fulfilment_type === 'pickup' && to === 'dispatched') {
                         await this.advance(order.id, 'delivered');
                     }
@@ -467,12 +458,10 @@
                     return 'GHS ' + (pesewas / 100).toFixed(2);
                 },
 
-                // The alarm itself now lives in the shared order-alert
-                // widget (dashboard/_channel-header.blade.php, included
-                // above this component) so it plays on POS and Order
-                // History too, not just this page — this only still owns
-                // the tab title, which is specific to actually being on
-                // this page.
+                // The alarm itself now lives in a shared widget so it
+                // plays on POS and Order History too, not just this page —
+                // this only still owns the tab title, which is specific to
+                // actually being on this page.
                 updateTitle() {
                     document.title = this.needsAcknowledgement.length > 0
                         ? `(${this.needsAcknowledgement.length}) ${this.originalTitle}`

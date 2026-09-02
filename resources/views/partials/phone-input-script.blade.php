@@ -9,11 +9,9 @@
 --}}
 <script>
     function phoneField(initial = '') {
-        // $customer->phone / $user->phone come back from the database
-        // already normalised to E.164 ("+233241234567") — an initial value
-        // pre-filling this field (e.g. checkout for a logged-in customer,
-        // or editing your own profile) needs converting back to the local
-        // 10-digit form this field actually displays, or the country-code
+        // An initial value can arrive in international form
+        // ("+233241234567") rather than the local 10-digit form this field
+        // displays, and needs converting first — otherwise the country-code
         // digits would themselves get truncated into a garbage number.
         const toLocalDigits = (value) => {
             const digits = (value || '').replace(/\D/g, '');

@@ -272,19 +272,15 @@
                 },
 
                 // `status` is null for the first step (reaching it just means
-                // the order exists) — every other step maps to the order
-                // status that must have been reached at least once. There's
-                // no dedicated "preparing_at" column (see OrderStateMachine's
-                // TIMESTAMP_COLUMNS), so this compares status order rather
-                // than checking per-step timestamps, which works uniformly
-                // for every step including that one.
+                // the order exists) — every other step maps to a status
+                // that must have been reached at least once, compared by
+                // order rather than by a per-step timestamp, which works
+                // uniformly for every step including that one.
                 //
-                // Pickup orders skip the rider entirely (orders.md) — the
-                // "dispatched" status means the customer collected it, so
-                // it's the terminal step for pickup. "delivered" only ever
-                // applies to a rider completing a drop-off, so it's omitted
-                // from the pickup list rather than shown as an unreached step
-                // that will never happen.
+                // Pickup orders skip the rider entirely — "dispatched" means
+                // the customer collected it, so it's the terminal step for
+                // pickup, and "delivered" (rider drop-off only) is omitted
+                // rather than shown as a step that will never happen.
                 buildSteps(fulfilmentType) {
                     const isPickup = fulfilmentType === 'pickup';
 
@@ -332,7 +328,7 @@
                     return 'GH₵' + ((pesewas ?? 0) / 100).toFixed(2);
                 },
 
-                // Stored UTC, displayed Africa/Accra — see CLAUDE.md.
+                // Always shown in local (Accra) time regardless of how it's stored.
                 formatTime(iso) {
                     if (!iso) return null;
 
