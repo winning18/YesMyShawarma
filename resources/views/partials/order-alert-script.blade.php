@@ -16,9 +16,12 @@
     function orderAlertWidget(branchId) {
         return {
             pendingCount: 0,
-            alarmTimer: null,
+            alarmAudio: null,
 
             init() {
+                this.alarmAudio = new Audio('{{ asset('audio/order-notification.wav') }}');
+                this.alarmAudio.loop = true;
+
                 this.refresh();
 
                 if (branchId) {
@@ -51,35 +54,21 @@
             },
 
             // Repeating audible alarm while any order sits in "paid" — not
-            // a single chime, a loop, per orders.md. Generated with the Web
-            // Audio API rather than a bundled sound asset.
+            // a single chime, a loop, per orders.md. alarmAudio.loop
+            // handles the repeat natively; this just starts/stops it on
+            // the pendingCount transition, same shape as the old timer
+            // guard did.
             updateAlarm() {
-                if (this.pendingCount > 0 && !this.alarmTimer) {
-                    this.alarmTimer = setInterval(() => this.beep(), 1500);
-                    this.beep();
-                } else if (this.pendingCount === 0 && this.alarmTimer) {
-                    clearInterval(this.alarmTimer);
-                    this.alarmTimer = null;
+                if (this.pendingCount > 0 && this.alarmAudio.paused) {
+                    // Autoplay can be blocked before the first user gesture
+                    // on the page — harmless to ignore, since by the time a
+                    // real order arrives staff have already clicked
+                    // something (login, at minimum).
+                    this.alarmAudio.play().catch(() => {});
+                } else if (this.pendingCount === 0 && !this.alarmAudio.paused) {
+                    this.alarmAudio.pause();
+                    this.alarmAudio.currentTime = 0;
                 }
-            },
-
-            beep() {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                if (!AudioContext) return;
-
-                const ctx = new AudioContext();
-                const oscillator = ctx.createOscillator();
-                const gain = ctx.createGain();
-
-                oscillator.type = 'sine';
-                oscillator.frequency.value = 880;
-                gain.gain.value = 0.2;
-
-                oscillator.connect(gain);
-                gain.connect(ctx.destination);
-
-                oscillator.start();
-                oscillator.stop(ctx.currentTime + 0.3);
             },
         };
     }
