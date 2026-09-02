@@ -149,7 +149,15 @@
             for position so native touch/mouse/trackpad scrolling and the
             automatic advance never fight each other — pausing on
             interaction and resuming later just stops/starts nudging the
-            same value the user themselves just scrolled. Direction
+            same value the user themselves just scrolled.
+
+            No @scroll listener on purpose: the auto-advance itself writes
+            to scrollLeft, which fires a native scroll event too, so
+            listening there would make the timer's own nudge look like a
+            manual touch and re-pause itself every tick — the slide would
+            never move smoothly, only creep forward once every idle
+            timeout. touchstart/mousedown/wheel already cover every real
+            manual-scroll input without that feedback loop. Direction
             alternates row to row. Each card links to that item's own
             product page, which already redirects to branch selection first
             if the visitor hasn't chosen one yet (MenuController@show) —
@@ -176,7 +184,7 @@
                 </div>
                 <div
                     x-data="menuSlider('{{ $slider['direction'] }}')"
-                    @scroll="onInteract()" @touchstart="onInteract()" @mousedown="onInteract()" @wheel="onInteract()"
+                    @touchstart="onInteract()" @mousedown="onInteract()" @wheel="onInteract()"
                     class="overflow-x-auto scrollbar-hide"
                 >
                     <div class="flex gap-4 w-max">
