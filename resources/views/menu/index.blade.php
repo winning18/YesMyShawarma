@@ -118,7 +118,10 @@
             return {
                 items,
                 query: '',
-                categoryFilter: 'all',
+                // "Show all" links on the home page land here with
+                // ?category=<slug> pre-selected — falls back to 'all' the
+                // same as visiting the page directly.
+                categoryFilter: {{ Js::from(request('category', 'all')) }},
                 showSuggestions: false,
 
                 get suggestions() {

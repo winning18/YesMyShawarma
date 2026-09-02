@@ -15,7 +15,20 @@
     @else
         <p class="text-sm text-brand-gray-500 mb-4">{{ $branch->name }}</p>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {{--
+            +/- adjusts quantity instantly, no separate "Update" click. The
+            line total and subtotal are recalculated client-side the moment
+            a button is pressed (unit price × quantity is linear — no
+            quantity-tiered discounts exist, see CLAUDE.md's promo scope —
+            so this is exact, not an estimate) while a PATCH fires in the
+            background to keep the session cart in sync. redirect: 'manual'
+            stops fetch from following cart.update's redirect response,
+            since nothing here reads it anyway.
+        --}}
+        <div
+            x-data="cartPage(@js(array_map(fn ($line) => ['id' => $line['line_id'], 'quantity' => $line['quantity'], 'lineTotal' => $line['line_total']], $lines)))"
+            class="grid grid-cols-1 md:grid-cols-3 gap-8"
+        >
             <div class="md:col-span-2 space-y-4">
                 @foreach ($lines as $line)
                     <div class="border border-brand-gray-100 rounded-lg p-5 flex justify-between items-start gap-4">
@@ -43,18 +56,27 @@
                                     <p class="text-sm text-brand-gray-500 italic">{{ $line['notes'] }}</p>
                                 @endif
 
-                                <form method="POST" action="{{ route('cart.update', $line['line_id']) }}" class="mt-2 flex items-center gap-2">
-                                    @csrf
-                                    @method('PATCH')
+                                <div class="mt-2 flex items-center gap-2" x-data="{ line: lineFor('{{ $line['line_id'] }}') }">
                                     <label class="text-sm text-brand-gray-500">{{ __('Qty') }}</label>
-                                    <input type="number" name="quantity" value="{{ $line['quantity'] }}" min="1" max="{{ \App\Services\Cart\CartService::MAX_LINE_QUANTITY }}" class="w-16 rounded-md border-brand-gray-300 text-sm">
-                                    <button type="submit" class="text-sm underline text-brand-gray-500">{{ __('Update') }}</button>
-                                </form>
+                                    <div class="inline-flex items-center border border-brand-gray-300 rounded-md">
+                                        <button
+                                            type="button" @click="changeQuantity(line, -1)" :disabled="line.quantity <= 1"
+                                            class="w-7 h-7 flex items-center justify-center text-brand-gray-600 disabled:opacity-30 hover:bg-brand-gray-100"
+                                            aria-label="{{ __('Decrease quantity') }}"
+                                        >&minus;</button>
+                                        <span class="w-8 text-center text-sm" x-text="line.quantity">{{ $line['quantity'] }}</span>
+                                        <button
+                                            type="button" @click="changeQuantity(line, 1)" :disabled="line.quantity >= {{ \App\Services\Cart\CartService::MAX_LINE_QUANTITY }}"
+                                            class="w-7 h-7 flex items-center justify-center text-brand-gray-600 disabled:opacity-30 hover:bg-brand-gray-100"
+                                            aria-label="{{ __('Increase quantity') }}"
+                                        >+</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
                         <div class="text-right shrink-0">
-                            <p class="font-semibold">GH₵{{ number_format($line['line_total'] / 100, 2) }}</p>
+                            <p class="font-semibold" x-text="formatMoney(lineFor('{{ $line['line_id'] }}').lineTotal)">GH₵{{ number_format($line['line_total'] / 100, 2) }}</p>
                             <form method="POST" action="{{ route('cart.remove', $line['line_id']) }}" class="mt-2">
                                 @csrf
                                 @method('DELETE')
@@ -69,7 +91,7 @@
                 <div class="border border-brand-gray-100 rounded-lg p-5 md:sticky md:top-24">
                     <div class="flex justify-between items-center mb-4">
                         <p class="font-semibold text-lg">{{ __('Subtotal') }}</p>
-                        <p class="font-semibold text-lg">GH₵{{ number_format($subtotal / 100, 2) }}</p>
+                        <p class="font-semibold text-lg" x-text="formatMoney(subtotal)">GH₵{{ number_format($subtotal / 100, 2) }}</p>
                     </div>
 
                     <a
@@ -82,4 +104,47 @@
             </div>
         </div>
     @endif
+
+    <script>
+        function cartPage(initialLines) {
+            return {
+                lines: initialLines,
+
+                lineFor(id) {
+                    return this.lines.find((line) => line.id === id);
+                },
+
+                get subtotal() {
+                    return this.lines.reduce((sum, line) => sum + line.lineTotal, 0);
+                },
+
+                formatMoney(pesewas) {
+                    return 'GH₵' + (pesewas / 100).toFixed(2);
+                },
+
+                changeQuantity(line, delta) {
+                    const max = {{ \App\Services\Cart\CartService::MAX_LINE_QUANTITY }};
+                    const newQuantity = Math.min(max, Math.max(1, line.quantity + delta));
+                    if (newQuantity === line.quantity) return;
+
+                    const unitBase = line.lineTotal / line.quantity;
+                    line.quantity = newQuantity;
+                    line.lineTotal = Math.round(unitBase * newQuantity);
+
+                    fetch('/cart/' + line.id, {
+                        method: 'PATCH',
+                        redirect: 'manual',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                        },
+                        body: JSON.stringify({ quantity: newQuantity }),
+                    }).catch(() => {
+                        // Best-effort — the next full page load re-syncs from
+                        // the session either way.
+                    });
+                },
+            };
+        }
+    </script>
 </x-customer-layout>

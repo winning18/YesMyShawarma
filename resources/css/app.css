@@ -49,43 +49,19 @@
     }
 
     /*
-     * Continuous rightward-moving marquee for the home page's featured-
-     * items strip. The track holds the item list twice back to back;
-     * animating from -50% to 0% shifts that doubled track to the right
-     * and loops seamlessly the instant it reaches 0 (equivalent to the
-     * start position one copy earlier) — no JS needed for the motion
-     * itself. Paused on hover so a visitor can actually read/click a card.
+     * Home page's featured-items strips scroll natively (see menuSlider()
+     * in home.blade.php, which drives scrollLeft directly rather than a
+     * CSS transform) — this just hides the scrollbar so it still reads as
+     * a clean auto-advancing strip rather than an obviously-scrollable
+     * widget, while touch/mouse/trackpad drag all keep working natively.
      */
-    @keyframes marquee-right {
-        from {
-            transform: translateX(-50%);
-        }
-        to {
-            transform: translateX(0%);
-        }
+    .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
     }
 
-    /* Mirror image of marquee-right — same doubled-track trick, opposite direction. */
-    @keyframes marquee-left {
-        from {
-            transform: translateX(0%);
-        }
-        to {
-            transform: translateX(-50%);
-        }
-    }
-
-    .marquee-track {
-        animation: marquee-right 30s linear infinite;
-    }
-
-    .marquee-track-left {
-        animation: marquee-left 30s linear infinite;
-    }
-
-    .marquee-track:hover,
-    .marquee-track-left:hover {
-        animation-play-state: paused;
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
     }
 
     /*

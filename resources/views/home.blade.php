@@ -142,14 +142,19 @@
         </div>
 
         {{--
-            Continuous auto-scrolling strips (pure CSS animation, see
-            .marquee-track / .marquee-track-left) rather than the hero's
-            discrete slide-index slider — the two are different UX patterns
-            on purpose. Direction alternates row to row. Each card links to
-            that item's own product page, which already redirects to branch
-            selection first if the visitor hasn't chosen one yet
-            (MenuController@show) — clicking a specific item can't skip
-            that step since price/availability are branch-scoped.
+            Auto-scrolling strips driven by JS nudging scrollLeft (see
+            menuSlider() below), not the hero's discrete slide-index
+            slider — the two are different UX patterns on purpose.
+            scrollLeft (not a CSS transform) is the single source of truth
+            for position so native touch/mouse/trackpad scrolling and the
+            automatic advance never fight each other — pausing on
+            interaction and resuming later just stops/starts nudging the
+            same value the user themselves just scrolled. Direction
+            alternates row to row. Each card links to that item's own
+            product page, which already redirects to branch selection first
+            if the visitor hasn't chosen one yet (MenuController@show) —
+            clicking a specific item can't skip that step since price/
+            availability are branch-scoped.
 
             A sold-out item ($item->isAvailable false — set in
             HomeController@itemsForSlugs from the selected branch's
@@ -160,9 +165,21 @@
         --}}
         @foreach ($menuSliders as $slider)
             <section class="mb-12">
-                <h2 class="text-xl font-bold mb-4 text-brand-white">{{ __($slider['title']) }}</h2>
-                <div class="overflow-hidden">
-                    <div class="flex gap-4 w-max {{ $slider['direction'] === 'left' ? 'marquee-track-left' : 'marquee-track' }}">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold text-brand-white">{{ __($slider['title']) }}</h2>
+                    <a
+                        href="{{ route('menu.index', ['category' => $slider['categorySlug']]) }}"
+                        class="text-sm font-semibold text-brand-yellow hover:text-brand-yellow-dark shrink-0"
+                    >
+                        {{ __('Show all') }}
+                    </a>
+                </div>
+                <div
+                    x-data="menuSlider('{{ $slider['direction'] }}')"
+                    @scroll="onInteract()" @touchstart="onInteract()" @mousedown="onInteract()" @wheel="onInteract()"
+                    class="overflow-x-auto scrollbar-hide"
+                >
+                    <div class="flex gap-4 w-max">
                         @foreach ($slider['items']->concat($slider['items']) as $item)
                             @if ($item->isAvailable)
                                 <a href="{{ route('menu.show', $item) }}" class="block w-40 shrink-0 group">
@@ -188,4 +205,49 @@
             </section>
         @endforeach
     </div>
+
+    <script>
+        function menuSlider(direction) {
+            return {
+                paused: false,
+                idleTimer: null,
+                autoTimer: null,
+
+                init() {
+                    // scrollWidth isn't reliable until images/layout settle.
+                    requestAnimationFrame(() => this.startAuto());
+                },
+
+                startAuto() {
+                    const el = this.$el;
+                    const half = el.scrollWidth / 2;
+                    if (half <= 0) return;
+
+                    el.scrollLeft = direction === 'left' ? 0 : half;
+
+                    const pxPerSecond = half / 30; // roughly matches the old 30s-per-loop pace
+                    const intervalMs = 30;
+                    const step = pxPerSecond * (intervalMs / 1000);
+
+                    this.autoTimer = setInterval(() => {
+                        if (this.paused) return;
+
+                        if (direction === 'left') {
+                            el.scrollLeft += step;
+                            if (el.scrollLeft >= half) el.scrollLeft -= half;
+                        } else {
+                            el.scrollLeft -= step;
+                            if (el.scrollLeft <= 0) el.scrollLeft += half;
+                        }
+                    }, intervalMs);
+                },
+
+                onInteract() {
+                    this.paused = true;
+                    clearTimeout(this.idleTimer);
+                    this.idleTimer = setTimeout(() => { this.paused = false; }, 2500);
+                },
+            };
+        }
+    </script>
 </x-customer-layout>

@@ -123,6 +123,12 @@ class HomeController extends Controller
             ->map(fn (array $slider) => [
                 'title' => $slider['title'],
                 'direction' => $slider['direction'],
+                // First slug only — enough for the "Show all" link's
+                // ?category= filter on the menu page. A slider spanning
+                // several categories (e.g. Hot Dogs & Loaded Fries) just
+                // lands on the first of the group, which sits right at the
+                // start of that section since they're ordered adjacently.
+                'categorySlug' => $slider['slugs'][0],
                 'items' => $this->itemsForSlugs($slider['slugs'], $branch),
             ])
             ->filter(fn (array $slider) => $slider['items']->isNotEmpty())
