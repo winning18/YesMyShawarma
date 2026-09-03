@@ -271,6 +271,8 @@
             </div>
             <div class="max-w-5xl mx-auto px-4 py-4 border-t border-brand-gray-700 text-sm text-brand-gray-300 text-center">
                 &copy; {{ now()->year }} {{ config('app.name') }}
+                &middot;
+                {{ __('Designed by') }} <a href="tel:+233263702929" class="hover:text-brand-yellow transition">Solusys Digital: 026 370 2929</a>
             </div>
         </footer>
 
