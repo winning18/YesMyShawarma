@@ -230,7 +230,33 @@ class CartService
      */
     private function raw(): array
     {
-        return $this->request->session()->get($this->sessionKey(), ['branch_id' => null, 'items' => []]);
+        $cart = $this->request->session()->get($this->sessionKey(), ['branch_id' => null, 'items' => []]);
+        $cart['items'] = array_map($this->normalizeItem(...), $cart['items']);
+
+        return $cart;
+    }
+
+    /**
+     * A cart already sitting in a customer's session from before the
+     * options shape changed from a flat option_ids list to an
+     * option_id => quantity map carries the old key — normalise it here so
+     * an in-progress session survives a deploy instead of crashing on its
+     * next page load. Every option defaults to quantity 1, exactly what it
+     * already meant under the old, quantity-less shape.
+     *
+     * @param  array<string, mixed>  $item
+     * @return array<string, mixed>
+     */
+    private function normalizeItem(array $item): array
+    {
+        if (! array_key_exists('options', $item) && array_key_exists('option_ids', $item)) {
+            $item['options'] = array_fill_keys($item['option_ids'], 1);
+            unset($item['option_ids']);
+        }
+
+        $item['options'] ??= [];
+
+        return $item;
     }
 
     /**

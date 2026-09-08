@@ -221,6 +221,29 @@ class CartServiceTest extends TestCase
         $this->get(route('cart.show'))->assertSee('59.00');
     }
 
+    public function test_a_cart_from_before_the_options_shape_changed_does_not_crash(): void
+    {
+        // Simulates a customer's browser session created before this
+        // deploy — the old shape used a flat option_ids list, no quantity
+        // concept at all.
+        session([
+            'cart' => [
+                'branch_id' => $this->branch->id,
+                'items' => [[
+                    'id' => 'legacy-line',
+                    'menu_item_id' => $this->shawarma->id,
+                    'quantity' => 1,
+                    'notes' => null,
+                    'option_ids' => [$this->chiliSauce->id],
+                ]],
+            ],
+        ]);
+
+        // (5000 + 200) * 1 = 5200 — the legacy option carries over as
+        // quantity 1, exactly what it already meant under the old shape.
+        $this->get(route('cart.show'))->assertOk()->assertSee('52.00');
+    }
+
     public function test_different_option_quantities_stay_separate_lines(): void
     {
         $this->post(route('cart.add'), [
