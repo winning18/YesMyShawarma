@@ -20,6 +20,8 @@ class CartServiceTest extends TestCase
 
     private Option $chiliSauce;
 
+    private Option $cheese;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -39,6 +41,10 @@ class CartServiceTest extends TestCase
         $sauceGroup = OptionGroup::create(['name' => 'Sauce', 'min_select' => 0, 'max_select' => 1, 'is_required' => false]);
         $this->chiliSauce = Option::create(['option_group_id' => $sauceGroup->id, 'name' => 'Chili', 'price_delta' => 200]);
         $this->shawarma->optionGroups()->attach($sauceGroup->id, ['sort_order' => 1]);
+
+        $extrasGroup = OptionGroup::create(['name' => 'Extras', 'min_select' => 0, 'max_select' => 3]);
+        $this->cheese = Option::create(['option_group_id' => $extrasGroup->id, 'name' => 'Cheese', 'price_delta' => 300]);
+        $this->shawarma->optionGroups()->attach($extrasGroup->id, ['sort_order' => 2]);
     }
 
     public function test_add_and_view_cart(): void
@@ -164,6 +170,69 @@ class CartServiceTest extends TestCase
         ])->assertSessionHasErrors('menu_item_id');
 
         $this->assertNull(session('cart'));
+    }
+
+    public function test_a_multi_select_options_quantity_prices_as_a_fixed_total_for_the_line(): void
+    {
+        $this->post(route('cart.add'), [
+            'branch_id' => $this->branch->id,
+            'menu_item_id' => $this->shawarma->id,
+            'quantity' => 2,
+            'option_ids' => [$this->cheese->id],
+            'option_qty' => [$this->cheese->id => 2],
+        ])->assertRedirect();
+
+        // 5000 * 2 + 300 * 2 = 10600 — cheese priced once for the whole
+        // line, not scaled by the item's own quantity of 2.
+        $this->get(route('cart.show'))->assertSee('106.00');
+    }
+
+    public function test_a_quantity_submitted_for_a_single_select_option_is_ignored(): void
+    {
+        $this->post(route('cart.add'), [
+            'branch_id' => $this->branch->id,
+            'menu_item_id' => $this->shawarma->id,
+            'quantity' => 2,
+            'option_ids' => [$this->chiliSauce->id],
+            'option_qty' => [$this->chiliSauce->id => 5],
+        ])->assertRedirect();
+
+        // (5000 + 200) * 2 = 10400 — chili is single-select, so its
+        // quantity is always forced to 1 regardless of what was sent.
+        $this->get(route('cart.show'))->assertSee('104.00');
+    }
+
+    public function test_updating_an_options_quantity_recalculates_the_line_total(): void
+    {
+        $this->post(route('cart.add'), [
+            'branch_id' => $this->branch->id,
+            'menu_item_id' => $this->shawarma->id,
+            'quantity' => 1,
+            'option_ids' => [$this->cheese->id],
+            'option_qty' => [$this->cheese->id => 1],
+        ]);
+
+        $lineId = $this->extractLineId();
+
+        $this->patch(route('cart.options.update', [$lineId, $this->cheese->id]), ['quantity' => 3])
+            ->assertRedirect();
+
+        // 5000 + 300 * 3 = 5900
+        $this->get(route('cart.show'))->assertSee('59.00');
+    }
+
+    public function test_different_option_quantities_stay_separate_lines(): void
+    {
+        $this->post(route('cart.add'), [
+            'branch_id' => $this->branch->id, 'menu_item_id' => $this->shawarma->id, 'quantity' => 1,
+            'option_ids' => [$this->cheese->id], 'option_qty' => [$this->cheese->id => 1],
+        ]);
+        $this->post(route('cart.add'), [
+            'branch_id' => $this->branch->id, 'menu_item_id' => $this->shawarma->id, 'quantity' => 1,
+            'option_ids' => [$this->cheese->id], 'option_qty' => [$this->cheese->id => 2],
+        ]);
+
+        $this->assertCount(2, session('cart')['items']);
     }
 
     private function extractLineId(): string

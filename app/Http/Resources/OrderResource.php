@@ -72,7 +72,10 @@ class OrderResource extends JsonResource
                 'quantity' => $item->quantity,
                 'notes' => $item->notes,
                 'options' => $item->relationLoaded('options')
-                    ? $item->options->pluck('name_snapshot')
+                    ? $item->options->map(fn ($option) => [
+                        'name' => $option->name_snapshot,
+                        'quantity' => $option->quantity,
+                    ])
                     : [],
             ])),
         ];

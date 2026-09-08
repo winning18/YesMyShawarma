@@ -56,19 +56,41 @@
                                     </legend>
                                     <div class="grid grid-cols-2 gap-x-3 gap-y-1.5">
                                         @foreach ($optionGroup->options as $option)
-                                            <label class="flex items-center gap-1.5 text-sm">
-                                                @if ($optionGroup->max_select === 1)
+                                            @if ($optionGroup->max_select === 1)
+                                                <label class="flex items-center gap-1.5 text-sm">
                                                     <input
                                                         type="checkbox" name="option_ids[]" value="{{ $option->id }}"
                                                         :checked="selected === {{ $option->id }}"
                                                         @change="selected = $event.target.checked ? {{ $option->id }} : null"
                                                         class="checkbox-check-black shrink-0 rounded border-2 border-brand-black text-brand-yellow focus:ring-brand-black"
                                                     >
-                                                @else
-                                                    <input type="checkbox" name="option_ids[]" value="{{ $option->id }}" class="checkbox-check-black shrink-0 rounded border-2 border-brand-black text-brand-yellow focus:ring-brand-black">
-                                                @endif
-                                                <span>{{ $option->name }} (+GH₵{{ number_format($option->price_delta / 100, 2) }})</span>
-                                            </label>
+                                                    <span>{{ $option->name }} (+GH₵{{ number_format($option->price_delta / 100, 2) }})</span>
+                                                </label>
+                                            @else
+                                                {{--
+                                                    Only a multi-select group's option gets a
+                                                    quantity control — "extra cheese x2" makes
+                                                    sense, "2x Large" as a size doesn't. Quantity
+                                                    is fixed for the whole line, not multiplied
+                                                    by the item's own Qty field below (see
+                                                    MenuPricingService).
+                                                --}}
+                                                <div x-data="{ checked: false, qty: 1 }" class="flex items-center gap-1.5 text-sm">
+                                                    <label class="flex items-center gap-1.5 flex-1 min-w-0">
+                                                        <input
+                                                            type="checkbox" name="option_ids[]" value="{{ $option->id }}" x-model="checked"
+                                                            class="checkbox-check-black shrink-0 rounded border-2 border-brand-black text-brand-yellow focus:ring-brand-black"
+                                                        >
+                                                        <span class="truncate">{{ $option->name }} (+GH₵{{ number_format($option->price_delta / 100, 2) }})</span>
+                                                    </label>
+                                                    <input type="hidden" name="option_qty[{{ $option->id }}]" :value="qty">
+                                                    <div class="flex items-center gap-1 shrink-0" x-show="checked" x-cloak>
+                                                        <button type="button" @click="qty = Math.max(1, qty - 1)" class="w-5 h-5 flex items-center justify-center border border-brand-black rounded text-xs" aria-label="{{ __('Decrease quantity') }}">&minus;</button>
+                                                        <span class="w-4 text-center text-xs" x-text="qty"></span>
+                                                        <button type="button" @click="qty = Math.min({{ \App\Services\Menu\MenuPricingService::MAX_OPTION_QUANTITY }}, qty + 1)" class="w-5 h-5 flex items-center justify-center border border-brand-black rounded text-xs" aria-label="{{ __('Increase quantity') }}">+</button>
+                                                    </div>
+                                                </div>
+                                            @endif
                                         @endforeach
                                     </div>
                                 </fieldset>

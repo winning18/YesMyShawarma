@@ -146,8 +146,8 @@
                                         </div>
                                         <template x-for="option in item.options" :key="option.name">
                                             <div class="flex justify-between text-brand-gray-500 pl-[60px] text-xs mt-1">
-                                                <span x-text="option.name"></span>
-                                                <span x-text="'+' + formatMoney(option.price_delta)"></span>
+                                                <span x-text="option.name + (option.quantity > 1 ? ' x' + option.quantity : '')"></span>
+                                                <span x-text="'+' + formatMoney(option.price_delta * option.quantity)"></span>
                                             </div>
                                         </template>
                                     </li>

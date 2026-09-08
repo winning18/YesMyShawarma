@@ -18,15 +18,32 @@
         {{--
             +/- adjusts quantity instantly, no separate "Update" click. The
             line total and subtotal are recalculated client-side the moment
-            a button is pressed (unit price × quantity is linear — no
-            quantity-tiered discounts exist, see CLAUDE.md's promo scope —
-            so this is exact, not an estimate) while a PATCH fires in the
-            background to keep the session cart in sync. redirect: 'manual'
-            stops fetch from following cart.update's redirect response,
-            since nothing here reads it anyway.
+            a button is pressed while a PATCH fires in the background to
+            keep the session cart in sync. redirect: 'manual' stops fetch
+            from following the update route's redirect response, since
+            nothing here reads it anyway.
+
+            perUnit (unit price + any single-select option's price, see
+            MenuPricingService) times the line's own quantity, plus each
+            multi-select option's own fixed price×quantity, reconstructs
+            line_total exactly — this replaces an earlier version that
+            divided lineTotal by quantity to recover a per-unit price,
+            which only worked before any option had a quantity of its own
+            that didn't scale with the line.
         --}}
         <div
-            x-data="cartPage(@js(array_map(fn ($line) => ['id' => $line['line_id'], 'quantity' => $line['quantity'], 'lineTotal' => $line['line_total']], $lines)))"
+            x-data="cartPage(@js(array_map(fn ($line) => [
+                'id' => $line['line_id'],
+                'quantity' => $line['quantity'],
+                'lineTotal' => $line['line_total'],
+                'perUnit' => $line['unit_price_snapshot'] + collect($line['options'])->where('adjustable', false)->sum('price_delta_snapshot'),
+                'options' => array_map(fn ($option) => [
+                    'option_id' => $option['option_id'],
+                    'quantity' => $option['quantity'],
+                    'priceDelta' => $option['price_delta_snapshot'],
+                    'adjustable' => $option['adjustable'],
+                ], $line['options']),
+            ], $lines)))"
             class="grid grid-cols-1 md:grid-cols-3 gap-8"
         >
             <div class="md:col-span-2 space-y-4">
@@ -48,9 +65,24 @@
                             <div class="min-w-0">
                                 <p class="font-semibold">{{ $line['name_snapshot'] }}</p>
                                 @foreach ($line['options'] as $option)
-                                    <p class="text-sm text-brand-gray-500">
-                                        {{ $option['name_snapshot'] }} (+GH₵{{ number_format($option['price_delta_snapshot'] / 100, 2) }})
-                                    </p>
+                                    <div class="text-sm text-brand-gray-500 flex items-center gap-2" x-data="{ line: lineFor('{{ $line['line_id'] }}') }">
+                                        <span>{{ $option['name_snapshot'] }} (+GH₵{{ number_format($option['price_delta_snapshot'] / 100, 2) }})</span>
+                                        @if ($option['adjustable'])
+                                            <div class="inline-flex items-center gap-1">
+                                                <button
+                                                    type="button" @click="changeOptionQuantity(line, {{ $option['option_id'] }}, -1)"
+                                                    class="w-5 h-5 flex items-center justify-center border border-brand-gray-300 rounded text-xs text-brand-gray-600 hover:bg-brand-gray-100"
+                                                    aria-label="{{ __('Decrease quantity') }}"
+                                                >&minus;</button>
+                                                <span class="w-4 text-center text-xs" x-text="line.options.find(o => o.option_id === {{ $option['option_id'] }}).quantity">{{ $option['quantity'] }}</span>
+                                                <button
+                                                    type="button" @click="changeOptionQuantity(line, {{ $option['option_id'] }}, 1)"
+                                                    class="w-5 h-5 flex items-center justify-center border border-brand-gray-300 rounded text-xs text-brand-gray-600 hover:bg-brand-gray-100"
+                                                    aria-label="{{ __('Increase quantity') }}"
+                                                >+</button>
+                                            </div>
+                                        @endif
+                                    </div>
                                 @endforeach
                                 @if ($line['notes'])
                                     <p class="text-sm text-brand-gray-500 italic">{{ $line['notes'] }}</p>
@@ -122,16 +154,46 @@
                     return 'GH₵' + (pesewas / 100).toFixed(2);
                 },
 
+                fixedOptionsTotal(line) {
+                    return line.options
+                        .filter((o) => o.adjustable)
+                        .reduce((sum, o) => sum + o.priceDelta * o.quantity, 0);
+                },
+
                 changeQuantity(line, delta) {
                     const max = {{ \App\Services\Cart\CartService::MAX_LINE_QUANTITY }};
                     const newQuantity = Math.min(max, Math.max(1, line.quantity + delta));
                     if (newQuantity === line.quantity) return;
 
-                    const unitBase = line.lineTotal / line.quantity;
                     line.quantity = newQuantity;
-                    line.lineTotal = Math.round(unitBase * newQuantity);
+                    line.lineTotal = line.perUnit * newQuantity + this.fixedOptionsTotal(line);
 
                     fetch('/cart/' + line.id, {
+                        method: 'PATCH',
+                        redirect: 'manual',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                        },
+                        body: JSON.stringify({ quantity: newQuantity }),
+                    }).catch(() => {
+                        // Best-effort — the next full page load re-syncs from
+                        // the session either way.
+                    });
+                },
+
+                changeOptionQuantity(line, optionId, delta) {
+                    const option = line.options.find((o) => o.option_id === optionId);
+                    if (!option) return;
+
+                    const max = {{ \App\Services\Menu\MenuPricingService::MAX_OPTION_QUANTITY }};
+                    const newQuantity = Math.min(max, Math.max(1, option.quantity + delta));
+                    if (newQuantity === option.quantity) return;
+
+                    line.lineTotal += option.priceDelta * (newQuantity - option.quantity);
+                    option.quantity = newQuantity;
+
+                    fetch(`/cart/${line.id}/options/${optionId}`, {
                         method: 'PATCH',
                         redirect: 'manual',
                         headers: {

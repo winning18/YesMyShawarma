@@ -38,8 +38,8 @@
                                 </div>
                                 @foreach ($item->options as $option)
                                     <div class="flex justify-between text-gray-500 pl-4">
-                                        <span>{{ $option->name_snapshot }}</span>
-                                        <span>+GH₵{{ number_format($option->price_delta_snapshot / 100, 2) }}</span>
+                                        <span>{{ $option->name_snapshot }}@if ($option->quantity > 1) x{{ $option->quantity }}@endif</span>
+                                        <span>+GH₵{{ number_format($option->price_delta_snapshot * $option->quantity / 100, 2) }}</span>
                                     </div>
                                 @endforeach
                                 @if ($item->notes)

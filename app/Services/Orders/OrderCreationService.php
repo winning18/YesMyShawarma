@@ -175,7 +175,12 @@ class OrderCreationService
                 ]);
 
                 foreach ($row['options'] as $option) {
-                    $orderItem->options()->create($option);
+                    $orderItem->options()->create([
+                        'option_id' => $option['option_id'],
+                        'name_snapshot' => $option['name_snapshot'],
+                        'price_delta_snapshot' => $option['price_delta_snapshot'],
+                        'quantity' => $option['quantity'],
+                    ]);
                 }
             }
 

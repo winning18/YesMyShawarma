@@ -71,7 +71,7 @@
                         <li class="flex justify-between items-start gap-2">
                             <div class="flex-1 min-w-0">
                                 <p class="text-gray-800 truncate" x-text="line.name_snapshot"></p>
-                                <p class="text-xs text-gray-500" x-show="line.options.length" x-text="line.options.map(o => o.name_snapshot).join(', ')"></p>
+                                <p class="text-xs text-gray-500" x-show="line.options.length" x-text="line.options.map(o => o.name_snapshot + (o.quantity > 1 ? ' x' + o.quantity : '')).join(', ')"></p>
                                 <div class="flex items-center gap-2 mt-1">
                                     <button type="button" @click="changeQuantity(line.line_id, line.quantity - 1)" class="w-5 h-5 flex items-center justify-center border border-gray-300 rounded text-xs text-gray-600">-</button>
                                     <span class="text-xs w-4 text-center" x-text="line.quantity"></span>
@@ -207,14 +207,27 @@
                             </legend>
                             <div class="grid grid-cols-2 gap-2">
                                 <template x-for="option in group.options" :key="option.id">
-                                    <label class="flex items-center gap-1.5 text-sm">
-                                        <input
-                                            type="checkbox" :checked="selectedOptionIds.includes(option.id)"
-                                            @change="toggleOption(option.id, group.id)"
-                                            class="rounded border-gray-300"
-                                        >
-                                        <span x-text="option.name + (option.price_delta ? ' (+' + formatMoney(option.price_delta) + ')' : '')"></span>
-                                    </label>
+                                    <div class="flex items-center gap-1.5 text-sm">
+                                        <label class="flex items-center gap-1.5 flex-1 min-w-0">
+                                            <input
+                                                type="checkbox" :checked="option.id in selectedOptionQuantities"
+                                                @change="toggleOption(option.id, group.id)"
+                                                class="rounded border-gray-300 shrink-0"
+                                            >
+                                            <span class="truncate" x-text="option.name + (option.price_delta ? ' (+' + formatMoney(option.price_delta) + ')' : '')"></span>
+                                        </label>
+                                        {{--
+                                            Only a multi-select group's option gets a quantity
+                                            control — see menu/show.blade.php's equivalent for
+                                            why. Fixed for the whole line, not multiplied by
+                                            Qty below (MenuPricingService).
+                                        --}}
+                                        <div class="flex items-center gap-1 shrink-0" x-show="group.max_select > 1 && option.id in selectedOptionQuantities" x-cloak>
+                                            <button type="button" @click="adjustOptionQuantity(option.id, -1)" class="w-5 h-5 flex items-center justify-center border border-gray-300 rounded text-xs">&minus;</button>
+                                            <span class="w-4 text-center text-xs" x-text="selectedOptionQuantities[option.id]"></span>
+                                            <button type="button" @click="adjustOptionQuantity(option.id, 1)" class="w-5 h-5 flex items-center justify-center border border-gray-300 rounded text-xs">+</button>
+                                        </div>
+                                    </div>
                                 </template>
                             </div>
                         </fieldset>
@@ -267,7 +280,7 @@
                 error: null,
                 submitting: false,
                 activeItem: null,
-                selectedOptionIds: [],
+                selectedOptionQuantities: {},
                 itemQuantity: 1,
                 confirmation: null,
 
@@ -275,31 +288,39 @@
 
                 openItem(item) {
                     this.activeItem = item;
-                    this.selectedOptionIds = [];
+                    this.selectedOptionQuantities = {};
                     this.itemQuantity = 1;
                 },
 
                 toggleOption(id, groupId) {
-                    const alreadySelected = this.selectedOptionIds.includes(id);
+                    const alreadySelected = id in this.selectedOptionQuantities;
                     const group = this.activeItem.optionGroups.find((g) => g.id === groupId);
 
                     if (group && group.max_select === 1 && !alreadySelected) {
-                        const otherIdsInGroup = group.options.map((o) => o.id);
-                        this.selectedOptionIds = this.selectedOptionIds.filter((x) => !otherIdsInGroup.includes(x));
-                        this.selectedOptionIds.push(id);
+                        group.options.forEach((o) => delete this.selectedOptionQuantities[o.id]);
+                        this.selectedOptionQuantities[id] = 1;
                         return;
                     }
 
-                    this.selectedOptionIds = alreadySelected
-                        ? this.selectedOptionIds.filter((x) => x !== id)
-                        : [...this.selectedOptionIds, id];
+                    if (alreadySelected) {
+                        delete this.selectedOptionQuantities[id];
+                    } else {
+                        this.selectedOptionQuantities[id] = 1;
+                    }
+                },
+
+                adjustOptionQuantity(id, delta) {
+                    const max = {{ \App\Services\Menu\MenuPricingService::MAX_OPTION_QUANTITY }};
+                    const current = this.selectedOptionQuantities[id] ?? 1;
+                    this.selectedOptionQuantities[id] = Math.min(max, Math.max(1, current + delta));
                 },
 
                 async confirmAddItem() {
                     await this.mutateCart('{{ route('dashboard.pos.cart.add') }}', 'POST', {
                         menu_item_id: this.activeItem.id,
                         quantity: this.itemQuantity,
-                        option_ids: this.selectedOptionIds,
+                        option_ids: Object.keys(this.selectedOptionQuantities).map(Number),
+                        option_qty: this.selectedOptionQuantities,
                     });
                     this.activeItem = null;
                 },

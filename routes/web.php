@@ -83,6 +83,7 @@ Route::middleware('track.visit')->group(function () {
     Route::get('/cart', [CartController::class, 'show'])->name('cart.show');
     Route::post('/cart/add', [CartController::class, 'add'])->name('cart.add');
     Route::patch('/cart/{line}', [CartController::class, 'updateQuantity'])->name('cart.update');
+    Route::patch('/cart/{line}/options/{option}', [CartController::class, 'updateOptionQuantity'])->name('cart.options.update');
     Route::delete('/cart/{line}', [CartController::class, 'remove'])->name('cart.remove');
 
     Route::get('/checkout', [CheckoutController::class, 'show'])->name('checkout.show');
@@ -134,6 +135,7 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::get('/dashboard/pos', [PosController::class, 'index'])->name('dashboard.pos.index');
     Route::post('/dashboard/pos/cart/add', [PosController::class, 'addItem'])->name('dashboard.pos.cart.add');
     Route::post('/dashboard/pos/cart/{line}', [PosController::class, 'updateQuantity'])->name('dashboard.pos.cart.update');
+    Route::post('/dashboard/pos/cart/{line}/options/{option}', [PosController::class, 'updateOptionQuantity'])->name('dashboard.pos.cart.options.update');
     Route::delete('/dashboard/pos/cart/{line}', [PosController::class, 'removeItem'])->name('dashboard.pos.cart.remove');
     Route::post('/dashboard/pos/orders', [PosController::class, 'store'])->name('dashboard.pos.orders.store');
 

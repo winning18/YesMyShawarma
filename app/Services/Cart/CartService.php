@@ -25,9 +25,9 @@ class CartService
     ) {}
 
     /**
-     * @param  int[]  $optionIds
+     * @param  array<int, int>  $optionQuantities  option_id => quantity
      */
-    public function add(int $branchId, int $menuItemId, int $quantity, ?string $notes, array $optionIds): void
+    public function add(int $branchId, int $menuItemId, int $quantity, ?string $notes, array $optionQuantities): void
     {
         $cart = $this->raw();
 
@@ -37,14 +37,16 @@ class CartService
             $cart['branch_id'] = $branchId;
         }
 
-        $optionIds = array_values($optionIds);
         $quantity = max(1, $quantity);
 
-        // Same item, same notes, same exact set of options (order aside) —
-        // bump the existing line's quantity instead of adding a second,
-        // identical line the customer would have no reason to expect.
+        // Same item, same notes, same exact options AND quantities — bump
+        // the existing line's quantity instead of adding a second,
+        // identical line the customer would have no reason to expect. A
+        // different option quantity (e.g. this time with 2x cheese instead
+        // of 1x) is a genuinely different line, not a merge candidate — see
+        // MenuPricingService's "fixed total for the line" pricing.
         foreach ($cart['items'] as &$item) {
-            if ($this->isSameLine($item, $menuItemId, $notes, $optionIds)) {
+            if ($this->isSameLine($item, $menuItemId, $notes, $optionQuantities)) {
                 $item['quantity'] = min(self::MAX_LINE_QUANTITY, $item['quantity'] + $quantity);
                 $this->save($cart);
 
@@ -58,7 +60,7 @@ class CartService
             'menu_item_id' => $menuItemId,
             'quantity' => min(self::MAX_LINE_QUANTITY, $quantity),
             'notes' => $notes,
-            'option_ids' => $optionIds,
+            'options' => $optionQuantities,
         ];
 
         $this->save($cart);
@@ -66,23 +68,23 @@ class CartService
 
     /**
      * @param  array<string, mixed>  $item
-     * @param  int[]  $optionIds
+     * @param  array<int, int>  $optionQuantities
      */
-    private function isSameLine(array $item, int $menuItemId, ?string $notes, array $optionIds): bool
+    private function isSameLine(array $item, int $menuItemId, ?string $notes, array $optionQuantities): bool
     {
         return $item['menu_item_id'] === $menuItemId
             && $item['notes'] === $notes
-            && $this->sameOptionSet($item['option_ids'], $optionIds);
+            && $this->sameOptions($item['options'], $optionQuantities);
     }
 
     /**
-     * @param  int[]  $a
-     * @param  int[]  $b
+     * @param  array<int, int>  $a
+     * @param  array<int, int>  $b
      */
-    private function sameOptionSet(array $a, array $b): bool
+    private function sameOptions(array $a, array $b): bool
     {
-        sort($a);
-        sort($b);
+        ksort($a);
+        ksort($b);
 
         return $a === $b;
     }
@@ -94,6 +96,26 @@ class CartService
         foreach ($cart['items'] as &$item) {
             if ($item['id'] === $lineId) {
                 $item['quantity'] = max(1, min(self::MAX_LINE_QUANTITY, $quantity));
+            }
+        }
+
+        $this->save($cart);
+    }
+
+    /**
+     * Only ever adjusts an option already present on the line — the cart
+     * page can tweak how many of an already-chosen extra it wants, but
+     * can't add or remove which options are selected at all (that would
+     * need re-validating group min/max/required, which this cheap,
+     * single-field update deliberately doesn't do).
+     */
+    public function updateOptionQuantity(string $lineId, int $optionId, int $quantity): void
+    {
+        $cart = $this->raw();
+
+        foreach ($cart['items'] as &$item) {
+            if ($item['id'] === $lineId && array_key_exists($optionId, $item['options'])) {
+                $item['options'][$optionId] = max(1, min(MenuPricingService::MAX_OPTION_QUANTITY, $quantity));
             }
         }
 
@@ -199,7 +221,7 @@ class CartService
             menuItemId: $item['menu_item_id'],
             quantity: $item['quantity'],
             notes: $item['notes'],
-            optionIds: $item['option_ids'],
+            optionQuantities: $item['options'],
         );
     }
 

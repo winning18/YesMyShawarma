@@ -61,6 +61,17 @@ one tap. `unavailable_until` supports auto-restore at next opening.
 a general category photo field. `tagline` is the per-category slide caption shown alongside it,
 a plain staff-editable string (not a hardcoded map).
 
+A selected option's own quantity (`order_item_options.quantity`, default 1) only ever varies
+for an option belonging to a multi-select group (`max_select > 1`) — a single-select group's
+option (Size, Spice level) is always exactly one, same as before this column existed. It is a
+fixed amount for the whole line, not multiplied by the order item's own `quantity`: "extra
+cheese x2" means 2 total for that line, however many units are in it. `MenuPricingService`
+enforces both rules — silently correcting any quantity submitted for a single-select option
+back to 1, and folding a multi-select option's `price_delta × quantity` into the line total
+once, never scaled by the item's quantity. `min_select`/`max_select`/`is_required` are
+unaffected — they still count how many *distinct* options were chosen, regardless of any
+option's own quantity.
+
 `menu_item_schedules` is opt-in per item, per branch: a row means "on `day_of_week`
 (0=Sunday..6=Saturday, matching Carbon), available between `starts_at` and `ends_at`" — plain
 Africa/Accra local time, not a UTC instant, since this is a recurring weekly pattern tied to
@@ -111,7 +122,7 @@ order_items
   name_snapshot, unit_price_snapshot, quantity, line_total, notes
 
 order_item_options
-  id, order_item_id, option_id, name_snapshot, price_delta_snapshot
+  id, order_item_id, option_id, name_snapshot, price_delta_snapshot, quantity
 
 order_events
   id, order_id, from_status, to_status,

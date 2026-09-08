@@ -58,6 +58,7 @@ class OrderTrackingResource extends JsonResource
                 'options' => $item->relationLoaded('options') ? $item->options->map(fn ($option) => [
                     'name' => $option->name_snapshot,
                     'price_delta' => $option->price_delta_snapshot,
+                    'quantity' => $option->quantity,
                 ]) : [],
             ])),
             'timeline' => [

@@ -6,6 +6,8 @@ use App\Models\Branch;
 use App\Models\Category;
 use App\Models\DeliveryArea;
 use App\Models\MenuItem;
+use App\Models\Option;
+use App\Models\OptionGroup;
 use App\Models\Order;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -279,6 +281,51 @@ class PosOrderTest extends TestCase
         $this->assertSame('delivery', $order->fulfilment_type);
         $this->assertSame(0, $order->delivery_fee);
         $this->assertSame('Near the blue gate', $order->delivery_address_snapshot['landmark']);
+    }
+
+    public function test_a_multi_select_options_quantity_prices_as_a_fixed_total_for_the_line(): void
+    {
+        $staff = $this->makeStaff();
+
+        $extras = OptionGroup::create(['name' => 'Extras', 'min_select' => 0, 'max_select' => 3]);
+        $cheese = Option::create(['option_group_id' => $extras->id, 'name' => 'Cheese', 'price_delta' => 300]);
+        $this->shawarma->optionGroups()->attach($extras->id, ['sort_order' => 1]);
+
+        $response = $this->actingAs($staff)->postJson(route('dashboard.pos.cart.add'), [
+            'menu_item_id' => $this->shawarma->id,
+            'quantity' => 2,
+            'option_ids' => [$cheese->id],
+            'option_qty' => [$cheese->id => 2],
+        ]);
+
+        // 5000 * 2 + 300 * 2 = 10600 — cheese priced once for the line.
+        $response->assertJsonPath('lines.0.line_total', 10600);
+    }
+
+    public function test_pos_options_quantity_can_be_updated_after_adding_to_cart(): void
+    {
+        $staff = $this->makeStaff();
+
+        $extras = OptionGroup::create(['name' => 'Extras', 'min_select' => 0, 'max_select' => 3]);
+        $cheese = Option::create(['option_group_id' => $extras->id, 'name' => 'Cheese', 'price_delta' => 300]);
+        $this->shawarma->optionGroups()->attach($extras->id, ['sort_order' => 1]);
+
+        $this->actingAs($staff)->postJson(route('dashboard.pos.cart.add'), [
+            'menu_item_id' => $this->shawarma->id,
+            'quantity' => 1,
+            'option_ids' => [$cheese->id],
+            'option_qty' => [$cheese->id => 1],
+        ]);
+
+        $lineId = session('pos_cart')['items'][0]['id'];
+
+        $response = $this->actingAs($staff)->postJson(
+            route('dashboard.pos.cart.options.update', [$lineId, $cheese->id]),
+            ['quantity' => 3],
+        );
+
+        // 5000 + 300 * 3 = 5900
+        $response->assertJsonPath('lines.0.line_total', 5900);
     }
 
     public function test_manager_actor_type_is_recorded_correctly(): void

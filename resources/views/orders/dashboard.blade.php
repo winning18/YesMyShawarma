@@ -49,7 +49,7 @@
 
                             <ul class="text-sm text-gray-700 list-disc list-inside space-y-0.5 mb-4 flex-1">
                                 <template x-for="item in order.items" :key="item.name + item.quantity">
-                                    <li x-text="item.quantity + 'x ' + item.name + (item.options.length ? ' (' + item.options.join(', ') + ')' : '')"></li>
+                                    <li x-text="item.quantity + 'x ' + item.name + (item.options.length ? ' (' + item.options.map(o => o.name + (o.quantity > 1 ? ' x' + o.quantity : '')).join(', ') + ')' : '')"></li>
                                 </template>
                             </ul>
 
@@ -139,7 +139,7 @@
 
                             <ul class="text-sm text-gray-700 list-disc list-inside space-y-0.5 mb-3">
                                 <template x-for="item in order.items" :key="item.name + item.quantity">
-                                    <li x-text="item.quantity + 'x ' + item.name + (item.options.length ? ' (' + item.options.join(', ') + ')' : '')"></li>
+                                    <li x-text="item.quantity + 'x ' + item.name + (item.options.length ? ' (' + item.options.map(o => o.name + (o.quantity > 1 ? ' x' + o.quantity : '')).join(', ') + ')' : '')"></li>
                                 </template>
                             </ul>
 

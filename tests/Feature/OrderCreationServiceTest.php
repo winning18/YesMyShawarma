@@ -40,6 +40,10 @@ class OrderCreationServiceTest extends TestCase
 
     private Option $chiliSauce;
 
+    private OptionGroup $extrasGroup;
+
+    private Option $cheese;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -71,6 +75,10 @@ class OrderCreationServiceTest extends TestCase
         $this->chiliSauce = Option::create(['option_group_id' => $this->sauceGroup->id, 'name' => 'Chili', 'price_delta' => 200]);
 
         $this->shawarma->optionGroups()->attach($this->sauceGroup->id, ['sort_order' => 1]);
+
+        $this->extrasGroup = OptionGroup::create(['name' => 'Extras', 'min_select' => 0, 'max_select' => 3]);
+        $this->cheese = Option::create(['option_group_id' => $this->extrasGroup->id, 'name' => 'Cheese', 'price_delta' => 250]);
+        $this->shawarma->optionGroups()->attach($this->extrasGroup->id, ['sort_order' => 2]);
     }
 
     private function baseItem(array $optionIds): PlaceOrderItemData
@@ -78,7 +86,7 @@ class OrderCreationServiceTest extends TestCase
         return new PlaceOrderItemData(
             menuItemId: $this->shawarma->id,
             quantity: 2,
-            optionIds: $optionIds,
+            optionQuantities: array_fill_keys($optionIds, 1),
         );
     }
 
@@ -125,6 +133,59 @@ class OrderCreationServiceTest extends TestCase
         $this->assertDatabaseHas('order_events', [
             'order_id' => $order->id, 'from_status' => null, 'to_status' => 'paid', 'actor_type' => 'customer',
         ]);
+    }
+
+    public function test_a_multi_select_options_quantity_is_persisted_and_priced_as_a_fixed_line_total(): void
+    {
+        $data = new PlaceOrderData(
+            customerPhone: '+233241111111',
+            customerName: 'Ama',
+            branchId: $this->branch->id,
+            fulfilmentType: 'pickup',
+            paymentMethod: 'cash',
+            items: [new PlaceOrderItemData(
+                menuItemId: $this->shawarma->id,
+                quantity: 2,
+                optionQuantities: [$this->garlicSauce->id => 1, $this->cheese->id => 2],
+            )],
+        );
+
+        $order = $this->service->create($data);
+
+        // (3500 + 0 garlic) * 2 + (250 cheese * 2) = 7000 + 500 = 7500 —
+        // cheese priced once for the line, not multiplied by item quantity.
+        $this->assertSame(7500, $order->subtotal);
+
+        $item = $order->items->first();
+        $cheeseRow = $item->options->firstWhere('name_snapshot', 'Cheese');
+        $this->assertSame(2, $cheeseRow->quantity);
+        $this->assertSame(250, $cheeseRow->price_delta_snapshot);
+
+        $garlicRow = $item->options->firstWhere('name_snapshot', 'Garlic');
+        $this->assertSame(1, $garlicRow->quantity);
+    }
+
+    public function test_a_quantity_submitted_for_a_single_select_option_is_forced_to_one(): void
+    {
+        $data = new PlaceOrderData(
+            customerPhone: '+233241111111',
+            customerName: 'Ama',
+            branchId: $this->branch->id,
+            fulfilmentType: 'pickup',
+            paymentMethod: 'cash',
+            items: [new PlaceOrderItemData(
+                menuItemId: $this->shawarma->id,
+                quantity: 2,
+                optionQuantities: [$this->chiliSauce->id => 5],
+            )],
+        );
+
+        $order = $this->service->create($data);
+
+        // (3500 + 200) * 2 = 7400 — a tampered quantity on a single-select
+        // option never multiplies the price, it's silently forced to 1.
+        $this->assertSame(7400, $order->subtotal);
+        $this->assertSame(1, $order->items->first()->options->first()->quantity);
     }
 
     public function test_placing_an_order_dispatches_order_placed_for_the_live_dashboard(): void
@@ -578,7 +639,7 @@ class OrderCreationServiceTest extends TestCase
             branchId: $this->branch->id,
             fulfilmentType: 'delivery',
             paymentMethod: 'cash',
-            items: [new PlaceOrderItemData(menuItemId: $cheapItem->id, quantity: 1, optionIds: [])],
+            items: [new PlaceOrderItemData(menuItemId: $cheapItem->id, quantity: 1, optionQuantities: [])],
             deliveryAddress: new DeliveryAddressData(
                 areaId: $this->area->id,
                 ghanapostCode: 'GA-123-4567',
