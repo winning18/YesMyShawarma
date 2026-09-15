@@ -47,6 +47,7 @@ class CheckoutController extends Controller
             // server-side (OrderCreationService, or OrderStateMachine at
             // delivered if location wasn't captured at checkout).
             'ratePerKmPesewas' => DeliveryFeeCalculator::RATE_PER_KM_PESEWAS,
+            'minimumDeliveryFeePesewas' => DeliveryFeeCalculator::MINIMUM_DELIVERY_FEE_PESEWAS,
             // Placing an order while closed is still allowed (see
             // OrderCreationService) — this just lets the page warn the
             // customer up front instead of them finding out only after.

@@ -173,17 +173,26 @@ makes handover explicit and makes "which shift had four cancellations" answerabl
 Both are `unsignedBigInteger` pesewas, both nullable at the column level — "required for
 staff" is an application-layer rule (`ShiftController`), not a schema one.
 
-## Delivery zones
+## Delivery areas
 
 ```
-delivery_zones  id, branch_id, name, delivery_fee,
-                min_order_total, radius_metres, centre_lat, centre_lng, is_active
+delivery_areas  id, name (unique), is_active
 ```
 
-Start radius-based. Upgrade to polygons only if radii prove too blunt in practice.
+Replaces the earlier per-branch, radius/fee-per-zone `delivery_zones` design (never used in
+production — dropped with zero rows). `delivery_areas` is now just a shared, named-area label
+shown in the rider's dropdown ("this delivery is headed to Amasaman") — it plays no part in
+pricing or branch routing. `$data->branchId` is assumed already resolved by the caller before
+`OrderCreationService::create()` runs; there is no cross-branch routing-by-coordinate.
 
-Branch routing: match the customer's coordinates to a zone, take the branch that owns it. If
-several match, prefer the nearest branch that is currently accepting orders.
+Delivery pricing is continuous, not zone-based: haversine distance from the branch to the
+customer's shared location, times a flat rate per km, rounded to the nearest whole cedi and
+floored at `MINIMUM_DELIVERY_FEE_PESEWAS` (GHS 10) — no fractional-cedi change, and never
+cheaper than the floor regardless of distance — see `App\Services\Delivery\
+DeliveryFeeCalculator`. `RATE_PER_KM_PESEWAS`, `MINIMUM_DELIVERY_FEE_PESEWAS`, and the unrelated
+`MINIMUM_ORDER_TOTAL_PESEWAS` (a minimum cart subtotal for delivery orders, checked in
+`OrderCreationService` — not a delivery-fee concept at all) are plain constants for now, not
+admin-configurable rows, since the business is still iterating on the model itself.
 
 ## Payments
 

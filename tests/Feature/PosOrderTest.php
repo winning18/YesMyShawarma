@@ -10,6 +10,7 @@ use App\Models\Option;
 use App\Models\OptionGroup;
 use App\Models\Order;
 use App\Models\User;
+use App\Services\Delivery\DeliveryFeeCalculator;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -258,7 +259,7 @@ class PosOrderTest extends TestCase
         ])->assertStatus(422);
     }
 
-    public function test_delivery_order_defers_the_fee_since_pos_never_captures_live_location(): void
+    public function test_delivery_order_charges_the_flat_minimum_fee_since_pos_never_captures_live_location(): void
     {
         DeliveryArea::create(['name' => 'Osu Oxford Street', 'is_active' => true]);
 
@@ -279,7 +280,7 @@ class PosOrderTest extends TestCase
 
         $order = Order::first();
         $this->assertSame('delivery', $order->fulfilment_type);
-        $this->assertSame(0, $order->delivery_fee);
+        $this->assertSame(DeliveryFeeCalculator::MINIMUM_DELIVERY_FEE_PESEWAS, $order->delivery_fee);
         $this->assertSame('Near the blue gate', $order->delivery_address_snapshot['landmark']);
     }
 

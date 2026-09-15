@@ -79,6 +79,37 @@ class OrderPolicy
     }
 
     /**
+     * Same eligibility window as OrderTransferService itself — 'paid' or
+     * 'accepted' only, before any kitchen has started on it. Checked here
+     * too (not just in the service) so the button doesn't even appear once
+     * an order has moved past it.
+     */
+    public function transfer(User $user, Order $order): bool
+    {
+        return in_array($order->status, ['paid', 'accepted'], true)
+            && $this->checkAtOrderBranch($user, $order, 'orders.transfer_branch');
+    }
+
+    /**
+     * Only meaningful for a delivery order still in flight, whose fee is a
+     * flat estimate rather than a precisely-priced one — the service
+     * itself re-checks both, this just keeps the button from appearing at
+     * all once neither applies.
+     */
+    public function adjustDeliveryFee(User $user, Order $order): bool
+    {
+        if ($order->fulfilment_type !== 'delivery') {
+            return false;
+        }
+
+        if (in_array($order->status, ['delivered', 'failed', 'cancelled', 'rejected', 'refunded', 'abandoned'], true)) {
+            return false;
+        }
+
+        return $this->checkAtOrderBranch($user, $order, 'orders.adjust_delivery_fee');
+    }
+
+    /**
      * A plain staff request needs approval before it can be completed
      * (RefundPolicy::complete) — orders.refund_request is exactly that
      * "may ask" ability. owner/manager/general_manager hold the broader

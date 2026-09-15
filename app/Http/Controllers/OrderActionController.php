@@ -2,17 +2,24 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\DeliveryFeeAdjustmentException;
+use App\Exceptions\OrderTransferException;
 use App\Exceptions\PaymentException;
+use App\Exceptions\RefundException;
 use App\Exceptions\ShiftException;
 use App\Http\Resources\OrderResource;
+use App\Models\Branch;
 use App\Models\Order;
 use App\Models\Shift;
 use App\Models\User;
 use App\Services\Branches\BranchContext;
+use App\Services\Orders\DeliveryFeeAdjustmentService;
 use App\Services\Orders\OrderStateMachine;
+use App\Services\Orders\OrderTransferService;
 use App\Services\Orders\RiderAssignmentService;
 use App\Services\Payments\PaymentConfirmationService;
 use App\Services\Shifts\ShiftService;
+use App\Support\Money;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -174,5 +181,66 @@ class OrderActionController extends Controller
         );
 
         return new OrderResource($order->fresh(['items.options', 'customer']));
+    }
+
+    /**
+     * See orders.md's "Branch transfer" section — a customer ended up at
+     * the wrong branch, or ordered for someone else the nearest-branch
+     * check at checkout never had a chance to account for.
+     */
+    public function transferBranch(Request $request, Order $order, OrderTransferService $transfers, BranchContext $context, ShiftService $shifts): OrderResource|JsonResponse
+    {
+        Gate::authorize('transfer', $order);
+
+        $validated = $request->validate([
+            'branch_id' => ['required', 'integer', 'exists:branches,id'],
+            'reason' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $destination = Branch::findOrFail($validated['branch_id']);
+
+        try {
+            $transfers->transfer(
+                $order->load('items'), $destination, $request->user(),
+                $context->primaryRoleFor($request->user(), $order->branch_id),
+                $validated['reason'] ?? null,
+                $shifts->activeFor($request->user())?->id,
+                Gate::allows('orders.refund'),
+            );
+        } catch (OrderTransferException|RefundException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return new OrderResource($order->fresh(['items.options', 'customer']));
+    }
+
+    /**
+     * See orders.md's "Delivery fee estimate" section — corrects a flat
+     * estimate (charged when a customer's location wasn't captured) for
+     * this specific address. Never reachable for a precisely-priced order;
+     * the service enforces that too, this is just what keeps the button
+     * from appearing when it wouldn't apply.
+     */
+    public function adjustDeliveryFee(Request $request, Order $order, DeliveryFeeAdjustmentService $fees, BranchContext $context, ShiftService $shifts): OrderResource|JsonResponse
+    {
+        Gate::authorize('adjustDeliveryFee', $order);
+
+        $validated = $request->validate([
+            'delivery_fee' => ['required', 'numeric', 'min:0'],
+            'reason' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        try {
+            $fees->adjust(
+                $order, Money::toPesewas($validated['delivery_fee']), $request->user(),
+                $context->primaryRoleFor($request->user(), $order->branch_id),
+                $validated['reason'] ?? null,
+                $shifts->activeFor($request->user())?->id,
+            );
+        } catch (DeliveryFeeAdjustmentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return new OrderResource($order->fresh(['items.options', 'customer', 'payments']));
     }
 }

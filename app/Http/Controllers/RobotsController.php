@@ -15,11 +15,42 @@ use Illuminate\Http\Response;
  */
 class RobotsController extends Controller
 {
+    /**
+     * Named explicitly rather than left to inherit the blanket
+     * "User-agent: *" rule below — the business wants AI answer engines
+     * citing/training on this site's menu, hours, and policies (see
+     * public/llms.txt), so that has to be a visible, deliberate choice
+     * here, not an accident of the wildcard rule happening to allow
+     * everything today. If the wildcard rule ever tightens, these stay
+     * allowed unless someone removes them on purpose.
+     *
+     * @var list<string>
+     */
+    private const AI_CRAWLERS = [
+        'GPTBot', 'ChatGPT-User', 'OAI-SearchBot',
+        'ClaudeBot', 'Claude-Web', 'anthropic-ai',
+        'PerplexityBot', 'Perplexity-User',
+        'Google-Extended', 'CCBot',
+    ];
+
     public function index(): Response
     {
-        $lines = app()->environment('production')
-            ? ["User-agent: *", "Disallow:", "", "Sitemap: ".route('sitemap')]
-            : ["User-agent: *", "Disallow: /"];
+        if (! app()->environment('production')) {
+            return response("User-agent: *\nDisallow: /\n")->header('Content-Type', 'text/plain');
+        }
+
+        $lines = [];
+
+        foreach (self::AI_CRAWLERS as $bot) {
+            $lines[] = "User-agent: {$bot}";
+            $lines[] = "Disallow:";
+            $lines[] = "";
+        }
+
+        $lines[] = "User-agent: *";
+        $lines[] = "Disallow:";
+        $lines[] = "";
+        $lines[] = "Sitemap: ".route('sitemap');
 
         return response(implode("\n", $lines)."\n")->header('Content-Type', 'text/plain');
     }

@@ -87,14 +87,19 @@ Route::middleware('track.visit')->group(function () {
     Route::delete('/cart/{line}', [CartController::class, 'remove'])->name('cart.remove');
 
     Route::get('/checkout', [CheckoutController::class, 'show'])->name('checkout.show');
-    Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
-    Route::post('/checkout/apply-promo', [CheckoutController::class, 'applyPromoCode'])->name('checkout.apply-promo');
+    // 10/minute per IP — a real customer retrying after a validation error
+    // or trying a couple of promo codes stays well under this; a script
+    // hammering order placement or promo codes doesn't.
+    Route::post('/checkout', [CheckoutController::class, 'store'])->middleware('throttle:10,1')->name('checkout.store');
+    Route::post('/checkout/apply-promo', [CheckoutController::class, 'applyPromoCode'])->middleware('throttle:10,1')->name('checkout.apply-promo');
     Route::get('/checkout/{order:track_token}/confirmation', [CheckoutController::class, 'confirmation'])->name('checkout.confirmation');
     Route::get('/checkout/{order:track_token}/paystack-return', [CheckoutController::class, 'paystackReturn'])->name('checkout.paystack-return');
     Route::get('/checkout/{order:track_token}/declined', [CheckoutController::class, 'declined'])->name('checkout.declined');
 
     Route::get('/track', [TrackingController::class, 'lookup'])->name('tracking.lookup');
-    Route::post('/track/find', [TrackingController::class, 'find'])->name('tracking.find');
+    // 10/minute per IP — without this, a guest's (phone, reference) pair is
+    // brute-forceable to view a stranger's order (name, address, items).
+    Route::post('/track/find', [TrackingController::class, 'find'])->middleware('throttle:10,1')->name('tracking.find');
     Route::get('/track/{order:track_token}', [TrackingController::class, 'show'])->name('tracking.show');
     Route::get('/track/{order:track_token}/data', [TrackingController::class, 'data'])->name('tracking.data');
     Route::post('/track/{order:track_token}/review', [TrackingController::class, 'storeReview'])->name('tracking.review.store');
@@ -145,6 +150,8 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::post('/dashboard/orders/{order}/cancel', [OrderActionController::class, 'cancel'])->name('orders.cancel');
     Route::post('/dashboard/orders/{order}/assign-rider', [OrderActionController::class, 'assignRider'])->name('orders.assign_rider');
     Route::post('/dashboard/orders/{order}/confirm-momo-payment', [OrderActionController::class, 'confirmMomoPayment'])->name('orders.confirm_momo_payment');
+    Route::post('/dashboard/orders/{order}/transfer-branch', [OrderActionController::class, 'transferBranch'])->name('orders.transfer_branch');
+    Route::post('/dashboard/orders/{order}/delivery-fee', [OrderActionController::class, 'adjustDeliveryFee'])->name('orders.adjust_delivery_fee');
     Route::post('/dashboard/orders/{order}/refunds', [RefundController::class, 'store'])->name('orders.refunds.store');
 
     Route::get('/dashboard/refunds', [RefundController::class, 'index'])->name('dashboard.refunds.index');

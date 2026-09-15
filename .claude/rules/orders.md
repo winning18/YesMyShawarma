@@ -121,13 +121,79 @@ in a given moment.
 `App.Models.User.{riderId}` channel) tells a specific rider's dashboard to refetch. The
 database write already decided the assignment before this ever fires.
 
+## Branch transfer
+
+A customer sometimes ends up at the wrong branch — picked the farther of two by mistake, or
+ordered for someone else the "nearest branch" logic at checkout never had a chance to account
+for (it only ever knows the orderer's own location, not necessarily the delivery recipient's).
+`OrderTransferService::transfer()` moves the order to a different branch after the fact,
+gated by `orders.transfer_branch` — staff holds this too, unlike the other money-adjacent
+permissions (see permissions.md for why: the transfer itself isn't money-touching, but the
+refund it can trigger stays behind the same approval boundary staff always has).
+
+- **Only while `paid` or `accepted`.** Once `preparing`, the kitchen has already started —
+  that's a cancellation, not a transfer. This also means a rider is never involved yet
+  (auto-assignment only fires at `ready`), so there's no rider-reassignment case to handle.
+- **Every ordered item must be available at the destination** (`branch_menu_item.is_available`)
+  — checked at the point of transfer, not pre-filtered in the destination list shown to staff.
+- **Money is never rewritten on an order that's already been charged.** A delivery-fee decrease
+  on an already-paid order (`payment_status === 'paid'`) goes back to the customer as a partial
+  refund through the existing `refunds` ledger — completed on the spot for
+  manager/general_manager/owner (`RefundService::directRefund()`), a pending request needing
+  their approval when a staff member is the one transferring (`RefundService::request()`,
+  same boundary as `orders.refund_request` everywhere else). There's no
+  route to re-run a completed Paystack transaction, so an increase is absorbed instead of
+  charged, and recorded in the transfer's `order_events.meta` so it stays visible rather than
+  silently eaten. An order where nothing's been collected yet (cash/momo still pending) just
+  gets `delivery_fee`/`total` corrected directly, same as OrderStateMachine's own
+  delivered-transition fee reconciliation for manually-settled methods.
+- Writes one `order_events` bookkeeping row (`from_status === to_status`, same pattern as
+  refunds/momo confirmation), never touches `orders.status`.
+- Broadcasts `OrderStatusChanged` to the origin branch (its board refetches and the order is
+  simply gone, via `BranchScope`) and `OrderPlaced` to the destination (its board refetches and
+  picks it up — landing in "Needs acknowledgement" or "In progress" purely off the order's own
+  status, same as any other refetch).
+
+## Delivery fee estimate
+
+`OrderCreationService::resolveDelivery()` always prices `delivery_fee` immediately at
+placement now — precisely from the customer's shared location when it was captured, or a flat
+`DeliveryFeeCalculator::MINIMUM_DELIVERY_FEE_PESEWAS` (GHS 10) estimate when it wasn't (denied
+geolocation, unsupported browser, or the checkout page's explicit opt-out checkbox). This used
+to stay at 0 forever in the no-location case — nothing ever recomputed it later, so the
+delivery shipped free and nobody was ever told to collect anything for it. Charging the flat
+minimum immediately means every delivery order always has a real, visible fee from the moment
+it's placed.
+
+- **`OrderResource.cash_to_collect`** is what a rider/staff should actually collect in cash —
+  never assume `payment_method === 'cash'` is the only case that needs collecting. A paystack
+  order priced with a flat estimate only ever had its *subtotal* charged online (there's no
+  route to charge a Paystack transaction again after the fact), so the estimated fee is still
+  owed in cash even though the order is "paid via Paystack". `cash_to_collect` is `total` minus
+  whatever was actually charged through Paystack — 0 for a fully prepaid order, the full total
+  for cash, just the fee for a paystack-plus-estimate order.
+- **`OrderResource.delivery_fee_is_estimate`** is a yes/no signal (not the coordinate) for
+  whether the fee is a flat estimate rather than precisely priced — safe for staff/managers to
+  see even though the raw lat/lng stays rider-only (see schema.md's Customers section).
+- **`DeliveryFeeAdjustmentService`** (`orders.adjust_delivery_fee`, manager and above — see
+  permissions.md) lets staff correct a flat estimate for a specific address once they can see
+  the landmark/area and judge it looks wrong. Only reachable for a delivery order not yet in a
+  terminal status, and only while the fee is still an estimate — a precisely-priced order is
+  never adjustable this way. Never touches a refund: this fee was never charged through
+  Paystack in the first place, so there's nothing to refund or absorb, unlike
+  `OrderTransferService`'s money handling — it's purely a correction to what the rider is told
+  to collect.
+
 ## Totals
 
 Compute in this order, always server-side:
 
 1. `subtotal` = sum of `order_items.line_total`
 2. `discount_total` = promotion applied to subtotal, capped at subtotal
-3. `delivery_fee` = from the matched `delivery_zone`, zero for pickup
+3. `delivery_fee` = `DeliveryFeeCalculator::calculate()` — haversine distance from the branch ×
+   a flat rate per km, zero for pickup. Only priced here when geolocation was captured at
+   checkout; otherwise deferred to the `delivered` transition (see schema.md's "Delivery
+   areas" section — `delivery_areas` itself is a rider-facing label, not part of pricing).
 4. `total` = subtotal − discount_total + delivery_fee
 
 Never trust a client-supplied total. Recalculate on every write and reject mismatches.

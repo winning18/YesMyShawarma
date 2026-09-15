@@ -195,6 +195,72 @@ class RiderDashboardTest extends TestCase
         $response->assertSee("Customer didn't share a live location");
     }
 
+    public function test_cash_to_collect_is_the_full_total_for_a_cash_order(): void
+    {
+        $rider = User::factory()->create();
+        $this->assignRoleAt($rider, 'rider', $this->branchA);
+
+        $order = $this->makeOrder($this->branchA, ['payment_method' => 'cash', 'total' => 4500]);
+        $order->rider_id = $rider->id;
+        $order->save();
+
+        $response = $this->actingAs($rider)->getJson(route('rider.orders.data'));
+        $data = collect($response->json('data'))->firstWhere('id', $order->id);
+
+        $this->assertSame(4500, $data['cash_to_collect']);
+    }
+
+    public function test_cash_to_collect_is_zero_for_a_fully_prepaid_paystack_order(): void
+    {
+        $rider = User::factory()->create();
+        $this->assignRoleAt($rider, 'rider', $this->branchA);
+
+        $order = $this->makeOrder($this->branchA, ['payment_method' => 'paystack', 'total' => 6000]);
+        $order->rider_id = $rider->id;
+        $order->save();
+        $order->payments()->create([
+            'provider' => 'paystack', 'provider_reference' => 'PSK-'.uniqid(),
+            'amount' => 6000, 'currency' => 'GHS', 'status' => 'paid', 'verified_at' => now(),
+        ]);
+
+        $response = $this->actingAs($rider)->getJson(route('rider.orders.data'));
+        $data = collect($response->json('data'))->firstWhere('id', $order->id);
+
+        $this->assertSame(0, $data['cash_to_collect']);
+    }
+
+    public function test_cash_to_collect_is_just_the_fee_for_a_paystack_order_priced_with_a_flat_estimate(): void
+    {
+        // Paystack only ever charges the subtotal it knew about at
+        // placement when location wasn't captured — the flat-estimate fee
+        // added on top still needs collecting in cash.
+        $rider = User::factory()->create();
+        $this->assignRoleAt($rider, 'rider', $this->branchA);
+
+        $order = $this->makeOrder($this->branchA, ['payment_method' => 'paystack', 'subtotal' => 3500, 'total' => 4500]);
+        $order->rider_id = $rider->id;
+        $order->save();
+        $order->payments()->create([
+            'provider' => 'paystack', 'provider_reference' => 'PSK-'.uniqid(),
+            'amount' => 3500, 'currency' => 'GHS', 'status' => 'paid', 'verified_at' => now(),
+        ]);
+
+        $response = $this->actingAs($rider)->getJson(route('rider.orders.data'));
+        $data = collect($response->json('data'))->firstWhere('id', $order->id);
+
+        $this->assertSame(1000, $data['cash_to_collect']);
+    }
+
+    public function test_rider_dashboard_shows_what_to_collect_in_cash(): void
+    {
+        $rider = User::factory()->create();
+        $this->assignRoleAt($rider, 'rider', $this->branchA);
+
+        $this->actingAs($rider)->get(route('rider.dashboard'))
+            ->assertOk()
+            ->assertSee("order.cash_to_collect", false);
+    }
+
     public function test_rider_orders_data_includes_the_branch_coordinate_for_directions(): void
     {
         // The "Get directions" link routes from the branch to the customer

@@ -77,6 +77,17 @@
                                         {{ __("Customer didn't share a live location. Use the area/landmark above, or call them.") }}
                                     </p>
 
+                                    {{--
+                                        Always visible here, not just sprung on the rider in a
+                                        confirm dialog right before they tap "delivered" — this
+                                        is the number that answers "how much do I collect", and
+                                        it's the same figure whether it's a plain cash order or
+                                        a paystack order whose delivery fee wasn't charged
+                                        online (see OrderResource::cashToCollectPesewas()).
+                                    --}}
+                                    <p class="text-sm font-semibold text-gray-900 mt-2" x-show="order.cash_to_collect > 0" x-text="@js(__('Collect')) + ' ' + formatMoney(order.cash_to_collect) + ' ' + @js(__('cash'))"></p>
+                                    <p class="text-sm text-green-700 mt-2" x-show="order.cash_to_collect === 0">{{ __('Fully paid — nothing to collect') }}</p>
+
                                     <ul class="text-sm text-gray-700 list-disc list-inside mt-2 space-y-0.5">
                                         <template x-for="item in order.items" :key="item.name + item.quantity">
                                             <li x-text="item.quantity + 'x ' + item.name + (item.options.length ? ' (' + item.options.map(o => o.name + (o.quantity > 1 ? ' x' + o.quantity : '')).join(', ') + ')' : '')"></li>
@@ -179,16 +190,19 @@
                     }[status] ?? null;
                 },
 
-                // Cash-on-delivery is only reconciled here — this is the
-                // customer's word made official, so it gets its own
+                // Any amount still owed in cash — not just a plain cash
+                // order — is only reconciled here, so it gets its own
                 // confirmation rather than riding along with the ordinary
-                // "picked up" / "delivered" taps.
+                // "picked up" / "delivered" taps. A paystack order whose
+                // delivery fee was never charged online still needs this:
+                // cash_to_collect is what actually decides whether to ask,
+                // not payment_method.
                 advancePrimary(order) {
                     const action = this.nextAction(order.status);
                     if (!action) return;
 
-                    if (action.to === 'delivered' && order.payment_method === 'cash') {
-                        const prompt = @js(__('Confirm you have collected')) + ' ' + this.formatMoney(order.total) + ' ' + @js(__('cash from the customer?'));
+                    if (action.to === 'delivered' && order.cash_to_collect > 0) {
+                        const prompt = @js(__('Confirm you have collected')) + ' ' + this.formatMoney(order.cash_to_collect) + ' ' + @js(__('cash from the customer?'));
                         if (!confirm(prompt)) return;
                     }
 

@@ -36,7 +36,7 @@ page weight is a product requirement, not polish.
 | Payments | Paystack (cards + MoMo) |
 | Queue | Redis, or database driver until volume justifies Redis |
 | Images | Cloudinary or S3 behind Cloudflare |
-| SMS | TBD — abstract behind a `Notifier` contract |
+| SMS | Arkesel (`ArkeselNotifier`), behind the `Notifier` contract — falls back to log-only (`LogNotifier`) if `ARKESEL_API_KEY` is unset |
 
 **No SPA.** No React or Vue on the customer site.
 
@@ -118,7 +118,11 @@ Do not start a phase before the previous one works.
 5. **Growth** — promotions v1, customer list with lifetime value and export.
 6. **Reporting** — operational and financial depth built on `order_events`.
 
-**Current phase:** 1 — foundation.
+**Current phase:** Foundation (1) and Operations (2) are complete and audited against this
+doc's scope. Riders (3), Administration (4), Growth (5), and Reporting (6) already have
+substantial working implementations (rider auth/dashboard/auto-assignment, user/branch/settings
+admin, promotions, customer management, reports) — not yet individually audited feature-by-
+feature against the scope below, so treat "done" claims there as provisional until checked.
 <!-- Update this line as phases complete. It is the fastest signal of where the project is. -->
 
 ---
@@ -142,9 +146,13 @@ Do not build these. If a task seems to require one, stop and raise it.
 
 Flag these rather than assuming an answer.
 
-- SMS provider for escalation and order confirmations
-- Whether rider payouts are tracked in-platform or handled offline
-- Delivery fee model: flat per zone, or distance-banded
+- Whether rider payouts are tracked in-platform or handled offline — nothing built yet, no
+  `Rider` model, no earnings/payout table.
+
+Resolved, no longer open: SMS provider (Arkesel, see Stack table above). Delivery fee model is
+implemented as continuous distance pricing — haversine distance from branch × a flat rate per
+km (`App\Services\Delivery\DeliveryFeeCalculator`), not the flat-per-zone or discretely-banded
+options originally listed here. See `.claude/rules/schema.md` and `.claude/rules/orders.md`.
 
 ---
 

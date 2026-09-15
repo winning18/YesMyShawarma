@@ -37,10 +37,13 @@
             lat: null,
             lng: null,
             locationStatus: '',
+            locationFailed: false,
+            locationOptOut: false,
             estimatedFee: null,
             branchLat: {{ $branch->lat }},
             branchLng: {{ $branch->lng }},
             ratePerKmPesewas: {{ $ratePerKmPesewas }},
+            minimumDeliveryFeePesewas: {{ $minimumDeliveryFeePesewas }},
             subtotalPesewas: {{ $subtotal }},
             discountCode: @js(old('promo_code', '')),
             discountAmount: 0,
@@ -57,11 +60,14 @@
                 if (this.areaSelection === 'other') return this.areaOther || '{{ __('Not specified') }}';
                 return this.deliveryAreaNames[this.areaSelection] || '';
             },
-            // Drives both the disabled/greyed-out state of 'Review order'
-            // and startReview()'s own gate below — payment method and
-            // fulfilment type always carry a valid default (a radio pair,
-            // never genuinely empty), so only the fields a customer can
-            // actually leave incomplete are checked here.
+            // Safety-net check, not the primary source of feedback — that's
+            // native required-field validation (reportValidity(), which now
+            // scrolls to and focuses the first missing field on its own)
+            // plus focusSection() for location, which isn't a native form
+            // control. Payment method and fulfilment type always carry a
+            // valid default (a radio pair, never genuinely empty), so only
+            // the fields a customer can actually leave incomplete are
+            // checked here.
             get formValid() {
                 if (this.name.trim() === '' || !this.phone.valid) return false;
 
@@ -69,31 +75,64 @@
                     if (this.areaSelection === '') return false;
                     if (this.areaSelection === 'other' && this.areaOther.trim() === '') return false;
                     if (this.landmark.trim() === '') return false;
+                    if (this.lat === null && !this.locationOptOut) return false;
                 }
 
                 return true;
             },
+            // Scrolls to and briefly highlights a section that isn't a
+            // native form control (location isn't a typable field, so
+            // reportValidity() below can't do this for it on its own).
+            focusSection(ref) {
+                const el = this.$refs[ref];
+                if (!el) return;
+
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.classList.add('ring-2', 'ring-brand-red', 'rounded-lg');
+                setTimeout(() => el.classList.remove('ring-2', 'ring-brand-red', 'rounded-lg'), 2000);
+            },
             startReview() {
-                if (!this.formValid || !this.$refs.form.reportValidity()) return;
+                // Handles name, phone, delivery area, and landmark — native
+                // required-field validation, in document order, scrolling
+                // to and focusing whichever is first left blank.
+                if (!this.$refs.form.reportValidity()) return;
+
+                // Location isn't a native form control, so it gets its own
+                // check — only once every native-required field is already
+                // filled in, so a customer isn't sent to two different
+                // places at once.
+                if (this.fulfilmentType === 'delivery' && this.lat === null && !this.locationOptOut) {
+                    this.focusSection('locationSection');
+                    return;
+                }
+
+                if (!this.formValid) return;
                 this.reviewing = true;
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             },
             locate() {
+                this.locationFailed = false;
+                this.locationStatus = '{{ __('Locating…') }}';
+
                 if (!navigator.geolocation) {
-                    this.locationStatus = '{{ __('Geolocation not supported on this device. Delivery fee will be calculated when your rider arrives.') }}';
+                    this.locationStatus = '{{ __('Geolocation not supported on this device.') }}';
+                    this.locationFailed = true;
                     return;
                 }
-                this.locationStatus = '{{ __('Locating…') }}';
+
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
                         this.lat = position.coords.latitude;
                         this.lng = position.coords.longitude;
                         this.estimatedFee = this.calculateFee();
                         this.locationStatus = '{{ __('Location captured. Estimated fee added below.') }}';
+                        this.locationFailed = false;
+                        this.locationOptOut = false;
                     },
                     () => {
                         this.estimatedFee = null;
-                        this.locationStatus = '{{ __('Could not get your location. Delivery fee will be calculated when your rider arrives.') }}';
+                        this.locationStatus = '{{ __("Could not get your location.") }}';
+                        this.locationFailed = true;
                     }
                 );
             },
@@ -105,7 +144,11 @@
                 const a = Math.sin(dLat / 2) ** 2
                     + Math.cos(toRad(this.branchLat)) * Math.cos(toRad(this.lat)) * Math.sin(dLng / 2) ** 2;
                 const distanceKm = earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-                return Math.round(distanceKm * this.ratePerKmPesewas);
+                // Mirrors DeliveryFeeCalculator::calculate() exactly — whole
+                // cedis only, never below the minimum — so this estimate
+                // never disagrees with what's actually charged.
+                const fee = Math.round(distanceKm * this.ratePerKmPesewas / 100) * 100;
+                return Math.max(fee, this.minimumDeliveryFeePesewas);
             },
             async applyPromoCode() {
                 if (!this.discountCode) return;
@@ -144,7 +187,7 @@
                 return Math.max(0, this.subtotalPesewas - this.discountAmount + fee);
             },
         }"
-        x-effect="if (fulfilmentType !== 'delivery') { estimatedFee = null; locationStatus = ''; }"
+        x-effect="if (fulfilmentType !== 'delivery') { estimatedFee = null; locationStatus = ''; locationFailed = false; locationOptOut = false; }"
     >
         <div class="md:col-span-2">
             <form id="checkout-form" method="POST" action="{{ route('checkout.store') }}" class="space-y-6" x-ref="form">
@@ -195,7 +238,7 @@
                         <div>
                             <label class="block text-sm font-medium mb-1">{{ __('Delivery area') }} <span class="text-brand-red">*</span></label>
                             <select
-                                name="area_id"
+                                name="area_id" required
                                 x-model="areaSelection"
                                 class="w-full rounded-md {{ $errors->has('area_id') ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300' }}"
                             >
@@ -212,6 +255,7 @@
                             <div x-show="areaSelection === 'other'" x-cloak class="mt-2">
                                 <input
                                     type="text" name="area_other" x-model="areaOther" value="{{ old('area_other') }}"
+                                    :required="areaSelection === 'other'"
                                     placeholder="{{ __('Type your area name') }}" maxlength="100"
                                     class="w-full rounded-md {{ $errors->has('area_other') ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300' }}"
                                 >
@@ -232,25 +276,33 @@
                         <div>
                             <label class="block text-sm font-medium mb-1">{{ __('Landmark') }} <span class="text-brand-red">*</span></label>
                             <input
-                                type="text" name="landmark" x-model="landmark" value="{{ old('landmark') }}"
+                                type="text" name="landmark" required x-model="landmark" value="{{ old('landmark') }}"
                                 placeholder="{{ __('e.g. Opposite the blue gate, near the church') }}"
                                 class="w-full rounded-md {{ $errors->has('landmark') ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300' }}"
                             >
                             @error('landmark') <p class="text-sm text-brand-red mt-1">{{ $message }}</p> @enderror
                         </div>
-                        <div>
+                        <div x-ref="locationSection" class="transition">
+                            <label class="block text-sm font-medium mb-1">{{ __('Share your live location') }} <span class="text-brand-red">*</span></label>
                             <button
                                 type="button" @click="locate()"
                                 class="w-full px-4 py-2.5 bg-brand-red text-brand-white text-sm font-semibold rounded-md hover:bg-brand-red-dark"
                             >
-                                {{ __('Share my live location (required)') }}
+                                {{ __('Share my live location') }}
                             </button>
                             <span x-show="locationStatus" x-text="locationStatus" class="block text-sm text-brand-gray-500 mt-1"></span>
                             <input type="hidden" name="lat" x-model="lat" value="{{ old('lat') }}">
                             <input type="hidden" name="lng" x-model="lng" value="{{ old('lng') }}">
+
+                            <div x-show="locationFailed" x-cloak class="mt-2">
+                                <label class="flex items-start gap-2 text-sm">
+                                    <input type="checkbox" x-model="locationOptOut" class="mt-0.5">
+                                    <span>{{ __("I can't share my location — calculate my delivery fee when the rider arrives.") }}</span>
+                                </label>
+                            </div>
                         </div>
                         <p class="text-xs text-brand-gray-500">
-                            {{ __("If we can capture your location, you'll see your estimated delivery fee added below right away. If not, it's calculated in cash when your rider arrives.") }}
+                            {{ __("We need your location to price delivery. If we can capture it, you'll see your estimated fee added below right away.") }}
                         </p>
                     </div>
                 @endif
@@ -347,9 +399,8 @@
                 </div>
 
                 <button
-                    type="button" x-show="!reviewing" @click="startReview()" :disabled="!formValid"
-                    :class="formValid ? 'bg-brand-yellow text-brand-black hover:bg-brand-yellow-dark cursor-pointer' : 'bg-brand-gray-100 text-brand-gray-400 cursor-not-allowed'"
-                    class="w-full px-6 py-3 font-semibold rounded-md transition"
+                    type="button" x-show="!reviewing" @click="startReview()"
+                    class="w-full px-6 py-3 font-semibold rounded-md transition bg-brand-yellow text-brand-black hover:bg-brand-yellow-dark cursor-pointer"
                 >
                     {{ __('Review order') }}
                 </button>

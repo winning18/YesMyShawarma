@@ -110,16 +110,16 @@ class OrderStateMachine
                 $order->cancellation_reason = $cancellationReason;
             }
 
-            // OrderCreationService already prices delivery_fee immediately
-            // when the customer's live location was captured at checkout —
-            // this recomputes the same figure from the same snapshot
-            // lat/lng, which is harmless (deterministic distance × rate).
-            // What actually matters here is the other case: location wasn't
-            // captured at checkout, delivery_fee is still 0, and this is
-            // the first and only point it gets priced, now that the trip
-            // has actually happened. Pickup orders and any delivery order
-            // still missing lat/lng (geolocation was never captured) are
-            // left at whatever fee they already have.
+            // OrderCreationService prices delivery_fee immediately at
+            // placement now, always — precisely when location was
+            // captured, a flat minimum-fee estimate when it wasn't (see
+            // DeliveryFeeCalculator::MINIMUM_DELIVERY_FEE_PESEWAS). This
+            // recomputes the same figure from the same snapshot lat/lng
+            // when it's present, which is harmless (deterministic distance
+            // × rate) — a flat-estimate order never has lat/lng at all, so
+            // this block simply never applies to it; that fee stays
+            // whatever it was estimated at (correctable beforehand via
+            // DeliveryFeeAdjustmentService, never rewritten here).
             if ($to === 'delivered' && $order->fulfilment_type === 'delivery') {
                 $lat = $order->delivery_address_snapshot['lat'] ?? null;
                 $lng = $order->delivery_address_snapshot['lng'] ?? null;
@@ -128,12 +128,11 @@ class OrderStateMachine
                     $order->delivery_fee = $this->feeCalculator->calculate($order->branch, (float) $lat, (float) $lng);
                     $order->total = $order->subtotal - $order->discount_total + $order->delivery_fee;
 
-                    // The cash/momo payment row was created at placement
-                    // with the fee-less total (a manually-settled order —
-                    // Order::MANUALLY_SETTLED_PAYMENT_METHODS — is the only
-                    // case that reaches "delivered" with no known fee yet;
-                    // see OrderCreationService::create()) — keep it in sync
-                    // with what's actually collected at the door.
+                    // Keeps the cash/momo payment row's amount in sync with
+                    // whatever total this recompute lands on — a no-op in
+                    // practice today since the figure never actually
+                    // changes (see comment above), but this is the one
+                    // place that sync would matter if it ever did.
                     $order->payments()->whereIn('provider', Order::MANUALLY_SETTLED_PAYMENT_METHODS)->update(['amount' => $order->total]);
                 }
             }

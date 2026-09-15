@@ -6,6 +6,7 @@ use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\Branches\BranchContext;
+use App\Services\Orders\OrderTransferService;
 use App\Services\Shifts\ShiftService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,7 +27,7 @@ class OrderDashboardController extends Controller
      * general_manager reaches the exact same board they always had via
      * the dedicated Orders nav item (live() below), not this route.
      */
-    public function index(Request $request, BranchContext $context, ShiftService $shifts): View|RedirectResponse
+    public function index(Request $request, BranchContext $context, ShiftService $shifts, OrderTransferService $transfers): View|RedirectResponse
     {
         Gate::authorize('viewAny', Order::class);
 
@@ -45,7 +46,7 @@ class OrderDashboardController extends Controller
             return redirect()->route('dashboard.performance');
         }
 
-        return $this->board($user, $branchId, $context, $shifts, route('dashboard'));
+        return $this->board($user, $branchId, $context, $shifts, $transfers, route('dashboard'));
     }
 
     /**
@@ -55,14 +56,14 @@ class OrderDashboardController extends Controller
      * already goes straight to index()) or owner (no nav path to this
      * route at all — see navigation-links.blade.php).
      */
-    public function live(Request $request, BranchContext $context, ShiftService $shifts): View
+    public function live(Request $request, BranchContext $context, ShiftService $shifts, OrderTransferService $transfers): View
     {
         Gate::authorize('viewAny', Order::class);
 
-        return $this->board($request->user(), $context->id(), $context, $shifts, route('dashboard.orders.live'));
+        return $this->board($request->user(), $context->id(), $context, $shifts, $transfers, route('dashboard.orders.live'));
     }
 
-    private function board(User $user, ?int $branchId, BranchContext $context, ShiftService $shifts, string $ordersUrl): View
+    private function board(User $user, ?int $branchId, BranchContext $context, ShiftService $shifts, OrderTransferService $transfers, string $ordersUrl): View
     {
         $isStaff = $branchId && $context->primaryRoleFor($user, $branchId) === 'staff';
 
@@ -71,6 +72,15 @@ class OrderDashboardController extends Controller
             'isStaff' => $isStaff,
             'forceShiftStart' => $isStaff && ! $shifts->activeFor($user),
             'ordersUrl' => $ordersUrl,
+            // Staff holds this permission too (see permissions.md) — the
+            // resulting refund, if any, is what stays gated to a pending
+            // request for them, not the transfer itself.
+            'canTransfer' => $branchId && $user->can('orders.transfer_branch'),
+            'transferBranches' => $branchId ? $transfers->otherAcceptingBranches($branchId) : collect(),
+            // Manager-and-above only (see permissions.md) — correcting a
+            // flat delivery-fee estimate changes what the rider actually
+            // collects, same tier as void/refund/discount.
+            'canAdjustFee' => $branchId && $user->can('orders.adjust_delivery_fee'),
         ]);
     }
 
@@ -83,7 +93,7 @@ class OrderDashboardController extends Controller
     {
         Gate::authorize('viewAny', Order::class);
 
-        $orders = Order::with(['items.options', 'customer', 'rider', 'events'])
+        $orders = Order::with(['items.options', 'customer', 'rider', 'events', 'payments'])
             ->whereIn('status', self::VISIBLE_STATUSES)
             ->orderBy('placed_at')
             ->get();

@@ -30,6 +30,24 @@ class OrderResource extends JsonResource
             'payment_method' => $this->payment_method,
             'payment_status' => $this->payment_status,
             'total' => $this->total,
+            'delivery_fee' => $this->fulfilment_type === 'delivery' ? $this->delivery_fee : null,
+            // What's still owed in cash at the door — 0 for a fully
+            // prepaid order, the full total for cash, and just the
+            // delivery-fee estimate for a paystack order whose location
+            // wasn't captured (paystack only ever charges the subtotal it
+            // knew about at placement in that case — see
+            // OrderCreationService's docblock). Riders/staff should collect
+            // this figure, never blindly assume "paystack means nothing to
+            // collect".
+            'cash_to_collect' => $this->cashToCollectPesewas(),
+            // Whether delivery_fee is a flat estimate (see
+            // DeliveryFeeCalculator::MINIMUM_DELIVERY_FEE_PESEWAS) rather
+            // than priced from the customer's actual shared location — a
+            // yes/no signal, not the coordinate itself, so it's safe for
+            // staff/managers to see even though the raw lat/lng stays
+            // rider-only (see delivery_address below).
+            'delivery_fee_is_estimate' => $this->fulfilment_type === 'delivery'
+                && ($this->delivery_address_snapshot['lat'] ?? null) === null,
             'placed_at' => $this->placed_at?->toIso8601String(),
             // No dedicated preparing_at column — derived from order_events,
             // same pattern as EscalateUnacknowledgedOrders' paidAt. Drives
@@ -95,5 +113,24 @@ class OrderResource extends JsonResource
         $user = $request->user();
 
         return $user && app(BranchContext::class)->primaryRoleFor($user, $this->branch_id) === 'rider';
+    }
+
+    /**
+     * Prefers the already eager-loaded 'payments' collection (no extra
+     * query) but falls back to a direct one when it isn't loaded — a
+     * single-order response (an order action's return value) is never
+     * eager-loaded with it and must still be correct, not just fast.
+     */
+    private function cashToCollectPesewas(): int
+    {
+        if ($this->fulfilment_type !== 'delivery') {
+            return 0;
+        }
+
+        $paidViaPaystack = $this->relationLoaded('payments')
+            ? $this->payments->where('provider', 'paystack')->where('status', 'paid')->sum('amount')
+            : $this->payments()->where('provider', 'paystack')->where('status', 'paid')->sum('amount');
+
+        return max(0, (int) $this->total - (int) $paidViaPaystack);
     }
 }

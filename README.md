@@ -7,6 +7,22 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+## Deployment (Yes My Shawarma)
+
+Processes required in production, beyond the web server itself:
+
+- `php artisan queue:work` — order/notification jobs.
+- `php artisan reverb:start` — realtime dashboard, rider, and tracking-page broadcasts.
+- `php artisan schedule:run` via cron, every minute — this is the only thing that runs order
+  escalation, abandoned-payment cleanup, and menu-schedule syncing (`routes/console.php`).
+  There is no error if the cron entry is missing; orders simply never escalate.
+
+One-time setup: `php artisan storage:link` — uploaded menu/branch/staff images 404 without it.
+
+Image storage is currently the `local` disk (`config/filesystems.php`). On hosting with an
+ephemeral filesystem, uploaded images do not survive a redeploy — wiring S3 or Cloudinary is a
+known open item, not yet done.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:

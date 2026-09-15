@@ -24,6 +24,31 @@ class SeoTest extends TestCase
         $response->assertSee('Sitemap: '.route('sitemap'), false);
     }
 
+    // The business wants AI answer engines citing/training on this site
+    // (menu, hours, policies) — that has to be a named, deliberate rule,
+    // not just an accident of the blanket "User-agent: *" rule below it.
+    public function test_robots_txt_explicitly_allows_known_ai_crawlers_in_production(): void
+    {
+        app()->detectEnvironment(fn () => 'production');
+
+        $content = $this->get('/robots.txt')->assertOk()->getContent();
+
+        foreach (['GPTBot', 'ClaudeBot', 'PerplexityBot', 'Google-Extended', 'CCBot'] as $bot) {
+            $this->assertMatchesRegularExpression(
+                '/User-agent: '.preg_quote($bot, '/').'\nDisallow:\n/',
+                $content,
+                "Expected an explicit allow rule for {$bot}.",
+            );
+        }
+    }
+
+    public function test_robots_txt_still_blocks_everything_outside_production_including_ai_crawlers(): void
+    {
+        $content = $this->get('/robots.txt')->assertOk()->getContent();
+
+        $this->assertSame("User-agent: *\nDisallow: /\n", $content);
+    }
+
     // Staging is test/demo data — it must never be indexed alongside the
     // real site, and the old static public/robots.txt file (identical on
     // every environment, since nginx serves it before Laravel ever runs)
@@ -112,6 +137,41 @@ class SeoTest extends TestCase
         $this->assertSame('35.00', $json['offers']['price']);
         $this->assertSame('GHS', $json['offers']['priceCurrency']);
         $this->assertSame('https://schema.org/InStock', $json['offers']['availability']);
+    }
+
+    public function test_menu_page_includes_menu_structured_data(): void
+    {
+        $branch = Branch::create([
+            'name' => 'Ga Odumase', 'slug' => 'ga-odumase', 'phone' => '+233243635265', 'address' => 'Ga Odumase, Accra',
+            'lat' => 5.67, 'lng' => -0.30, 'opens_at' => '14:00', 'closes_at' => '00:00',
+        ]);
+        $category = Category::create(['name' => 'Shawarma', 'slug' => 'shawarma']);
+        $item = MenuItem::create([
+            'category_id' => $category->id, 'name' => 'Chicken Shawarma', 'slug' => 'chicken-shawarma', 'base_price' => 3500,
+        ]);
+        $branch->menuItems()->attach($item->id, ['is_available' => true]);
+        $this->get(route('branches.pick', $branch));
+
+        $json = $this->extractLdJson($this->get(route('menu.index'))->assertOk()->getContent());
+
+        $this->assertSame('Menu', $json['@type']);
+        $this->assertSame('Shawarma', $json['hasMenuSection'][0]['name']);
+        $this->assertSame('Chicken Shawarma', $json['hasMenuSection'][0]['hasMenuItem'][0]['name']);
+        $this->assertSame('35.00', $json['hasMenuSection'][0]['hasMenuItem'][0]['offers']['price']);
+    }
+
+    public function test_faq_page_includes_faqpage_structured_data_matching_the_visible_accordion(): void
+    {
+        $response = $this->get(route('faq'))->assertOk();
+        $json = $this->extractLdJson($response->getContent());
+
+        $this->assertSame('FAQPage', $json['@type']);
+        $this->assertSame('Do I need an account to order?', $json['mainEntity'][0]['name']);
+        $this->assertSame('Question', $json['mainEntity'][0]['@type']);
+        $this->assertSame('Answer', $json['mainEntity'][0]['acceptedAnswer']['@type']);
+
+        $response->assertSee($json['mainEntity'][0]['name']);
+        $response->assertSee($json['mainEntity'][0]['acceptedAnswer']['text']);
     }
 
     public function test_home_page_head_has_manifest_and_apple_touch_icon_links(): void

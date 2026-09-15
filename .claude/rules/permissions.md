@@ -28,6 +28,8 @@ Roles: `staff`, `rider`, `manager`, `general_manager`, `owner`, `stock_manager`.
 | `orders.refund` | — | — | ✓ | ✓ | ✓ | — |
 | `orders.refund_request` | ✓ | — | — | — | — | — |
 | `orders.discount` | — | — | ✓ | ✓ | ✓ | — |
+| `orders.transfer_branch` | ✓ | — | ✓ | ✓ | ✓ | — |
+| `orders.adjust_delivery_fee` | — | — | ✓ | ✓ | ✓ | — |
 | `orders.create` | ✓ | — | ✓ | ✓ | ✓ | — |
 | `menu.toggle_availability` | ✓ | — | ✓ | ✓ | ✓ | — |
 | `menu.edit_content` | — | — | ✓ | ✓ | ✓ | — |
@@ -67,8 +69,25 @@ plus two behavioural differences that aren't expressible as flat permissions:
   didn't just create (`users.transfer_branch` still covers moving an *existing* staff/rider,
   same as `manager`).
 
-The money-touching permissions — `void`, `refund`, `discount` — are deliberately
-separated so they can be audited independently. Never fold them into a broader permission.
+The money-touching permissions — `void`, `refund`, `discount`, `transfer_branch`,
+`adjust_delivery_fee` — are deliberately separated so they can be audited independently. Never
+fold them into a broader permission.
+
+`orders.adjust_delivery_fee` (`DeliveryFeeAdjustmentService`, `OrderPolicy::adjustDeliveryFee`)
+sits at the same tier as `void`/`refund`/`discount` — manager and above, unlike
+`transfer_branch` which staff also holds. It corrects a flat delivery-fee estimate (see
+orders.md's "Delivery fee estimate" section) for a specific address; it directly changes what a
+rider is told to collect in cash, so it stays behind the higher tier rather than staff's.
+
+`orders.transfer_branch` (`OrderTransferService`, `OrderPolicy::transfer`) moves an order to a
+different branch after placement. Unlike `void`/`refund`/`discount`, `staff` holds this one too
+— transferring itself isn't money-touching in the way those are. But it can *trigger* a refund
+(a delivery-fee decrease on an already-paid order), and that part never skips the approval
+boundary: `OrderTransferService` checks `orders.refund` at the moment of transfer, same as
+`RefundController::store()` does — manager/general_manager/owner get the one-click completed
+refund, staff gets a pending request that still needs one of them to approve, exactly like
+`orders.refund_request` everywhere else. Only reachable while the order is `paid` or `accepted`,
+before any kitchen has started on it — see orders.md's "Branch transfer" section.
 
 `reviews.moderate` (`ReviewManagementController`/`ReviewPolicy`) gates approving or rejecting a
 customer-submitted review before it's shown publicly. Same audience and same branch-scoping

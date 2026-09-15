@@ -5,7 +5,7 @@
 
     <div
         class="py-12"
-        x-data="orderDashboard({{ $branchId ?? 'null' }})"
+        x-data="orderDashboard({{ $branchId ?? 'null' }}, {{ Js::from($canTransfer) }}, {{ Js::from($transferBranches) }}, {{ Js::from($canAdjustFee) }})"
         x-init="init()"
     >
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-8">
@@ -45,6 +45,13 @@
                                     class="text-sm text-blue-600 hover:underline"
                                 ></a>
                                 <p class="text-sm text-gray-500 mt-0.5" x-show="deliveryLine(order)" x-text="deliveryLine(order)"></p>
+                                <template x-if="canAdjustFee && order.delivery_fee_is_estimate">
+                                    <button
+                                        type="button" @click="adjustDeliveryFee(order)"
+                                        class="text-xs text-blue-600 hover:underline mt-1"
+                                        x-text="@js(__('Estimated fee')) + ': ' + formatMoney(order.delivery_fee) + ' — ' + @js(__('adjust'))"
+                                    ></button>
+                                </template>
                             </div>
 
                             <ul class="text-sm text-gray-700 list-disc list-inside space-y-0.5 mb-4 flex-1">
@@ -52,6 +59,18 @@
                                     <li x-text="item.quantity + 'x ' + item.name + (item.options.length ? ' (' + item.options.map(o => o.name + (o.quantity > 1 ? ' x' + o.quantity : '')).join(', ') + ')' : '')"></li>
                                 </template>
                             </ul>
+
+                            <template x-if="canTransfer && branches.length > 0">
+                                <select
+                                    class="block w-full mb-3 text-sm rounded-md border-gray-300"
+                                    @change="transferBranch(order.id, $event.target.value); $event.target.value = ''"
+                                >
+                                    <option value="">{{ __('Transfer to another branch…') }}</option>
+                                    <template x-for="branch in branches" :key="branch.id">
+                                        <option :value="branch.id" x-text="branch.name"></option>
+                                    </template>
+                                </select>
+                            </template>
 
                             <div class="flex gap-2 mt-auto">
                                 <button
@@ -135,6 +154,13 @@
                                     class="text-sm text-blue-600 hover:underline"
                                 ></a>
                                 <p class="text-sm text-gray-500 mt-0.5" x-show="deliveryLine(order)" x-text="deliveryLine(order)"></p>
+                                <template x-if="canAdjustFee && order.delivery_fee_is_estimate">
+                                    <button
+                                        type="button" @click="adjustDeliveryFee(order)"
+                                        class="text-xs text-blue-600 hover:underline mt-1"
+                                        x-text="@js(__('Estimated fee')) + ': ' + formatMoney(order.delivery_fee) + ' — ' + @js(__('adjust'))"
+                                    ></button>
+                                </template>
                             </div>
 
                             <ul class="text-sm text-gray-700 list-disc list-inside space-y-0.5 mb-3">
@@ -166,6 +192,18 @@
                                 </div>
                             </template>
 
+                            <template x-if="canTransfer && branches.length > 0">
+                                <select
+                                    class="block w-full mb-3 text-sm rounded-md border-gray-300"
+                                    @change="transferBranch(order.id, $event.target.value); $event.target.value = ''"
+                                >
+                                    <option value="">{{ __('Transfer to another branch…') }}</option>
+                                    <template x-for="branch in branches" :key="branch.id">
+                                        <option :value="branch.id" x-text="branch.name"></option>
+                                    </template>
+                                </select>
+                            </template>
+
                             <div class="flex gap-2 items-center mt-auto pt-1">
                                 <template x-if="nextStatus(order)">
                                     <button
@@ -192,11 +230,14 @@
     </div>
 
     <script>
-        function orderDashboard(branchId) {
+        function orderDashboard(branchId, canTransfer, branches, canAdjustFee) {
             return {
                 needsAcknowledgement: [],
                 inProgress: [],
                 riders: [],
+                canTransfer,
+                branches,
+                canAdjustFee,
                 error: null,
                 originalTitle: document.title,
                 now: Date.now(),
@@ -361,18 +402,21 @@
                 },
 
                 // Staff can also mark a dispatched order delivered from
-                // here, and cash-on-delivery still needs the same explicit
-                // "money in hand" confirmation before it's counted as paid.
-                // Never fires for pickup: nextStatus() never targets
-                // 'delivered' directly for a pickup order (see below), and
-                // pickup+cash is already reconciled at placement, so
-                // there's nothing to confirm here.
+                // here (the fallback path when a rider doesn't do it
+                // themselves), and any amount still owed in cash needs the
+                // same explicit "money in hand" confirmation — cash_to_collect
+                // covers both a plain cash order and a paystack order whose
+                // delivery fee was never charged online, not just
+                // payment_method === 'cash'. Never fires for pickup:
+                // nextStatus() never targets 'delivered' directly for a
+                // pickup order (see below), and pickup+cash is already
+                // reconciled at placement, so there's nothing to confirm here.
                 async advancePrimary(order) {
                     const to = this.nextStatus(order);
                     if (!to) return;
 
-                    if (to === 'delivered' && order.payment_method === 'cash') {
-                        const prompt = @js(__('Confirm cash payment of')) + ' ' + this.formatMoney(order.total) + ' ' + @js(__('has been collected for this order?'));
+                    if (to === 'delivered' && order.cash_to_collect > 0) {
+                        const prompt = @js(__('Confirm cash payment of')) + ' ' + this.formatMoney(order.cash_to_collect) + ' ' + @js(__('has been collected for this order?'));
                         if (!confirm(prompt)) return;
                     }
 
@@ -391,6 +435,29 @@
                 async assignRider(orderId, riderId) {
                     if (!riderId) return;
                     await this.post(`/dashboard/orders/${orderId}/assign-rider`, { rider_id: riderId });
+                },
+
+                async transferBranch(orderId, branchId) {
+                    if (!branchId) return;
+                    await this.post(`/dashboard/orders/${orderId}/transfer-branch`, { branch_id: branchId });
+                },
+
+                // Plain prompt() rather than a form — this is a rare
+                // correction, not a normal part of placing/progressing an
+                // order, same tolerance for a native dialog as "Mark this
+                // delivery as failed?" above.
+                async adjustDeliveryFee(order) {
+                    const current = (order.delivery_fee / 100).toFixed(2);
+                    const input = prompt(@js(__('New delivery fee, in GHS (currently')) + ' GH₵' + current + '):', current);
+                    if (input === null) return;
+
+                    const fee = parseFloat(input);
+                    if (isNaN(fee) || fee < 0) {
+                        this.error = @js(__('Enter a valid amount.'));
+                        return;
+                    }
+
+                    await this.post(`/dashboard/orders/${order.id}/delivery-fee`, { delivery_fee: fee });
                 },
 
                 async post(url, body = {}) {

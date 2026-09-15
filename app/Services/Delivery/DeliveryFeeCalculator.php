@@ -18,6 +18,14 @@ class DeliveryFeeCalculator
     public const MINIMUM_ORDER_TOTAL_PESEWAS = 2000;
 
     /**
+     * No fractional cedis, and never a fee a rider can't make in whole
+     * notes — a distance-priced fee is rounded to the nearest whole cedi,
+     * then floored at this amount. GHS 10 either way, whichever prices
+     * higher.
+     */
+    public const MINIMUM_DELIVERY_FEE_PESEWAS = 1000;
+
+    /**
      * Straight-line (haversine) distance from the branch to the given
      * point, in kilometres, times the flat per-km rate. This is
      * deliberately not the rider's actual travelled path — there's no
@@ -29,7 +37,9 @@ class DeliveryFeeCalculator
     {
         $distanceKm = $this->distanceMetres((float) $branch->lat, (float) $branch->lng, $lat, $lng) / 1000;
 
-        return (int) round($distanceKm * self::RATE_PER_KM_PESEWAS);
+        $fee = (int) round($distanceKm * self::RATE_PER_KM_PESEWAS / 100) * 100;
+
+        return max($fee, self::MINIMUM_DELIVERY_FEE_PESEWAS);
     }
 
     private function distanceMetres(float $lat1, float $lng1, float $lat2, float $lng2): float

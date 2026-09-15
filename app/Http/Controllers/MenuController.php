@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\MenuItem;
 use App\Services\Customers\CustomerBranchSelection;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class MenuController extends Controller
@@ -43,6 +44,7 @@ class MenuController extends Controller
         return view('menu.index', [
             'branch' => $branch,
             'categories' => $categories,
+            'menuSchema' => $this->menuSchema($branch, $categories),
         ]);
     }
 
@@ -112,6 +114,48 @@ class MenuController extends Controller
 
         if ($item->imageUrl()) {
             $schema['image'] = $item->imageUrl();
+        }
+
+        return $schema;
+    }
+
+    /**
+     * Menu structured data (schema.org) for the whole page — lets an
+     * answer engine read every item and price in one request rather than
+     * needing to crawl each item's own Product page individually. Built
+     * from the exact same $categories the page itself renders (index()
+     * above), so the two can never drift.
+     *
+     * @param  Collection<int, array{category: Category, items: Collection<int, MenuItem>}>  $categories
+     */
+    private function menuSchema(Branch $branch, Collection $categories): array
+    {
+        return [
+            '@context' => 'https://schema.org',
+            '@type' => 'Menu',
+            'name' => config('app.name').': '.$branch->name.' Menu',
+            'hasMenuSection' => $categories->map(fn (array $group) => [
+                '@type' => 'MenuSection',
+                'name' => $group['category']->name,
+                'hasMenuItem' => $group['items']->map(fn (MenuItem $item) => $this->menuItemSchema($item))->values()->all(),
+            ])->values()->all(),
+        ];
+    }
+
+    private function menuItemSchema(MenuItem $item): array
+    {
+        $schema = [
+            '@type' => 'MenuItem',
+            'name' => $item->name,
+            'offers' => [
+                '@type' => 'Offer',
+                'priceCurrency' => 'GHS',
+                'price' => number_format($item->base_price / 100, 2, '.', ''),
+            ],
+        ];
+
+        if ($item->description) {
+            $schema['description'] = $item->description;
         }
 
         return $schema;

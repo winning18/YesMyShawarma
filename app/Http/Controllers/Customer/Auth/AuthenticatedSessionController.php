@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Customer\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Customer\LoginRequest;
 use App\Services\Customers\CustomerService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class AuthenticatedSessionController extends Controller
@@ -17,20 +17,9 @@ class AuthenticatedSessionController extends Controller
         return view('customer.auth.login');
     }
 
-    public function store(Request $request, CustomerService $customers): RedirectResponse
+    public function store(LoginRequest $request, CustomerService $customers): RedirectResponse
     {
-        $validated = $request->validate([
-            'phone' => ['required', 'string'],
-            'password' => ['required', 'string'],
-        ]);
-
-        $phone = $customers->normalizeGhanaPhone($validated['phone']);
-
-        if (! Auth::guard('customer')->attempt(['phone' => $phone, 'password' => $validated['password']], $request->boolean('remember'))) {
-            throw ValidationException::withMessages([
-                'phone' => 'Those credentials don\'t match our records.',
-            ]);
-        }
+        $request->authenticate($customers);
 
         $request->session()->regenerate();
 
