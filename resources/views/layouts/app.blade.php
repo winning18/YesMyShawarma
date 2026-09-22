@@ -27,7 +27,7 @@
 
             <div class="flex-1 flex flex-col min-w-0">
                 <!-- Mobile top bar -->
-                <div class="sm:hidden flex items-center justify-between h-16 px-4 bg-white border-b border-gray-100 shrink-0">
+                <div class="md:hidden flex items-center justify-between h-16 px-4 bg-white border-b border-gray-100 shrink-0">
                     <a href="{{ route('dashboard') }}">
                         <x-application-logo class="block h-9 w-auto" />
                     </a>

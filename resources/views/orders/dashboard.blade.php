@@ -8,7 +8,7 @@
         x-data="orderDashboard({{ $branchId ?? 'null' }}, {{ Js::from($canTransfer) }}, {{ Js::from($transferBranches) }}, {{ Js::from($canAdjustFee) }})"
         x-init="init()"
     >
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
 
             <template x-if="error">
                 <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-4" x-text="error"></div>
@@ -26,7 +26,7 @@
                             <div class="flex items-start justify-between gap-3 mb-3">
                                 <div class="min-w-0">
                                     <p class="font-semibold text-gray-900 truncate" x-text="order.reference"></p>
-                                    <div class="flex items-center gap-1.5 mt-1">
+                                    <div class="flex items-center gap-1.5 mt-1 flex-wrap">
                                         <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 capitalize" x-text="order.fulfilment_type"></span>
                                         <span
                                             class="text-xs font-medium px-2 py-0.5 rounded-full"

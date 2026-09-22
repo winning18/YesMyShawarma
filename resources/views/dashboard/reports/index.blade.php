@@ -59,7 +59,7 @@
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div class="bg-white shadow rounded-lg overflow-hidden">
+                <div class="bg-white shadow rounded-lg overflow-hidden overflow-x-auto">
                     <table class="w-full text-sm">
                         <thead class="bg-gray-50 text-left text-gray-500">
                             <tr><th class="px-4 py-2">{{ __('Day') }}</th><th class="px-4 py-2 text-right">{{ __('Orders') }}</th></tr>
@@ -75,7 +75,7 @@
                     </table>
                 </div>
 
-                <div class="bg-white shadow rounded-lg overflow-hidden">
+                <div class="bg-white shadow rounded-lg overflow-hidden overflow-x-auto">
                     <table class="w-full text-sm">
                         <thead class="bg-gray-50 text-left text-gray-500">
                             <tr><th class="px-4 py-2">{{ __('Status') }}</th><th class="px-4 py-2 text-right">{{ __('Orders') }}</th></tr>
@@ -93,7 +93,7 @@
                     </table>
                 </div>
 
-                <div class="bg-white shadow rounded-lg overflow-hidden">
+                <div class="bg-white shadow rounded-lg overflow-hidden overflow-x-auto">
                     <table class="w-full text-sm">
                         <thead class="bg-gray-50 text-left text-gray-500">
                             <tr><th class="px-4 py-2">{{ __('Channel') }}</th><th class="px-4 py-2 text-right">{{ __('Orders') }}</th></tr>
@@ -138,7 +138,7 @@
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div class="bg-white shadow rounded-lg overflow-hidden">
+                    <div class="bg-white shadow rounded-lg overflow-hidden overflow-x-auto">
                         <table class="w-full text-sm">
                             <thead class="bg-gray-50 text-left text-gray-500">
                                 <tr><th class="px-4 py-2">{{ __('Day') }}</th><th class="px-4 py-2 text-right">{{ __('Revenue') }}</th></tr>
@@ -154,7 +154,7 @@
                         </table>
                     </div>
 
-                    <div class="bg-white shadow rounded-lg overflow-hidden">
+                    <div class="bg-white shadow rounded-lg overflow-hidden overflow-x-auto">
                         <table class="w-full text-sm">
                             <thead class="bg-gray-50 text-left text-gray-500">
                                 <tr><th class="px-4 py-2">{{ __('Payment method') }}</th><th class="px-4 py-2 text-right">{{ __('Revenue') }}</th></tr>
@@ -172,7 +172,7 @@
                         </table>
                     </div>
 
-                    <div class="bg-white shadow rounded-lg overflow-hidden">
+                    <div class="bg-white shadow rounded-lg overflow-hidden overflow-x-auto">
                         <table class="w-full text-sm">
                             <thead class="bg-gray-50 text-left text-gray-500">
                                 <tr><th class="px-4 py-2">{{ __('Channel') }}</th><th class="px-4 py-2 text-right">{{ __('Revenue') }}</th></tr>

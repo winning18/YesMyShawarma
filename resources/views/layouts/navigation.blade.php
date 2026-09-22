@@ -1,5 +1,13 @@
-{{-- Desktop sidebar. sidebarOpen lives on the wrapping div in app.blade.php, shared with the mobile top bar's hamburger button. --}}
-<aside class="hidden sm:flex sm:flex-col sm:w-64 sm:shrink-0 sm:sticky sm:top-0 sm:h-screen bg-white border-r border-gray-100">
+{{--
+    Desktop sidebar. sidebarOpen lives on the wrapping div in app.blade.php,
+    shared with the mobile top bar's hamburger button. Breakpoint is md
+    (768px), not sm (640px) — a fixed 256px sidebar plus real dashboard
+    content (tables, POS grid) is too cramped between 640-767px; matches
+    the same breakpoint the public customer nav collapses at (layouts/
+    customer.blade.php), so "does this width get a hamburger" is
+    consistent everywhere in the app, not a per-layout coin flip.
+--}}
+<aside class="hidden md:flex md:flex-col md:w-64 md:shrink-0 md:sticky md:top-0 md:h-screen bg-white border-r border-gray-100">
     <div class="h-16 flex items-center px-6 border-b border-gray-100 shrink-0">
         <a href="{{ route('dashboard') }}">
             <x-application-logo class="block h-9 w-auto" />
@@ -42,7 +50,7 @@
 </aside>
 
 {{-- Mobile slide-out drawer --}}
-<div x-show="sidebarOpen" x-cloak class="sm:hidden fixed inset-0 z-40" role="dialog" aria-modal="true">
+<div x-show="sidebarOpen" x-cloak class="md:hidden fixed inset-0 z-40" role="dialog" aria-modal="true">
     <div
         class="fixed inset-0 bg-black/50"
         x-show="sidebarOpen"

@@ -8,7 +8,7 @@
         x-data="riderDashboard({{ $branchId ?? 'null' }}, {{ auth()->id() }})"
         x-init="init()"
     >
-        <div class="max-w-3xl mx-auto sm:px-6 lg:px-8 space-y-8">
+        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
 
             <template x-if="error">
                 <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-4" x-text="error"></div>

@@ -84,7 +84,15 @@
             </svg>
         </div>
 
-        <header class="bg-brand-black sticky top-0 z-40" x-data="{ open: false }">
+        {{--
+            x-data lives here, not on <header> — the drawer below needs to
+            sit outside the header so its z-index isn't capped by the
+            header's own stacking context (a sticky+z-40 element creates
+            one; no z-index on a descendant can ever escape it). See the
+            drawer's own comment.
+        --}}
+        <div x-data="{ open: false }">
+        <header class="bg-brand-black sticky top-0 z-40">
             <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
                 <a href="{{ route('home') }}">
                     <img src="{{ asset('images/logo-web.png') }}" alt="{{ config('app.name') }}" class="h-10 w-auto">
@@ -123,37 +131,112 @@
                     @endauth
                 </div>
 
-                <button type="button" class="md:hidden text-brand-white" @click="open = !open">
-                    &#9776;
+                {{--
+                    SVG, not a Unicode "&#9776;" glyph — a raw hamburger
+                    character renders using whatever system font the OS
+                    supplies for that code point, which varies visibly in
+                    size/weight/vertical alignment across iOS, Android, and
+                    OEM skins. An inline SVG is pixel-identical everywhere,
+                    same as the staff/rider dashboards' hamburger button.
+                --}}
+                <button
+                    type="button" class="md:hidden text-brand-white p-2 -me-2" @click="open = true"
+                    aria-label="{{ __('Open menu') }}"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+                        <path d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
                 </button>
             </div>
-
-            <nav x-show="open" x-cloak class="md:hidden px-4 pb-4 space-y-2 text-brand-white text-sm">
-                <a href="{{ route('home') }}" class="block hover:text-brand-yellow {{ request()->routeIs('home') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Home') }}</a>
-                <a href="{{ route('menu.index') }}" class="block hover:text-brand-yellow {{ request()->routeIs('menu.index') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Menu') }}</a>
-                <a href="{{ route('branches.index') }}" class="block hover:text-brand-yellow {{ request()->routeIs('branches.index') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Branches') }}</a>
-                <a href="{{ route('contact') }}" class="block hover:text-brand-yellow {{ request()->routeIs('contact') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Contact us') }}</a>
-                <a href="{{ route('about') }}" class="block hover:text-brand-yellow {{ request()->routeIs('about') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('About us') }}</a>
-                <a href="{{ route('tracking.lookup') }}" class="block hover:text-brand-yellow {{ request()->routeIs('tracking.*') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Track order') }}</a>
-                <a href="{{ route('cart.show') }}" class="flex items-center gap-2 hover:text-brand-yellow">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
-                        <circle cx="9" cy="21" r="1"></circle>
-                        <circle cx="20" cy="21" r="1"></circle>
-                        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-                    </svg>
-                    {{ __('Cart') }} ({{ $cartItemCount }})
-                </a>
-                @auth('customer')
-                    <form method="POST" action="{{ route('customer.logout') }}">
-                        @csrf
-                        <button type="submit" class="hover:text-brand-yellow">{{ __('Log out') }}</button>
-                    </form>
-                @else
-                    <a href="{{ route('customer.login') }}" class="block hover:text-brand-yellow">{{ __('Login') }}</a>
-                    <a href="{{ route('customer.register') }}" class="block hover:text-brand-yellow">{{ __('Sign up') }}</a>
-                @endauth
-            </nav>
         </header>
+
+            {{--
+                Off-canvas drawer — same pattern as the staff/rider
+                dashboards (layouts/navigation.blade.php, layouts/
+                rider.blade.php: dimmed backdrop, slide-in panel, role
+                dialog/aria-modal, md breakpoint), just brand-colored, so
+                "open the mobile menu" behaves identically everywhere in
+                the app instead of this being the one plain accordion with
+                no backdrop that a different breakpoint and a different
+                interaction from every other nav in the product.
+            --}}
+            {{--
+                z-[60], not z-40 — the cookie-consent banner and the
+                added-to-cart modal both sit at z-50 (below), and a
+                first-time visitor who hasn't dismissed the cookie banner
+                yet would otherwise open this drawer and find its own
+                Login/Sign up footer hidden behind the banner. An
+                open navigation menu is a deliberate user action; it
+                should always be the topmost thing on screen.
+            --}}
+            <div x-show="open" x-cloak class="md:hidden fixed inset-0 z-[60]" role="dialog" aria-modal="true">
+                <div
+                    class="fixed inset-0 bg-black/50"
+                    x-show="open"
+                    x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0"
+                    x-transition:enter-end="opacity-100"
+                    x-transition:leave="transition ease-in duration-150"
+                    x-transition:leave-start="opacity-100"
+                    x-transition:leave-end="opacity-0"
+                    @click="open = false"
+                ></div>
+
+                <div
+                    class="relative w-64 h-full bg-brand-black flex flex-col"
+                    x-show="open"
+                    x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="-translate-x-full"
+                    x-transition:enter-end="translate-x-0"
+                    x-transition:leave="transition ease-in duration-150"
+                    x-transition:leave-start="translate-x-0"
+                    x-transition:leave-end="-translate-x-full"
+                >
+                    <div class="h-16 flex items-center justify-between px-4 border-b border-brand-gray-700 shrink-0">
+                        <a href="{{ route('home') }}">
+                            <img src="{{ asset('images/logo-web.png') }}" alt="{{ config('app.name') }}" class="h-8 w-auto">
+                        </a>
+                        <button type="button" @click="open = false" aria-label="{{ __('Close menu') }}" class="p-2 -me-2 text-brand-white">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+                                <path d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <nav class="flex-1 overflow-y-auto px-4 py-4 space-y-2 text-brand-white text-sm" @click="open = false">
+                        <a href="{{ route('home') }}" class="block hover:text-brand-yellow {{ request()->routeIs('home') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Home') }}</a>
+                        <a href="{{ route('menu.index') }}" class="block hover:text-brand-yellow {{ request()->routeIs('menu.index') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Menu') }}</a>
+                        <a href="{{ route('branches.index') }}" class="block hover:text-brand-yellow {{ request()->routeIs('branches.index') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Branches') }}</a>
+                        <a href="{{ route('contact') }}" class="block hover:text-brand-yellow {{ request()->routeIs('contact') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Contact us') }}</a>
+                        <a href="{{ route('about') }}" class="block hover:text-brand-yellow {{ request()->routeIs('about') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('About us') }}</a>
+                        <a href="{{ route('tracking.lookup') }}" class="block hover:text-brand-yellow {{ request()->routeIs('tracking.*') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Track order') }}</a>
+                        <a href="{{ route('cart.show') }}" class="flex items-center gap-2 hover:text-brand-yellow">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 shrink-0">
+                                <circle cx="9" cy="21" r="1"></circle>
+                                <circle cx="20" cy="21" r="1"></circle>
+                                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                            </svg>
+                            {{ __('Cart') }} ({{ $cartItemCount }})
+                        </a>
+                    </nav>
+
+                    <div class="border-t border-brand-gray-700 p-4 shrink-0">
+                        @auth('customer')
+                            <p class="text-sm text-brand-white mb-2 truncate">{{ auth('customer')->user()->name ?? auth('customer')->user()->phone }}</p>
+                            <form method="POST" action="{{ route('customer.logout') }}">
+                                @csrf
+                                <button type="submit" class="text-sm text-brand-gray-300 hover:text-brand-yellow">{{ __('Log out') }}</button>
+                            </form>
+                        @else
+                            <div class="flex gap-3">
+                                <a href="{{ route('customer.login') }}" class="flex-1 text-center px-3 py-2 border border-brand-gray-500 text-brand-white text-sm font-semibold rounded-md">{{ __('Login') }}</a>
+                                <a href="{{ route('customer.register') }}" class="flex-1 text-center px-3 py-2 bg-brand-yellow text-brand-black text-sm font-semibold rounded-md">{{ __('Sign up') }}</a>
+                            </div>
+                        @endauth
+                    </div>
+                </div>
+            </div>
+        </div>
 
         @isset($fullHero)
             {{ $fullHero }}
@@ -205,7 +288,7 @@
             class="fixed inset-x-0 bottom-0 z-50 bg-brand-black border-t border-brand-yellow px-4 py-4"
         >
             <div class="max-w-5xl mx-auto flex flex-col sm:flex-row items-center gap-4 text-sm text-brand-gray-300">
-                <p class="flex-1">
+                <p class="flex-1 min-w-0 w-full">
                     {{ __('We use a first-party cookie to see how visitors use our site. You can accept or decline it. The site works either way.') }}
                     <a href="{{ route('policy.cookies') }}" class="underline hover:text-brand-yellow">{{ __('Learn more') }}</a>
                 </p>

@@ -139,15 +139,15 @@
                                                     <path d="m5 16 4.5-4 3 2.5L16 11l3 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                                                 </svg>
                                             </div>
-                                            <div class="flex-1 flex justify-between">
-                                                <span x-text="item.quantity + 'x ' + item.name"></span>
-                                                <span x-text="formatMoney(item.line_total)"></span>
+                                            <div class="flex-1 flex justify-between gap-2 min-w-0">
+                                                <span class="truncate" x-text="item.quantity + 'x ' + item.name"></span>
+                                                <span class="shrink-0" x-text="formatMoney(item.line_total)"></span>
                                             </div>
                                         </div>
                                         <template x-for="option in item.options" :key="option.name">
-                                            <div class="flex justify-between text-brand-gray-500 pl-[60px] text-xs mt-1">
-                                                <span x-text="option.name + (option.quantity > 1 ? ' x' + option.quantity : '')"></span>
-                                                <span x-text="'+' + formatMoney(option.price_delta * option.quantity)"></span>
+                                            <div class="flex justify-between gap-2 text-brand-gray-500 pl-[60px] text-xs mt-1">
+                                                <span class="truncate" x-text="option.name + (option.quantity > 1 ? ' x' + option.quantity : '')"></span>
+                                                <span class="shrink-0" x-text="'+' + formatMoney(option.price_delta * option.quantity)"></span>
                                             </div>
                                         </template>
                                     </li>

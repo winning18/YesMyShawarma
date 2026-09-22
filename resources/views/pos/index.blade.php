@@ -17,7 +17,7 @@
             (cramming two independent scroll regions into a phone-width
             screen is worse, not better).
         --}}
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-3 gap-8 lg:h-[calc(100vh-6rem)]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-3 gap-8 lg:h-[calc(100vh-6rem)]">
             {{-- Menu picker --}}
             <div class="lg:col-span-2 lg:h-full lg:overflow-y-auto lg:pr-2 space-y-8">
                 <p class="text-sm text-gray-500">{{ $branch->name }}</p>

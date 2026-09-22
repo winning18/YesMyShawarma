@@ -28,8 +28,8 @@
             section end to end, not just their own routes.
         --}}
         <div class="min-h-screen flex bg-gray-100" x-data="{ sidebarOpen: false }">
-            <!-- Desktop sidebar -->
-            <aside class="hidden sm:flex sm:flex-col sm:w-64 sm:shrink-0 sm:sticky sm:top-0 sm:h-screen bg-white border-r border-gray-100">
+            <!-- Desktop sidebar. md breakpoint (768px), matching layouts/navigation.blade.php and the public customer nav — see that file's comment. -->
+            <aside class="hidden md:flex md:flex-col md:w-64 md:shrink-0 md:sticky md:top-0 md:h-screen bg-white border-r border-gray-100">
                 <div class="h-16 flex items-center px-6 border-b border-gray-100 shrink-0">
                     <a href="{{ route('rider.dashboard') }}">
                         <x-application-logo class="block h-9 w-auto" />
@@ -62,7 +62,7 @@
             </aside>
 
             <!-- Mobile slide-out drawer -->
-            <div x-show="sidebarOpen" x-cloak class="sm:hidden fixed inset-0 z-40" role="dialog" aria-modal="true">
+            <div x-show="sidebarOpen" x-cloak class="md:hidden fixed inset-0 z-40" role="dialog" aria-modal="true">
                 <div
                     class="fixed inset-0 bg-black/50"
                     x-show="sidebarOpen"
@@ -112,7 +112,7 @@
 
             <div class="flex-1 flex flex-col min-w-0">
                 <!-- Mobile top bar -->
-                <div class="sm:hidden flex items-center justify-between h-16 px-4 bg-white border-b border-gray-100 shrink-0" x-data="shiftWidget()" x-init="init()">
+                <div class="md:hidden flex items-center justify-between h-16 px-4 bg-white border-b border-gray-100 shrink-0" x-data="shiftWidget()" x-init="init()">
                     <div class="flex items-center gap-1">
                         <button @click="sidebarOpen = true" aria-label="{{ __('Open menu') }}" class="p-2 -ms-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none">
                             <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">

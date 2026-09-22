@@ -425,15 +425,15 @@
                                     </svg>
                                 </div>
                             @endif
-                            <div class="flex-1 flex justify-between">
-                                <span>{{ $line['quantity'] }}x {{ $line['name_snapshot'] }}</span>
-                                <span>GH₵{{ number_format($line['line_total'] / 100, 2) }}</span>
+                            <div class="flex-1 flex justify-between gap-2 min-w-0">
+                                <span class="truncate">{{ $line['quantity'] }}x {{ $line['name_snapshot'] }}</span>
+                                <span class="shrink-0">GH₵{{ number_format($line['line_total'] / 100, 2) }}</span>
                             </div>
                         </div>
                         @foreach ($line['options'] as $option)
-                            <div class="flex justify-between text-brand-gray-500 pl-[60px]">
-                                <span>{{ $option['name_snapshot'] }}@if ($option['quantity'] > 1) x{{ $option['quantity'] }}@endif</span>
-                                <span>+GH₵{{ number_format($option['price_delta_snapshot'] * $option['quantity'] / 100, 2) }}</span>
+                            <div class="flex justify-between gap-2 text-brand-gray-500 pl-[60px]">
+                                <span class="truncate">{{ $option['name_snapshot'] }}@if ($option['quantity'] > 1) x{{ $option['quantity'] }}@endif</span>
+                                <span class="shrink-0">+GH₵{{ number_format($option['price_delta_snapshot'] * $option['quantity'] / 100, 2) }}</span>
                             </div>
                         @endforeach
                     </li>

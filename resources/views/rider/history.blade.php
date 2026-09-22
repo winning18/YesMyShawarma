@@ -4,7 +4,7 @@
     </x-slot>
 
     <div class="py-12">
-        <div class="max-w-3xl mx-auto sm:px-6 lg:px-8 space-y-4">
+        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
             @forelse ($orders as $order)
                 <div class="bg-white shadow-sm rounded-lg p-6">
                     <div class="flex justify-between items-start">
