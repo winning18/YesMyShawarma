@@ -10,6 +10,7 @@ use App\Models\Order;
 use App\Models\Scopes\BranchScope;
 use App\Models\User;
 use App\Services\Delivery\DeliveryFeeCalculator;
+use App\Services\Notifications\NewOrderPushNotifier;
 use App\Support\SafeBroadcast;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -45,6 +46,7 @@ class OrderTransferService
     public function __construct(
         private readonly DeliveryFeeCalculator $feeCalculator,
         private readonly RefundService $refunds,
+        private readonly NewOrderPushNotifier $pushNotifier,
     ) {}
 
     /**
@@ -172,6 +174,14 @@ class OrderTransferService
             // status, not off which event fired.
             SafeBroadcast::afterCommit(fn () => OrderStatusChanged::dispatch($orderId, $originBranchId, $status, $trackToken));
             SafeBroadcast::afterCommit(fn () => OrderPlaced::dispatch($orderId, $destinationBranchId));
+
+            // Destination staff have never seen this order — same "needs
+            // acceptance" push as a freshly-placed one, but only if it's
+            // still 'paid' (unaccepted); an already-'accepted' transfer
+            // has nothing left for the alarm to prompt.
+            if ($status === 'paid') {
+                SafeBroadcast::afterCommit(fn () => $this->pushNotifier->notify($order));
+            }
 
             return $order->refresh();
         });

@@ -11,6 +11,7 @@ use App\Services\Customers\CustomerService;
 use App\Services\Delivery\DeliveryFeeCalculator;
 use App\Services\Menu\MenuPricingService;
 use App\Services\Notifications\CustomerOrderNotifier;
+use App\Services\Notifications\NewOrderPushNotifier;
 use App\Services\Orders\Data\PlaceOrderData;
 use App\Services\Promotions\PromotionService;
 use App\Services\Settings\SettingsService;
@@ -35,6 +36,7 @@ class OrderCreationService
         private readonly PromotionService $promotions,
         private readonly SettingsService $settings,
         private readonly CustomerOrderNotifier $notifier,
+        private readonly NewOrderPushNotifier $pushNotifier,
     ) {}
 
     /**
@@ -210,6 +212,19 @@ class OrderCreationService
             $orderId = $order->id;
             $branchId = $order->branch_id;
             SafeBroadcast::afterCommit(fn () => OrderPlaced::dispatch($orderId, $branchId));
+
+            // Web Push equivalent of the in-page audible alarm
+            // (realtime.md) — only when actually 'paid', same condition
+            // orderAlertWidget() itself filters on. A still-pending-payment
+            // Paystack order has nothing for staff to accept yet; it earns
+            // its own push once the webhook confirms it, from
+            // OrderStateMachine::transition() instead. Reuses
+            // SafeBroadcast::afterCommit — a push is exactly as cosmetic
+            // and best-effort as a broadcast, same "never break order
+            // placement over this" reasoning.
+            if ($initialStatus === 'paid') {
+                SafeBroadcast::afterCommit(fn () => $this->pushNotifier->notify($order));
+            }
 
             // Deferred to commit for the same reason as the broadcast above
             // — never notify the customer about an order that a later step

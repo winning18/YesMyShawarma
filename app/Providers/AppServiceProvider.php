@@ -3,11 +3,14 @@
 namespace App\Providers;
 
 use App\Contracts\Notifier;
+use App\Contracts\PushNotifier;
 use App\Models\User;
 use App\Services\Branches\BranchContext;
 use App\Services\Cart\CartService;
 use App\Services\Notifications\ArkeselNotifier;
 use App\Services\Notifications\LogNotifier;
+use App\Services\Notifications\LogPushNotifier;
+use App\Services\Notifications\WebPushNotifier;
 use App\Services\Payments\PaystackClient;
 use App\Services\Shifts\ShiftService;
 use Illuminate\Support\Facades\Auth;
@@ -33,6 +36,13 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             Notifier::class,
             fn () => config('services.arkesel.api_key') ? new ArkeselNotifier : new LogNotifier,
+        );
+
+        // Same pattern as Notifier above — real Web Push only once VAPID
+        // keys are actually configured.
+        $this->app->bind(
+            PushNotifier::class,
+            fn () => config('services.vapid.public_key') ? new WebPushNotifier : new LogPushNotifier,
         );
     }
 

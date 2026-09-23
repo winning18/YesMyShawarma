@@ -28,6 +28,7 @@ use App\Http\Controllers\PolicyController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PromotionManagementController;
+use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\RefundController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\ReportsInvoicesController;
@@ -154,6 +155,9 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::post('/dashboard/orders/{order}/delivery-fee', [OrderActionController::class, 'adjustDeliveryFee'])->name('orders.adjust_delivery_fee');
     Route::post('/dashboard/orders/{order}/arrive', [OrderActionController::class, 'arrive'])->name('orders.arrive');
     Route::post('/dashboard/orders/{order}/refunds', [RefundController::class, 'store'])->name('orders.refunds.store');
+
+    Route::post('/push/subscribe', [PushSubscriptionController::class, 'store'])->name('push.subscribe');
+    Route::delete('/push/unsubscribe', [PushSubscriptionController::class, 'destroy'])->name('push.unsubscribe');
 
     Route::get('/dashboard/refunds', [RefundController::class, 'index'])->name('dashboard.refunds.index');
     Route::post('/dashboard/refunds/{refund}/approve', [RefundController::class, 'approve'])->name('dashboard.refunds.approve');

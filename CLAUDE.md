@@ -37,6 +37,7 @@ page weight is a product requirement, not polish.
 | Queue | Redis, or database driver until volume justifies Redis |
 | Images | Cloudinary or S3 behind Cloudflare |
 | SMS | Arkesel (`ArkeselNotifier`), behind the `Notifier` contract — falls back to log-only (`LogNotifier`) if `ARKESEL_API_KEY` is unset |
+| Browser push | Web Push (`minishlink/web-push`, `WebPushNotifier`), behind the `PushNotifier` contract — falls back to log-only (`LogPushNotifier`) if VAPID keys are unset. See realtime.md's "Web Push" section |
 
 **No SPA.** No React or Vue on the customer site.
 

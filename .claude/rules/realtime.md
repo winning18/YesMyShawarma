@@ -94,3 +94,48 @@ not by the broadcast payload directly — so it still fires correctly after a re
 reconnect. `orders/dashboard.blade.php`'s own component only owns the order-card lists and the
 browser tab title now; it does not run its own alarm loop, to avoid two independent alarms
 double-beeping on the one page that includes both.
+
+## Web Push
+
+Echo/broadcasts and the in-page alarm above only ever work while the tab is open and its JS is
+actually running — a backgrounded or minimised browser tab (and especially a locked mobile
+screen) gets throttled or fully suspended by the OS/browser, silently killing both. Web Push
+(`minishlink/web-push`, `App\Contracts\PushNotifier`) exists specifically to reach staff/
+manager/general_manager through the OS's own notification tray in that situation, independent
+of whether the tab or even the browser app is in the foreground.
+
+- **`App\Contracts\PushNotifier`** mirrors `Notifier`'s shape (SMS) — `WebPushNotifier` (real,
+  bound once `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` are configured) or `LogPushNotifier`
+  (fallback, local/testing), chosen in `AppServiceProvider` the same way `Notifier` is.
+- **`push_subscriptions`** (schema.md) is one row per subscribed browser/device, not per user —
+  the same person logged in on a phone and a tablet gets a push on both. `endpoint` (the
+  browser's own push-service URL) is the natural unique key; re-subscribing the same browser
+  updates the row in place. `PushSubscriptionController` (`/push/subscribe`,
+  `/push/unsubscribe`) registers/removes these — called from `partials/order-alert-script.blade.php`'s
+  `registerPush()`, the same shared component the in-page alarm lives in, so it's registered
+  wherever staff/manager might plausibly have the app open.
+- **`App\Services\Notifications\NewOrderPushNotifier`** is the push equivalent of the in-page
+  alarm — same audience (staff, manager, general_manager at the order's branch; never owner,
+  who doesn't operate this board — `OrderDashboardController::index()`'s own docblock), same
+  trigger condition (an order genuinely `'paid'`, needing acceptance). Two sends per order, not
+  one: staff and manager/general_manager land on different routes for "the live board"
+  (`OrderDashboardController::index()` redirects the latter to `dashboard.orders.live`), so the
+  notification's click-through has to match whichever it actually is for that recipient.
+- **Three trigger points**, each gated on the order actually being (or becoming) `'paid'`, never
+  on placement alone:
+  - `OrderCreationService::create()` — a cash/momo order is `'paid'` immediately.
+  - `OrderStateMachine::transition()`, `$to === 'paid'` — a Paystack order's own push, once the
+    webhook confirms it (it was still `pending_payment`, and so deliberately skipped, at
+    creation).
+  - `OrderTransferService::transfer()` — the destination branch's staff have never seen this
+    order; pushed only if it's still `'paid'` (unaccepted) at transfer time.
+  All three reuse `SafeBroadcast::afterCommit()` — a push is exactly as cosmetic and
+  best-effort as a broadcast, same "never break the business transaction over this" reasoning,
+  even though the class name says "Broadcast."
+- **`public/sw.js`** is a minimal service worker whose only job is handling `push` and
+  `notificationclick` — not a full PWA/offline-cache worker (CLAUDE.md's performance budget is
+  a separate, unimplemented concern). A push is only ever delivered while some service worker
+  is registered for that origin, which is the only reason this file exists.
+- A `410 Gone`/expired-subscription response from the push service means the browser itself
+  dropped it (uninstalled, cleared site data, expired) — `WebPushNotifier` deletes that row
+  rather than retrying it forever on every future order.

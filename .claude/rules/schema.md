@@ -305,3 +305,18 @@ Current keys:
   or `'0'`, read via `SettingsService::getBool()`/written via `setBool()` rather than `get()`/
   `set()` directly, so every caller agrees on the same string encoding. Off (missing row) by
   default.
+
+## Push subscriptions
+
+```
+push_subscriptions  id, user_id, endpoint (unique), public_key, auth_token
+```
+
+See realtime.md's "Web Push" section. One row per subscribed browser/device, not per user —
+`endpoint` (the browser's own push-service URL) is the natural identity, so the same person on
+a phone and a tablet gets two rows, and re-subscribing an already-known browser updates its row
+in place rather than duplicating it. `endpoint` is a plain `string(512)`, not `text` — MySQL
+can't put a unique index on a TEXT column without a prefix length, and real endpoints are well
+under that. Never branch-owned: a subscription belongs to a user's own device, not a branch,
+and `NewOrderPushNotifier` targets recipients by role/branch through `users`, not through this
+table directly.

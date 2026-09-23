@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\Scopes\BranchScope;
 use App\Services\Delivery\DeliveryFeeCalculator;
 use App\Services\Notifications\CustomerOrderNotifier;
+use App\Services\Notifications\NewOrderPushNotifier;
 use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
 
@@ -17,6 +18,7 @@ class OrderStateMachine
         private readonly DeliveryFeeCalculator $feeCalculator,
         private readonly RiderAssignmentService $riderAssignment,
         private readonly CustomerOrderNotifier $notifier,
+        private readonly NewOrderPushNotifier $pushNotifier,
     ) {}
 
     /**
@@ -182,6 +184,14 @@ class OrderStateMachine
             $branchId = $order->branch_id;
             $trackToken = $order->track_token;
             SafeBroadcast::afterCommit(fn () => OrderStatusChanged::dispatch($orderId, $branchId, $to, $trackToken));
+
+            // A Paystack order's own push — it was still 'pending_payment'
+            // (and so deliberately skipped) at OrderCreationService's own
+            // push call, and only actually needs staff's attention once the
+            // webhook lands here and confirms it.
+            if ($to === 'paid') {
+                SafeBroadcast::afterCommit(fn () => $this->pushNotifier->notify($order));
+            }
 
             // Pickup orders reach "ready" too, but never need a rider
             // (orders.md: "Pickup orders skip the rider entirely"). Nobody
