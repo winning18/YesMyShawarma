@@ -193,7 +193,7 @@ class SeoTest extends TestCase
         $response = $this->get('/this-page-does-not-exist-at-all');
 
         $response->assertNotFound();
-        $response->assertSee("We couldn&#039;t find that page", false);
+        $response->assertSee('We couldn&#039;t find that page', false);
     }
 
     /**

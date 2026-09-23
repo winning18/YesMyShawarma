@@ -13,18 +13,17 @@ use Illuminate\View\View;
 class HomeController extends Controller
 {
     /**
-     * Home page menu-item marquees, in display order. Direction alternates
-     * per row on purpose (a visual zig-zag), and hot-dogs/loaded-fries are
-     * deliberately merged into one row rather than two.
+     * Home page menu-item strips, in display order. Hot-dogs/loaded-fries
+     * are deliberately merged into one row rather than two.
      *
-     * @var list<array{title: string, slugs: list<string>, direction: string}>
+     * @var list<array{title: string, slugs: list<string>}>
      */
     private const MENU_SLIDERS = [
-        ['title' => 'Shawarma favourites', 'slugs' => ['shawarma'], 'direction' => 'right'],
-        ['title' => 'Burgers', 'slugs' => ['burgers'], 'direction' => 'left'],
-        ['title' => 'Hot Dogs & Loaded Fries', 'slugs' => ['hot-dogs', 'loaded-fries'], 'direction' => 'right'],
-        ['title' => 'Sandwiches', 'slugs' => ['sandwiches'], 'direction' => 'left'],
-        ['title' => 'Drinks', 'slugs' => ['drinks'], 'direction' => 'right'],
+        ['title' => 'Shawarma favourites', 'slugs' => ['shawarma']],
+        ['title' => 'Burgers', 'slugs' => ['burgers']],
+        ['title' => 'Hot Dogs & Loaded Fries', 'slugs' => ['hot-dogs', 'loaded-fries']],
+        ['title' => 'Sandwiches', 'slugs' => ['sandwiches']],
+        ['title' => 'Drinks', 'slugs' => ['drinks']],
     ];
 
     /** ISO weekday (WorkingHoursService's own 1=Mon..7=Sun) to schema.org's plain day name. */
@@ -122,7 +121,6 @@ class HomeController extends Controller
         return collect(self::MENU_SLIDERS)
             ->map(fn (array $slider) => [
                 'title' => $slider['title'],
-                'direction' => $slider['direction'],
                 // First slug only — enough for the "Show all" link's
                 // ?category= filter on the menu page. A slider spanning
                 // several categories (e.g. Hot Dogs & Loaded Fries) just

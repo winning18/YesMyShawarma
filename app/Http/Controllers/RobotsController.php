@@ -43,14 +43,14 @@ class RobotsController extends Controller
 
         foreach (self::AI_CRAWLERS as $bot) {
             $lines[] = "User-agent: {$bot}";
-            $lines[] = "Disallow:";
-            $lines[] = "";
+            $lines[] = 'Disallow:';
+            $lines[] = '';
         }
 
-        $lines[] = "User-agent: *";
-        $lines[] = "Disallow:";
-        $lines[] = "";
-        $lines[] = "Sitemap: ".route('sitemap');
+        $lines[] = 'User-agent: *';
+        $lines[] = 'Disallow:';
+        $lines[] = '';
+        $lines[] = 'Sitemap: '.route('sitemap');
 
         return response(implode("\n", $lines)."\n")->header('Content-Type', 'text/plain');
     }

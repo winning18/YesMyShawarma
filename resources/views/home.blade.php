@@ -142,27 +142,20 @@
         </div>
 
         {{--
-            Auto-scrolling strips driven by JS nudging scrollLeft (see
-            menuSlider() below), not the hero's discrete slide-index
-            slider — the two are different UX patterns on purpose.
-            scrollLeft (not a CSS transform) is the single source of truth
-            for position so native touch/mouse/trackpad scrolling and the
-            automatic advance never fight each other — pausing on
-            interaction and resuming later just stops/starts nudging the
-            same value the user themselves just scrolled.
-
-            No @scroll listener on purpose: the auto-advance itself writes
-            to scrollLeft, which fires a native scroll event too, so
-            listening there would make the timer's own nudge look like a
-            manual touch and re-pause itself every tick — the slide would
-            never move smoothly, only creep forward once every idle
-            timeout. touchstart/mousedown/wheel already cover every real
-            manual-scroll input without that feedback loop. Direction
-            alternates row to row. Each card links to that item's own
-            product page, which already redirects to branch selection first
-            if the visitor hasn't chosen one yet (MenuController@show) —
-            clicking a specific item can't skip that step since price/
-            availability are branch-scoped.
+            Plain swipeable/scrollable strips — no JS driving them. This
+            used to auto-scroll continuously via a per-row setInterval
+            nudging scrollLeft (up to five of these running at once, one
+            per category); even throttled, that many concurrent timers
+            forcing layout on an idle page was enough to make an unrelated
+            tap (the mobile nav hamburger) feel delayed specifically on the
+            homepage. scroll-snap-x gives back a clean "slide" feel — each
+            card snaps into place on a swipe/scroll — for zero runtime
+            cost: the browser's own scroll compositor handles it, nothing
+            ever runs while the page just sits there. Each card links to
+            that item's own product page, which already redirects to
+            branch selection first if the visitor hasn't chosen one yet
+            (MenuController@show) — clicking a specific item can't skip
+            that step since price/availability are branch-scoped.
 
             A sold-out item ($item->isAvailable false — set in
             HomeController@itemsForSlugs from the selected branch's
@@ -182,21 +175,17 @@
                         {{ __('Show all') }}
                     </a>
                 </div>
-                <div
-                    x-data="menuSlider('{{ $slider['direction'] }}')"
-                    @touchstart="onInteract()" @mousedown="onInteract()" @wheel="onInteract()"
-                    class="overflow-x-auto scrollbar-hide"
-                >
+                <div class="overflow-x-auto scrollbar-hide snap-x snap-mandatory">
                     <div class="flex gap-4 w-max">
-                        @foreach ($slider['items']->concat($slider['items']) as $item)
+                        @foreach ($slider['items'] as $item)
                             @if ($item->isAvailable)
-                                <a href="{{ route('menu.show', $item) }}" class="block w-40 shrink-0 group">
+                                <a href="{{ route('menu.show', $item) }}" class="block w-40 shrink-0 snap-start group">
                                     <x-product-image :item="$item" class="w-40 h-40 mb-2 rounded-lg group-hover:opacity-90 transition" />
                                     <p class="text-sm font-semibold truncate text-brand-white">{{ $item->name }}</p>
                                     <p class="text-sm text-brand-gray-300">GH₵{{ number_format($item->base_price / 100, 2) }}</p>
                                 </a>
                             @else
-                                <div class="block w-40 shrink-0 relative" aria-disabled="true">
+                                <div class="block w-40 shrink-0 snap-start relative" aria-disabled="true">
                                     <div class="relative">
                                         <x-product-image :item="$item" class="w-40 h-40 mb-2 rounded-lg opacity-40 grayscale" />
                                         <span class="absolute top-2 left-2 bg-brand-black/80 text-brand-white text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded">
@@ -213,57 +202,4 @@
             </section>
         @endforeach
     </div>
-
-    <script>
-        function menuSlider(direction) {
-            return {
-                paused: false,
-                idleTimer: null,
-                autoTimer: null,
-
-                init() {
-                    // scrollWidth isn't reliable until images/layout settle.
-                    requestAnimationFrame(() => this.startAuto());
-                },
-
-                startAuto() {
-                    const el = this.$el;
-                    const half = el.scrollWidth / 2;
-                    if (half <= 0) return;
-
-                    el.scrollLeft = direction === 'left' ? 0 : half;
-
-                    const pxPerSecond = half / 30; // roughly matches the old 30s-per-loop pace
-                    // 100ms, not 30 — up to five of these rows run at once
-                    // (one per category), each nudging scrollLeft on its
-                    // own timer; at 30ms that's up to ~165 forced-reflow
-                    // writes/second system-wide just from this page sitting
-                    // idle, enough to make an unrelated tap (the mobile nav
-                    // hamburger) feel delayed specifically on the homepage.
-                    // step scales with intervalMs, so the average scroll
-                    // speed is unchanged — just larger, less frequent nudges.
-                    const intervalMs = 100;
-                    const step = pxPerSecond * (intervalMs / 1000);
-
-                    this.autoTimer = setInterval(() => {
-                        if (this.paused) return;
-
-                        if (direction === 'left') {
-                            el.scrollLeft += step;
-                            if (el.scrollLeft >= half) el.scrollLeft -= half;
-                        } else {
-                            el.scrollLeft -= step;
-                            if (el.scrollLeft <= 0) el.scrollLeft += half;
-                        }
-                    }, intervalMs);
-                },
-
-                onInteract() {
-                    this.paused = true;
-                    clearTimeout(this.idleTimer);
-                    this.idleTimer = setTimeout(() => { this.paused = false; }, 2500);
-                },
-            };
-        }
-    </script>
 </x-customer-layout>

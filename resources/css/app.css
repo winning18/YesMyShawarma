@@ -49,11 +49,10 @@
     }
 
     /*
-     * Home page's featured-items strips scroll natively (see menuSlider()
-     * in home.blade.php, which drives scrollLeft directly rather than a
-     * CSS transform) — this just hides the scrollbar so it still reads as
-     * a clean auto-advancing strip rather than an obviously-scrollable
-     * widget, while touch/mouse/trackpad drag all keep working natively.
+     * Home page's featured-items strips (home.blade.php) scroll/snap
+     * natively via scroll-snap-x, no JS involved — this just hides the
+     * scrollbar so it reads as a clean card strip rather than an obviously
+     * scrollable widget, while touch/mouse/trackpad drag all keep working.
      */
     .scrollbar-hide {
         -ms-overflow-style: none;

@@ -284,7 +284,7 @@ class RiderDashboardTest extends TestCase
 
         $this->actingAs($rider)->get(route('rider.dashboard'))
             ->assertOk()
-            ->assertSee("order.cash_to_collect", false);
+            ->assertSee('order.cash_to_collect', false);
     }
 
     public function test_rider_orders_data_includes_the_branch_coordinate_for_directions(): void

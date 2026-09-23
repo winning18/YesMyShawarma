@@ -166,7 +166,7 @@ class PosController extends Controller
 
     /**
      * @param  array<string, mixed>  $validated
-     * @return array<int, int>  option_id => quantity
+     * @return array<int, int> option_id => quantity
      */
     private function optionQuantities(array $validated): array
     {
