@@ -205,6 +205,12 @@ class CheckoutFlowTest extends TestCase
         // flat estimate at placement.
         $this->assertSame(0, $order->delivery_fee);
         $this->assertNull($order->delivery_address_snapshot['lat']);
+
+        // The confirmation page must say so explicitly, not just quietly
+        // swap the line item — the Total shown there is still missing this
+        // amount entirely.
+        $this->get(route('checkout.confirmation', $order))
+            ->assertSee('Delivery fee: calculated on arrival');
     }
 
     public function test_paystack_is_allowed_for_delivery_checkout(): void

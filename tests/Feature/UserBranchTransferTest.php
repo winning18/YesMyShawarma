@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\Branch;
+use App\Models\Customer;
+use App\Models\Order;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -72,6 +74,46 @@ class UserBranchTransferTest extends TestCase
 
         $this->assertFalse($this->hasRoleAt($kofi, 'rider', $this->odumase));
         $this->assertTrue($this->hasRoleAt($kofi, 'rider', $this->pokuase));
+    }
+
+    /**
+     * Regression test: transferring is removeRole(fromBranch) +
+     * assignRole(toBranch) under the hood (UserManagementService::
+     * changeBranch), so the same in-flight-order guard removeRole() itself
+     * enforces must block this too — moving Kofi to Pokuase while he's
+     * still carrying a dispatched order at Odumase would leave that order
+     * pointed at a rider who no longer holds the role there.
+     */
+    public function test_cannot_transfer_a_rider_still_carrying_an_active_order_at_the_from_branch(): void
+    {
+        $owner = $this->makeOwner();
+        $kofi = User::factory()->create();
+        $this->assignRoleAt($kofi, 'rider', $this->odumase);
+
+        $customer = Customer::create(['phone' => '+2332'.random_int(10000000, 99999999)]);
+        $order = Order::create([
+            'reference' => 'ORD-'.uniqid(),
+            'track_token' => bin2hex(random_bytes(16)),
+            'customer_id' => $customer->id,
+            'branch_id' => $this->odumase->id,
+            'fulfilment_type' => 'delivery',
+            'subtotal' => 3500,
+            'total' => 3500,
+            'payment_method' => 'cash',
+            'payment_status' => 'pending',
+        ]);
+        $order->status = 'dispatched';
+        $order->placed_at = now();
+        $order->rider_id = $kofi->id;
+        $order->save();
+
+        $response = $this->actingAs($owner)
+            ->post(route('dashboard.users.change_branch', $kofi), $this->transferPayload('rider', $this->odumase, $this->pokuase));
+
+        $response->assertSessionHasErrors('role');
+
+        $this->assertTrue($this->hasRoleAt($kofi, 'rider', $this->odumase));
+        $this->assertFalse($this->hasRoleAt($kofi, 'rider', $this->pokuase));
     }
 
     public function test_owner_can_transfer_staff_and_manager(): void

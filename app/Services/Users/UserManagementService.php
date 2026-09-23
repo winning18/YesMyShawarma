@@ -2,7 +2,10 @@
 
 namespace App\Services\Users;
 
+use App\Exceptions\UserManagementException;
 use App\Models\Branch;
+use App\Models\Order;
+use App\Models\Scopes\BranchScope;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -114,9 +117,33 @@ class UserManagementService
         });
     }
 
+    /**
+     * A rider still carrying a ready/dispatched order at $branchId must be
+     * reassigned or finish it first — orders.rider_id has no mechanism to
+     * notice its rider no longer holds the role there (see OrderPolicy::
+     * advanceStatus and RiderAssignmentService), so removing the role out
+     * from under an in-flight order would silently strand it with a rider
+     * who can no longer act on it, only surfacing later as a bare
+     * "This action is unauthorized" the next time they try. changeBranch()
+     * funnels through here too (it removes the "from" role), so this one
+     * check covers both a plain role removal and a branch transfer.
+     */
     public function removeRole(User $user, string $role, int $branchId): void
     {
+        if ($role === 'rider' && $this->isCarryingAnOrderAt($user, $branchId)) {
+            throw UserManagementException::riderHasActiveOrders();
+        }
+
         $this->withTeamId($branchId, fn () => $user->removeRole($role));
+    }
+
+    private function isCarryingAnOrderAt(User $user, int $branchId): bool
+    {
+        return Order::withoutGlobalScope(BranchScope::class)
+            ->where('branch_id', $branchId)
+            ->where('rider_id', $user->id)
+            ->whereIn('status', ['ready', 'dispatched'])
+            ->exists();
     }
 
     /**

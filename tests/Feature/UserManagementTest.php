@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\Branch;
+use App\Models\Customer;
+use App\Models\Order;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -147,6 +149,47 @@ class UserManagementTest extends TestCase
 
         app(PermissionRegistrar::class)->setPermissionsTeamId($this->branch->id);
         $this->assertFalse($user->fresh()->hasRole('staff'));
+    }
+
+    /**
+     * Regression test for a rider getting stuck with a bare "This action
+     * is unauthorized" on their own in-flight order: removing their rider
+     * role at a branch while they still carry a ready/dispatched order
+     * there must be blocked — orders.rider_id has no way to notice the
+     * role is gone.
+     */
+    public function test_cannot_remove_a_riders_role_while_they_carry_an_active_order_at_that_branch(): void
+    {
+        $owner = $this->makeOwner();
+        $rider = User::factory()->create();
+        $this->assignRoleAt($rider, 'rider', $this->branch);
+
+        $customer = Customer::create(['phone' => '+2332'.random_int(10000000, 99999999)]);
+        $order = Order::create([
+            'reference' => 'ORD-'.uniqid(),
+            'track_token' => bin2hex(random_bytes(16)),
+            'customer_id' => $customer->id,
+            'branch_id' => $this->branch->id,
+            'fulfilment_type' => 'delivery',
+            'subtotal' => 3500,
+            'total' => 3500,
+            'payment_method' => 'cash',
+            'payment_status' => 'pending',
+        ]);
+        $order->status = 'dispatched';
+        $order->placed_at = now();
+        $order->rider_id = $rider->id;
+        $order->save();
+
+        $response = $this->actingAs($owner)->delete(route('dashboard.users.roles.remove', $rider), [
+            'role' => 'rider',
+            'branch_id' => $this->branch->id,
+        ]);
+
+        $response->assertSessionHasErrors('role');
+
+        app(PermissionRegistrar::class)->setPermissionsTeamId($this->branch->id);
+        $this->assertTrue($rider->fresh()->hasRole('rider'));
     }
 
     public function test_owner_cannot_remove_their_own_owner_role(): void

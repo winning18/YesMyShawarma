@@ -144,6 +144,15 @@ permission plus relational rules that can't be expressed in the matrix alone:
   `OrderPolicy::checkAtOrderBranch` — holding `manager` at Branch A does not let them transfer
   someone whose current assignment is at Branch B.
 - `owner`-role assignments are never transferable through this action at all.
+- **A rider still carrying a `ready`/`dispatched` order at the "from" branch can't be moved or
+  have that role removed at all** — `UserManagementService::removeRole()` checks for one first
+  and throws `UserManagementException` if found (`changeBranch()` is `removeRole()` +
+  `assignRole()` under the hood, so this one check covers both a plain role removal and a
+  transfer). `orders.rider_id` has no mechanism of its own to notice its rider no longer holds
+  the role at that branch — without this guard the order would silently strand with a rider who
+  can no longer act on it, `OrderPolicy::advanceStatus`/`arrive` denying every action on it from
+  then on with nothing more informative than a bare "This action is unauthorized" the next time
+  they try. Reassign the order or let them complete it first.
 
 `dashboard.performance` (`PerformanceController`) is the business-overview page `owner`,
 `general_manager` and `manager` all land on at `/dashboard` — but none of the three see the

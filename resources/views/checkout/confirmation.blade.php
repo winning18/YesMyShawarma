@@ -36,6 +36,22 @@
         </div>
     @endif
 
+    {{--
+        delivery_fee sits at 0 for exactly one reason on a delivery order:
+        the customer's location wasn't captured at checkout (denied,
+        unsupported, or the explicit opt-out) — see orders.md's "Delivery
+        fee at arrival" section. The order summary's line item already
+        says "Calculated on arrival" quietly, but the Total just below it
+        is still missing that amount entirely, so this banner is the
+        explicit heads-up that more cash will be owed at the door.
+    --}}
+    @if ($order->fulfilment_type === 'delivery' && $order->delivery_fee === 0)
+        <div class="max-w-xl mx-auto mt-6 rounded-lg bg-brand-yellow-light border border-brand-yellow text-brand-black text-sm px-4 py-3 text-left">
+            <p class="font-semibold">{{ __('Delivery fee: calculated on arrival') }}</p>
+            <p>{{ __("We couldn't get your location, so your rider will work out the exact delivery fee once they reach you and let you know the amount — please have a little extra cash ready to pay them directly, on top of the total shown below.") }}</p>
+        </div>
+    @endif
+
     <div class="max-w-xl mx-auto mt-8 border border-brand-gray-100 rounded-lg p-6 text-left">
         <h2 class="font-semibold mb-3">{{ __('Order summary') }}</h2>
         <p class="text-sm text-brand-gray-500 mb-3">{{ $order->branch->name }}</p>

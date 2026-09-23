@@ -31,6 +31,22 @@
                     <p class="font-semibold" x-text="'{{ __('Thank you,') }} ' + (order.customer?.name ?? '{{ __('there') }}') + '!'"></p>
                 </div>
 
+                {{--
+                    delivery_fee sits at 0 for exactly one reason on a
+                    delivery order: the customer's location wasn't captured
+                    at checkout — see orders.md's "Delivery fee at arrival"
+                    section. Reactive (x-if, not a static @if like the
+                    closed-branch notice above) so it disappears the moment
+                    the rider marks arrived and a real fee is calculated —
+                    the polled order data already reflects that.
+                --}}
+                <template x-if="order.fulfilment_type === 'delivery' && order.delivery_fee === 0">
+                    <div class="rounded-lg bg-brand-yellow-light border border-brand-yellow text-brand-black text-sm px-4 py-3">
+                        <p class="font-semibold">{{ __('Delivery fee: calculated on arrival') }}</p>
+                        <p>{{ __("We couldn't get your location, so your rider will work out the exact delivery fee once they reach you and let you know the amount — please have a little extra cash ready to pay them directly.") }}</p>
+                    </div>
+                </template>
+
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                     <div class="md:col-span-2">
                         <template x-if="isProblemStatus(order.status)">

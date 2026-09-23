@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\UserManagementException;
 use App\Http\Requests\CreateUserRequest;
 use App\Models\Branch;
 use App\Models\User;
@@ -160,7 +161,11 @@ class UserManagementController extends Controller
             return back()->withErrors(['role' => __('You cannot remove your own owner role.')]);
         }
 
-        $users->removeRole($user, $validated['role'], (int) $validated['branch_id']);
+        try {
+            $users->removeRole($user, $validated['role'], (int) $validated['branch_id']);
+        } catch (UserManagementException $e) {
+            return back()->withErrors(['role' => $e->getMessage()]);
+        }
 
         return back()->with('status', __('Role removed.'));
     }
@@ -185,9 +190,13 @@ class UserManagementController extends Controller
         // there, not here.
         Gate::authorize('changeBranch', [$user, $validated['role'], (int) $validated['from_branch_id']]);
 
-        $users->changeBranch(
-            $user, $validated['role'], (int) $validated['from_branch_id'], (int) $validated['to_branch_id']
-        );
+        try {
+            $users->changeBranch(
+                $user, $validated['role'], (int) $validated['from_branch_id'], (int) $validated['to_branch_id']
+            );
+        } catch (UserManagementException $e) {
+            return back()->withErrors(['role' => $e->getMessage()]);
+        }
 
         $toBranch = Branch::findOrFail($validated['to_branch_id']);
 
