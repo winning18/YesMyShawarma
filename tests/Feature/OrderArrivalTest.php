@@ -20,6 +20,8 @@ class OrderArrivalTest extends TestCase
 
     private Branch $branch;
 
+    private Branch $otherBranch;
+
     private MenuItem $menuItem;
 
     protected function setUp(): void
@@ -31,6 +33,11 @@ class OrderArrivalTest extends TestCase
         $this->branch = Branch::create([
             'name' => 'Osu', 'slug' => 'osu', 'phone' => '+233200000001', 'address' => 'A',
             'lat' => 5.5560, 'lng' => -0.1969, 'opens_at' => '10:00', 'closes_at' => '22:00',
+        ]);
+
+        $this->otherBranch = Branch::create([
+            'name' => 'East Legon', 'slug' => 'east-legon', 'phone' => '+233200000002', 'address' => 'B',
+            'lat' => 5.6, 'lng' => -0.2, 'opens_at' => '10:00', 'closes_at' => '22:00',
         ]);
 
         $category = Category::create(['name' => 'Wraps', 'slug' => 'wraps']);
@@ -226,5 +233,33 @@ class OrderArrivalTest extends TestCase
 
         $order->refresh();
         $response->assertJsonPath('data.cash_to_collect', $order->total);
+    }
+
+    /**
+     * Regression test for a "No query results for model [Order]" 404 seen
+     * on staging: a rider who can now hold the role at more than one
+     * branch may have their session's current_branch_id pointing
+     * somewhere other than the order they're actually carrying. Order's
+     * resolveRouteBinding() must resolve by id alone (bypassing
+     * BranchScope) and let OrderPolicy::arrive() — which checks rider_id
+     * against the order's own row, not the ambient session branch — be
+     * what actually decides access.
+     */
+    public function test_rider_can_mark_arrived_even_when_their_current_branch_differs_from_the_orders(): void
+    {
+        // Holds the rider role at both branches — the multi-branch case
+        // orders.md's rider assignment section describes.
+        $rider = $this->makeRider();
+        app(PermissionRegistrar::class)->setPermissionsTeamId($this->otherBranch->id);
+        $rider->assignRole('rider');
+
+        $order = $this->makeOrder(['rider_id' => $rider->id]);
+
+        $this->actingAs($rider)
+            ->withSession(['current_branch_id' => $this->otherBranch->id])
+            ->postJson(route('orders.arrive', $order), ['lat' => 5.6560, 'lng' => -0.1969])
+            ->assertOk();
+
+        $this->assertNotNull($order->fresh()->arrived_at);
     }
 }

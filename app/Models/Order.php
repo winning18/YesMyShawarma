@@ -112,4 +112,26 @@ class Order extends Model
     {
         return $this->hasOne(Review::class);
     }
+
+    /**
+     * Every `{order}` route (dashboard.orders.show, accept, reject,
+     * advance, cancel, assignRider, confirmMomoPayment, transferBranch,
+     * adjustDeliveryFee, arrive, refunds.store) is reached by a specific
+     * id, not derived from a BranchScope-filtered list — and every one of
+     * them re-checks the order's own branch_id through OrderPolicy
+     * (checkAtOrderBranch, or arrive()'s own rider_id check), the same
+     * "correct against this order, not the ambient session" reasoning
+     * OrderPolicy's own docblock already documents. Without this override,
+     * a rider or manager who has since switched to a *different* branch
+     * than the one an in-flight order belongs to — routine now that riders
+     * can hold the role at more than one branch (orders.md's rider
+     * assignment section) — would get a bare "No query results for model"
+     * 404 instead of ever reaching that policy check.
+     */
+    public function resolveRouteBinding($value, $field = null): ?self
+    {
+        return $this->resolveRouteBindingQuery($this, $value, $field)
+            ->withoutGlobalScope(BranchScope::class)
+            ->first();
+    }
 }

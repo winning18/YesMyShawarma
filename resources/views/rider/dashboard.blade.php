@@ -10,6 +10,24 @@
     >
         <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
 
+            {{--
+                Two separate fields on purpose, not one shared "error" —
+                actionError (a failed tap on Arrived/Picked up/Delivered/
+                failed) must survive the very next background refresh,
+                whether that's this same action's own fetchData() call or
+                an unrelated realtime push a few seconds later; error
+                (couldn't load the order list at all) is expected to
+                self-clear the moment a refresh actually succeeds. Sharing
+                one field meant a real action error was flashing and
+                disappearing the instant the follow-up list refresh
+                succeeded, before a rider had a chance to read it.
+            --}}
+            <template x-if="actionError">
+                <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-4 flex items-start justify-between gap-3">
+                    <span x-text="actionError"></span>
+                    <button type="button" @click="actionError = null" class="shrink-0 font-bold leading-none text-red-700 hover:text-red-900" aria-label="{{ __('Dismiss') }}">&times;</button>
+                </div>
+            </template>
             <template x-if="error">
                 <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-4" x-text="error"></div>
             </template>
@@ -136,6 +154,7 @@
             return {
                 mine: [],
                 error: null,
+                actionError: null,
                 arriving: null,
 
                 init() {
@@ -172,6 +191,8 @@
                 },
 
                 async advance(orderId, to) {
+                    this.actionError = null;
+
                     try {
                         const response = await fetch(`/dashboard/orders/${orderId}/advance`, {
                             method: 'POST',
@@ -187,10 +208,8 @@
                             const payload = await response.json().catch(() => null);
                             throw new Error(payload?.message || 'Action failed');
                         }
-
-                        this.error = null;
                     } catch (e) {
-                        this.error = e.message;
+                        this.actionError = e.message;
                     } finally {
                         this.fetchData();
                     }
@@ -275,6 +294,8 @@
                 },
 
                 async postArrival(orderId, lat, lng) {
+                    this.actionError = null;
+
                     try {
                         const response = await fetch(`/dashboard/orders/${orderId}/arrive`, {
                             method: 'POST',
@@ -290,10 +311,8 @@
                             const payload = await response.json().catch(() => null);
                             throw new Error(payload?.message || 'Action failed');
                         }
-
-                        this.error = null;
                     } catch (e) {
-                        this.error = e.message;
+                        this.actionError = e.message;
                     } finally {
                         this.arriving = null;
                         this.fetchData();

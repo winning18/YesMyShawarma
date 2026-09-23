@@ -7,6 +7,7 @@ use App\Events\OrderStatusChanged;
 use App\Exceptions\OrderTransferException;
 use App\Models\Branch;
 use App\Models\Order;
+use App\Models\Scopes\BranchScope;
 use App\Models\User;
 use App\Services\Delivery\DeliveryFeeCalculator;
 use App\Support\SafeBroadcast;
@@ -70,8 +71,11 @@ class OrderTransferService
             // Same reasoning as OrderStateMachine::transition() — lock and
             // sync onto the authoritative row before deciding anything, in
             // case a concurrent action (e.g. the kitchen just accepted it)
-            // landed since $order was loaded.
-            $locked = Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
+            // landed since $order was loaded. withoutGlobalScope for the
+            // same reason too: $order is already resolved and authorized
+            // against its own branch, not the actor's ambient session one.
+            $locked = Order::withoutGlobalScope(BranchScope::class)
+                ->whereKey($order->id)->lockForUpdate()->firstOrFail();
             $order->setRawAttributes($locked->getAttributes(), true);
 
             if (! in_array($order->status, ['paid', 'accepted'], true)) {

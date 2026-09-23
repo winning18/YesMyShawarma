@@ -205,6 +205,33 @@ is already a stricter, sufficient filter on its own, and a rider can now hold th
 than one branch (see below), so an order they're genuinely carrying must never disappear just
 because their ambient session branch has since changed.
 
+**A single `Order` can be acted on by someone whose ambient session branch isn't that order's
+branch** — a rider or `general_manager` holding their role at more than one branch is the
+routine case, not an edge case. Two call sites this affects, both already fixed to the same
+pattern:
+
+- **`Order $order` route-model binding** (`orders.accept`/`reject`/`advance`/`cancel`/
+  `assign-rider`/`confirm-momo-payment`/`transfer-branch`/`delivery-fee`/`arrive`, and
+  `dashboard.orders.show`) — `Order::resolveRouteBinding()` deliberately bypasses `BranchScope`,
+  because every one of these routes re-checks the order's own `branch_id` through `OrderPolicy`
+  (or, for `arrive`, its own `rider_id` check) immediately after. The policy is the actual
+  authorization; the ambient session branch was never meant to gate reaching it at all.
+- **A service's own "lock the row for the transaction" re-fetch** — `OrderStateMachine::
+  transition()`, `OrderTransferService::transfer()`, `DeliveryFeeAdjustmentService::adjust()`,
+  `OrderArrivalService::arrive()`, and `RefundService::complete()` (the original example of this
+  pattern) all build a *fresh* `Order::whereKey(...)->lockForUpdate()` query inside their own
+  transaction, for concurrency safety against a *different* concurrent request — not as a second
+  permission check. That fresh query re-registers `BranchScope` unless explicitly bypassed
+  (`Order::withoutGlobalScope(BranchScope::class)->whereKey(...)`), which would silently 404 the
+  very order the caller already resolved and was already authorized against, the moment the
+  actor's session branch differs from it. `$order->fresh()`/`->refresh()` are unaffected — both
+  already use `newQueryWithoutScopes()` internally — this only bites a hand-written `Model::
+  whereKey()`/`::where()` query.
+
+Getting either of these wrong doesn't look like a security hole (the policy still runs — or
+would, if binding even succeeded) — it looks like a plain crash: "No query results for model
+[Order]" surfacing as a bare 404 for a legitimate, correctly-permissioned actor.
+
 ## Stock management
 
 `stock.manage` (create/edit stock items, set quantities and low-stock thresholds) is

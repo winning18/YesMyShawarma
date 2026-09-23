@@ -4,6 +4,7 @@ namespace App\Services\Orders;
 
 use App\Exceptions\OrderArrivalException;
 use App\Models\Order;
+use App\Models\Scopes\BranchScope;
 use App\Models\User;
 use App\Services\Delivery\DeliveryFeeCalculator;
 use Illuminate\Support\Facades\DB;
@@ -27,7 +28,16 @@ class OrderArrivalService
     public function arrive(Order $order, User $rider, ?float $lat, ?float $lng): Order
     {
         return DB::transaction(function () use ($order, $rider, $lat, $lng) {
-            $locked = Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
+            // withoutGlobalScope — same reasoning as RefundService::complete()
+            // and OrderStateMachine::transition()'s own lock re-fetch: $order
+            // is the specific row already resolved and authorized (rider_id
+            // === $rider->id, checked above/in the policy), not a fresh
+            // permission check — re-scoping to the rider's ambient session
+            // branch would 404 them the moment it differs from this order's,
+            // which is routine for a rider holding the role at more than one
+            // branch.
+            $locked = Order::withoutGlobalScope(BranchScope::class)
+                ->whereKey($order->id)->lockForUpdate()->firstOrFail();
             $order->setRawAttributes($locked->getAttributes(), true);
 
             if ($order->fulfilment_type !== 'delivery') {

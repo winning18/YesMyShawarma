@@ -10,6 +10,24 @@
     >
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
 
+            {{--
+                Two separate fields on purpose, not one shared "error" —
+                actionError (a failed accept/reject/advance/transfer/
+                adjust-fee/etc.) must survive the very next background
+                refresh, whether that's this same action's own fetchData()
+                call or an unrelated realtime push/poll a few seconds
+                later; error (couldn't load the order board at all) is
+                expected to self-clear the moment a refresh actually
+                succeeds. Sharing one field meant a real action error was
+                flashing and disappearing the instant the follow-up board
+                refresh succeeded, before staff had a chance to read it.
+            --}}
+            <template x-if="actionError">
+                <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-4 flex items-start justify-between gap-3">
+                    <span x-text="actionError"></span>
+                    <button type="button" @click="actionError = null" class="shrink-0 font-bold leading-none text-red-700 hover:text-red-900" aria-label="{{ __('Dismiss') }}">&times;</button>
+                </div>
+            </template>
             <template x-if="error">
                 <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-4" x-text="error"></div>
             </template>
@@ -239,6 +257,7 @@
                 branches,
                 canAdjustFee,
                 error: null,
+                actionError: null,
                 originalTitle: document.title,
                 now: Date.now(),
                 COOKING_SECONDS: 15 * 60,
@@ -465,7 +484,7 @@
 
                     const fee = parseFloat(input);
                     if (isNaN(fee) || fee < 0) {
-                        this.error = @js(__('Enter a valid amount.'));
+                        this.actionError = @js(__('Enter a valid amount.'));
                         return;
                     }
 
@@ -473,6 +492,8 @@
                 },
 
                 async post(url, body = {}) {
+                    this.actionError = null;
+
                     try {
                         const response = await fetch(url, {
                             method: 'POST',
@@ -488,10 +509,8 @@
                             const payload = await response.json().catch(() => null);
                             throw new Error(payload?.message || 'Action failed');
                         }
-
-                        this.error = null;
                     } catch (e) {
-                        this.error = e.message;
+                        this.actionError = e.message;
                     } finally {
                         this.fetchData();
                     }

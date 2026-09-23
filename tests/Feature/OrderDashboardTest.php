@@ -237,11 +237,11 @@ class OrderDashboardTest extends TestCase
 
     public function test_staff_from_another_branch_is_forbidden(): void
     {
-        // Route model binding resolves before ResolveCurrentBranch has a
-        // chance to populate the session on this (first) request, so
-        // BranchScope hasn't filtered the order out of existence yet — the
-        // policy's per-order-branch check is the actual backstop here,
-        // hence 403 rather than a scope-driven 404.
+        // Order::resolveRouteBinding() deliberately bypasses BranchScope
+        // (see its own docblock) — access is decided by OrderPolicy's
+        // per-order-branch check, not by whether this order happens to
+        // match whatever branch is current in session, hence 403 rather
+        // than a scope-driven 404.
         $staff = User::factory()->create();
         $this->assignRoleAt($staff, 'staff', $this->branchA);
 
@@ -273,6 +273,30 @@ class OrderDashboardTest extends TestCase
 
         $this->actingAs($owner)
             ->postJson(route('orders.accept', $orderAtOtherBranch))
+            ->assertOk()
+            ->assertJsonPath('data.status', 'accepted');
+    }
+
+    /**
+     * Regression test for a "No query results for model [Order]" 404 seen
+     * on staging: a general_manager can hold that role at more than one
+     * branch (permissions.md), so their session's current_branch_id can
+     * legitimately point somewhere other than an order they're trying to
+     * act on. OrderStateMachine::transition()'s own lock re-fetch used to
+     * re-apply BranchScope to a query it built fresh, 404ing before the
+     * (correct) per-order-branch policy check ever ran.
+     */
+    public function test_general_manager_can_accept_an_order_at_a_branch_other_than_their_current_session_one(): void
+    {
+        $manager = User::factory()->create();
+        $this->assignRoleAt($manager, 'general_manager', $this->branchA);
+        $this->assignRoleAt($manager, 'general_manager', $this->branchB);
+
+        $orderAtBranchB = $this->makeOrder($this->branchB);
+
+        $this->actingAs($manager)
+            ->withSession(['current_branch_id' => $this->branchA->id])
+            ->postJson(route('orders.accept', $orderAtBranchB))
             ->assertOk()
             ->assertJsonPath('data.status', 'accepted');
     }

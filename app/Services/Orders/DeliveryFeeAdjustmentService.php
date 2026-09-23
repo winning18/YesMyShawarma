@@ -4,6 +4,7 @@ namespace App\Services\Orders;
 
 use App\Exceptions\DeliveryFeeAdjustmentException;
 use App\Models\Order;
+use App\Models\Scopes\BranchScope;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -28,7 +29,12 @@ class DeliveryFeeAdjustmentService
     public function adjust(Order $order, int $newFeePesewas, User $actor, string $actorType, ?string $reason, ?int $shiftId = null): Order
     {
         return DB::transaction(function () use ($order, $newFeePesewas, $actor, $actorType, $reason, $shiftId) {
-            $locked = Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
+            // withoutGlobalScope — same reasoning as RefundService::complete()
+            // and OrderStateMachine::transition()'s own lock re-fetch: $order
+            // is already resolved and authorized against its own branch, not
+            // the actor's ambient session one.
+            $locked = Order::withoutGlobalScope(BranchScope::class)
+                ->whereKey($order->id)->lockForUpdate()->firstOrFail();
             $order->setRawAttributes($locked->getAttributes(), true);
 
             if ($order->fulfilment_type !== 'delivery') {

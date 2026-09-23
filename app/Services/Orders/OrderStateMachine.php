@@ -5,6 +5,7 @@ namespace App\Services\Orders;
 use App\Events\OrderStatusChanged;
 use App\Exceptions\InvalidOrderTransitionException;
 use App\Models\Order;
+use App\Models\Scopes\BranchScope;
 use App\Services\Delivery\DeliveryFeeCalculator;
 use App\Services\Notifications\CustomerOrderNotifier;
 use App\Support\SafeBroadcast;
@@ -87,7 +88,18 @@ class OrderStateMachine
             // concurrent transition (e.g. a duplicate webhook delivery
             // processed by another worker, or a double-clicked action) may
             // have already changed it since $order was loaded.
-            $locked = Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
+            //
+            // withoutGlobalScope(BranchScope::class) here for the same
+            // reason as RefundService::complete()'s own lock re-fetch: this
+            // is the specific row the caller already resolved and was
+            // already authorized against (OrderPolicy checks the order's
+            // own branch_id, never the ambient session one) — re-scoping to
+            // whatever branch happens to be current in session would 404 a
+            // legitimate actor whose session branch differs from this
+            // order's, which is routine now that riders (and potentially
+            // managers) can hold a role at more than one branch.
+            $locked = Order::withoutGlobalScope(BranchScope::class)
+                ->whereKey($order->id)->lockForUpdate()->firstOrFail();
             $order->setRawAttributes($locked->getAttributes(), true);
 
             $from = $order->status;
