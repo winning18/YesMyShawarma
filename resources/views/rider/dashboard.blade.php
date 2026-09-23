@@ -79,7 +79,7 @@
                                                 + (order.branch?.lat && order.branch?.lng ? '&origin=' + order.branch.lat + ',' + order.branch.lng : '')
                                                 + '&destination=' + order.delivery_address.lat + ',' + order.delivery_address.lng"
                                             target="_blank" rel="noopener"
-                                            class="inline-flex items-center gap-1.5 mt-2 text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+                                            class="inline-flex items-center justify-center gap-1.5 mt-2 px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-md hover:bg-red-700"
                                         >
                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" class="w-4 h-4 shrink-0">
                                                 <path d="M12 21s7-6.5 7-11.5a7 7 0 1 0-14 0C5 14.5 12 21 12 21Z" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" />
