@@ -16,6 +16,7 @@ use App\Services\Orders\OrderCreationService;
 use App\Services\Payments\PaystackClient;
 use App\Services\Payments\PaystackPaymentService;
 use App\Services\Promotions\PromotionService;
+use App\Services\Settings\SettingsService;
 use App\Services\Visitors\VisitorSessionService;
 use Closure;
 use Illuminate\Http\JsonResponse;
@@ -26,7 +27,7 @@ use Illuminate\View\View;
 
 class CheckoutController extends Controller
 {
-    public function show(CartService $cart, WorkingHoursService $workingHours): View|RedirectResponse
+    public function show(CartService $cart, WorkingHoursService $workingHours, SettingsService $settings): View|RedirectResponse
     {
         $summary = $cart->summary();
 
@@ -42,6 +43,11 @@ class CheckoutController extends Controller
             'deliveryAvailable' => $deliveryAreas->isNotEmpty(),
             'deliveryAreas' => $deliveryAreas,
             'customer' => Auth::guard('customer')->user(),
+            // See payments.md's "Paystack on/off" section — while Paystack
+            // isn't live (e.g. the merchant account is still under
+            // review), checkout falls back to cash-only rather than
+            // offering a payment method that can't actually be charged.
+            'paystackEnabled' => $settings->getBool(SettingsService::PAYSTACK_ENABLED),
             // For the client-side fee estimate shown the instant location
             // is captured — the authoritative fee is still always priced
             // server-side (OrderCreationService, or OrderStateMachine at
@@ -63,6 +69,7 @@ class CheckoutController extends Controller
         OrderCreationService $orders,
         PaystackPaymentService $paystack,
         VisitorSessionService $visitors,
+        SettingsService $settings,
     ): RedirectResponse {
         $summary = $cart->summary();
 
@@ -118,7 +125,12 @@ class CheckoutController extends Controller
             $rules['lng'] = ['nullable', 'numeric'];
         }
 
-        $rules['payment_method'] = ['required', 'in:cash,paystack'];
+        // Enforced here, not just hidden in the view — a client-tampered
+        // request can't place a paystack order while it's switched off,
+        // same "never trust the client" reasoning as everything else this
+        // validates. See payments.md's "Paystack on/off" section.
+        $paystackEnabled = $settings->getBool(SettingsService::PAYSTACK_ENABLED);
+        $rules['payment_method'] = ['required', $paystackEnabled ? 'in:cash,paystack' : 'in:cash'];
         $rules['promo_code'] = ['nullable', 'string'];
 
         $validated = $request->validate($rules);

@@ -24,6 +24,7 @@ class SettingsController extends Controller
         return view('dashboard.settings.index', [
             'posPrefix' => $settings->get(SettingsService::ORDER_REFERENCE_PREFIX_POS, 'YMGS-POS'),
             'webPrefix' => $settings->get(SettingsService::ORDER_REFERENCE_PREFIX_WEB, 'YMGS-WEB'),
+            'paystackEnabled' => $settings->getBool(SettingsService::PAYSTACK_ENABLED),
         ]);
     }
 
@@ -35,6 +36,7 @@ class SettingsController extends Controller
 
         $settings->set(SettingsService::ORDER_REFERENCE_PREFIX_POS, strtoupper($validated['order_reference_prefix_pos']));
         $settings->set(SettingsService::ORDER_REFERENCE_PREFIX_WEB, strtoupper($validated['order_reference_prefix_web']));
+        $settings->setBool(SettingsService::PAYSTACK_ENABLED, $request->boolean('paystack_enabled'));
 
         return back()->with('status', __('Settings updated.'));
     }

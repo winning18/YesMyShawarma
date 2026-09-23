@@ -20,6 +20,10 @@ class UpdateSettingsRequest extends FormRequest
             // rejected outright rather than silently allowed.
             'order_reference_prefix_pos' => ['required', 'string', 'max:20', 'regex:/^[A-Za-z0-9-]+$/'],
             'order_reference_prefix_web' => ['required', 'string', 'max:20', 'regex:/^[A-Za-z0-9-]+$/'],
+            // A checkbox, so absent (unchecked) is expected, not invalid —
+            // SettingsController reads it via $request->boolean(), which
+            // already treats a missing key as false.
+            'paystack_enabled' => ['sometimes', 'boolean'],
         ];
     }
 }

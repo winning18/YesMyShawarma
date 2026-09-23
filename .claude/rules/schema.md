@@ -288,12 +288,20 @@ settings  id, key (unique), value (text, nullable)
 
 General-purpose key-value store for admin-editable business configuration
 (`App\Services\Settings\SettingsService`, reached via the "Settings" sidebar item —
-`settings.manage`, owner-only). Not branch-owned, so it's exempt from the branch global scope.
+`settings.manage`, owner/manager/general_manager per permissions.md). Not branch-owned, so it's
+exempt from the branch global scope.
 
-Current keys: `order_reference_prefix_pos`, `order_reference_prefix_web` — the prefix
-`OrderCreationService::generateReference()` uses per channel (default `YMGS-POS`/`YMGS-WEB`
-when unset, so a fresh install needs no seeding). The reference itself is
-`{prefix}-{6-character random code}` — letters/digits only, ambiguous characters (0/O, 1/I/L)
-excluded, same alphabet as `UserManagementService`'s temporary passwords, since this is another
-value read off a screen or receipt and typed back in by hand. Changing a prefix only affects
-orders placed after the change; existing `orders.reference` values are never rewritten.
+Current keys:
+
+- `order_reference_prefix_pos`, `order_reference_prefix_web` — the prefix
+  `OrderCreationService::generateReference()` uses per channel (default `YMGS-POS`/`YMGS-WEB`
+  when unset, so a fresh install needs no seeding). The reference itself is
+  `{prefix}-{6-character random code}` — letters/digits only, ambiguous characters (0/O, 1/I/L)
+  excluded, same alphabet as `UserManagementService`'s temporary passwords, since this is
+  another value read off a screen or receipt and typed back in by hand. Changing a prefix only
+  affects orders placed after the change; existing `orders.reference` values are never
+  rewritten.
+- `paystack_enabled` — see payments.md's "Paystack on/off" section. Stored as the string `'1'`
+  or `'0'`, read via `SettingsService::getBool()`/written via `setBool()` rather than `get()`/
+  `set()` directly, so every caller agrees on the same string encoding. Off (missing row) by
+  default.

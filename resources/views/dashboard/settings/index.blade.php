@@ -43,6 +43,17 @@
                 {{ __('Letters, numbers and dashes only. Only applies to new orders. Existing references are never changed.') }}
             </p>
 
+            <div class="border-t border-gray-100 pt-6">
+                <h3 class="font-semibold text-gray-800">{{ __('Paystack') }}</h3>
+                <p class="text-sm text-gray-500 mb-3">
+                    {{ __('Whether customers can pay online (card / mobile money) at checkout. While this is off, checkout only offers cash — nothing else about the site changes.') }}
+                </p>
+                <label class="flex items-center gap-2 text-sm text-gray-800">
+                    <input type="checkbox" name="paystack_enabled" value="1" {{ old('paystack_enabled', $paystackEnabled) ? 'checked' : '' }} class="rounded border-gray-300">
+                    {{ __('Accept Paystack payments at checkout') }}
+                </label>
+            </div>
+
             <x-primary-button>{{ __('Save settings') }}</x-primary-button>
         </form>
     </div>

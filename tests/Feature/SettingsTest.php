@@ -66,6 +66,35 @@ class SettingsTest extends TestCase
         $this->assertSame('SHAWARMA-WEB', $settings->get(SettingsService::ORDER_REFERENCE_PREFIX_WEB));
     }
 
+    public function test_paystack_is_off_by_default(): void
+    {
+        $settings = app(SettingsService::class);
+
+        $this->assertFalse($settings->getBool(SettingsService::PAYSTACK_ENABLED));
+    }
+
+    public function test_owner_can_turn_paystack_on_and_off(): void
+    {
+        $owner = $this->makeOwner();
+        $settings = app(SettingsService::class);
+
+        $this->actingAs($owner)->put(route('dashboard.settings.update'), [
+            'order_reference_prefix_pos' => 'YMGS-POS',
+            'order_reference_prefix_web' => 'YMGS-WEB',
+            'paystack_enabled' => '1',
+        ])->assertRedirect();
+
+        $this->assertTrue($settings->getBool(SettingsService::PAYSTACK_ENABLED));
+
+        // Omitted entirely, same as an unchecked checkbox submitting nothing.
+        $this->actingAs($owner)->put(route('dashboard.settings.update'), [
+            'order_reference_prefix_pos' => 'YMGS-POS',
+            'order_reference_prefix_web' => 'YMGS-WEB',
+        ])->assertRedirect();
+
+        $this->assertFalse($settings->getBool(SettingsService::PAYSTACK_ENABLED));
+    }
+
     public function test_prefix_rejects_spaces_and_punctuation(): void
     {
         $owner = $this->makeOwner();

@@ -11,6 +11,7 @@ use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\Promotion;
 use App\Services\Delivery\DeliveryFeeCalculator;
+use App\Services\Settings\SettingsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
@@ -81,6 +82,8 @@ class CheckoutFlowTest extends TestCase
 
     public function test_paystack_checkout_redirects_to_paystack_authorization_url(): void
     {
+        app(SettingsService::class)->setBool(SettingsService::PAYSTACK_ENABLED, true);
+
         Http::fake([
             'api.paystack.co/transaction/initialize' => Http::response([
                 'status' => true,
@@ -101,6 +104,44 @@ class CheckoutFlowTest extends TestCase
         $order = Order::first();
         $this->assertSame('pending_payment', $order->status);
         $this->assertDatabaseHas('payments', ['order_id' => $order->id, 'provider' => 'paystack', 'status' => 'pending']);
+    }
+
+    /**
+     * Regression test for the Paystack on/off setting (payments.md) —
+     * default-off, and enforced server-side, not just hidden from the
+     * checkout form.
+     */
+    public function test_paystack_is_rejected_when_the_setting_is_off(): void
+    {
+        $this->addToCart(1);
+
+        $response = $this->post(route('checkout.store'), [
+            'name' => 'Ama',
+            'phone' => '0241111111',
+            'payment_method' => 'paystack',
+        ]);
+
+        $response->assertSessionHasErrors('payment_method');
+        $this->assertDatabaseCount('orders', 0);
+    }
+
+    public function test_checkout_page_only_offers_cash_when_paystack_is_off(): void
+    {
+        $this->addToCart(1);
+
+        $this->get(route('checkout.show'))
+            ->assertDontSee('name="payment_method" value="paystack"', false)
+            ->assertSee('Online payment is temporarily unavailable');
+    }
+
+    public function test_checkout_page_offers_paystack_when_enabled(): void
+    {
+        app(SettingsService::class)->setBool(SettingsService::PAYSTACK_ENABLED, true);
+
+        $this->addToCart(1);
+
+        $this->get(route('checkout.show'))
+            ->assertSee('name="payment_method" value="paystack"', false);
     }
 
     public function test_checkout_with_empty_cart_redirects_back_to_cart(): void
@@ -215,6 +256,8 @@ class CheckoutFlowTest extends TestCase
 
     public function test_paystack_is_allowed_for_delivery_checkout(): void
     {
+        app(SettingsService::class)->setBool(SettingsService::PAYSTACK_ENABLED, true);
+
         Http::fake([
             'api.paystack.co/transaction/initialize' => Http::response([
                 'status' => true,

@@ -314,19 +314,34 @@
 
                 <div>
                     <label class="block text-sm font-medium mb-2">{{ __('Payment method') }} <span class="text-brand-red">*</span></label>
-                    <div class="flex gap-6 text-sm">
-                        <label class="flex items-center gap-2">
-                            <input type="radio" name="payment_method" value="cash" x-model="paymentMethod">
-                            {{ __('Cash on delivery / pickup') }}
-                        </label>
-                        <label class="flex items-center gap-2">
-                            <input type="radio" name="payment_method" value="paystack" x-model="paymentMethod">
-                            {{ __('Pay now (card / mobile money)') }}
-                        </label>
-                    </div>
-                    <p x-show="fulfilmentType === 'delivery' && paymentMethod === 'paystack' && estimatedFee === null" x-cloak class="text-xs text-brand-gray-500 mt-1">
-                        {{ __("We'll charge the order subtotal now. If your delivery fee ends up being calculated when your rider arrives, that part is settled in cash.") }}
-                    </p>
+                    @if ($paystackEnabled)
+                        <div class="flex gap-6 text-sm">
+                            <label class="flex items-center gap-2">
+                                <input type="radio" name="payment_method" value="cash" x-model="paymentMethod">
+                                {{ __('Cash on delivery / pickup') }}
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="radio" name="payment_method" value="paystack" x-model="paymentMethod">
+                                {{ __('Pay now (card / mobile money)') }}
+                            </label>
+                        </div>
+                        <p x-show="fulfilmentType === 'delivery' && paymentMethod === 'paystack' && estimatedFee === null" x-cloak class="text-xs text-brand-gray-500 mt-1">
+                            {{ __("We'll charge the order subtotal now. If your delivery fee ends up being calculated when your rider arrives, that part is settled in cash.") }}
+                        </p>
+                    @else
+                        {{--
+                            Only one option right now (payments.md's
+                            "Paystack on/off" section), so there's nothing
+                            to choose — a single disabled-looking radio
+                            would just invite a "why can't I click this?"
+                            support question. Still a real, submitted
+                            input; paymentMethod already defaults to 'cash'
+                            above.
+                        --}}
+                        <input type="hidden" name="payment_method" value="cash">
+                        <p class="text-sm text-brand-black">{{ __('Cash on delivery / pickup') }}</p>
+                        <p class="text-xs text-brand-gray-500 mt-1">{{ __('Online payment is temporarily unavailable — pay the rider or at the counter instead.') }}</p>
+                    @endif
                 </div>
                 </div>
 

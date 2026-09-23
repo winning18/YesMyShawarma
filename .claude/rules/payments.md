@@ -31,6 +31,27 @@ anything but `paystack` — `momo` included.
 Reports (`OrderReportService::financialSummary()`'s `revenue_by_payment_method`) group by
 whatever string is stored here — a new value shows up as its own row with no code change.
 
+## Paystack on/off
+
+`SettingsService::PAYSTACK_ENABLED` (`paystack_enabled`, schema.md's Settings section) is a
+dashboard-editable kill switch for the whole `paystack` payment method — built for exactly the
+situation of the Paystack merchant account still being under review, where the option can't
+actually be charged and shouldn't be offered. **Off by default** (no seeding needed on a fresh
+install).
+
+- `CheckoutController::show()` passes `paystackEnabled` to the view; `checkout/show.blade.php`
+  shows both payment options when true, or a plain "cash only" line (still submitting
+  `payment_method=cash` via a hidden input) when false. Nothing else about the page changes —
+  delivery, pickup, promo codes all work exactly the same.
+- `CheckoutController::store()` re-checks the same flag server-side (`Rule::in('cash')` vs
+  `Rule::in('cash', 'paystack')`) — a client-tampered request can't place a paystack order while
+  it's switched off, same "never trust the client" reasoning as every other checkout rule.
+- Deliberately **does not** touch `PaystackPaymentService`, `PaystackClient`, or the webhook
+  route at all — an order already placed via Paystack before the flag was flipped off must still
+  be confirmable when its webhook eventually lands. This only gates *new* order placement.
+- POS never offered Paystack in the first place (staff-entered orders are `cash`/`momo` only —
+  see below), so it's unaffected by this flag either way.
+
 ## The webhook is the only source of truth
 
 **Never mark an order paid because of what a client-side callback or a redirect return says.**
