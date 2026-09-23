@@ -49,7 +49,7 @@
                                     <button
                                         type="button" @click="adjustDeliveryFee(order)"
                                         class="text-xs text-blue-600 hover:underline mt-1"
-                                        x-text="@js(__('Estimated fee')) + ': ' + formatMoney(order.delivery_fee) + ' — ' + @js(__('adjust'))"
+                                        x-text="feeButtonLabel(order)"
                                     ></button>
                                 </template>
                             </div>
@@ -158,7 +158,7 @@
                                     <button
                                         type="button" @click="adjustDeliveryFee(order)"
                                         class="text-xs text-blue-600 hover:underline mt-1"
-                                        x-text="@js(__('Estimated fee')) + ': ' + formatMoney(order.delivery_fee) + ' — ' + @js(__('adjust'))"
+                                        x-text="feeButtonLabel(order)"
                                     ></button>
                                 </template>
                             </div>
@@ -377,6 +377,18 @@
                     return [order.delivery_address.area_name, order.delivery_address.landmark]
                         .filter(Boolean)
                         .join(', ');
+                },
+
+                // Backs the adjust-fee button's own label — a fee still
+                // sitting at 0 (customer never shared a location, rider
+                // hasn't arrived yet) reads as "not yet set", not as a
+                // wrong estimate needing correction; only once it's
+                // non-zero (arrival-calculated, or already set here) does
+                // "adjust" make sense as the verb.
+                feeButtonLabel(order) {
+                    return order.delivery_fee === 0
+                        ? @js(__('Delivery fee not yet set')) + ' — ' + @js(__('set fee'))
+                        : @js(__('Estimated fee')) + ': ' + this.formatMoney(order.delivery_fee) + ' — ' + @js(__('adjust'));
                 },
 
                 // Cash still needs collecting on arrival — staff/riders

@@ -75,9 +75,10 @@ fold them into a broader permission.
 
 `orders.adjust_delivery_fee` (`DeliveryFeeAdjustmentService`, `OrderPolicy::adjustDeliveryFee`)
 sits at the same tier as `void`/`refund`/`discount` — manager and above, unlike
-`transfer_branch` which staff also holds. It corrects a flat delivery-fee estimate (see
-orders.md's "Delivery fee estimate" section) for a specific address; it directly changes what a
-rider is told to collect in cash, so it stays behind the higher tier rather than staff's.
+`transfer_branch` which staff also holds. It sets or corrects the delivery fee for an address
+whose customer never shared a location at checkout (see orders.md's "Delivery fee at arrival"
+section); it directly changes what a rider is told to collect in cash, so it stays behind the
+higher tier rather than staff's.
 
 `orders.transfer_branch` (`OrderTransferService`, `OrderPolicy::transfer`) moves an order to a
 different branch after placement. Unlike `void`/`refund`/`discount`, `staff` holds this one too

@@ -8,11 +8,12 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Corrects a flat, estimated delivery fee (OrderCreationService's fallback
- * when a customer's location wasn't captured — see
- * DeliveryFeeCalculator::MINIMUM_DELIVERY_FEE_PESEWAS) for a specific
- * address, once staff can see the landmark/area and judge that the flat
- * estimate looks wrong for this particular delivery.
+ * Sets or corrects the delivery fee for an order whose customer never
+ * shared a location at checkout — normally left at 0 until the rider
+ * marks the order arrived and it's calculated from their own position
+ * (see OrderArrivalService and orders.md's "Delivery fee at arrival"
+ * section), but staff can step in earlier or correct that figure once
+ * they can see the landmark/area and judge it looks wrong.
  *
  * Deliberately narrower than OrderTransferService's money handling: this
  * fee was never charged through Paystack in the first place (only the

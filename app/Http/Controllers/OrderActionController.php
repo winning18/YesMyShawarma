@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\DeliveryFeeAdjustmentException;
+use App\Exceptions\OrderArrivalException;
 use App\Exceptions\OrderTransferException;
 use App\Exceptions\PaymentException;
 use App\Exceptions\RefundException;
@@ -13,6 +14,7 @@ use App\Models\Order;
 use App\Models\User;
 use App\Services\Branches\BranchContext;
 use App\Services\Orders\DeliveryFeeAdjustmentService;
+use App\Services\Orders\OrderArrivalService;
 use App\Services\Orders\OrderStateMachine;
 use App\Services\Orders\OrderTransferService;
 use App\Services\Orders\RiderAssignmentService;
@@ -211,11 +213,12 @@ class OrderActionController extends Controller
     }
 
     /**
-     * See orders.md's "Delivery fee estimate" section — corrects a flat
-     * estimate (charged when a customer's location wasn't captured) for
-     * this specific address. Never reachable for a precisely-priced order;
-     * the service enforces that too, this is just what keeps the button
-     * from appearing when it wouldn't apply.
+     * See orders.md's "Delivery fee at arrival" section — lets staff set or
+     * correct a delivery fee for an address whose customer never shared a
+     * location at checkout, once they can see the landmark/area and judge
+     * it. Never reachable for a precisely-priced order; the service
+     * enforces that too, this is just what keeps the button from appearing
+     * when it wouldn't apply.
      */
     public function adjustDeliveryFee(Request $request, Order $order, DeliveryFeeAdjustmentService $fees, BranchContext $context, ShiftService $shifts): OrderResource|JsonResponse
     {
@@ -234,6 +237,36 @@ class OrderActionController extends Controller
                 $shifts->activeFor($request->user())?->id,
             );
         } catch (DeliveryFeeAdjustmentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return new OrderResource($order->fresh(['items.options', 'customer', 'payments']));
+    }
+
+    /**
+     * See orders.md's "Delivery fee at arrival" section. lat/lng are the
+     * rider's own position, captured client-side the moment they tap
+     * "Arrived" — best-effort, not required: OrderArrivalService falls
+     * back to the flat minimum fee if geolocation genuinely isn't
+     * available, so a rider is never blocked from completing a delivery
+     * over their phone's GPS failing.
+     */
+    public function arrive(Request $request, Order $order, OrderArrivalService $arrivals): OrderResource|JsonResponse
+    {
+        Gate::authorize('arrive', $order);
+
+        $validated = $request->validate([
+            'lat' => ['nullable', 'numeric'],
+            'lng' => ['nullable', 'numeric'],
+        ]);
+
+        try {
+            $arrivals->arrive(
+                $order, $request->user(),
+                isset($validated['lat']) ? (float) $validated['lat'] : null,
+                isset($validated['lng']) ? (float) $validated['lng'] : null,
+            );
+        } catch (OrderArrivalException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
 

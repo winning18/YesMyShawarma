@@ -358,7 +358,7 @@ class OrderCreationServiceTest extends TestCase
         $this->assertSame(5.5565, $order->delivery_address_snapshot['lat']);
     }
 
-    public function test_delivery_cash_order_charges_the_flat_minimum_fee_when_location_is_not_captured(): void
+    public function test_delivery_cash_order_leaves_the_fee_unset_when_location_is_not_captured(): void
     {
         $data = new PlaceOrderData(
             customerPhone: '+233241111111',
@@ -378,11 +378,12 @@ class OrderCreationServiceTest extends TestCase
 
         $order = $this->service->create($data);
 
-        // No location means no precise distance, so this is a flat
-        // estimate rather than 0 — see DeliveryFeeAdjustmentService for how
-        // staff correct it for a specific address afterward.
-        $this->assertSame(DeliveryFeeCalculator::MINIMUM_DELIVERY_FEE_PESEWAS, $order->delivery_fee);
-        $this->assertSame(7000 + DeliveryFeeCalculator::MINIMUM_DELIVERY_FEE_PESEWAS, $order->total);
+        // No location means no precise distance, so the fee stays 0 until
+        // OrderArrivalService calculates it from the rider's own position
+        // once they mark the order arrived — see orders.md's "Delivery fee
+        // at arrival" section.
+        $this->assertSame(0, $order->delivery_fee);
+        $this->assertSame(7000, $order->total);
         $this->assertNull($order->delivery_address_snapshot['lat']);
     }
 

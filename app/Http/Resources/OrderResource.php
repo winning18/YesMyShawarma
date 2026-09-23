@@ -32,22 +32,32 @@ class OrderResource extends JsonResource
             'total' => $this->total,
             'delivery_fee' => $this->fulfilment_type === 'delivery' ? $this->delivery_fee : null,
             // What's still owed in cash at the door — 0 for a fully
-            // prepaid order, the full total for cash, and just the
-            // delivery-fee estimate for a paystack order whose location
-            // wasn't captured (paystack only ever charges the subtotal it
-            // knew about at placement in that case — see
-            // OrderCreationService's docblock). Riders/staff should collect
-            // this figure, never blindly assume "paystack means nothing to
-            // collect".
+            // prepaid order, the full total for cash. When the customer
+            // never shared their location at checkout, delivery_fee (and
+            // so this figure) is deliberately 0 until the rider marks the
+            // order arrived — see OrderArrivalService and orders.md's
+            // "Delivery fee at arrival" section. Riders/staff should
+            // collect this figure, never blindly assume "paystack means
+            // nothing to collect": a paystack order only ever charges the
+            // subtotal online, never the delivery fee, when the location
+            // wasn't captured (see OrderCreationService's docblock).
             'cash_to_collect' => $this->cashToCollectPesewas(),
-            // Whether delivery_fee is a flat estimate (see
-            // DeliveryFeeCalculator::MINIMUM_DELIVERY_FEE_PESEWAS) rather
-            // than priced from the customer's actual shared location — a
-            // yes/no signal, not the coordinate itself, so it's safe for
+            // Whether delivery_fee is still open to a manual staff
+            // correction (DeliveryFeeAdjustmentService) rather than
+            // precisely priced from the customer's own checkout location —
+            // a yes/no signal, not the coordinate itself, so it's safe for
             // staff/managers to see even though the raw lat/lng stays
-            // rider-only (see delivery_address below).
+            // rider-only (see delivery_address below). True both before
+            // and after the rider marks arrived: an arrival-calculated fee
+            // (from the rider's own GPS) is still just as correctable as
+            // one still sitting at 0 waiting on arrival.
             'delivery_fee_is_estimate' => $this->fulfilment_type === 'delivery'
                 && ($this->delivery_address_snapshot['lat'] ?? null) === null,
+            // Gates the rider's own "Mark delivered" button — see
+            // orders.md's "Delivery fee at arrival" section. Not sent to
+            // staff/managers as a distinct concern; nobody but the
+            // assigned rider acts on it.
+            'arrived_at' => $this->arrived_at?->toIso8601String(),
             'placed_at' => $this->placed_at?->toIso8601String(),
             // No dedicated preparing_at column — derived from order_events,
             // same pattern as EscalateUnacknowledgedOrders' paidAt. Drives

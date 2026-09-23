@@ -167,35 +167,51 @@ refund it can trigger stays behind the same approval boundary staff always has).
   picks it up — landing in "Needs acknowledgement" or "In progress" purely off the order's own
   status, same as any other refetch).
 
-## Delivery fee estimate
+## Delivery fee at arrival
 
-`OrderCreationService::resolveDelivery()` always prices `delivery_fee` immediately at
-placement now — precisely from the customer's shared location when it was captured, or a flat
-`DeliveryFeeCalculator::MINIMUM_DELIVERY_FEE_PESEWAS` (GHS 10) estimate when it wasn't (denied
-geolocation, unsupported browser, or the checkout page's explicit opt-out checkbox). This used
-to stay at 0 forever in the no-location case — nothing ever recomputed it later, so the
-delivery shipped free and nobody was ever told to collect anything for it. Charging the flat
-minimum immediately means every delivery order always has a real, visible fee from the moment
-it's placed.
+`OrderCreationService::resolveDelivery()` prices `delivery_fee` immediately at placement only
+when the customer's location was actually captured at checkout. When it wasn't (denied
+geolocation, unsupported browser, or the checkout page's explicit opt-out checkbox),
+`delivery_fee` deliberately stays at 0 — guessing a flat estimate at placement and correcting
+it later turned out to be the wrong shape: it charged some customers for a delivery that ended
+up closer, and left staff needing to actively spot and fix every estimate. Instead, nothing is
+charged until the rider actually reaches the door.
 
+- **`OrderArrivalService`** (`OrderPolicy::arrive`, the order's own assigned rider only) is
+  what the rider's "Arrived" button calls — required before "Mark delivered" becomes available
+  on *every* delivery, not just the no-location ones (`OrderResource.arrived_at`, null until
+  then, gates that button client-side; the policy and service both re-enforce it server-side).
+  If `delivery_fee` is still 0 at that moment, this is also where it finally gets calculated —
+  from the *rider's own GPS position* now that they're standing at the customer's location,
+  using the same `DeliveryFeeCalculator` rate/rounding/floor as everywhere else, falling back
+  to `DeliveryFeeCalculator::MINIMUM_DELIVERY_FEE_PESEWAS` if the rider's own geolocation isn't
+  available either. A non-zero `delivery_fee` (a real checkout-time location, or a prior
+  `DeliveryFeeAdjustmentService` correction) is never overwritten — arrival only ever fills in
+  a fee nobody has priced yet. This is a bookkeeping `order_events` row
+  (`from_status === to_status`, `meta.action === 'arrived'`), not a new order status — the
+  state machine stays `dispatched` → `delivered`/`failed` exactly as documented above.
 - **`OrderResource.cash_to_collect`** is what a rider/staff should actually collect in cash —
   never assume `payment_method === 'cash'` is the only case that needs collecting. A paystack
-  order priced with a flat estimate only ever had its *subtotal* charged online (there's no
-  route to charge a Paystack transaction again after the fact), so the estimated fee is still
-  owed in cash even though the order is "paid via Paystack". `cash_to_collect` is `total` minus
-  whatever was actually charged through Paystack — 0 for a fully prepaid order, the full total
-  for cash, just the fee for a paystack-plus-estimate order.
+  order only ever had its *subtotal* charged online when location wasn't captured (there's no
+  route to charge a Paystack transaction again after the fact), so once the fee is known it's
+  still owed in cash even though the order is "paid via Paystack". Before arrival, an
+  unpriced delivery's `cash_to_collect` simply doesn't yet include the fee — the rider dashboard
+  tells the rider this explicitly rather than letting a 0/low figure read as "nothing to
+  collect" (`feePending()` in `resources/views/rider/dashboard.blade.php`).
 - **`OrderResource.delivery_fee_is_estimate`** is a yes/no signal (not the coordinate) for
-  whether the fee is a flat estimate rather than precisely priced — safe for staff/managers to
-  see even though the raw lat/lng stays rider-only (see schema.md's Customers section).
+  whether the fee is still open to a manual staff correction rather than precisely priced from
+  the customer's own checkout location — true both before and after arrival, since an
+  arrival-calculated fee is just as correctable as one still sitting at 0. Safe for
+  staff/managers to see even though the raw lat/lng stays rider-only (see schema.md's Customers
+  section).
 - **`DeliveryFeeAdjustmentService`** (`orders.adjust_delivery_fee`, manager and above — see
-  permissions.md) lets staff correct a flat estimate for a specific address once they can see
-  the landmark/area and judge it looks wrong. Only reachable for a delivery order not yet in a
-  terminal status, and only while the fee is still an estimate — a precisely-priced order is
-  never adjustable this way. Never touches a refund: this fee was never charged through
-  Paystack in the first place, so there's nothing to refund or absorb, unlike
-  `OrderTransferService`'s money handling — it's purely a correction to what the rider is told
-  to collect.
+  permissions.md) lets staff set or correct the fee for an address whose customer never shared
+  a location, at any point before a terminal status — before the rider arrives, or after, same
+  as arrival itself never overwriting a value someone already set. Never reachable once the
+  customer's own checkout location has precisely priced the fee. Never touches a refund: this
+  fee was never charged through Paystack in the first place, so there's nothing to refund or
+  absorb, unlike `OrderTransferService`'s money handling — it's purely a correction to what the
+  rider is told to collect.
 
 ## Totals
 
@@ -205,8 +221,9 @@ Compute in this order, always server-side:
 2. `discount_total` = promotion applied to subtotal, capped at subtotal
 3. `delivery_fee` = `DeliveryFeeCalculator::calculate()` — haversine distance from the branch ×
    a flat rate per km, zero for pickup. Only priced here when geolocation was captured at
-   checkout; otherwise deferred to the `delivered` transition (see schema.md's "Delivery
-   areas" section — `delivery_areas` itself is a rider-facing label, not part of pricing).
+   checkout; otherwise deferred to the rider marking the order arrived (see this file's
+   "Delivery fee at arrival" section, and schema.md's "Delivery areas" section —
+   `delivery_areas` itself is a rider-facing label, not part of pricing).
 4. `total` = subtotal − discount_total + delivery_fee
 
 Never trust a client-supplied total. Recalculate on every write and reject mismatches.

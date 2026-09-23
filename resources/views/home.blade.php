@@ -234,7 +234,15 @@
                     el.scrollLeft = direction === 'left' ? 0 : half;
 
                     const pxPerSecond = half / 30; // roughly matches the old 30s-per-loop pace
-                    const intervalMs = 30;
+                    // 100ms, not 30 — up to five of these rows run at once
+                    // (one per category), each nudging scrollLeft on its
+                    // own timer; at 30ms that's up to ~165 forced-reflow
+                    // writes/second system-wide just from this page sitting
+                    // idle, enough to make an unrelated tap (the mobile nav
+                    // hamburger) feel delayed specifically on the homepage.
+                    // step scales with intervalMs, so the average scroll
+                    // speed is unchanged — just larger, less frequent nudges.
+                    const intervalMs = 100;
                     const step = pxPerSecond * (intervalMs / 1000);
 
                     this.autoTimer = setInterval(() => {

@@ -79,6 +79,21 @@ class OrderPolicy
     }
 
     /**
+     * Only the order's own assigned rider, only while it's actually
+     * dispatched and not already marked arrived — matches
+     * OrderArrivalService's own checks, so the button doesn't appear at
+     * all once neither applies. No staff/manager override: this is a
+     * physical fact only the rider standing at the door can attest to.
+     */
+    public function arrive(User $user, Order $order): bool
+    {
+        return $order->fulfilment_type === 'delivery'
+            && $order->status === 'dispatched'
+            && $order->arrived_at === null
+            && $order->rider_id === $user->id;
+    }
+
+    /**
      * Same eligibility window as OrderTransferService itself — 'paid' or
      * 'accepted' only, before any kitchen has started on it. Checked here
      * too (not just in the service) so the button doesn't even appear once
@@ -91,10 +106,10 @@ class OrderPolicy
     }
 
     /**
-     * Only meaningful for a delivery order still in flight, whose fee is a
-     * flat estimate rather than a precisely-priced one — the service
-     * itself re-checks both, this just keeps the button from appearing at
-     * all once neither applies.
+     * Only meaningful for a delivery order still in flight, whose fee
+     * isn't precisely priced from the customer's own checkout location —
+     * the service itself re-checks both, this just keeps the button from
+     * appearing at all once neither applies.
      */
     public function adjustDeliveryFee(User $user, Order $order): bool
     {

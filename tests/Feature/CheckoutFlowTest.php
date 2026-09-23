@@ -180,7 +180,7 @@ class CheckoutFlowTest extends TestCase
         $this->assertDatabaseCount('orders', 0);
     }
 
-    public function test_delivery_checkout_without_live_location_charges_the_flat_minimum_fee(): void
+    public function test_delivery_checkout_without_live_location_leaves_the_fee_unset_until_arrival(): void
     {
         $area = DeliveryArea::create(['name' => 'Osu']);
 
@@ -200,7 +200,10 @@ class CheckoutFlowTest extends TestCase
 
         $response->assertRedirect(route('checkout.confirmation', $order));
         $this->assertSame('delivery', $order->fulfilment_type);
-        $this->assertSame(DeliveryFeeCalculator::MINIMUM_DELIVERY_FEE_PESEWAS, $order->delivery_fee);
+        // See orders.md's "Delivery fee at arrival" section — the fee is
+        // deliberately deferred to OrderArrivalService, not charged as a
+        // flat estimate at placement.
+        $this->assertSame(0, $order->delivery_fee);
         $this->assertNull($order->delivery_address_snapshot['lat']);
     }
 

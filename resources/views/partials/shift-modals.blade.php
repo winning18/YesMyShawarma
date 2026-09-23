@@ -7,7 +7,10 @@
 
 {{-- Start shift modal — always dismissable by clicking through, except
      when forceStart is true (staff, no active shift yet): no backdrop
-     click, no close button, until they actually start one. --}}
+     click, no close button, until they actually start one — a "Log out"
+     button takes its place instead, so someone who isn't ready to start a
+     shift right now isn't trapped on this screen with no way out but to
+     start one anyway. --}}
 <div x-show="startModalOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
     <div class="fixed inset-0 bg-black/50" @click="closeStartModal()"></div>
 
@@ -28,6 +31,13 @@
                 type="button" @click="closeStartModal()" x-show="!forceStart"
                 class="px-4 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50"
             >{{ __('Cancel') }}</button>
+            <form method="POST" action="{{ route('logout') }}" x-show="forceStart">
+                @csrf
+                <button
+                    type="submit"
+                    class="px-4 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50"
+                >{{ __('Log out') }}</button>
+            </form>
             <button
                 type="button" @click="confirmStart()"
                 class="px-4 py-2 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-900"

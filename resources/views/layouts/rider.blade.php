@@ -40,19 +40,14 @@
                     @include('layouts.rider-navigation-links')
                 </nav>
 
-                <div class="border-t border-gray-100 p-4 shrink-0 text-sm" x-data="shiftWidget()" x-init="init()">
-                    <div x-show="active" class="text-gray-500 mb-2">
-                        {{ __('On shift') }} <span x-text="branch"></span>
-                    </div>
-                    <button
-                        type="button" x-show="!active" @click="start()"
-                        class="w-full px-3 py-1.5 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-900 mb-3"
-                    >{{ __('Start shift') }}</button>
-                    <button
-                        type="button" x-show="active" @click="end()"
-                        class="w-full px-3 py-1.5 bg-gray-200 text-gray-800 text-sm font-semibold rounded-md hover:bg-gray-300 mb-3"
-                    >{{ __('End shift') }}</button>
-
+                {{--
+                    No shift toggle here — a rider's availability is driven
+                    by being logged in and their current branch
+                    (RiderAssignmentService), not a shift they'd have to
+                    remember to start (see orders.md's rider assignment
+                    section). Shift start/end stayed staff-only.
+                --}}
+                <div class="border-t border-gray-100 p-4 shrink-0 text-sm">
                     <div class="text-gray-800 font-medium truncate">{{ Auth::user()?->name }}</div>
                     <form method="POST" action="{{ route('rider.logout') }}">
                         @csrf
@@ -117,7 +112,7 @@
 
             <div class="flex-1 flex flex-col min-w-0">
                 <!-- Mobile top bar -->
-                <div class="md:hidden flex items-center justify-between h-16 px-4 bg-white border-b border-gray-100 shrink-0" x-data="shiftWidget()" x-init="init()">
+                <div class="md:hidden flex items-center justify-between h-16 px-4 bg-white border-b border-gray-100 shrink-0">
                     <div class="flex items-center gap-1">
                         <button @click="sidebarOpen = true" aria-label="{{ __('Open menu') }}" class="p-2 -ms-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none">
                             <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
@@ -127,18 +122,6 @@
                         <a href="{{ route('rider.dashboard') }}">
                             <x-application-logo class="block h-8 w-auto" />
                         </a>
-                    </div>
-
-                    <div class="flex items-center gap-2 text-xs">
-                        <span x-show="active" class="text-gray-500">{{ __('On shift') }}</span>
-                        <button
-                            type="button" x-show="!active" @click="start()"
-                            class="px-3 py-1.5 bg-gray-800 text-white text-xs font-semibold rounded-md hover:bg-gray-900"
-                        >{{ __('Start shift') }}</button>
-                        <button
-                            type="button" x-show="active" @click="end()"
-                            class="px-3 py-1.5 bg-gray-200 text-gray-800 text-xs font-semibold rounded-md hover:bg-gray-300"
-                        >{{ __('End shift') }}</button>
                     </div>
                 </div>
 
@@ -155,7 +138,5 @@
                 </main>
             </div>
         </div>
-
-        @include('partials.shift-widget-script')
     </body>
 </html>

@@ -45,18 +45,19 @@ class OrderCreationService
      * everything else behaves identically regardless of caller.
      *
      * Deliberately NOT handled here, each for its own reason:
-     * - recomputing the delivery_fee later: resolveDelivery() below always
-     *   prices it immediately at placement now — precisely when location
-     *   was captured, a flat minimum-fee estimate when it wasn't (see
-     *   DeliveryFeeCalculator::MINIMUM_DELIVERY_FEE_PESEWAS and
-     *   DeliveryFeeAdjustmentService for correcting that estimate for a
-     *   specific address afterward). Paystack is allowed for delivery in
-     *   both cases: when location was captured, $order->total already
-     *   includes the real fee by the time PaystackPaymentService charges
-     *   it; when it wasn't, Paystack only ever charges the subtotal known
-     *   at that point, and the flat-estimate fee is collected separately
-     *   in cash by the rider — there's no route to charge a Paystack
-     *   transaction again after the fact.
+     * - recomputing the delivery_fee later: resolveDelivery() below prices
+     *   it immediately only when location was captured at checkout; when
+     *   it wasn't, delivery_fee stays 0 until OrderArrivalService
+     *   calculates it from the rider's own position the moment they mark
+     *   "Arrived" (see orders.md's "Delivery fee at arrival" section) —
+     *   not guessed at placement and corrected later. Paystack is allowed
+     *   for delivery in both cases: when location was captured,
+     *   $order->total already includes the real fee by the time
+     *   PaystackPaymentService charges it; when it wasn't, Paystack only
+     *   ever charges the subtotal known at that point, and whatever fee
+     *   arrival calculates is collected separately in cash by the rider —
+     *   there's no route to charge a Paystack transaction again after the
+     *   fact.
      * - cross-branch routing by geocoordinate (schema.md's delivery_zones
      *   section): $data->branchId is assumed already resolved by the
      *   caller. delivery_areas is just a named-area label for the rider now,
@@ -259,16 +260,14 @@ class OrderCreationService
 
         // Precise distance-based pricing when location was captured at
         // checkout. When it genuinely couldn't be (denied/unsupported, or
-        // the customer explicitly opted out) this used to stay at 0
-        // forever — nothing ever recomputed it later, so the delivery
-        // shipped free and the rider was never told to collect anything.
-        // Charging the flat minimum immediately instead means every
-        // delivery order always has a real, visible fee from the moment
-        // it's placed — see DeliveryFeeAdjustmentService for how staff can
-        // correct this flat estimate for a specific address afterward.
+        // the customer explicitly opted out), the fee deliberately stays
+        // at 0 here — it's calculated once the rider actually arrives,
+        // from their own position rather than guessed at placement time.
+        // See OrderArrivalService and orders.md's "Delivery fee at
+        // arrival" section.
         $deliveryFee = ($address->lat !== null && $address->lng !== null)
             ? $this->feeCalculator->calculate($branch, $address->lat, $address->lng)
-            : DeliveryFeeCalculator::MINIMUM_DELIVERY_FEE_PESEWAS;
+            : 0;
 
         return [
             $deliveryFee,

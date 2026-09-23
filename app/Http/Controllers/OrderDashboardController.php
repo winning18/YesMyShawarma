@@ -77,8 +77,8 @@ class OrderDashboardController extends Controller
             // request for them, not the transfer itself.
             'canTransfer' => $branchId && $user->can('orders.transfer_branch'),
             'transferBranches' => $branchId ? $transfers->otherAcceptingBranches($branchId) : collect(),
-            // Manager-and-above only (see permissions.md) — correcting a
-            // flat delivery-fee estimate changes what the rider actually
+            // Manager-and-above only (see permissions.md) — setting or
+            // correcting a delivery fee changes what the rider actually
             // collects, same tier as void/refund/discount.
             'canAdjustFee' => $branchId && $user->can('orders.adjust_delivery_fee'),
         ]);
@@ -93,8 +93,15 @@ class OrderDashboardController extends Controller
     {
         Gate::authorize('viewAny', Order::class);
 
+        // Once a rider is assigned, the order is theirs to carry through to
+        // delivered/failed — it disappears from the staff board the moment
+        // rider_id is set, not just once it's dispatched. Pickup orders
+        // never get a rider_id at all (orders.md: "pickup skips the rider
+        // entirely"), so whereNull('rider_id') alone is enough to keep
+        // every pickup order visible without needing a fulfilment_type check.
         $orders = Order::with(['items.options', 'customer', 'rider', 'events', 'payments'])
             ->whereIn('status', self::VISIBLE_STATUSES)
+            ->whereNull('rider_id')
             ->orderBy('placed_at')
             ->get();
 

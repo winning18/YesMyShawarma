@@ -62,6 +62,7 @@ class Order extends Model
             'accepted_at' => 'datetime',
             'ready_at' => 'datetime',
             'dispatched_at' => 'datetime',
+            'arrived_at' => 'datetime',
             'delivered_at' => 'datetime',
             'cancelled_at' => 'datetime',
         ];

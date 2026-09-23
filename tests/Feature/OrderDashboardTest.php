@@ -358,4 +358,26 @@ class OrderDashboardTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.status', 'failed');
     }
+
+    public function test_an_order_disappears_from_the_staff_board_the_moment_a_rider_is_assigned(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branchA);
+        $rider = User::factory()->create();
+        $this->assignRoleAt($rider, 'rider', $this->branchA);
+
+        $unassigned = $this->makeOrder($this->branchA, 'ready');
+        $assigned = $this->makeOrder($this->branchA, 'ready');
+        $assigned->rider_id = $rider->id;
+        $assigned->claimed_at = now();
+        $assigned->save();
+
+        $response = $this->actingAs($staff)->getJson(route('dashboard.orders.data'));
+
+        $response->assertOk();
+        $ids = collect($response->json('data'))->pluck('id');
+
+        $this->assertTrue($ids->contains($unassigned->id));
+        $this->assertFalse($ids->contains($assigned->id));
+    }
 }

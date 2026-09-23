@@ -86,7 +86,18 @@
                                         online (see OrderResource::cashToCollectPesewas()).
                                     --}}
                                     <p class="text-sm font-semibold text-gray-900 mt-2" x-show="order.cash_to_collect > 0" x-text="@js(__('Collect')) + ' ' + formatMoney(order.cash_to_collect) + ' ' + @js(__('cash'))"></p>
-                                    <p class="text-sm text-green-700 mt-2" x-show="order.cash_to_collect === 0">{{ __('Fully paid — nothing to collect') }}</p>
+                                    <p class="text-sm text-green-700 mt-2" x-show="order.cash_to_collect === 0 && !feePending(order)">{{ __('Fully paid — nothing to collect') }}</p>
+                                    {{--
+                                        Customer didn't share a location at checkout, so
+                                        delivery_fee is deliberately still 0 — it's only
+                                        calculated once this rider taps "Arrived", from their
+                                        own position at that moment (orders.md's "Delivery fee
+                                        at arrival"). Told upfront, not just sprung on them
+                                        as a surprise total once they tap delivered.
+                                    --}}
+                                    <p class="text-sm text-amber-700 mt-2" x-show="feePending(order)">
+                                        {{ __("Customer didn't share a location — delivery fee will be added when you tap Arrived.") }}
+                                    </p>
 
                                     <ul class="text-sm text-gray-700 list-disc list-inside mt-2 space-y-0.5">
                                         <template x-for="item in order.items" :key="item.name + item.quantity">
@@ -97,10 +108,11 @@
                                 <div class="shrink-0 flex flex-col gap-2 items-end">
                                     <button
                                         type="button"
-                                        class="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-md hover:bg-blue-700"
-                                        x-show="nextAction(order.status)"
+                                        class="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-md hover:bg-blue-700 disabled:opacity-50"
+                                        x-show="nextAction(order)"
+                                        :disabled="arriving === order.id"
                                         @click="advancePrimary(order)"
-                                        x-text="nextAction(order.status)?.label"
+                                        x-text="arriving === order.id ? @js(__('Arriving…')) : nextAction(order)?.label"
                                     ></button>
                                     <button
                                         type="button"
@@ -124,6 +136,7 @@
             return {
                 mine: [],
                 error: null,
+                arriving: null,
 
                 init() {
                     this.fetchData();
@@ -183,11 +196,36 @@
                     }
                 },
 
-                nextAction(status) {
-                    return {
-                        ready: { to: 'dispatched', label: @js(__('Picked up from branch')) },
-                        dispatched: { to: 'delivered', label: @js(__('Mark delivered')) },
-                    }[status] ?? null;
+                // 'dispatched' splits into two steps now — arrive, then
+                // deliver — so this needs the whole order, not just its
+                // status, to tell which one comes next.
+                nextAction(order) {
+                    if (order.status === 'ready') {
+                        return { type: 'advance', to: 'dispatched', label: @js(__('Picked up from branch')) };
+                    }
+
+                    if (order.status === 'dispatched' && !order.arrived_at) {
+                        return { type: 'arrive', label: @js(__('Arrived')) };
+                    }
+
+                    if (order.status === 'dispatched' && order.arrived_at) {
+                        return { type: 'advance', to: 'delivered', label: @js(__('Mark delivered')) };
+                    }
+
+                    return null;
+                },
+
+                // True only in the window before this rider has tapped
+                // Arrived on an order whose customer never shared a
+                // checkout location — delivery_fee sits at 0 deliberately
+                // until then (see nextAction/arrive and orders.md's
+                // "Delivery fee at arrival" section), so cash_to_collect
+                // being 0 here doesn't yet mean "fully paid".
+                feePending(order) {
+                    return order.fulfilment_type === 'delivery'
+                        && !order.delivery_address?.lat
+                        && !order.arrived_at
+                        && order.delivery_fee === 0;
                 },
 
                 // Any amount still owed in cash — not just a plain cash
@@ -198,8 +236,13 @@
                 // cash_to_collect is what actually decides whether to ask,
                 // not payment_method.
                 advancePrimary(order) {
-                    const action = this.nextAction(order.status);
+                    const action = this.nextAction(order);
                     if (!action) return;
+
+                    if (action.type === 'arrive') {
+                        this.arrive(order);
+                        return;
+                    }
 
                     if (action.to === 'delivered' && order.cash_to_collect > 0) {
                         const prompt = @js(__('Confirm you have collected')) + ' ' + this.formatMoney(order.cash_to_collect) + ' ' + @js(__('cash from the customer?'));
@@ -207,6 +250,54 @@
                     }
 
                     this.advance(order.id, action.to);
+                },
+
+                // Geolocation here is best-effort, never blocking — a
+                // rider whose GPS fails or who denies the prompt must
+                // still be able to complete the delivery.
+                // OrderArrivalService falls back to the flat minimum fee
+                // server-side when lat/lng come through null.
+                arrive(order) {
+                    this.arriving = order.id;
+
+                    const send = (lat, lng) => this.postArrival(order.id, lat, lng);
+
+                    if (!navigator.geolocation) {
+                        send(null, null);
+                        return;
+                    }
+
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => send(position.coords.latitude, position.coords.longitude),
+                        () => send(null, null),
+                        { timeout: 10000 },
+                    );
+                },
+
+                async postArrival(orderId, lat, lng) {
+                    try {
+                        const response = await fetch(`/dashboard/orders/${orderId}/arrive`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                Accept: 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            },
+                            body: JSON.stringify({ lat, lng }),
+                        });
+
+                        if (!response.ok) {
+                            const payload = await response.json().catch(() => null);
+                            throw new Error(payload?.message || 'Action failed');
+                        }
+
+                        this.error = null;
+                    } catch (e) {
+                        this.error = e.message;
+                    } finally {
+                        this.arriving = null;
+                        this.fetchData();
+                    }
                 },
 
                 statusLabel(status) {

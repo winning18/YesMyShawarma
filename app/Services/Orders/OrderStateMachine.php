@@ -110,16 +110,17 @@ class OrderStateMachine
                 $order->cancellation_reason = $cancellationReason;
             }
 
-            // OrderCreationService prices delivery_fee immediately at
-            // placement now, always — precisely when location was
-            // captured, a flat minimum-fee estimate when it wasn't (see
-            // DeliveryFeeCalculator::MINIMUM_DELIVERY_FEE_PESEWAS). This
-            // recomputes the same figure from the same snapshot lat/lng
-            // when it's present, which is harmless (deterministic distance
-            // × rate) — a flat-estimate order never has lat/lng at all, so
-            // this block simply never applies to it; that fee stays
-            // whatever it was estimated at (correctable beforehand via
-            // DeliveryFeeAdjustmentService, never rewritten here).
+            // OrderCreationService already priced delivery_fee at placement
+            // when location was captured at checkout. This recomputes the
+            // same figure from the same snapshot lat/lng, which is harmless
+            // (deterministic distance × rate) — a no-op in practice, just a
+            // belt-and-braces recheck at the moment delivery completes. An
+            // order whose customer never shared a location has no lat/lng
+            // here at all, so this block never applies to it — that fee was
+            // instead calculated once at arrival, from the rider's own
+            // position (see OrderArrivalService and orders.md's "Delivery
+            // fee at arrival" section), or set manually via
+            // DeliveryFeeAdjustmentService; neither is rewritten here.
             if ($to === 'delivered' && $order->fulfilment_type === 'delivery') {
                 $lat = $order->delivery_address_snapshot['lat'] ?? null;
                 $lng = $order->delivery_address_snapshot['lng'] ?? null;
