@@ -238,7 +238,8 @@
                         <div>
                             <label class="block text-sm font-medium mb-1">{{ __('Delivery area') }} <span class="text-brand-red">*</span></label>
                             <select
-                                name="area_id" required
+                                name="area_id"
+                                :required="fulfilmentType === 'delivery'"
                                 x-model="areaSelection"
                                 class="w-full rounded-md {{ $errors->has('area_id') ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300' }}"
                             >
@@ -276,7 +277,7 @@
                         <div>
                             <label class="block text-sm font-medium mb-1">{{ __('Landmark') }} <span class="text-brand-red">*</span></label>
                             <input
-                                type="text" name="landmark" required x-model="landmark" value="{{ old('landmark') }}"
+                                type="text" name="landmark" :required="fulfilmentType === 'delivery'" x-model="landmark" value="{{ old('landmark') }}"
                                 placeholder="{{ __('e.g. Opposite the blue gate, near the church') }}"
                                 class="w-full rounded-md {{ $errors->has('landmark') ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300' }}"
                             >
@@ -317,7 +318,7 @@
                     @if ($paystackEnabled)
                         <div class="flex gap-6 text-sm">
                             <label class="flex items-center gap-2">
-                                <input type="radio" name="payment_method" value="cash" x-model="paymentMethod">
+                                <input type="radio" name="payment_method" value="cash" required x-model="paymentMethod">
                                 {{ __('Cash on delivery / pickup') }}
                             </label>
                             <label class="flex items-center gap-2">
@@ -331,15 +332,17 @@
                     @else
                         {{--
                             Only one option right now (payments.md's
-                            "Paystack on/off" section), so there's nothing
-                            to choose — a single disabled-looking radio
-                            would just invite a "why can't I click this?"
-                            support question. Still a real, submitted
-                            input; paymentMethod already defaults to 'cash'
-                            above.
+                            "Paystack on/off" section) — still a real,
+                            checked, required radio rather than a hidden
+                            input + plain text, so it reads and behaves
+                            like every other choice on this form instead of
+                            a flat statement the customer can't interact
+                            with.
                         --}}
-                        <input type="hidden" name="payment_method" value="cash">
-                        <p class="text-sm text-brand-black">{{ __('Cash on delivery / pickup') }}</p>
+                        <label class="flex items-center gap-2 text-sm">
+                            <input type="radio" name="payment_method" value="cash" checked required x-model="paymentMethod">
+                            {{ __('Cash on delivery / pickup') }}
+                        </label>
                         <p class="text-xs text-brand-gray-500 mt-1">{{ __('Online payment is temporarily unavailable — pay the rider or at the counter instead.') }}</p>
                     @endif
                 </div>

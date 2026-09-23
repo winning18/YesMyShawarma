@@ -131,7 +131,36 @@ class CheckoutFlowTest extends TestCase
 
         $this->get(route('checkout.show'))
             ->assertDontSee('name="payment_method" value="paystack"', false)
-            ->assertSee('Online payment is temporarily unavailable');
+            ->assertSee('Online payment is temporarily unavailable')
+            // A real, checked, mandatory radio — not a hidden input plus a
+            // plain-text label a customer can't interact with.
+            ->assertSee('type="radio" name="payment_method" value="cash" checked required', false);
+    }
+
+    /**
+     * Regression test for "Review order" silently doing nothing on a
+     * pickup order. area_id/landmark are delivery-only fields hidden via
+     * Alpine's x-show — but a static (non-reactive) `required` attribute
+     * still counts toward the browser's native form validation even while
+     * the field is invisible (CSS display has no bearing on
+     * willValidate/checkValidity), so a hidden-but-required field blocked
+     * reportValidity() for every pickup order until the customer happened
+     * to toggle to delivery and back, incidentally filling it in. This
+     * can't be caught by posting straight to checkout.store() (that
+     * bypasses the browser's own validation entirely) — the only real
+     * regression guard is asserting the emitted HTML never regresses back
+     * to a static `required` on a delivery-only field.
+     */
+    public function test_delivery_only_fields_are_not_natively_required_for_a_pickup_order(): void
+    {
+        DeliveryArea::create(['name' => 'Osu']);
+        $this->addToCart(1);
+
+        $html = $this->get(route('checkout.show'))->getContent();
+
+        $this->assertStringNotContainsString('name="area_id" required', $html);
+        $this->assertStringNotContainsString('name="landmark" required', $html);
+        $this->assertSame(2, substr_count($html, ':required="fulfilmentType === \'delivery\'"'));
     }
 
     public function test_checkout_page_offers_paystack_when_enabled(): void
