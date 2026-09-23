@@ -93,15 +93,18 @@ class OrderDashboardController extends Controller
     {
         Gate::authorize('viewAny', Order::class);
 
-        // Once a rider is assigned, the order is theirs to carry through to
-        // delivered/failed — it disappears from the staff board the moment
-        // rider_id is set, not just once it's dispatched. Pickup orders
-        // never get a rider_id at all (orders.md: "pickup skips the rider
-        // entirely"), so whereNull('rider_id') alone is enough to keep
-        // every pickup order visible without needing a fulfilment_type check.
+        // A rider being assigned doesn't pull an order off the staff board
+        // by itself — staff still needs to see it sitting "ready" in case
+        // the assigned rider never shows up to collect it. It only
+        // disappears once the rider actually marks it picked up
+        // ('ready' -> 'dispatched'), at which point it's theirs to carry
+        // through to delivered/failed. Pickup orders never get a rider_id
+        // at all (orders.md: "pickup skips the rider entirely"), so
+        // whereNull('rider_id') alone keeps every pickup order visible
+        // without needing a fulfilment_type check.
         $orders = Order::with(['items.options', 'customer', 'rider', 'events', 'payments'])
             ->whereIn('status', self::VISIBLE_STATUSES)
-            ->whereNull('rider_id')
+            ->where(fn ($query) => $query->whereNull('rider_id')->orWhere('status', 'ready'))
             ->orderBy('placed_at')
             ->get();
 

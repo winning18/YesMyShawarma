@@ -383,7 +383,12 @@ class OrderDashboardTest extends TestCase
             ->assertJsonPath('data.status', 'failed');
     }
 
-    public function test_an_order_disappears_from_the_staff_board_the_moment_a_rider_is_assigned(): void
+    /**
+     * A rider being assigned isn't enough to pull an order off the staff
+     * board by itself — staff still needs to see it sitting "ready" in
+     * case the assigned rider never shows up to collect it.
+     */
+    public function test_an_assigned_but_not_yet_picked_up_order_still_shows_on_the_staff_board(): void
     {
         $staff = User::factory()->create();
         $this->assignRoleAt($staff, 'staff', $this->branchA);
@@ -402,6 +407,50 @@ class OrderDashboardTest extends TestCase
         $ids = collect($response->json('data'))->pluck('id');
 
         $this->assertTrue($ids->contains($unassigned->id));
-        $this->assertFalse($ids->contains($assigned->id));
+        $this->assertTrue($ids->contains($assigned->id));
+    }
+
+    public function test_an_order_disappears_from_the_staff_board_once_the_rider_marks_it_picked_up(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branchA);
+        $rider = User::factory()->create();
+        $this->assignRoleAt($rider, 'rider', $this->branchA);
+
+        $pickedUp = $this->makeOrder($this->branchA, 'dispatched');
+        $pickedUp->rider_id = $rider->id;
+        $pickedUp->claimed_at = now();
+        $pickedUp->save();
+
+        $response = $this->actingAs($staff)->getJson(route('dashboard.orders.data'));
+
+        $response->assertOk();
+        $ids = collect($response->json('data'))->pluck('id');
+
+        $this->assertFalse($ids->contains($pickedUp->id));
+    }
+
+    /**
+     * A dispatched pickup order (customer already collected it — see
+     * orders.md's "Pickup orders skip the rider entirely: ready ->
+     * dispatched on collection") never has a rider_id at all, so it's
+     * unaffected by the rider pickup gate above — only the "has a rider
+     * actually collected it" case hides an order.
+     */
+    public function test_a_dispatched_pickup_order_still_shows_on_the_staff_board(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branchA);
+
+        $order = $this->makeOrder($this->branchA, 'dispatched');
+        $order->fulfilment_type = 'pickup';
+        $order->save();
+
+        $response = $this->actingAs($staff)->getJson(route('dashboard.orders.data'));
+
+        $response->assertOk();
+        $ids = collect($response->json('data'))->pluck('id');
+
+        $this->assertTrue($ids->contains($order->id));
     }
 }
