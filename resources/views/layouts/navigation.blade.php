@@ -84,7 +84,15 @@
             </button>
         </div>
 
-        <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1" @click="sidebarOpen = false">
+        {{--
+            Only closes on an actual link click, not any click in the nav —
+            "Order History"/"Menu Editor"/"Settings" below are collapsible
+            groups with their own toggle button, not a link. A blanket
+            @click here meant tapping one of those to expand it also
+            bubbled up and closed the whole drawer before the submenu was
+            even visible.
+        --}}
+        <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1" @click="if ($event.target.closest('a')) sidebarOpen = false">
             @include('layouts.navigation-links', ['isStaff' => $navIsStaff, 'hasActiveShift' => $navHasActiveShift, 'isManager' => $navIsManager])
         </nav>
 

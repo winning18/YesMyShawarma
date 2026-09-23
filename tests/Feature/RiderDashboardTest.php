@@ -78,9 +78,15 @@ class RiderDashboardTest extends TestCase
         $someoneElses = $this->makeOrder($this->branchA);
         $someoneElses->rider_id = $riderB->id;
         $someoneElses->save();
-        $otherBranch = $this->makeOrder($this->branchB);
-        $otherBranch->rider_id = $riderA->id;
-        $otherBranch->save();
+        // Assigned to riderA but placed at a different branch — a rider
+        // can now be assigned to more than one branch and switch which is
+        // "current" mid-delivery (permissions.md), so this must still show
+        // up: rider_id is the only filter that matters here, never the
+        // ambient session branch (Rider\DashboardController::data()
+        // deliberately bypasses BranchScope for exactly this reason).
+        $mineAtOtherBranch = $this->makeOrder($this->branchB);
+        $mineAtOtherBranch->rider_id = $riderA->id;
+        $mineAtOtherBranch->save();
         $delivered = $this->makeOrder($this->branchA, ['status' => 'delivered']);
         $delivered->rider_id = $riderA->id;
         $delivered->save();
@@ -93,7 +99,7 @@ class RiderDashboardTest extends TestCase
         $this->assertTrue($ids->contains($mine->id));
         $this->assertFalse($ids->contains($unassigned->id));
         $this->assertFalse($ids->contains($someoneElses->id));
-        $this->assertFalse($ids->contains($otherBranch->id));
+        $this->assertTrue($ids->contains($mineAtOtherBranch->id));
         $this->assertFalse($ids->contains($delivered->id));
     }
 
@@ -249,6 +255,26 @@ class RiderDashboardTest extends TestCase
         $data = collect($response->json('data'))->firstWhere('id', $order->id);
 
         $this->assertSame(1000, $data['cash_to_collect']);
+    }
+
+    public function test_switch_branch_link_shown_only_for_a_rider_assigned_to_two_branches(): void
+    {
+        $singleBranchRider = User::factory()->create();
+        $this->assignRoleAt($singleBranchRider, 'rider', $this->branchA);
+
+        $this->actingAs($singleBranchRider)->get(route('rider.dashboard'))
+            ->assertDontSee(__('Switch branch'));
+
+        $multiBranchRider = User::factory()->create();
+        $this->assignRoleAt($multiBranchRider, 'rider', $this->branchA);
+        $this->assignRoleAt($multiBranchRider, 'rider', $this->branchB);
+
+        // A session branch already resolved (as if they'd already picked
+        // one) — otherwise ResolveCurrentBranch bounces a multi-branch
+        // user to branches.select before this page ever renders.
+        $this->withSession(['current_branch_id' => $this->branchA->id])
+            ->actingAs($multiBranchRider)->get(route('rider.dashboard'))
+            ->assertSee(__('Switch branch'));
     }
 
     public function test_rider_dashboard_shows_what_to_collect_in_cash(): void

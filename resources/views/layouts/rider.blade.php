@@ -96,7 +96,12 @@
                         </button>
                     </div>
 
-                    <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1" @click="sidebarOpen = false">
+                    {{--
+                        Only closes on an actual link click — same
+                        defensive fix as layouts/navigation.blade.php, in
+                        case a collapsible group is ever added here too.
+                    --}}
+                    <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1" @click="if ($event.target.closest('a')) sidebarOpen = false">
                         @include('layouts.rider-navigation-links')
                     </nav>
 

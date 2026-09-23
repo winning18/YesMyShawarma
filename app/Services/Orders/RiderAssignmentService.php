@@ -4,7 +4,6 @@ namespace App\Services\Orders;
 
 use App\Events\OrderAssignedToRider;
 use App\Models\Order;
-use App\Models\Shift;
 use App\Models\User;
 use App\Services\Branches\BranchContext;
 use App\Services\Shifts\ShiftService;
@@ -45,11 +44,7 @@ class RiderAssignmentService
             // to the other place this same shift/role gap could bite.
             $riderIds = $this->branchContext->usersWithRole('rider', $order->branch_id)->pluck('id');
 
-            $candidateIds = Shift::query()
-                ->where('branch_id', $order->branch_id)
-                ->whereNull('ended_at')
-                ->whereIn('user_id', $riderIds)
-                ->pluck('user_id');
+            $candidateIds = $this->loggedInRiderIds($riderIds, $order->branch_id);
 
             if ($candidateIds->isEmpty()) {
                 return null;
@@ -100,6 +95,41 @@ class RiderAssignmentService
         return $candidateIds->sortBy(
             fn (int $riderId) => $lastAssignedAt->get($riderId) ?? ''
         )->values();
+    }
+
+    /**
+     * "Available" no longer means "on shift" — starting a shift was never
+     * an important part of a rider's day (see permissions.md), so
+     * eligibility is decided by two facts instead: is this rider
+     * currently AT this branch (`users.current_branch_id`, set by
+     * BranchContext::setCurrent() whenever the branch switcher is used —
+     * see that method's own docblock for why this can't just be read off
+     * a session), and are they actually logged in right now (a session
+     * row for them, active within the configured session lifetime — the
+     * same window Laravel itself already treats as "still authenticated",
+     * not an arbitrary shorter one).
+     *
+     * Public — RiderAvailabilityController's manual-assign dropdown uses
+     * this same rule, so the two never drift apart on what "available"
+     * means.
+     *
+     * @param  Collection<int, int>  $riderIds
+     * @return Collection<int, int>
+     */
+    public function loggedInRiderIds(Collection $riderIds, int $branchId): Collection
+    {
+        if ($riderIds->isEmpty()) {
+            return $riderIds;
+        }
+
+        $activeSince = now()->subMinutes((int) config('session.lifetime'))->getTimestamp();
+
+        return User::whereIn('id', $riderIds)
+            ->where('current_branch_id', $branchId)
+            ->whereIn('id', function ($query) use ($activeSince) {
+                $query->select('user_id')->from('sessions')->where('last_activity', '>=', $activeSince);
+            })
+            ->pluck('id');
     }
 
     private function isCarryingAnOrder(User $rider): bool

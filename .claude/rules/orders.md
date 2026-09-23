@@ -89,10 +89,22 @@ Primary responsibility, in order:
 Manual assignment isn't the normal path — it exists for the cases automatic assignment can't
 resolve on its own.
 
-**Eligibility** for auto-assignment: on an active shift at the order's branch, and not already
-carrying another order (`rider_id` on any `ready`/`dispatched` order). Among eligible riders,
-the one least recently assigned goes next (round robin) — `MAX(orders.claimed_at)` per rider,
-nulls (never assigned) sorting first.
+**Eligibility** for auto-assignment: no shift required — starting one was never an important
+part of a rider's day (see permissions.md). Instead, a rider is "available" when they're
+**logged in** (a live session row, active within `config('session.lifetime')` — the same window
+Laravel itself already treats as "still authenticated") **and currently at the order's branch**
+(`users.current_branch_id`, set by `BranchContext::setCurrent()` whenever the branch switcher is
+used — see that method's own docblock for why this can't just be read off a session), and not
+already carrying another order (`rider_id` on any `ready`/`dispatched` order). See
+`RiderAssignmentService::loggedInRiderIds()`. Among eligible riders, the one least recently
+assigned goes next (round robin) — `MAX(orders.claimed_at)` per rider, nulls (never assigned)
+sorting first.
+
+A rider can hold the `rider` role at more than one branch (permissions.md) — they pick which
+one they're working from via the same branch switcher managers use
+(`BranchSelectionController`), not a shift. `Rider\DashboardController::data()` deliberately
+bypasses `BranchScope` (filters by `rider_id` alone) so an order they're actually carrying never
+disappears from their own dashboard just because they've since switched their current branch.
 
 **Assignment is a resource allocation, not an order-status race** — the concurrency risk isn't
 two riders claiming the same order (there's no rider-initiated action to race), it's two
@@ -102,16 +114,17 @@ the lock, re-check eligibility now that any concurrent assignment has had a chan
 then assign. If ineligible, move to the next candidate.
 
 If nobody is eligible, the order stays `ready` with `rider_id` null — no automatic retry queue.
-It surfaces on the staff dashboard for manual assignment. If no rider is on shift at all, the
+It surfaces on the staff dashboard for manual assignment. If no rider is available at all, the
 assign control shows "No riders available" rather than an empty dropdown with nothing to
 select, and a distinct one-shot chime (`orderDashboard()`'s `riderAvailableChime()` —
 deliberately not the repeating unacknowledged-order alarm; see realtime.md) plays the moment a
-rider comes on shift *while* an order is actually waiting on one, so staff don't have to keep
-checking back manually. `dashboard.riders` (`RiderAvailabilityController`) is what backs both
-the dropdown and this — it's filtered to the `rider` role specifically, not "anyone on shift":
-`shifts` carries no role column (schema.md), so staff and riders both start/end shifts through
-the exact same mechanism, and an unfiltered query would list staff in a control reserved for
-riders alone.
+rider becomes available *while* an order is actually waiting on one, so staff don't have to keep
+checking back manually — this falls out of the existing 15-second poll of `dashboard.riders`
+for free, no separate "rider logged in" event needed. `dashboard.riders`
+(`RiderAvailabilityController`) is what backs both the dropdown and this — it's filtered to the
+`rider` role specifically and to `RiderAssignmentService::loggedInRiderIds()`, the same
+eligibility rule auto-assignment itself uses, so the two can never disagree about who counts as
+available.
 
 Manual assignment (staff/manager/owner) does not re-check the "not already carrying an order"
 eligibility rule — it's a deliberate human override, trusted to know better than the algorithm

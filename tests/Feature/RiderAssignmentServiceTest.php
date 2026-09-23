@@ -5,11 +5,12 @@ namespace Tests\Feature;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Order;
-use App\Models\Shift;
 use App\Models\User;
 use App\Services\Orders\RiderAssignmentService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -58,14 +59,35 @@ class RiderAssignmentServiceTest extends TestCase
         return $order;
     }
 
+    /**
+     * "Available" = holds the role at this branch, currently at this
+     * branch (users.current_branch_id), and logged in (a live session
+     * row) — see RiderAssignmentService::loggedInRiderIds(). No shift
+     * involved at all now.
+     */
     private function onShift(?string $name = null): User
     {
         $rider = User::factory()->create($name ? ['name' => $name] : []);
         app(PermissionRegistrar::class)->setPermissionsTeamId($this->branch->id);
         $rider->assignRole('rider');
-        Shift::create(['user_id' => $rider->id, 'branch_id' => $this->branch->id, 'started_at' => now()]);
+        $this->logIn($rider, $this->branch->id);
 
         return $rider;
+    }
+
+    private function logIn(User $user, int $branchId): void
+    {
+        $user->current_branch_id = $branchId;
+        $user->save();
+
+        DB::table('sessions')->insert([
+            'id' => Str::random(40),
+            'user_id' => $user->id,
+            'ip_address' => '127.0.0.1',
+            'user_agent' => 'test',
+            'payload' => base64_encode(serialize([])),
+            'last_activity' => now()->getTimestamp(),
+        ]);
     }
 
     public function test_auto_assign_picks_the_only_eligible_rider(): void
@@ -88,7 +110,7 @@ class RiderAssignmentServiceTest extends TestCase
         ]);
     }
 
-    public function test_auto_assign_returns_null_when_nobody_is_on_shift(): void
+    public function test_auto_assign_returns_null_when_nobody_is_available(): void
     {
         $order = $this->makeOrder();
 
@@ -98,18 +120,18 @@ class RiderAssignmentServiceTest extends TestCase
         $this->assertNull($order->fresh()->rider_id);
     }
 
-    public function test_auto_assign_never_picks_a_staff_member_even_when_they_are_the_only_one_on_shift(): void
+    public function test_auto_assign_never_picks_a_staff_member_even_when_they_are_the_only_one_logged_in(): void
     {
-        // Regression: shifts carries no role column of its own — staff
-        // and riders both start/end shifts through the exact same
-        // mechanism (schema.md) — so an unfiltered "who's on shift" query
-        // would silently auto-assign a staff member as the order's
-        // "rider" the moment they're on shift and free. Same class of bug
-        // already fixed once for RiderAvailabilityController's dropdown.
+        // Regression: nothing about "logged in at this branch" carries a
+        // role of its own — a staff member is just as logged-in as a
+        // rider, so an unfiltered query here would silently auto-assign
+        // them as the order's "rider" the moment they're free. Same class
+        // of bug already fixed once for RiderAvailabilityController's
+        // dropdown, now against the logged-in check instead of shifts.
         $staff = User::factory()->create();
         app(PermissionRegistrar::class)->setPermissionsTeamId($this->branch->id);
         $staff->assignRole('staff');
-        Shift::create(['user_id' => $staff->id, 'branch_id' => $this->branch->id, 'started_at' => now()]);
+        $this->logIn($staff, $this->branch->id);
 
         $order = $this->makeOrder();
 
@@ -119,12 +141,12 @@ class RiderAssignmentServiceTest extends TestCase
         $this->assertNull($order->fresh()->rider_id);
     }
 
-    public function test_auto_assign_picks_the_rider_over_a_staff_member_also_on_shift(): void
+    public function test_auto_assign_picks_the_rider_over_a_staff_member_also_logged_in(): void
     {
         $staff = User::factory()->create();
         app(PermissionRegistrar::class)->setPermissionsTeamId($this->branch->id);
         $staff->assignRole('staff');
-        Shift::create(['user_id' => $staff->id, 'branch_id' => $this->branch->id, 'started_at' => now()]);
+        $this->logIn($staff, $this->branch->id);
 
         $rider = $this->onShift();
         $order = $this->makeOrder();
@@ -132,6 +154,25 @@ class RiderAssignmentServiceTest extends TestCase
         $assigned = $this->service->autoAssign($order);
 
         $this->assertSame($rider->id, $assigned?->id);
+    }
+
+    public function test_auto_assign_ignores_a_rider_logged_in_at_a_different_branch(): void
+    {
+        $otherBranch = Branch::create([
+            'name' => 'East Legon', 'slug' => 'east-legon', 'phone' => '+233200000002', 'address' => 'B',
+            'lat' => 5.6, 'lng' => -0.2, 'opens_at' => '10:00', 'closes_at' => '22:00',
+        ]);
+
+        $rider = User::factory()->create();
+        app(PermissionRegistrar::class)->setPermissionsTeamId($this->branch->id);
+        $rider->assignRole('rider');
+        $this->logIn($rider, $otherBranch->id);
+
+        $order = $this->makeOrder();
+
+        $assigned = $this->service->autoAssign($order);
+
+        $this->assertNull($assigned);
     }
 
     public function test_auto_assign_skips_a_rider_already_carrying_an_order(): void

@@ -5,10 +5,11 @@ namespace Tests\Feature;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Order;
-use App\Models\Shift;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -40,9 +41,24 @@ class AssignRiderTest extends TestCase
     {
         $rider = User::factory()->create($name ? ['name' => $name] : []);
         $this->assignRoleAt($rider, 'rider', $this->branch);
-        Shift::create(['user_id' => $rider->id, 'branch_id' => $this->branch->id, 'started_at' => now()]);
+        $this->logIn($rider, $this->branch->id);
 
         return $rider;
+    }
+
+    private function logIn(User $user, int $branchId): void
+    {
+        $user->current_branch_id = $branchId;
+        $user->save();
+
+        DB::table('sessions')->insert([
+            'id' => Str::random(40),
+            'user_id' => $user->id,
+            'ip_address' => '127.0.0.1',
+            'user_agent' => 'test',
+            'payload' => base64_encode(serialize([])),
+            'last_activity' => now()->getTimestamp(),
+        ]);
     }
 
     private function makeOrder(array $overrides = []): Order
@@ -126,16 +142,16 @@ class AssignRiderTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_cannot_assign_a_rider_who_is_not_on_shift(): void
+    public function test_cannot_assign_a_rider_who_is_not_logged_in(): void
     {
         $staff = User::factory()->create();
         $this->assignRoleAt($staff, 'staff', $this->branch);
-        $offShiftRider = User::factory()->create();
-        $this->assignRoleAt($offShiftRider, 'rider', $this->branch);
+        $offlineRider = User::factory()->create();
+        $this->assignRoleAt($offlineRider, 'rider', $this->branch);
         $order = $this->makeOrder();
 
         $this->actingAs($staff)
-            ->postJson(route('orders.assign_rider', $order), ['rider_id' => $offShiftRider->id])
+            ->postJson(route('orders.assign_rider', $order), ['rider_id' => $offlineRider->id])
             ->assertUnprocessable();
     }
 
@@ -145,7 +161,7 @@ class AssignRiderTest extends TestCase
         $this->assignRoleAt($staff, 'staff', $this->branch);
         $otherStaff = User::factory()->create();
         $this->assignRoleAt($otherStaff, 'staff', $this->branch);
-        Shift::create(['user_id' => $otherStaff->id, 'branch_id' => $this->branch->id, 'started_at' => now()]);
+        $this->logIn($otherStaff, $this->branch->id);
         $order = $this->makeOrder();
 
         $this->actingAs($staff)
@@ -153,11 +169,11 @@ class AssignRiderTest extends TestCase
             ->assertUnprocessable();
     }
 
-    public function test_on_shift_riders_endpoint_lists_only_current_branch(): void
+    public function test_available_riders_endpoint_lists_only_current_branch(): void
     {
         $staff = User::factory()->create();
         $this->assignRoleAt($staff, 'staff', $this->branch);
-        $onShift = $this->onShiftRider('Kwame');
+        $available = $this->onShiftRider('Kwame');
 
         $otherBranch = Branch::create([
             'name' => 'East Legon', 'slug' => 'east-legon', 'phone' => '+233200000002', 'address' => 'B',
@@ -165,30 +181,30 @@ class AssignRiderTest extends TestCase
         ]);
         $elsewhereRider = User::factory()->create();
         $this->assignRoleAt($elsewhereRider, 'rider', $otherBranch);
-        Shift::create(['user_id' => $elsewhereRider->id, 'branch_id' => $otherBranch->id, 'started_at' => now()]);
+        $this->logIn($elsewhereRider, $otherBranch->id);
 
-        $offShiftRider = User::factory()->create();
-        $this->assignRoleAt($offShiftRider, 'rider', $this->branch);
+        $offlineRider = User::factory()->create();
+        $this->assignRoleAt($offlineRider, 'rider', $this->branch);
 
         $response = $this->actingAs($staff)->getJson(route('dashboard.riders'));
 
         $response->assertOk();
         $ids = collect($response->json('data'))->pluck('id');
 
-        $this->assertTrue($ids->contains($onShift->id));
+        $this->assertTrue($ids->contains($available->id));
         $this->assertFalse($ids->contains($elsewhereRider->id));
-        $this->assertFalse($ids->contains($offShiftRider->id));
+        $this->assertFalse($ids->contains($offlineRider->id));
     }
 
-    public function test_on_shift_riders_endpoint_never_lists_staff_even_though_theyre_on_shift_too(): void
+    public function test_available_riders_endpoint_never_lists_staff_even_though_theyre_logged_in_too(): void
     {
-        // Shifts carry no role of their own (schema.md) — staff and
-        // riders both start/end them through the same mechanism, so an
-        // unfiltered "who's on shift" query would list staff in a control
-        // reserved for riders alone.
+        // Being logged in carries no role of its own — staff and riders
+        // both authenticate through the same guard, so an unfiltered
+        // query here would list staff in a control reserved for riders
+        // alone.
         $staff = User::factory()->create();
         $this->assignRoleAt($staff, 'staff', $this->branch);
-        Shift::create(['user_id' => $staff->id, 'branch_id' => $this->branch->id, 'started_at' => now()]);
+        $this->logIn($staff, $this->branch->id);
 
         $rider = $this->onShiftRider('Kwame');
 
@@ -201,11 +217,11 @@ class AssignRiderTest extends TestCase
         $this->assertFalse($ids->contains($staff->id));
     }
 
-    public function test_on_shift_riders_endpoint_is_empty_when_no_riders_are_on_shift(): void
+    public function test_available_riders_endpoint_is_empty_when_no_riders_are_logged_in(): void
     {
         $staff = User::factory()->create();
         $this->assignRoleAt($staff, 'staff', $this->branch);
-        Shift::create(['user_id' => $staff->id, 'branch_id' => $this->branch->id, 'started_at' => now()]);
+        $this->logIn($staff, $this->branch->id);
 
         $response = $this->actingAs($staff)->getJson(route('dashboard.riders'));
 

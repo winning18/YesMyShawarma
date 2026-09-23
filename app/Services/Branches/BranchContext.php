@@ -39,11 +39,25 @@ class BranchContext
     {
         if ($branchId === null) {
             $this->request->session()->forget('current_branch_id');
-
-            return;
+        } else {
+            $this->request->session()->put('current_branch_id', $branchId);
         }
 
-        $this->request->session()->put('current_branch_id', $branchId);
+        // Durable, not just session — RiderAssignmentService needs to know
+        // which branch a rider is currently at from outside their own
+        // request (triggered by whichever order just reached "ready"),
+        // where there's no session to read. Written for every guard, not
+        // just riders, since this is a generic "last selected branch" fact
+        // and keeping one write path simple beats a rider-only special
+        // case. Skipped when unchanged so ResolveCurrentBranch's per-
+        // request call for an already-resolved single-branch user isn't a
+        // write on every single page load.
+        $user = $this->request->user();
+
+        if ($user && $user->current_branch_id !== $branchId) {
+            $user->current_branch_id = $branchId;
+            $user->save();
+        }
     }
 
     /**

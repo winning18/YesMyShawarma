@@ -7,10 +7,11 @@ use App\Exceptions\InvalidOrderTransitionException;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Order;
-use App\Models\Shift;
 use App\Models\User;
 use App\Services\Delivery\DeliveryFeeCalculator;
 use App\Services\Orders\OrderStateMachine;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\PermissionRegistrar;
@@ -232,12 +233,12 @@ class OrderStateMachineTest extends TestCase
         $this->machine->transition($order, 'refunded', 'owner', actorId: 1);
     }
 
-    public function test_ready_transition_auto_assigns_an_on_shift_rider_for_delivery_orders(): void
+    public function test_ready_transition_auto_assigns_an_available_rider_for_delivery_orders(): void
     {
         $rider = User::factory()->create();
         app(PermissionRegistrar::class)->setPermissionsTeamId($this->branch->id);
         $rider->assignRole('rider');
-        Shift::create(['user_id' => $rider->id, 'branch_id' => $this->branch->id, 'started_at' => now()]);
+        $this->logIn($rider, $this->branch->id);
 
         $order = $this->makeOrder('preparing');
 
@@ -251,7 +252,7 @@ class OrderStateMachineTest extends TestCase
         $rider = User::factory()->create();
         app(PermissionRegistrar::class)->setPermissionsTeamId($this->branch->id);
         $rider->assignRole('rider');
-        Shift::create(['user_id' => $rider->id, 'branch_id' => $this->branch->id, 'started_at' => now()]);
+        $this->logIn($rider, $this->branch->id);
 
         $order = $this->makeOrder('preparing');
         $order->update(['fulfilment_type' => 'pickup']);
@@ -259,6 +260,21 @@ class OrderStateMachineTest extends TestCase
         $result = $this->machine->transition($order, 'ready', 'staff', actorId: 1);
 
         $this->assertNull($result->rider_id);
+    }
+
+    private function logIn(User $user, int $branchId): void
+    {
+        $user->current_branch_id = $branchId;
+        $user->save();
+
+        DB::table('sessions')->insert([
+            'id' => Str::random(40),
+            'user_id' => $user->id,
+            'ip_address' => '127.0.0.1',
+            'user_agent' => 'test',
+            'payload' => base64_encode(serialize([])),
+            'last_activity' => now()->getTimestamp(),
+        ]);
     }
 
     public function test_paystack_order_reaching_paid_from_pending_payment_sends_the_customer_a_placed_sms(): void

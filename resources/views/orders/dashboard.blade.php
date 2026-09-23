@@ -112,13 +112,13 @@
                                 </div>
 
                                 {{--
-                                    30-minute cooking countdown — only while
+                                    15-minute cooking countdown — only while
                                     actually 'preparing'. Ticks via the
                                     shared `now` clock (see script below) so
                                     every card on the board re-renders in
                                     lockstep, one interval rather than one
                                     per card. Depletes green from a full
-                                    ring down to empty at 30:00; past that
+                                    ring down to empty at 15:00; past that
                                     it locks full and flips red, and the
                                     label keeps counting up as overrun time
                                     ("+MM:SS") rather than stopping at zero
@@ -241,7 +241,7 @@
                 error: null,
                 originalTitle: document.title,
                 now: Date.now(),
-                COOKING_SECONDS: 30 * 60,
+                COOKING_SECONDS: 15 * 60,
                 COOKING_RING_CIRCUMFERENCE: 2 * Math.PI * 16,
 
                 init() {
@@ -330,7 +330,7 @@
                     return this.inProgress.some(order => this.needsRiderControl(order) && !order.rider_name);
                 },
 
-                // Seconds left in the 30-minute cooking window — negative
+                // Seconds left in the 15-minute cooking window — negative
                 // once overrun, and deliberately left uncapped in that
                 // direction (this.now ticking every second is what keeps
                 // it counting rather than freezing at 00:00).

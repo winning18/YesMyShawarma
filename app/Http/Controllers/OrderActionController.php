@@ -10,7 +10,6 @@ use App\Exceptions\ShiftException;
 use App\Http\Resources\OrderResource;
 use App\Models\Branch;
 use App\Models\Order;
-use App\Models\Shift;
 use App\Models\User;
 use App\Services\Branches\BranchContext;
 use App\Services\Orders\DeliveryFeeAdjustmentService;
@@ -158,15 +157,12 @@ class OrderActionController extends Controller
         $validated = $request->validate([
             'rider_id' => [
                 'required', 'integer',
-                function (string $attribute, mixed $value, Closure $fail) use ($order, $context): void {
+                function (string $attribute, mixed $value, Closure $fail) use ($order, $context, $riderAssignment): void {
                     $holdsRiderRole = $context->usersWithRole('rider', $order->branch_id)->contains('id', (int) $value);
-                    $onShift = Shift::where('user_id', $value)
-                        ->where('branch_id', $order->branch_id)
-                        ->whereNull('ended_at')
-                        ->exists();
+                    $isAvailable = $riderAssignment->loggedInRiderIds(collect([(int) $value]), $order->branch_id)->isNotEmpty();
 
-                    if (! $holdsRiderRole || ! $onShift) {
-                        $fail('Please select a rider on shift at this branch.');
+                    if (! $holdsRiderRole || ! $isAvailable) {
+                        $fail('Please select a rider currently logged in at this branch.');
                     }
                 },
             ],

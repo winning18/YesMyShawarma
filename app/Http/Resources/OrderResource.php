@@ -51,7 +51,7 @@ class OrderResource extends JsonResource
             'placed_at' => $this->placed_at?->toIso8601String(),
             // No dedicated preparing_at column — derived from order_events,
             // same pattern as EscalateUnacknowledgedOrders' paidAt. Drives
-            // the dashboard's 30-minute cooking countdown (orders/
+            // the dashboard's 15-minute cooking countdown (orders/
             // dashboard.blade.php); null whenever events isn't loaded or
             // the order never actually passed through 'preparing'.
             'preparing_at' => $this->whenLoaded(

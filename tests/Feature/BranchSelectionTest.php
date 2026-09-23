@@ -83,6 +83,41 @@ class BranchSelectionTest extends TestCase
             ->assertRedirect(route('dashboard.menu-items.index'));
     }
 
+    public function test_selecting_a_branch_persists_it_to_the_user_row(): void
+    {
+        // Not just the session — RiderAssignmentService needs to read
+        // "which branch is this rider at" from outside their own request,
+        // where there's no session to read (see BranchContext::setCurrent).
+        $manager = User::factory()->create();
+        $this->assignRoleAt($manager, 'manager', $this->branchA);
+        $this->assignRoleAt($manager, 'manager', $this->branchB);
+
+        $this->actingAs($manager)
+            ->post(route('branches.select.store'), ['branch_id' => $this->branchB->id]);
+
+        $this->assertSame($this->branchB->id, $manager->fresh()->current_branch_id);
+    }
+
+    public function test_a_rider_assigned_to_two_branches_sees_the_rider_branded_picker(): void
+    {
+        $rider = User::factory()->create();
+        $this->assignRoleAt($rider, 'rider', $this->branchA);
+        $this->assignRoleAt($rider, 'rider', $this->branchB);
+
+        $this->actingAs($rider)->get(route('branches.select'))
+            ->assertViewIs('rider.select-branch');
+    }
+
+    public function test_a_manager_sees_the_generic_picker_not_the_rider_one(): void
+    {
+        $manager = User::factory()->create();
+        $this->assignRoleAt($manager, 'manager', $this->branchA);
+        $this->assignRoleAt($manager, 'manager', $this->branchB);
+
+        $this->actingAs($manager)->get(route('branches.select'))
+            ->assertViewIs('branches.select');
+    }
+
     public function test_the_menu_editor_then_flag_does_not_leak_into_an_unrelated_selection(): void
     {
         $manager = User::factory()->create();

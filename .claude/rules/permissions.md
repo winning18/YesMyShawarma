@@ -198,7 +198,11 @@ One forgotten filter in one report leaks another branch's revenue. Model-level s
 you cannot forget.
 
 Riders get a further restriction: they only ever see orders where `rider_id = auth()->id()`.
-There is no claimable pool — see orders.md's rider assignment section.
+There is no claimable pool — see orders.md's rider assignment section. `Rider\DashboardController
+::data()` deliberately bypasses `BranchScope` rather than relying on it — `rider_id = auth()->id()`
+is already a stricter, sufficient filter on its own, and a rider can now hold the role at more
+than one branch (see below), so an order they're genuinely carrying must never disappear just
+because their ambient session branch has since changed.
 
 ## Stock management
 

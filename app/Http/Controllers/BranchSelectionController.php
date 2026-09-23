@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use App\Services\Branches\BranchContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,9 +25,27 @@ class BranchSelectionController extends Controller
             $request->session()->forget('branch_select_then');
         }
 
-        return view('branches.select', [
+        $view = $this->isRiderOnly($request->user(), $context) ? 'rider.select-branch' : 'branches.select';
+
+        return view($view, [
             'branches' => $context->selectableBranchesFor($request->user()),
         ]);
+    }
+
+    /**
+     * Whether to show the rider-branded picker instead of the generic
+     * dashboard-chrome one — a rider assigned to a second branch
+     * (permissions.md) should never land on staff admin UI they have no
+     * access to just to pick which branch they're working from today.
+     */
+    private function isRiderOnly(User $user, BranchContext $context): bool
+    {
+        return $context->hasRoleAtAnyBranch($user, 'rider')
+            && ! $context->hasRoleAtAnyBranch($user, 'staff')
+            && ! $context->hasRoleAtAnyBranch($user, 'manager')
+            && ! $context->hasRoleAtAnyBranch($user, 'general_manager')
+            && ! $context->hasRoleAtAnyBranch($user, 'owner')
+            && ! $context->hasRoleAtAnyBranch($user, 'stock_manager');
     }
 
     public function store(Request $request, BranchContext $context): RedirectResponse
