@@ -96,9 +96,19 @@ Laravel itself already treats as "still authenticated") **and currently at the o
 (`users.current_branch_id`, set by `BranchContext::setCurrent()` whenever the branch switcher is
 used — see that method's own docblock for why this can't just be read off a session), and not
 already carrying another order (`rider_id` on any `ready`/`dispatched` order). See
-`RiderAssignmentService::loggedInRiderIds()`. Among eligible riders, the one least recently
-assigned goes next (round robin) — `MAX(orders.claimed_at)` per rider, nulls (never assigned)
-sorting first.
+`RiderAssignmentService::loggedInRiderIds()`.
+
+Riders authenticate via their own `rider` guard (permissions.md's "Guards" section), but
+`sessions.user_id` is populated from whichever guard is *current* at the moment a given
+request's session gets written, not tied to a specific guard name — so this only reliably
+reflects a rider the moment one of *their own* (`auth:rider`) requests actually runs, not
+necessarily the login request itself (which authenticates the `rider` guard without making it
+the request's default). In practice this closes itself immediately: `rider.login`'s own
+redirect lands them straight on `rider.dashboard`, which does run under `auth:rider` and writes
+the correct id before anything would ever check their availability.
+
+Among eligible riders, the one least recently assigned goes next (round robin) —
+`MAX(orders.claimed_at)` per rider, nulls (never assigned) sorting first.
 
 A rider can hold the `rider` role at more than one branch (permissions.md) — they pick which
 one they're working from via the same branch switcher managers use

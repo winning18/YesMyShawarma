@@ -57,7 +57,7 @@ class ForcePasswordChangeTest extends TestCase
     {
         $rider = $this->flaggedUser('rider');
 
-        $this->actingAs($rider)->get(route('rider.dashboard'))
+        $this->actingAs($rider, 'rider')->get(route('rider.dashboard'))
             ->assertRedirect(route('password.force-change'));
     }
 

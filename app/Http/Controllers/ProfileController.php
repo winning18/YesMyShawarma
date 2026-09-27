@@ -59,8 +59,11 @@ class ProfileController extends Controller
 
         $user->delete();
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        // regenerate(), not invalidate() — see
+        // Auth\AuthenticatedSessionController::destroy()'s own comment; a
+        // coexisting login under a different guard (config/auth.php's
+        // 'rider') must survive this.
+        $request->session()->regenerate();
 
         return Redirect::to('/');
     }

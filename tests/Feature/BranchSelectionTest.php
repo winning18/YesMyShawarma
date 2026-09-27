@@ -104,7 +104,7 @@ class BranchSelectionTest extends TestCase
         $this->assignRoleAt($rider, 'rider', $this->branchA);
         $this->assignRoleAt($rider, 'rider', $this->branchB);
 
-        $this->actingAs($rider)->get(route('branches.select'))
+        $this->actingAs($rider, 'rider')->get(route('branches.select'))
             ->assertViewIs('rider.select-branch');
     }
 

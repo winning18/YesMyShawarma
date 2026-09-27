@@ -41,14 +41,14 @@ class RiderProfileTest extends TestCase
     {
         $rider = $this->makeRider();
 
-        $this->actingAs($rider)->get(route('rider.profile.edit'))->assertOk();
+        $this->actingAs($rider, 'rider')->get(route('rider.profile.edit'))->assertOk();
     }
 
     public function test_rider_can_update_name_phone_and_email(): void
     {
         $rider = $this->makeRider();
 
-        $response = $this->actingAs($rider)->patch('/profile', [
+        $response = $this->actingAs($rider, 'rider')->patch('/profile', [
             'name' => 'Kwame Updated',
             'email' => $rider->email,
             'phone' => '0241234567',
@@ -65,7 +65,7 @@ class RiderProfileTest extends TestCase
     {
         $rider = $this->makeRider();
 
-        $response = $this->actingAs($rider)->from(route('rider.profile.edit'))->put('/password', [
+        $response = $this->actingAs($rider, 'rider')->from(route('rider.profile.edit'))->put('/password', [
             'current_password' => 'password',
             'password' => 'new-password-123',
             'password_confirmation' => 'new-password-123',

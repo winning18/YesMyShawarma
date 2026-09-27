@@ -24,7 +24,10 @@ class ConfirmablePasswordController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        if (! Auth::guard('web')->validate([
+        // The default guard, not hardcoded 'web' — this route is shared
+        // with riders too (routes/auth.php's auth:web,rider group), and
+        // 'web' would always fail to validate a rider's credentials.
+        if (! Auth::validate([
             'email' => $request->user()->email,
             'password' => $request->password,
         ])) {

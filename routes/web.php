@@ -276,15 +276,16 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::delete('/dashboard/option-groups/{optionGroup}/options/{option}', [OptionGroupManagementController::class, 'destroyOption'])->name('dashboard.option-groups.options.destroy');
 });
 
-// Same `web` guard and `users` table as staff — just a separate path and
-// entry point, per the "riders get their own section" decision. Riders are
-// never a distinct guard (see CLAUDE.md's identity model).
-Route::middleware('guest')->prefix('rider')->name('rider.')->group(function () {
+// Same `users` table as staff, but its own 'rider' guard (config/auth.php)
+// — a separate path/entry point AND a separate guard, so a staff login and
+// a rider login can be simultaneously active in the same browser instead
+// of one overwriting the other's session.
+Route::middleware('guest:rider')->prefix('rider')->name('rider.')->group(function () {
     Route::get('/login', [RiderAuthenticatedSessionController::class, 'create'])->name('login');
     Route::post('/login', [RiderAuthenticatedSessionController::class, 'store']);
 });
 
-Route::middleware(['auth', 'verified', 'branch', 'password.change_required'])->prefix('rider')->name('rider.')->group(function () {
+Route::middleware(['auth:rider', 'verified', 'branch', 'password.change_required'])->prefix('rider')->name('rider.')->group(function () {
     Route::get('/', [RiderDashboardController::class, 'index'])->name('dashboard');
     Route::get('/orders', [RiderDashboardController::class, 'data'])->name('orders.data');
     Route::get('/history', [RiderDeliveryHistoryController::class, 'index'])->name('history');
@@ -292,7 +293,12 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required'])->p
     Route::post('/logout', [RiderAuthenticatedSessionController::class, 'destroy'])->name('logout');
 });
 
-Route::middleware('auth')->group(function () {
+// auth:web,rider, not the bare 'auth' (default 'web' only) — /branches/select
+// is the rider-branded branch switcher too (BranchSelectionController),
+// reached by whichever of the two guards is actually authenticated for this
+// request. /profile is staff-only in practice (riders have their own
+// rider.profile.edit), but there's no harm sharing the same guard list here.
+Route::middleware('auth:web,rider')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

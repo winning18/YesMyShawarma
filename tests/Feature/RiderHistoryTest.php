@@ -80,7 +80,7 @@ class RiderHistoryTest extends TestCase
         $someoneElses->rider_id = $otherRider->id;
         $someoneElses->save();
 
-        $response = $this->actingAs($rider)->get(route('rider.history'));
+        $response = $this->actingAs($rider, 'rider')->get(route('rider.history'));
 
         $response->assertOk();
         $response->assertSee($delivered->reference);
@@ -93,7 +93,7 @@ class RiderHistoryTest extends TestCase
     {
         $rider = $this->makeRider();
 
-        $this->actingAs($rider)->get(route('rider.history'))
+        $this->actingAs($rider, 'rider')->get(route('rider.history'))
             ->assertOk()
             ->assertSee("You haven't completed any deliveries yet.");
     }

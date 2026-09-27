@@ -44,6 +44,20 @@ return [
             'provider' => 'users',
         ],
 
+        // Same `users` table/provider as 'web' — riders are not a separate
+        // identity store (CLAUDE.md's identity model still holds: only
+        // `users` vs `customers`). A distinct guard purely so a staff
+        // login and a rider login can be authenticated simultaneously in
+        // the same browser: Laravel's SessionGuard namespaces its session
+        // key per guard name, so 'web' and 'rider' each get their own slot
+        // in the same session instead of overwriting one shared "who's
+        // logged in" value. See .claude/rules/permissions.md's "Guards"
+        // section for the full reasoning.
+        'rider' => [
+            'driver' => 'session',
+            'provider' => 'users',
+        ],
+
         'customer' => [
             'driver' => 'session',
             'provider' => 'customers',

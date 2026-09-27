@@ -74,8 +74,10 @@ guest order history carries over automatically. Guard: `customer`. No branch sco
 Identified by `phone`, unique, normalised to E.164.
 
 **`users`** — staff, riders, managers, owners. Always authenticated, always branch-scoped.
-Guard: `web`. Roles via spatie with `branch_id` as the team key. A user may hold different
-roles at different branches.
+Guard: `web` for staff/manager/owner, `rider` for riders — same table, two guards purely so a
+staff and a rider login can coexist in one browser (see permissions.md's "Guards" section).
+Roles via spatie with `branch_id` as the team key. A user may hold different roles at different
+branches.
 
 Merging these means every permission check must first ask "is this even an internal user?" —
 the check that gets forgotten once and leaks a branch's revenue to a customer account.

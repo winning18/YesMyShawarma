@@ -30,7 +30,12 @@ Route::middleware('guest')->group(function () {
         ->name('password.store');
 });
 
-Route::middleware('auth')->group(function () {
+// auth:web,rider, not the bare 'auth' — email verification, password
+// confirm/update, and the forced-password-change escape hatch are all
+// shared between staff (default 'web' guard) and riders (config/auth.php's
+// 'rider' guard). A rider hitting one of these while only authenticated
+// under 'rider' must not be treated as a guest.
+Route::middleware('auth:web,rider')->group(function () {
     Route::get('verify-email', EmailVerificationPromptController::class)
         ->name('verification.notice');
 

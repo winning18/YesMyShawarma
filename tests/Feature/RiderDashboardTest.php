@@ -91,7 +91,7 @@ class RiderDashboardTest extends TestCase
         $delivered->rider_id = $riderA->id;
         $delivered->save();
 
-        $response = $this->actingAs($riderA)->getJson(route('rider.orders.data'));
+        $response = $this->actingAs($riderA, 'rider')->getJson(route('rider.orders.data'));
 
         $response->assertOk();
         $ids = collect($response->json('data'))->pluck('id');
@@ -114,7 +114,7 @@ class RiderDashboardTest extends TestCase
         $order->rider_id = $rider->id;
         $order->save();
 
-        $response = $this->actingAs($rider)->getJson(route('rider.orders.data'));
+        $response = $this->actingAs($rider, 'rider')->getJson(route('rider.orders.data'));
         $data = collect($response->json('data'))->firstWhere('id', $order->id);
 
         $this->assertSame(5.55, $data['delivery_address']['lat']);
@@ -130,7 +130,7 @@ class RiderDashboardTest extends TestCase
         $order->rider_id = $rider->id;
         $order->save();
 
-        $this->actingAs($rider)
+        $this->actingAs($rider, 'rider')
             ->postJson(route('orders.advance', $order), ['to' => 'dispatched'])
             ->assertOk()
             ->assertJsonPath('data.status', 'dispatched');
@@ -147,7 +147,7 @@ class RiderDashboardTest extends TestCase
         $order->rider_id = $riderB->id;
         $order->save();
 
-        $this->actingAs($riderA)
+        $this->actingAs($riderA, 'rider')
             ->postJson(route('orders.advance', $order), ['to' => 'dispatched'])
             ->assertForbidden();
     }
@@ -157,7 +157,7 @@ class RiderDashboardTest extends TestCase
         $rider = User::factory()->create();
         $this->assignRoleAt($rider, 'rider', $this->branchA);
 
-        $this->actingAs($rider)->get(route('rider.dashboard'))->assertOk();
+        $this->actingAs($rider, 'rider')->get(route('rider.dashboard'))->assertOk();
     }
 
     public function test_rider_dashboard_renders_order_item_markup(): void
@@ -169,7 +169,7 @@ class RiderDashboardTest extends TestCase
         $rider = User::factory()->create();
         $this->assignRoleAt($rider, 'rider', $this->branchA);
 
-        $this->actingAs($rider)->get(route('rider.dashboard'))
+        $this->actingAs($rider, 'rider')->get(route('rider.dashboard'))
             ->assertOk()
             ->assertSee('item.quantity + \'x \' + item.name', false);
     }
@@ -179,7 +179,7 @@ class RiderDashboardTest extends TestCase
         $rider = User::factory()->create();
         $this->assignRoleAt($rider, 'rider', $this->branchA);
 
-        $this->actingAs($rider)->get(route('rider.dashboard'))
+        $this->actingAs($rider, 'rider')->get(route('rider.dashboard'))
             ->assertOk()
             ->assertSee('x-text="paymentLabel(order)"', false);
     }
@@ -193,7 +193,7 @@ class RiderDashboardTest extends TestCase
         $rider = User::factory()->create();
         $this->assignRoleAt($rider, 'rider', $this->branchA);
 
-        $response = $this->actingAs($rider)->get(route('rider.dashboard'));
+        $response = $this->actingAs($rider, 'rider')->get(route('rider.dashboard'));
 
         $response->assertOk();
         $response->assertSee("'&origin=' + order.branch.lat + ',' + order.branch.lng", false);
@@ -210,7 +210,7 @@ class RiderDashboardTest extends TestCase
         $order->rider_id = $rider->id;
         $order->save();
 
-        $response = $this->actingAs($rider)->getJson(route('rider.orders.data'));
+        $response = $this->actingAs($rider, 'rider')->getJson(route('rider.orders.data'));
         $data = collect($response->json('data'))->firstWhere('id', $order->id);
 
         $this->assertSame(4500, $data['cash_to_collect']);
@@ -229,7 +229,7 @@ class RiderDashboardTest extends TestCase
             'amount' => 6000, 'currency' => 'GHS', 'status' => 'paid', 'verified_at' => now(),
         ]);
 
-        $response = $this->actingAs($rider)->getJson(route('rider.orders.data'));
+        $response = $this->actingAs($rider, 'rider')->getJson(route('rider.orders.data'));
         $data = collect($response->json('data'))->firstWhere('id', $order->id);
 
         $this->assertSame(0, $data['cash_to_collect']);
@@ -251,7 +251,7 @@ class RiderDashboardTest extends TestCase
             'amount' => 3500, 'currency' => 'GHS', 'status' => 'paid', 'verified_at' => now(),
         ]);
 
-        $response = $this->actingAs($rider)->getJson(route('rider.orders.data'));
+        $response = $this->actingAs($rider, 'rider')->getJson(route('rider.orders.data'));
         $data = collect($response->json('data'))->firstWhere('id', $order->id);
 
         $this->assertSame(1000, $data['cash_to_collect']);
@@ -262,7 +262,7 @@ class RiderDashboardTest extends TestCase
         $singleBranchRider = User::factory()->create();
         $this->assignRoleAt($singleBranchRider, 'rider', $this->branchA);
 
-        $this->actingAs($singleBranchRider)->get(route('rider.dashboard'))
+        $this->actingAs($singleBranchRider, 'rider')->get(route('rider.dashboard'))
             ->assertDontSee(__('Switch branch'));
 
         $multiBranchRider = User::factory()->create();
@@ -273,7 +273,7 @@ class RiderDashboardTest extends TestCase
         // one) — otherwise ResolveCurrentBranch bounces a multi-branch
         // user to branches.select before this page ever renders.
         $this->withSession(['current_branch_id' => $this->branchA->id])
-            ->actingAs($multiBranchRider)->get(route('rider.dashboard'))
+            ->actingAs($multiBranchRider, 'rider')->get(route('rider.dashboard'))
             ->assertSee(__('Switch branch'));
     }
 
@@ -282,7 +282,7 @@ class RiderDashboardTest extends TestCase
         $rider = User::factory()->create();
         $this->assignRoleAt($rider, 'rider', $this->branchA);
 
-        $this->actingAs($rider)->get(route('rider.dashboard'))
+        $this->actingAs($rider, 'rider')->get(route('rider.dashboard'))
             ->assertOk()
             ->assertSee('order.cash_to_collect', false);
     }
@@ -301,7 +301,7 @@ class RiderDashboardTest extends TestCase
         $order->rider_id = $rider->id;
         $order->save();
 
-        $response = $this->actingAs($rider)->getJson(route('rider.orders.data'));
+        $response = $this->actingAs($rider, 'rider')->getJson(route('rider.orders.data'));
         $data = collect($response->json('data'))->firstWhere('id', $order->id);
 
         $this->assertSame((float) $this->branchA->lat, $data['branch']['lat']);

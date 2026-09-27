@@ -264,7 +264,23 @@ mirroring `order_events`) carries no `branch_id` of its own — it's reached onl
 
 ## Guards
 
-- `web` guard — `users` table (staff, riders, managers, owners)
+- `web` guard — `users` table (staff, managers, general_manager, owner)
+- `rider` guard — same `users` table/provider as `web`, but its own guard (`config/auth.php`).
+  Riders are still not a separate identity store — the identity model is unchanged, just the
+  guard. This exists purely so a staff login and a rider login can be simultaneously active in
+  the same browser: Laravel's `SessionGuard` namespaces its session key by guard name, so `web`
+  and `rider` each get their own slot in the same session instead of one overwriting the
+  other's — logging in on `/rider/login` no longer silently logs out whoever was on `/login` in
+  another tab, and vice versa. A handful of routes are reachable by either guard
+  (`auth:web,rider` — `routes/auth.php`'s email verification/password confirm/force-password-
+  change, and `/branches/select`), and `routes/channels.php`'s two channels declare
+  `['guards' => ['web', 'rider']]` so `/broadcasting/auth` (a separate request from whichever
+  page opened the Echo connection) checks both. `Auth::guard('web')->logout()`/
+  `Auth::guard('rider')->logout()` only clear that one guard's own session key — never call
+  `session()->invalidate()` on logout (staff, rider, or customer): it flushes the *entire*
+  session, which would silently log out whichever other guard is coexisting in the same
+  browser. `session()->regenerate()` still rotates the session ID and CSRF token — the part
+  that actually matters for logout hygiene — without touching another guard's data.
 - `customer` guard — `customers` table
 - `sanctum` — API tokens for the future mobile app
 

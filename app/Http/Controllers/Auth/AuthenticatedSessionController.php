@@ -68,14 +68,20 @@ class AuthenticatedSessionController extends Controller
 
     /**
      * Destroy an authenticated session.
+     *
+     * session()->regenerate(), not invalidate() — invalidate() flushes the
+     * whole session's data, which would also silently log out a rider
+     * logged in in the same browser (config/auth.php's 'rider' guard
+     * shares this same session, by design, so the two can coexist).
+     * regenerate() still rotates the session ID and CSRF token — the part
+     * that actually matters for logout hygiene — without touching data
+     * that belongs to a different guard's own login key.
      */
     public function destroy(Request $request): RedirectResponse
     {
         Auth::guard('web')->logout();
 
-        $request->session()->invalidate();
-
-        $request->session()->regenerateToken();
+        $request->session()->regenerate();
 
         return redirect()->route('login');
     }

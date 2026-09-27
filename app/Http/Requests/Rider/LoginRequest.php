@@ -43,7 +43,9 @@ class LoginRequest extends FormRequest
         $field = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'phone';
         $value = $field === 'phone' ? $customers->normalizeGhanaPhone($login) : $login;
 
-        if (! Auth::attempt([$field => $value, 'password' => $this->string('password')], $this->boolean('remember'))) {
+        // The 'rider' guard, not the default — see config/auth.php's own
+        // comment on why riders authenticate separately from staff.
+        if (! Auth::guard('rider')->attempt([$field => $value, 'password' => $this->string('password')], $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([

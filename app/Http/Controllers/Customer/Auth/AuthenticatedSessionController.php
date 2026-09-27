@@ -26,12 +26,18 @@ class AuthenticatedSessionController extends Controller
         return redirect()->intended(route('home'));
     }
 
+    /**
+     * session()->regenerate(), not invalidate() — see
+     * Auth\AuthenticatedSessionController::destroy()'s own comment. A
+     * staff member or rider logged in in the same browser (a plausible
+     * "browsing the site as a customer to check something" case) must
+     * survive a customer logout here.
+     */
     public function destroy(Request $request): RedirectResponse
     {
         Auth::guard('customer')->logout();
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        $request->session()->regenerate();
 
         return redirect('/');
     }
