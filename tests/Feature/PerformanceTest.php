@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\VisitorSession;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
@@ -38,6 +39,12 @@ class PerformanceTest extends TestCase
             'name' => 'East Legon', 'slug' => 'east-legon', 'phone' => '+233200000002', 'address' => 'B',
             'lat' => 5.6, 'lng' => -0.2, 'opens_at' => '10:00', 'closes_at' => '22:00',
         ]);
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
     }
 
     private function assignRoleAt(User $user, string $role, Branch $branch): void
@@ -256,6 +263,13 @@ class PerformanceTest extends TestCase
 
     public function test_operations_tab_shows_avg_times_per_branch(): void
     {
+        // "today" is computed in Africa/Accra (PerformanceController —
+        // UTC, no DST), so a real run within ~20 minutes of midnight could
+        // push this order's placed_at/event timestamps into "yesterday",
+        // silently dropping it from the aggregate and flaking. Anchored to
+        // a fixed, safely-mid-day moment instead of the real wall clock.
+        Carbon::setTestNow(Carbon::parse('2026-01-15 12:00:00', 'Africa/Accra'));
+
         $owner = $this->makeOwner();
 
         $order = $this->makeOrder($this->eastLegon, 'paid', 4000, minutesAgo: 20);
