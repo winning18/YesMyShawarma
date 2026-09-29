@@ -147,13 +147,11 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
 
     Route::post('/dashboard/orders/{order}/accept', [OrderActionController::class, 'accept'])->name('orders.accept');
     Route::post('/dashboard/orders/{order}/reject', [OrderActionController::class, 'reject'])->name('orders.reject');
-    Route::post('/dashboard/orders/{order}/advance', [OrderActionController::class, 'advance'])->name('orders.advance');
     Route::post('/dashboard/orders/{order}/cancel', [OrderActionController::class, 'cancel'])->name('orders.cancel');
     Route::post('/dashboard/orders/{order}/assign-rider', [OrderActionController::class, 'assignRider'])->name('orders.assign_rider');
     Route::post('/dashboard/orders/{order}/confirm-momo-payment', [OrderActionController::class, 'confirmMomoPayment'])->name('orders.confirm_momo_payment');
     Route::post('/dashboard/orders/{order}/transfer-branch', [OrderActionController::class, 'transferBranch'])->name('orders.transfer_branch');
     Route::post('/dashboard/orders/{order}/delivery-fee', [OrderActionController::class, 'adjustDeliveryFee'])->name('orders.adjust_delivery_fee');
-    Route::post('/dashboard/orders/{order}/arrive', [OrderActionController::class, 'arrive'])->name('orders.arrive');
     Route::post('/dashboard/orders/{order}/refunds', [RefundController::class, 'store'])->name('orders.refunds.store');
 
     Route::post('/push/subscribe', [PushSubscriptionController::class, 'store'])->name('push.subscribe');
@@ -305,6 +303,19 @@ Route::middleware('auth:web,rider')->group(function () {
 
     Route::get('/branches/select', [BranchSelectionController::class, 'show'])->name('branches.select');
     Route::post('/branches/select', [BranchSelectionController::class, 'store'])->name('branches.select.store');
+});
+
+// auth:web,rider, not the bare 'auth' — these two are the only order actions
+// a rider takes themselves (permissions.md: orders.advance_status "own
+// only"), called from the rider dashboard's own JS against these exact
+// route names. Left inside the staff-only 'auth' group above, a rider's
+// own tap on "Arrived"/"Picked up"/"Delivered"/"Delivery failed" 401s,
+// since that group resolves to the 'web' guard only. No staff.web_orders_check
+// here — these are always POST/JSON calls, which that middleware already
+// no-ops for.
+Route::middleware(['auth:web,rider', 'verified', 'branch', 'password.change_required'])->group(function () {
+    Route::post('/dashboard/orders/{order}/advance', [OrderActionController::class, 'advance'])->name('orders.advance');
+    Route::post('/dashboard/orders/{order}/arrive', [OrderActionController::class, 'arrive'])->name('orders.arrive');
 });
 
 require __DIR__.'/auth.php';

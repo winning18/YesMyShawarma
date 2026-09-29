@@ -83,7 +83,7 @@
                                 <td class="px-4 py-2 text-gray-500 uppercase">{{ $refund->order->channel }}</td>
                                 <td class="px-4 py-2 text-right text-gray-800">GH₵{{ number_format($refund->amount / 100, 2) }}</td>
                                 <td class="px-4 py-2 text-gray-500 max-w-xs truncate" title="{{ $refund->reason }}">{{ $refund->reason }}</td>
-                                <td class="px-4 py-2 text-gray-500">{{ $refund->requestedBy->name }}</td>
+                                <td class="px-4 py-2 text-gray-500">{{ $refund->requestedBy?->name ?? __('Deleted account') }}</td>
                                 <td class="px-4 py-2">
                                     <span class="text-xs font-medium px-2 py-1 rounded-md capitalize {{ $badgeClass }}">{{ $refund->status }}</span>
                                 </td>

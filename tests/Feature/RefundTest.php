@@ -503,6 +503,22 @@ class RefundTest extends TestCase
         $this->assertSame($posOrder->id, $refunds->first()->order_id);
     }
 
+    public function test_refunds_index_survives_a_requester_who_has_since_been_removed(): void
+    {
+        $requester = $this->makeStaff();
+        $owner = $this->makeOwner();
+        $order = $this->makePaidOrder(5000);
+        $this->actingAs($requester)->post(route('orders.refunds.store', $order), [
+            'amount' => '20.00', 'reason' => 'Wrong item.',
+        ]);
+        $requester->delete();
+
+        $response = $this->actingAs($owner)->get(route('dashboard.refunds.index'));
+
+        $response->assertOk();
+        $response->assertSee(__('Deleted account'));
+    }
+
     public function test_refund_nav_link_shows_for_owner_manager_and_staff_not_rider(): void
     {
         $owner = $this->makeOwner();

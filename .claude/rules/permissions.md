@@ -273,7 +273,9 @@ mirroring `order_events`) carries no `branch_id` of its own — it's reached onl
   other's — logging in on `/rider/login` no longer silently logs out whoever was on `/login` in
   another tab, and vice versa. A handful of routes are reachable by either guard
   (`auth:web,rider` — `routes/auth.php`'s email verification/password confirm/force-password-
-  change, and `/branches/select`), and `routes/channels.php`'s two channels declare
+  change, `/branches/select`, and `orders.advance`/`orders.arrive` — the only two order actions
+  a rider takes themselves, per the `orders.advance_status`/`arrive` rows above; every other
+  `dashboard/orders/{order}/*` action stays `web`-only), and `routes/channels.php`'s two channels declare
   `['guards' => ['web', 'rider']]` so `/broadcasting/auth` (a separate request from whichever
   page opened the Echo connection) checks both. `Auth::guard('web')->logout()`/
   `Auth::guard('rider')->logout()` only clear that one guard's own session key — never call

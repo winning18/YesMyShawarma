@@ -172,6 +172,35 @@ class EscalateUnacknowledgedOrdersTest extends TestCase
         $this->assertDatabaseHas('order_events', ['order_id' => $order->id, 'meta->escalation_level' => 10]);
     }
 
+    /**
+     * Regression test for a real production incident: a manager/owner
+     * account created with no phone number (CreateUserRequest allows it)
+     * crashed this loop with a TypeError on the very first such recipient,
+     * silently killing escalation for every branch/order in the run —
+     * not just that one recipient — for as long as the account existed.
+     */
+    public function test_a_recipient_with_no_phone_does_not_block_escalation_to_others(): void
+    {
+        $managerWithNoPhone = User::factory()->create(['phone' => null]);
+        $this->assignRoleAt($managerWithNoPhone, 'manager', $this->branch);
+
+        $generalManager = User::factory()->create();
+        $this->assignRoleAt($generalManager, 'general_manager', $this->branch);
+
+        $order = $this->makeOrderPaidMinutesAgo(6);
+
+        $this->mock(Notifier::class, function ($mock) use ($generalManager) {
+            $mock->shouldReceive('notify')->once()
+                ->with($generalManager->phone, \Mockery::type('string'), \Mockery::type('array'));
+        });
+
+        $this->artisan('orders:escalate-unacknowledged')->assertSuccessful();
+
+        $this->assertDatabaseHas('order_events', [
+            'order_id' => $order->id, 'meta->escalation_level' => 5,
+        ]);
+    }
+
     public function test_does_not_escalate_before_threshold(): void
     {
         $this->makeOrderPaidMinutesAgo(2);

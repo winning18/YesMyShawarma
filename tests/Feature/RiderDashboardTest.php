@@ -136,6 +136,38 @@ class RiderDashboardTest extends TestCase
             ->assertJsonPath('data.status', 'dispatched');
     }
 
+    /**
+     * Regression test for a real production outage: orders.advance/orders.
+     * arrive were left gated by plain 'auth' (the 'web' guard only) when
+     * riders were split onto their own guard, so every rider tap on
+     * Arrived/Picked up/Delivered/Delivery failed 401'd. actingAs($rider,
+     * 'rider') alone can't catch this — it calls Auth::shouldUse('rider')
+     * under the hood, which makes the *default* guard 'rider' for the rest
+     * of the test regardless of what the route itself requires, masking
+     * exactly this bug. Logging in for real through rider.login is the
+     * only way this reproduces what a browser actually does.
+     */
+    public function test_a_really_logged_in_rider_can_reach_advance_and_arrive(): void
+    {
+        $rider = User::factory()->create(['email' => 'kwame@example.com']);
+        $this->assignRoleAt($rider, 'rider', $this->branchA);
+
+        $order = $this->makeOrder($this->branchA);
+        $order->rider_id = $rider->id;
+        $order->save();
+
+        $this->post(route('rider.login'), [
+            'login' => 'kwame@example.com',
+            'password' => 'password',
+        ])->assertRedirect(route('rider.dashboard'));
+
+        $this->postJson(route('orders.advance', $order), ['to' => 'dispatched'])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'dispatched');
+
+        $this->postJson(route('orders.arrive', $order), [])->assertOk();
+    }
+
     public function test_rider_cannot_advance_an_order_claimed_by_someone_else(): void
     {
         $riderA = User::factory()->create();

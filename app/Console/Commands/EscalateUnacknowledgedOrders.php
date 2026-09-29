@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Contracts\Notifier;
 use App\Models\Order;
+use App\Models\User;
 use App\Services\Branches\BranchContext;
 use App\Services\Branches\WorkingHoursService;
 use Illuminate\Console\Attributes\Description;
@@ -82,13 +83,19 @@ class EscalateUnacknowledgedOrders extends Command
                 continue;
             }
 
+            // phone is nullable (CreateUserRequest) — a manager/general_manager/
+            // owner account created without one used to crash this loop with a
+            // TypeError on the very first such recipient, silently killing
+            // escalation for every other order in the same run too, since
+            // nothing here isolates one recipient's failure from the rest.
             $recipients = collect($roles)
                 ->flatMap(function (string $role) use ($context, $order) {
                     $branchId = $role === 'owner' ? null : $order->branch_id;
 
                     return $context->usersWithRole($role, $branchId);
                 })
-                ->unique('id');
+                ->unique('id')
+                ->filter(fn (User $user) => filled($user->phone));
 
             foreach ($recipients as $user) {
                 $notifier->notify(
