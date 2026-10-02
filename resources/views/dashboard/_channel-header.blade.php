@@ -7,9 +7,13 @@
 
     $isStaff/$forceShiftStart come from the controller — staff specifically
     gets a blocking "start your shift" popup (with an optional
-    starting-cash field) before the dashboard is usable, and total_sales is
-    required when they end it. Manager keeps the plain click-to-toggle
-    behaviour, unchanged. $ordersUrl is the "Orders" button's destination —
+    starting-cash field) before the dashboard is usable. total_sales and at
+    least one expense (or an explicit "none today") are required of
+    whoever ends a shift here, staff and manager/general_manager alike —
+    $isStaff only still matters for the post-end redirect (shiftWidget's
+    $redirectToReportsOnEnd): staff loses dashboard access the moment
+    their shift ends, manager/general_manager don't. $ordersUrl is the
+    "Orders" button's destination —
     staff and manager land on different routes now that owner/manager's
     route('dashboard') redirects to the business overview instead of this
     board (see OrderDashboardController).

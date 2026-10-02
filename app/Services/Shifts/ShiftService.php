@@ -37,22 +37,35 @@ class ShiftService
     }
 
     /**
-     * $totalSales stays optional at this layer — ShiftController is where
-     * "required for staff, optional for everyone else" (and "must be at
-     * least $systemSales") is enforced. $systemSales is a snapshot of what
-     * the system recorded at the moment of closing, not a live-derivable
-     * value — see the migration that added the column. Null whenever
-     * $totalSales is (never captured for non-staff, who aren't validated
-     * against it at all).
+     * $totalSales/$systemSales stay optional at this layer — ShiftController
+     * is where "required, and must be at least $systemSales" is enforced.
+     * $systemSales is a snapshot of what the system recorded at the moment
+     * of closing, not a live-derivable value — see the migration that added
+     * the column.
+     *
+     * $expenses is a list of ['description' => string, 'amount' => int
+     * pesewas] rows, already converted and validated by the controller —
+     * this just persists them as shift_expenses, an immutable ledger same
+     * as order_events/stock_movements. $noExpenses records an explicit "I
+     * confirm there were none" so the Today report can tell that apart
+     * from a shift that simply predates this feature (schema.md).
      */
-    public function end(Shift $shift, ?int $totalSales = null, ?int $systemSales = null, ?string $closingNote = null): Shift
+    public function end(Shift $shift, ?int $totalSales = null, ?int $systemSales = null, ?string $closingNote = null, array $expenses = [], bool $noExpenses = false): Shift
     {
         $shift->update([
             'ended_at' => now(),
             'total_sales' => $totalSales,
             'system_sales' => $systemSales,
             'closing_note' => $closingNote,
+            'no_expenses' => $noExpenses,
         ]);
+
+        foreach ($expenses as $expense) {
+            $shift->expenses()->create([
+                'description' => $expense['description'],
+                'amount' => $expense['amount'],
+            ]);
+        }
 
         return $shift->fresh();
     }

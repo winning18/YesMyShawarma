@@ -32,11 +32,11 @@ class OrderActionController extends Controller
 {
     /**
      * Staff specifically must have an active shift at the order's branch
-     * to accept it — schema.md already treats shifts as the staff-specific
-     * accounting mechanism (total_sales required only for staff, optional
-     * for everyone else), so the same line is drawn here: manager/owner/
-     * general_manager can still accept without one, same as always. This
-     * is what actually makes "an order placed while closed just sits
+     * to accept it — starting a shift is still a staff-specific gate on
+     * reaching the dashboard at all, even though total_sales/expenses at
+     * end-of-shift are now required of everyone (schema.md). Manager/
+     * owner/general_manager can still accept without one, same as always.
+     * This is what actually makes "an order placed while closed just sits
      * there" true in practice — there's no separate hold state, staff
      * simply can't act on it until they clock in.
      */

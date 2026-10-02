@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 // they're clocking into right now). Scoping this model would silently
 // break that cross-branch check the first time someone tried to clock in
 // at a second branch while still active at another.
-#[Fillable(['user_id', 'branch_id', 'started_at', 'ended_at', 'starting_cash', 'total_sales', 'system_sales', 'opening_note', 'closing_note'])]
+#[Fillable(['user_id', 'branch_id', 'started_at', 'ended_at', 'starting_cash', 'total_sales', 'system_sales', 'opening_note', 'closing_note', 'no_expenses'])]
 class Shift extends Model
 {
     use HasFactory;
@@ -24,6 +24,7 @@ class Shift extends Model
         return [
             'started_at' => 'datetime',
             'ended_at' => 'datetime',
+            'no_expenses' => 'boolean',
         ];
     }
 
@@ -40,5 +41,10 @@ class Shift extends Model
     public function orderEvents(): HasMany
     {
         return $this->hasMany(OrderEvent::class);
+    }
+
+    public function expenses(): HasMany
+    {
+        return $this->hasMany(ShiftExpense::class);
     }
 }

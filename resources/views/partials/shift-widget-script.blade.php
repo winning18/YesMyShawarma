@@ -1,18 +1,19 @@
-{{-- Shared by the staff dashboard and rider layout — both wrap this in an
-     element with x-data="shiftWidget()" x-init="init()". Guard-agnostic:
-     shifts are keyed on user_id only (see ShiftService), so the same widget
-     works for staff and riders alike.
+{{-- The only shift toggle in the app — dashboard/_channel-header.blade.php
+     (Orders/POS/History), the sole caller of shiftWidget(). Riders have no
+     shift widget at all (orders.md: "no shift required" for them).
 
-     $requireTotalSalesOnEnd and $forceStart are only ever true for the
-     staff-dashboard header (dashboard/_channel-header.blade.php) — the
-     rider layout uses the zero-arg default and keeps the original plain
-     start()/end() behaviour untouched. --}}
+     $forceStart is only ever true there too (staff, no active shift yet).
+     $redirectToReportsOnEnd is passed as $isStaff by the caller: staff
+     loses dashboard access the instant their shift ends and needs
+     somewhere to land, manager/general_manager don't lose anything and
+     stay put — this is its only remaining job now that total_sales/
+     expenses are required of everyone who ends a shift, not staff alone. --}}
 <script>
-    function shiftWidget(requireTotalSalesOnEnd = false, forceStart = false) {
+    function shiftWidget(redirectToReportsOnEnd = false, forceStart = false) {
         return {
             active: false,
             branch: null,
-            requireTotalSalesOnEnd: requireTotalSalesOnEnd,
+            redirectToReportsOnEnd: redirectToReportsOnEnd,
             forceStart: forceStart,
 
             startModalOpen: false,
@@ -21,6 +22,8 @@
             endModalOpen: false,
             totalSales: '',
             closingNote: '',
+            expenses: [],
+            noExpenses: false,
             systemSales: null,
             error: null,
 
@@ -44,8 +47,10 @@
                 }
             },
 
-            // Plain, unmodalled actions — unchanged, still what the rider
-            // layout's buttons call directly.
+            // Plain, unmodalled actions — dead code today (nothing calls
+            // these; the header above always goes through the modal/
+            // confirm* pair instead) but left in place rather than
+            // removed as part of an unrelated change.
             async start() {
                 await this.post('{{ route('shift.start') }}');
             },
@@ -89,26 +94,64 @@
                 this.endModalOpen = false;
             },
 
+            addExpenseRow() {
+                this.expenses.push({ description: '', amount: '' });
+            },
+
+            removeExpenseRow(index) {
+                this.expenses.splice(index, 1);
+            },
+
+            // A row only counts once both halves are filled — an
+            // in-progress row (description typed, amount not yet, or vice
+            // versa) is neither submitted nor allowed to silently satisfy
+            // "at least one expense".
+            completeExpenseRows() {
+                return this.expenses.filter((row) => row.description && row.amount);
+            },
+
             async confirmEnd() {
                 this.error = null;
+
+                if (!this.totalSales) {
+                    this.error = @js(__('Total sales is required to end your shift.'));
+                    return;
+                }
+
+                if (this.systemSales !== null && Math.round(parseFloat(this.totalSales) * 100) < this.systemSales) {
+                    this.error = @js(__('Total sales cannot be less than today\'s recorded sales.'));
+                    return;
+                }
+
+                const completeExpenses = this.completeExpenseRows();
+
+                if (!this.noExpenses && completeExpenses.length === 0) {
+                    this.error = @js(__('Add at least one expense, or confirm there were none today.'));
+                    return;
+                }
 
                 const ok = await this.post('{{ route('shift.end') }}', {
                     total_sales: this.totalSales || null,
                     closing_note: this.closingNote || null,
+                    no_expenses: this.noExpenses,
+                    expenses: completeExpenses,
                 });
 
                 if (ok) {
                     this.endModalOpen = false;
                     this.totalSales = '';
                     this.closingNote = '';
+                    this.expenses = [];
+                    this.noExpenses = false;
 
                     // Some staff lose dashboard access the instant their
                     // shift ends, and land on Reports and invoices next —
                     // the natural place to review the shift they just
                     // closed out. A real navigation, not a reload: reload
                     // would leave them stuck on whatever dashboard-area
-                    // page they were just locked out of.
-                    if (this.requireTotalSalesOnEnd) {
+                    // page they were just locked out of. Manager/
+                    // general_manager lose no access, so they stay put.
+                    if (this.redirectToReportsOnEnd) {
                         window.location.href = '{{ route('dashboard.reports.index') }}';
                     }
                 }

@@ -37,11 +37,19 @@
             </div>
         </div>
 
-        {{-- Shifts today — total_sales is the staff-entered figure (required
-             at close for staff, optional for manager/owner), system_sales
-             is the snapshot of what the system had recorded at that exact
+        {{-- Shifts today — total_sales is the figure entered by whoever
+             ended the shift (required of everyone now), system_sales is
+             the snapshot of what the system had recorded at that exact
              moment (see ShiftController::end()). Anything entered above it
-             shows here as "Extra" rather than getting silently dropped. --}}
+             shows here as "Extra" rather than getting silently dropped.
+
+             Expenses: the sum of that shift's shift_expenses rows. "—"
+             (never recorded — predates this feature) is kept visually
+             distinct from a genuine GH₵0.00 (no_expenses explicitly
+             confirmed) rather than collapsing both into the same blank.
+             Net is total_sales minus expenses, shown as-is rather than
+             floored at zero — expenses exceeding sales is a real signal
+             worth seeing, not hiding. --}}
         @if ($shifts->isNotEmpty())
             <section class="space-y-2">
                 <h3 class="font-semibold text-gray-800 uppercase text-sm tracking-wide">{{ __('Shifts today') }}</h3>
@@ -55,6 +63,8 @@
                                 <th class="px-4 py-2 text-right">{{ __('Total sales') }}</th>
                                 <th class="px-4 py-2 text-right">{{ __('System sales') }}</th>
                                 <th class="px-4 py-2 text-right">{{ __('Extra') }}</th>
+                                <th class="px-4 py-2 text-right">{{ __('Expenses') }}</th>
+                                <th class="px-4 py-2 text-right">{{ __('Net') }}</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
@@ -62,6 +72,11 @@
                                 @php
                                     $extra = ($shift->total_sales !== null && $shift->system_sales !== null)
                                         ? max(0, $shift->total_sales - $shift->system_sales)
+                                        : null;
+                                    $expensesTotal = $shift->expenses->sum('amount');
+                                    $hasExpenseRecord = $shift->no_expenses || $shift->expenses->isNotEmpty();
+                                    $net = ($shift->total_sales !== null && $hasExpenseRecord)
+                                        ? $shift->total_sales - $expensesTotal
                                         : null;
                                 @endphp
                                 <tr>
@@ -78,6 +93,12 @@
                                     </td>
                                     <td class="px-4 py-2 text-right font-medium {{ $extra ? 'text-green-700' : 'text-gray-400' }}">
                                         {{ $extra ? 'GH₵'.number_format($extra / 100, 2) : 'N/A' }}
+                                    </td>
+                                    <td class="px-4 py-2 text-right text-gray-500">
+                                        {{ $hasExpenseRecord ? 'GH₵'.number_format($expensesTotal / 100, 2) : '—' }}
+                                    </td>
+                                    <td class="px-4 py-2 text-right font-medium {{ $net !== null && $net < 0 ? 'text-red-600' : 'text-gray-800' }}">
+                                        {{ $net !== null ? 'GH₵'.number_format($net / 100, 2) : 'N/A' }}
                                     </td>
                                 </tr>
                             @endforeach

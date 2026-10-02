@@ -73,7 +73,9 @@ class ShiftTest extends TestCase
             'user_id' => $staff->id, 'branch_id' => $this->branch->id, 'ended_at' => null,
         ]);
 
-        $this->actingAs($staff)->postJson(route('shift.end'), ['total_sales' => '250.00'])->assertOk();
+        $this->actingAs($staff)->postJson(route('shift.end'), [
+            'total_sales' => '250.00', 'no_expenses' => true,
+        ])->assertOk();
 
         $this->actingAs($staff)->getJson(route('shift.show'))->assertJsonPath('active', false);
     }
@@ -120,20 +122,34 @@ class ShiftTest extends TestCase
         $this->assignRoleAt($staff, 'staff', $this->branch);
 
         $this->actingAs($staff)->postJson(route('shift.start'))->assertOk();
-        $this->actingAs($staff)->postJson(route('shift.end'), ['total_sales' => '875.25'])->assertOk();
+        $this->actingAs($staff)->postJson(route('shift.end'), [
+            'total_sales' => '875.25', 'no_expenses' => true,
+        ])->assertOk();
 
         $this->assertDatabaseHas('shifts', [
             'user_id' => $staff->id, 'total_sales' => 87525,
         ]);
     }
 
-    public function test_manager_can_end_a_shift_without_total_sales(): void
+    public function test_manager_must_enter_total_sales_and_expenses_to_end_a_shift(): void
     {
+        // total_sales and the expenses-or-none requirement apply to
+        // whoever ends a shift now, not staff only.
         $manager = User::factory()->create();
         $this->assignRoleAt($manager, 'manager', $this->branch);
 
         $this->actingAs($manager)->postJson(route('shift.start'))->assertOk();
-        $this->actingAs($manager)->postJson(route('shift.end'))->assertOk();
+
+        $this->actingAs($manager)->postJson(route('shift.end'))->assertUnprocessable();
+
+        $this->actingAs($manager)->postJson(route('shift.end'), [
+            'total_sales' => '0.00',
+        ])->assertUnprocessable()
+            ->assertJsonFragment(['message' => 'Add at least one expense, or confirm there were none today.']);
+
+        $this->actingAs($manager)->postJson(route('shift.end'), [
+            'total_sales' => '0.00', 'no_expenses' => true,
+        ])->assertOk();
 
         $this->actingAs($manager)->getJson(route('shift.show'))->assertJsonPath('active', false);
     }
@@ -146,7 +162,7 @@ class ShiftTest extends TestCase
 
         $this->revenueOrder(10000); // GHS 100.00 recorded by the system
 
-        $this->actingAs($staff)->postJson(route('shift.end'), ['total_sales' => '50.00'])
+        $this->actingAs($staff)->postJson(route('shift.end'), ['total_sales' => '50.00', 'no_expenses' => true])
             ->assertUnprocessable()
             ->assertJsonFragment(['message' => "Total sales cannot be less than today's recorded sales of GHS 100.00."]);
 
@@ -161,7 +177,7 @@ class ShiftTest extends TestCase
 
         $this->revenueOrder(10000);
 
-        $this->actingAs($staff)->postJson(route('shift.end'), ['total_sales' => '100.00'])->assertOk();
+        $this->actingAs($staff)->postJson(route('shift.end'), ['total_sales' => '100.00', 'no_expenses' => true])->assertOk();
 
         $this->assertDatabaseHas('shifts', [
             'user_id' => $staff->id, 'total_sales' => 10000, 'system_sales' => 10000,
@@ -176,7 +192,7 @@ class ShiftTest extends TestCase
 
         $this->revenueOrder(10000); // GHS 100.00 recorded
 
-        $this->actingAs($staff)->postJson(route('shift.end'), ['total_sales' => '130.00'])->assertOk();
+        $this->actingAs($staff)->postJson(route('shift.end'), ['total_sales' => '130.00', 'no_expenses' => true])->assertOk();
 
         $this->assertDatabaseHas('shifts', [
             'user_id' => $staff->id, 'total_sales' => 13000, 'system_sales' => 10000,
@@ -204,8 +220,9 @@ class ShiftTest extends TestCase
             ->assertJsonPath('system_sales', 5000);
     }
 
-    public function test_shift_show_omits_system_sales_for_manager(): void
+    public function test_shift_show_includes_system_sales_for_manager_too(): void
     {
+        // Required and validated against for everyone now, not staff only.
         $manager = User::factory()->create();
         $this->assignRoleAt($manager, 'manager', $this->branch);
         $this->actingAs($manager)->postJson(route('shift.start'))->assertOk();
@@ -214,7 +231,7 @@ class ShiftTest extends TestCase
 
         $this->actingAs($manager)->getJson(route('shift.show'))
             ->assertOk()
-            ->assertJsonPath('system_sales', null);
+            ->assertJsonPath('system_sales', 5000);
     }
 
     public function test_cannot_start_a_second_shift_while_one_is_active(): void
@@ -363,5 +380,175 @@ class ShiftTest extends TestCase
         $this->actingAs($staff)->get(route('profile.edit'))
             ->assertOk()
             ->assertDontSee('x-data="shiftWidget', false);
+    }
+
+    public function test_ending_a_shift_requires_at_least_one_expense_or_a_no_expenses_confirmation(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+        $this->actingAs($staff)->postJson(route('shift.start'))->assertOk();
+
+        $this->actingAs($staff)->postJson(route('shift.end'), ['total_sales' => '100.00'])
+            ->assertUnprocessable()
+            ->assertJsonFragment(['message' => 'Add at least one expense, or confirm there were none today.']);
+
+        $this->assertDatabaseHas('shifts', ['user_id' => $staff->id, 'ended_at' => null]);
+    }
+
+    public function test_no_expenses_checkbox_satisfies_the_requirement_with_zero_rows(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+        $this->actingAs($staff)->postJson(route('shift.start'))->assertOk();
+
+        $this->actingAs($staff)->postJson(route('shift.end'), [
+            'total_sales' => '100.00', 'no_expenses' => true,
+        ])->assertOk();
+
+        $this->assertDatabaseHas('shifts', ['user_id' => $staff->id, 'no_expenses' => true]);
+        $this->assertDatabaseCount('shift_expenses', 0);
+    }
+
+    public function test_multiple_expenses_are_persisted_with_description_and_amount_in_pesewas(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+        $this->actingAs($staff)->postJson(route('shift.start'))->assertOk();
+
+        $this->actingAs($staff)->postJson(route('shift.end'), [
+            'total_sales' => '100.00',
+            'expenses' => [
+                ['description' => 'Gas refill', 'amount' => '25.00'],
+                ['description' => 'Ice', 'amount' => '5.50'],
+            ],
+        ])->assertOk();
+
+        $shift = Shift::where('user_id', $staff->id)->first();
+
+        $this->assertDatabaseHas('shift_expenses', [
+            'shift_id' => $shift->id, 'description' => 'Gas refill', 'amount' => 2500,
+        ]);
+        $this->assertDatabaseHas('shift_expenses', [
+            'shift_id' => $shift->id, 'description' => 'Ice', 'amount' => 550,
+        ]);
+        $this->assertFalse($shift->no_expenses);
+    }
+
+    public function test_an_expense_row_missing_a_description_fails_validation(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+        $this->actingAs($staff)->postJson(route('shift.start'))->assertOk();
+
+        $this->actingAs($staff)->postJson(route('shift.end'), [
+            'total_sales' => '100.00',
+            'expenses' => [['description' => '', 'amount' => '25.00']],
+        ])->assertUnprocessable()->assertJsonValidationErrors('expenses.0.description');
+
+        $this->assertDatabaseCount('shift_expenses', 0);
+    }
+
+    public function test_an_expense_row_missing_an_amount_fails_validation(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+        $this->actingAs($staff)->postJson(route('shift.start'))->assertOk();
+
+        $this->actingAs($staff)->postJson(route('shift.end'), [
+            'total_sales' => '100.00',
+            'expenses' => [['description' => 'Gas refill', 'amount' => '']],
+        ])->assertUnprocessable()->assertJsonValidationErrors('expenses.0.amount');
+
+        $this->assertDatabaseCount('shift_expenses', 0);
+    }
+
+    public function test_expenses_are_deducted_from_total_sales_in_the_today_report(): void
+    {
+        $staff = User::factory()->create(['name' => 'Ama Staff']);
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+        $this->actingAs($staff)->postJson(route('shift.start'))->assertOk();
+
+        $this->actingAs($staff)->postJson(route('shift.end'), [
+            'total_sales' => '100.00',
+            'expenses' => [['description' => 'Gas refill', 'amount' => '30.00']],
+        ])->assertOk();
+
+        $manager = User::factory()->create();
+        $this->assignRoleAt($manager, 'manager', $this->branch);
+
+        $this->actingAs($manager)->get(route('dashboard.reports.today.index'))
+            ->assertOk()
+            ->assertSee('Ama Staff')
+            ->assertSee('GH₵30.00') // Expenses
+            ->assertSee('GH₵70.00'); // Net: 100.00 - 30.00
+    }
+
+    public function test_a_confirmed_no_expenses_shift_shows_a_zero_in_the_report(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+        $this->actingAs($staff)->postJson(route('shift.start'))->assertOk();
+        $this->actingAs($staff)->postJson(route('shift.end'), [
+            'total_sales' => '50.00', 'no_expenses' => true,
+        ])->assertOk();
+
+        $shift = Shift::where('user_id', $staff->id)->first();
+
+        $this->assertTrue($shift->no_expenses);
+        $this->assertSame(0, $shift->expenses->sum('amount'));
+
+        $manager = User::factory()->create();
+        $this->assignRoleAt($manager, 'manager', $this->branch);
+
+        $this->actingAs($manager)->get(route('dashboard.reports.today.index'))
+            ->assertOk()
+            ->assertSee('GH₵0.00'); // Expenses: confirmed none, not "—"
+    }
+
+    public function test_a_shift_from_before_this_feature_shows_a_dash_not_a_zero_in_the_report(): void
+    {
+        // Simulates a shift ended before this feature existed — no
+        // shift_expenses rows, and no_expenses was never set either —
+        // kept visually distinct from a confirmed-zero shift (schema.md).
+        $legacy = User::factory()->create(['name' => 'Legacy Shift']);
+        $this->assignRoleAt($legacy, 'staff', $this->branch);
+        Shift::create([
+            'user_id' => $legacy->id, 'branch_id' => $this->branch->id,
+            'started_at' => now(), 'ended_at' => now(), 'total_sales' => 5000,
+        ]);
+
+        $owner = User::factory()->create();
+        $this->assignRoleAt($owner, 'owner', $this->branch);
+
+        $response = $this->actingAs($owner)->get(route('dashboard.reports.today.index'))->assertOk();
+        $response->assertSeeInOrder(['Legacy Shift', '—']);
+    }
+
+    public function test_closing_note_can_be_left_when_ending_a_shift(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+        $this->actingAs($staff)->postJson(route('shift.start'))->assertOk();
+
+        $this->actingAs($staff)->postJson(route('shift.end'), [
+            'total_sales' => '100.00', 'no_expenses' => true, 'closing_note' => 'Fridge was unplugged overnight.',
+        ])->assertOk();
+
+        $this->assertDatabaseHas('shifts', [
+            'user_id' => $staff->id, 'closing_note' => 'Fridge was unplugged overnight.',
+        ]);
+    }
+
+    public function test_end_shift_modal_includes_the_expenses_and_notes_fields(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+        $this->actingAs($staff)->postJson(route('shift.start'))->assertOk();
+
+        $response = $this->actingAs($staff)->get(route('dashboard'))->assertOk();
+
+        $response->assertSee(__('No expenses today'));
+        $response->assertSee(__('Add expense'));
+        $response->assertSee('x-model="closingNote"', false);
     }
 }

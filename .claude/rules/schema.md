@@ -154,7 +154,9 @@ Same applies to `delivery_address_snapshot` — customers edit saved addresses.
 
 ```
 shifts  id, user_id, branch_id, started_at, ended_at,
-        starting_cash, total_sales, opening_note, closing_note
+        starting_cash, total_sales, system_sales, opening_note, closing_note, no_expenses
+
+shift_expenses  id, shift_id, description, amount, created_at
 ```
 
 Orders attribute to a shift, not only a user. Terminals get shared between staff; the shift
@@ -168,10 +170,22 @@ makes handover explicit and makes "which shift had four cancellations" answerabl
   calculation or report. Optional for every role — capturing it is a courtesy, not a
   requirement.
 - `total_sales` — what was actually sold during the shift, entered by the person ending it.
-  Required for `staff` specifically (`ShiftController::end()`), optional for everyone else.
+  Required of everyone who ends a shift (`ShiftController::end()`), and can never be entered
+  below `system_sales` (the snapshot of what the system had actually recorded at that exact
+  moment) — an amount above it is accepted and shown as "Extra" in the Today report rather
+  than silently dropped.
 
-Both are `unsignedBigInteger` pesewas, both nullable at the column level — "required for
-staff" is an application-layer rule (`ShiftController`), not a schema one.
+Both are `unsignedBigInteger` pesewas, both nullable at the column level — "required" is an
+application-layer rule (`ShiftController`), not a schema one.
+
+`shift_expenses` is an immutable ledger, same shape as `order_events`/`stock_movements` —
+`amount` in pesewas, `created_at` only, no `updated_at`, reached only through `shift_id` (no
+`branch_id` of its own). Ending a shift requires either at least one expense row (`description`
++ a positive `amount`, both mandatory per row) or `shifts.no_expenses` explicitly set — the
+latter is a genuine "I confirm there were none today," kept visually distinct in the Today
+report from a shift that simply predates this feature (both show zero rows, but only one set
+the flag). The Today report's "Net" column is `total_sales` minus the sum of that shift's
+`shift_expenses`, shown as-is rather than floored at zero.
 
 ## Delivery areas
 

@@ -42,7 +42,7 @@ class TodayReportController extends Controller
             // branch id (owner's cross-branch aggregate view) means show
             // every branch's shifts, mirroring BranchScope's own no-op
             // behaviour rather than silently returning none.
-            'shifts' => Shift::with('user')
+            'shifts' => Shift::with(['user', 'expenses'])
                 ->when($context->id(), fn ($query, $branchId) => $query->where('branch_id', $branchId))
                 ->whereBetween('started_at', [$dayStart->clone()->utc(), $dayEnd->clone()->utc()])
                 ->orderByDesc('started_at')

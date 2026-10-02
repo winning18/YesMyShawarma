@@ -14,21 +14,19 @@ use Illuminate\Support\Carbon;
 
 class ShiftController extends Controller
 {
-    public function show(Request $request, ShiftService $shifts, BranchContext $context, OrderReportService $reports): JsonResponse
+    public function show(Request $request, ShiftService $shifts, OrderReportService $reports): JsonResponse
     {
-        $user = $request->user();
-        $shift = $shifts->activeFor($user);
-        $isStaff = $shift && $context->primaryRoleFor($user, $shift->branch_id) === 'staff';
+        $shift = $shifts->activeFor($request->user());
 
         return response()->json([
             'active' => (bool) $shift,
             'started_at' => $shift?->started_at?->toIso8601String(),
             'branch' => $shift?->branch?->name,
-            // Shown in the end-shift modal so staff see the figure they're
-            // about to be checked against before they type anything —
-            // never computed for other roles, who aren't validated against
-            // it at all.
-            'system_sales' => $isStaff ? $this->todaysSystemSales($reports) : null,
+            // Shown in the end-shift modal so whoever's about to end a
+            // shift sees the figure they're about to be checked against
+            // before they type anything — total_sales is required and
+            // validated against this for everyone now, not staff only.
+            'system_sales' => $shift ? $this->todaysSystemSales($reports) : null,
         ]);
     }
 
@@ -62,7 +60,7 @@ class ShiftController extends Controller
         return response()->json(['message' => 'Shift started.']);
     }
 
-    public function end(Request $request, ShiftService $shifts, BranchContext $context, OrderReportService $reports): JsonResponse
+    public function end(Request $request, ShiftService $shifts, OrderReportService $reports): JsonResponse
     {
         $shift = $shifts->activeFor($request->user());
 
@@ -70,41 +68,54 @@ class ShiftController extends Controller
             return response()->json(['message' => 'No open shift to end.'], 422);
         }
 
-        // Required specifically for staff — manager/owner/rider keep the
-        // original optional-note-only end flow.
-        $isStaff = $context->primaryRoleFor($request->user(), $shift->branch_id) === 'staff';
-
+        // total_sales is required for everyone who ends a shift now — the
+        // old staff-only split lived here as $isStaff; dropped along with
+        // it, since there's no longer a role-dependent branch to take.
         $validated = $request->validate([
             'closing_note' => ['nullable', 'string', 'max:255'],
-            'total_sales' => [$isStaff ? 'required' : 'nullable', 'numeric', 'min:0'],
+            'total_sales' => ['required', 'numeric', 'min:0'],
+            'no_expenses' => ['sometimes', 'boolean'],
+            'expenses' => ['array'],
+            'expenses.*.description' => ['required_with:expenses', 'string', 'max:255'],
+            'expenses.*.amount' => ['required_with:expenses', 'numeric', 'min:0.01'],
         ]);
 
-        $systemSales = null;
+        $noExpenses = $validated['no_expenses'] ?? false;
+        $expenseInputs = $validated['expenses'] ?? [];
 
-        if ($isStaff) {
-            $systemSales = $this->todaysSystemSales($reports);
-            $entered = Money::toPesewas($validated['total_sales']);
-
-            // Never allowed to under-report — an amount above system sales
-            // is accepted (and recorded, not silently clamped: see
-            // shifts.system_sales, this exact figure) so it shows up in
-            // the Today report rather than getting lost.
-            if ($entered < $systemSales) {
-                return response()->json([
-                    'message' => __(
-                        'Total sales cannot be less than today\'s recorded sales of GHS :amount.',
-                        ['amount' => number_format($systemSales / 100, 2)]
-                    ),
-                ], 422);
-            }
+        // Mandatory, but not "always a real row" — an explicit "no expenses
+        // today" confirmation satisfies it just as well, so a genuinely
+        // expense-free shift doesn't need a fake GHS 0.00 line.
+        if (! $noExpenses && count($expenseInputs) === 0) {
+            return response()->json([
+                'message' => __('Add at least one expense, or confirm there were none today.'),
+            ], 422);
         }
 
-        $shifts->end(
-            $shift,
-            isset($validated['total_sales']) ? Money::toPesewas($validated['total_sales']) : null,
-            $systemSales,
-            $validated['closing_note'] ?? null,
-        );
+        $systemSales = $this->todaysSystemSales($reports);
+        $entered = Money::toPesewas($validated['total_sales']);
+
+        // Never allowed to under-report — an amount above system sales is
+        // accepted (and recorded, not silently clamped: see
+        // shifts.system_sales, this exact figure) so it shows up in the
+        // Today report rather than getting lost.
+        if ($entered < $systemSales) {
+            return response()->json([
+                'message' => __(
+                    'Total sales cannot be less than today\'s recorded sales of GHS :amount.',
+                    ['amount' => number_format($systemSales / 100, 2)]
+                ),
+            ], 422);
+        }
+
+        $expenses = collect($expenseInputs)
+            ->map(fn (array $expense) => [
+                'description' => $expense['description'],
+                'amount' => Money::toPesewas($expense['amount']),
+            ])
+            ->all();
+
+        $shifts->end($shift, $entered, $systemSales, $validated['closing_note'] ?? null, $expenses, $noExpenses);
 
         return response()->json(['message' => 'Shift ended.']);
     }
