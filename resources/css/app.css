@@ -6,6 +6,31 @@
     display: none !important;
 }
 
+/*
+ * App-wide: highlight a field the moment it's shown to be invalid after the
+ * user has actually interacted with it (left it empty on a failed native
+ * submit, typed something malformed, etc.) — :user-invalid, unlike plain
+ * :invalid, never fires on first paint before anyone's touched the form, so
+ * a required-but-empty field stays unstyled until a real submit attempt
+ * reveals it. This alone only covers client-side-blocked submissions;
+ * server-round-trip errors (a fresh page load) are highlighted separately
+ * via $errors->has() wherever a field reads it (see x-text-input).
+ */
+/*
+ * !important: a field's own focus-variant border/ring utility class (e.g.
+ * contact.blade.php's focus:border-brand-yellow) is a class+pseudo-class
+ * selector, which beats this plain element+pseudo-class one on
+ * specificity alone — without !important, tabbing into an invalid field
+ * would silently paint over the red with the normal focus color, hiding
+ * the one state that most needs to stay visible.
+ */
+input:user-invalid,
+select:user-invalid,
+textarea:user-invalid {
+    border-color: theme('colors.red.500') !important;
+    box-shadow: 0 0 0 1px theme('colors.red.500') !important;
+}
+
 @layer components {
     /*
      * @tailwindcss/forms hardcodes the checked checkmark as a white SVG

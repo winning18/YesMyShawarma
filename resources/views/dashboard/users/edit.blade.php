@@ -61,8 +61,11 @@
                                 <input type="hidden" name="from_branch_id" value="{{ $assignment['branch']->id }}">
 
                                 <div class="flex-1">
-                                    <select name="to_branch_id" class="block w-full rounded-md border-gray-300 text-xs" required>
-                                        <option value="">{{ __('Move to branch…') }}</option>
+                                    <select
+                                        name="to_branch_id" required
+                                        class="block w-full rounded-md text-xs {{ $errors->has('to_branch_id') ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300' }}"
+                                    >
+                                        <option value="">{{ __('Move to branch… *') }}</option>
                                         @foreach ($branches as $branch)
                                             @if ($branch->id !== $assignment['branch']->id)
                                                 <option value="{{ $branch->id }}">{{ $branch->name }}</option>

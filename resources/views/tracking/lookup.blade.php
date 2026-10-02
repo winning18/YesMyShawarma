@@ -36,7 +36,7 @@
             @csrf
 
             <div>
-                <label class="block text-sm font-medium mb-1">{{ __('Phone number') }}</label>
+                <label class="block text-sm font-medium mb-1">{{ __('Phone number') }} <span class="text-brand-red">*</span></label>
                 <input
                     type="tel" name="phone" inputmode="numeric" autocomplete="tel" required
                     :value="phone.formatted" @input="phone.onInput($event)" @blur="phone.onBlur()"
@@ -48,8 +48,11 @@
             </div>
 
             <div>
-                <label class="block text-sm font-medium mb-1">{{ __('Order reference') }}</label>
-                <input type="text" name="reference" required value="{{ old('reference') }}" class="w-full rounded-md border-brand-gray-300">
+                <label class="block text-sm font-medium mb-1">{{ __('Order reference') }} <span class="text-brand-red">*</span></label>
+                <input
+                    type="text" name="reference" required value="{{ old('reference') }}"
+                    class="w-full rounded-md {{ $errors->has('reference') ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300' }}"
+                >
             </div>
 
             <button type="submit" class="px-6 py-3 bg-brand-yellow text-brand-black font-semibold rounded-md hover:bg-brand-yellow-dark">

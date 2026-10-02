@@ -63,7 +63,8 @@
                     class="flex items-center gap-3"
                 >
                     @csrf
-                    <input type="file" name="image" accept="image/*" required class="text-sm">
+                    <label for="image" class="shrink-0 text-xs text-gray-500">{{ __('Photo') }} <span class="text-red-600">*</span></label>
+                    <input type="file" name="image" id="image" accept="image/*" required class="text-sm">
                     <button type="submit" class="shrink-0 px-3 py-1.5 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-900">
                         {{ __('Upload') }}
                     </button>
@@ -112,7 +113,7 @@
                     @csrf
                     <input type="hidden" name="component_type" value="base">
                     <select name="component_menu_item_id" class="flex-1 rounded-md border-gray-300 text-sm" required>
-                        <option value="">{{ __('Select item…') }}</option>
+                        <option value="">{{ __('Select item… *') }}</option>
                         @foreach ($baseItemChoices as $choice)
                             <option value="{{ $choice->id }}">{{ $choice->name }}</option>
                         @endforeach
@@ -146,7 +147,7 @@
                     @csrf
                     <input type="hidden" name="component_type" value="modifier">
                     <select name="component_option_id" class="flex-1 rounded-md border-gray-300 text-sm" required>
-                        <option value="">{{ __('Select modifier…') }}</option>
+                        <option value="">{{ __('Select modifier… *') }}</option>
                         @foreach ($modifierChoices as $choice)
                             <option value="{{ $choice->id }}">{{ $choice->optionGroup->name }}: {{ $choice->name }}</option>
                         @endforeach

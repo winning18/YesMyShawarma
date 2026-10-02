@@ -28,7 +28,7 @@
                         @csrf
                         <input
                             type="number" step="0.01" min="0.01" name="quantity" required
-                            placeholder="{{ __('Qty') }}"
+                            placeholder="{{ __('Qty *') }}"
                             class="w-24 rounded-md border-gray-300 text-sm"
                         >
                         <button type="submit" class="px-3 py-1.5 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-900">

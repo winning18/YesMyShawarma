@@ -55,7 +55,8 @@
                             class="flex items-center gap-3"
                         >
                             @csrf
-                            <input type="file" name="image" accept="image/*" required class="text-sm">
+                            <label for="image-{{ $branch->id }}" class="shrink-0 text-xs text-gray-500">{{ __('Photo') }} <span class="text-red-600">*</span></label>
+                            <input type="file" name="image" id="image-{{ $branch->id }}" accept="image/*" required class="text-sm">
                             <button type="submit" class="shrink-0 px-3 py-1.5 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-900">
                                 {{ __('Upload') }}
                             </button>

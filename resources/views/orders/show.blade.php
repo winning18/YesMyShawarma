@@ -197,11 +197,11 @@
                             >
                                 @csrf
                                 <label for="transaction_id" class="block text-xs font-medium text-gray-500">
-                                    {{ __('Momo transaction ID') }}
+                                    {{ __('Momo transaction ID') }} <span class="text-red-600">*</span>
                                 </label>
                                 <input
                                     type="text" name="transaction_id" id="transaction_id" required
-                                    class="w-full rounded-md border-gray-300 text-sm"
+                                    class="w-full rounded-md text-sm {{ $errors->has('transaction_id') ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300' }}"
                                     placeholder="{{ __('e.g. from the Momo confirmation SMS') }}"
                                 >
                                 <x-input-error :messages="$errors->get('transaction_id')" class="mt-1" />
@@ -273,18 +273,18 @@
                                     <p class="text-xs text-gray-500">
                                         {{ __('Up to GH₵:amount refundable.', ['amount' => number_format($remainingRefundBalance / 100, 2)]) }}
                                     </p>
-                                    <label for="amount" class="block text-xs font-medium text-gray-500">{{ __('Amount (GH₵)') }}</label>
+                                    <label for="amount" class="block text-xs font-medium text-gray-500">{{ __('Amount (GH₵)') }} <span class="text-red-600">*</span></label>
                                     <input
                                         type="number" step="0.01" min="0.01" max="{{ $remainingRefundBalance / 100 }}"
                                         name="amount" id="amount" required value="{{ old('amount') }}"
-                                        class="w-full rounded-md border-gray-300 text-sm"
+                                        class="w-full rounded-md text-sm {{ $errors->has('amount') ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300' }}"
                                     >
                                     <x-input-error :messages="$errors->get('amount')" class="mt-1" />
 
-                                    <label for="reason" class="block text-xs font-medium text-gray-500">{{ __('Reason') }}</label>
+                                    <label for="reason" class="block text-xs font-medium text-gray-500">{{ __('Reason') }} <span class="text-red-600">*</span></label>
                                     <textarea
                                         name="reason" id="reason" rows="2" required
-                                        class="w-full rounded-md border-gray-300 text-sm"
+                                        class="w-full rounded-md text-sm {{ $errors->has('reason') ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300' }}"
                                     >{{ old('reason') }}</textarea>
                                     <x-input-error :messages="$errors->get('reason')" class="mt-1" />
 

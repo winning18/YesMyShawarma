@@ -71,6 +71,7 @@
                                         type="time" name="ends_at" required class="w-24 rounded-md border-gray-300 text-xs"
                                         value="{{ $schedules->first() ? \Illuminate\Support\Carbon::parse($schedules->first()->ends_at)->format('H:i') : '' }}"
                                     >
+                                    <span class="text-red-600 text-xs" title="{{ __('Start and end time are required') }}">*</span>
                                     <button type="submit" class="px-2 py-1 bg-gray-800 text-white text-xs font-semibold rounded-md hover:bg-gray-900">
                                         {{ __('Save') }}
                                     </button>

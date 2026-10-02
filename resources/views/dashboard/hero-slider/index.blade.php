@@ -44,7 +44,8 @@
                             class="space-y-2"
                         >
                             @csrf
-                            <input type="file" name="image" accept="image/*" required class="block w-full text-xs">
+                            <label for="image-{{ $category->id }}" class="block text-xs text-gray-500">{{ __('Photo') }} <span class="text-red-600">*</span></label>
+                            <input type="file" name="image" id="image-{{ $category->id }}" accept="image/*" required class="block w-full text-xs">
                             <p class="text-xs text-gray-400">{{ __('Recommended: 1280×512px, landscape (2.5:1), up to 4MB.') }}</p>
                             <div class="flex flex-wrap items-center gap-3">
                                 <button type="submit" class="shrink-0 px-3 py-1.5 bg-gray-800 text-white text-xs font-semibold rounded-md hover:bg-gray-900">

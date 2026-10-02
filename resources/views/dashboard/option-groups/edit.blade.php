@@ -61,8 +61,8 @@
 
             <form method="POST" action="{{ route('dashboard.option-groups.options.store', $optionGroup) }}" class="flex items-center gap-3 border-t border-gray-100 pt-4">
                 @csrf
-                <input type="text" name="name" placeholder="{{ __('New option name') }}" class="flex-1 rounded-md border-gray-300 text-sm" required>
-                <input type="number" step="0.01" min="0" name="price_delta" placeholder="0.00" class="w-24 rounded-md border-gray-300 text-sm" required>
+                <input type="text" name="name" placeholder="{{ __('New option name *') }}" class="flex-1 rounded-md border-gray-300 text-sm" required>
+                <input type="number" step="0.01" min="0" name="price_delta" placeholder="0.00 *" class="w-24 rounded-md border-gray-300 text-sm" required>
                 <button type="submit" class="shrink-0 px-3 py-1.5 bg-gray-800 text-white text-xs font-semibold rounded-md hover:bg-gray-900">
                     {{ __('Add') }}
                 </button>

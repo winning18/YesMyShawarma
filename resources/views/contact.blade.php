@@ -29,9 +29,9 @@
                 <x-honeypot />
 
                 <div>
-                    <label for="name" class="block text-sm font-medium mb-1">{{ __('Name') }}</label>
+                    <label for="name" class="block text-sm font-medium mb-1">{{ __('Name') }} <span class="text-brand-red">*</span></label>
                     <input type="text" name="name" id="name" value="{{ old('name') }}" required
-                        class="w-full rounded-md border-brand-gray-300 focus:border-brand-yellow focus:ring-brand-yellow">
+                        class="w-full rounded-md {{ $errors->has('name') ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300' }} focus:border-brand-yellow focus:ring-brand-yellow">
                     @error('name') <p class="text-sm text-brand-red mt-1">{{ $message }}</p> @enderror
                 </div>
 
@@ -52,9 +52,9 @@
                 <p class="text-xs -mt-2" :class="missingContact ? 'text-brand-red' : 'text-brand-gray-500'">{{ __('Provide at least an email or a phone number so we can reply.') }}</p>
 
                 <div>
-                    <label for="message" class="block text-sm font-medium mb-1">{{ __('Message') }}</label>
+                    <label for="message" class="block text-sm font-medium mb-1">{{ __('Message') }} <span class="text-brand-red">*</span></label>
                     <textarea name="message" id="message" rows="5" required maxlength="2000"
-                        class="w-full rounded-md border-brand-gray-300 focus:border-brand-yellow focus:ring-brand-yellow">{{ old('message') }}</textarea>
+                        class="w-full rounded-md {{ $errors->has('message') ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300' }} focus:border-brand-yellow focus:ring-brand-yellow">{{ old('message') }}</textarea>
                     @error('message') <p class="text-sm text-brand-red mt-1">{{ $message }}</p> @enderror
                 </div>
 
