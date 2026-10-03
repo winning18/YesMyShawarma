@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Branch;
 use App\Models\User;
+use App\Services\Shifts\ShiftService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\PermissionRegistrar;
@@ -177,5 +178,50 @@ class BranchSelectionTest extends TestCase
         $this->actingAs($manager)
             ->post(route('branches.select.store'), ['branch_id' => $this->branchA->id])
             ->assertRedirect(route('dashboard.reports.index'));
+    }
+
+    public function test_a_staff_member_cannot_switch_branches_while_on_an_active_shift(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branchA);
+        $this->assignRoleAt($staff, 'staff', $this->branchB);
+
+        $this->actingAs($staff)
+            ->post(route('branches.select.store'), ['branch_id' => $this->branchA->id]);
+
+        app(ShiftService::class)->start($staff, $this->branchA);
+
+        // The picker itself is skipped entirely — nothing to pick, it's locked.
+        $this->actingAs($staff)->get(route('branches.select'))
+            ->assertRedirect(route('dashboard'))
+            ->assertSessionHas('status');
+
+        // Defence in depth: a direct POST is rejected the same way, and the
+        // branch actually stays put.
+        $this->actingAs($staff)
+            ->post(route('branches.select.store'), ['branch_id' => $this->branchB->id])
+            ->assertRedirect(route('dashboard'));
+
+        $this->assertSame($this->branchA->id, $staff->fresh()->current_branch_id);
+    }
+
+    public function test_a_staff_member_can_switch_branches_again_once_the_shift_ends(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branchA);
+        $this->assignRoleAt($staff, 'staff', $this->branchB);
+
+        $this->actingAs($staff)
+            ->post(route('branches.select.store'), ['branch_id' => $this->branchA->id]);
+
+        $shifts = app(ShiftService::class);
+        $shift = $shifts->start($staff, $this->branchA);
+        $shifts->end($shift, totalSales: 0, systemSales: 0, noExpenses: true);
+
+        $this->actingAs($staff)
+            ->post(route('branches.select.store'), ['branch_id' => $this->branchB->id])
+            ->assertRedirect(route('dashboard'));
+
+        $this->assertSame($this->branchB->id, $staff->fresh()->current_branch_id);
     }
 }

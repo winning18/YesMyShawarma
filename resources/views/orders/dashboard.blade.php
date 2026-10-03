@@ -10,6 +10,10 @@
     >
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
 
+            @if (session('status'))
+                <div class="rounded-md bg-green-50 text-green-700 text-sm px-4 py-2">{{ session('status') }}</div>
+            @endif
+
             {{--
                 Two separate fields on purpose, not one shared "error" —
                 actionError (a failed accept/reject/advance/transfer/

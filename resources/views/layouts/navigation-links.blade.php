@@ -29,6 +29,31 @@
 @endif
 
 {{--
+    Only shown once staff actually holds the role at more than one branch —
+    same precondition as rider-navigation-links.blade.php's own "Switch
+    branch" link, and the branch they pick here is what the shift they're
+    about to start gets opened against (ShiftController::start() uses
+    whichever branch is already current). Greyed out rather than hidden
+    while a shift is running — BranchSelectionController locks the switch
+    server-side too (a shift's branch can't change out from under it once
+    orders/stock/reports are already being attributed to it), and hiding
+    the link entirely would look like the capability vanished rather than
+    being temporarily locked until the shift ends.
+--}}
+@if (($isStaff ?? false) && app(\App\Services\Branches\BranchContext::class)->branchIdsFor(auth()->user())->count() > 1)
+    @if ($hasActiveShift ?? false)
+        <span
+            class="flex items-center px-3 py-2 rounded-md rounded-l-none border-l-4 border-transparent text-sm font-medium text-gray-300 cursor-not-allowed select-none"
+            title="{{ __('End your shift before switching branches.') }}"
+        >{{ __('Switch branch') }}</span>
+    @else
+        <x-sidebar-link :href="route('branches.select')" :active="request()->routeIs('branches.select')">
+            {{ __('Switch branch') }}
+        </x-sidebar-link>
+    @endif
+@endif
+
+{{--
     Manager only — the live acknowledgement/in-progress board + POS,
     unchanged from what used to live at "Dashboard" for them. Staff never
     needs this (their Dashboard link already goes straight there); owner

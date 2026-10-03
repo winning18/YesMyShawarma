@@ -116,6 +116,15 @@ one they're working from via the same branch switcher managers use
 bypasses `BranchScope` (filters by `rider_id` alone) so an order they're actually carrying never
 disappears from their own dashboard just because they've since switched their current branch.
 
+Staff go through the identical switcher, but unlike riders they're locked to it once a shift is
+open: `BranchSelectionController::blockWhileOnShift()` rejects the switch (both the picker page
+and the POST) for as long as `ShiftService::activeFor()` finds an open shift for that user,
+regardless of role — a shift's own `branch_id` would otherwise drift out of sync with
+`users.current_branch_id`/session mid-till, misattributing orders, stock deductions and reports
+to whichever branch they switched to instead of the one the shift is actually open at. No
+separate "new login" unlock exists or is needed: ending the shift is the only gate, since
+`ShiftService::start()` already refuses a second concurrent shift for the same user.
+
 **Assignment is a resource allocation, not an order-status race** — the concurrency risk isn't
 two riders claiming the same order (there's no rider-initiated action to race), it's two
 orders becoming `ready` at once and both picking the same rider before either commits. Guard

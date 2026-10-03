@@ -20,8 +20,11 @@
 
                         @foreach ($branches as $branch)
                             <label class="flex items-center gap-3 border rounded-lg p-3 cursor-pointer hover:bg-gray-50">
-                                <input type="radio" name="branch_id" value="{{ $branch->id }}" required>
+                                <input type="radio" name="branch_id" value="{{ $branch->id }}" @checked($branch->id === $currentBranchId) required>
                                 <span>{{ $branch->name }}</span>
+                                @if ($branch->id === $currentBranchId)
+                                    <span class="ml-auto text-xs font-medium text-green-700">{{ __('Currently serving') }}</span>
+                                @endif
                             </label>
                         @endforeach
 
