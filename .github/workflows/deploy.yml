@@ -97,6 +97,7 @@ jobs:
             cd /var/www/yes-my-shawarma
             git fetch origin
             git reset --hard origin/Main
+            php artisan package:discover --ansi
             php artisan migrate --force
             php artisan config:cache
             php artisan route:cache
