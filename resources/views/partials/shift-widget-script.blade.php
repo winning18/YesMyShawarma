@@ -119,7 +119,7 @@
                 }
 
                 if (this.systemSales !== null && Math.round(parseFloat(this.totalSales) * 100) < this.systemSales) {
-                    this.error = @js(__('Total sales cannot be less than today\'s recorded sales.'));
+                    this.error = @js(__('Total sales cannot be less than this shift\'s recorded sales.'));
                     return;
                 }
 

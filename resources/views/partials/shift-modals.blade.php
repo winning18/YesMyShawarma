@@ -59,7 +59,7 @@
         <div x-show="error" x-cloak class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3 mb-3" x-text="error"></div>
 
         <p class="text-sm text-gray-600 mb-3" x-show="systemSales !== null">
-            {{ __("Today's recorded sales:") }} <span class="font-semibold" x-text="formatMoney(systemSales)"></span>
+            {{ __("This shift's recorded sales:") }} <span class="font-semibold" x-text="formatMoney(systemSales)"></span>
         </p>
 
         <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Total sales (GHS)') }}</label>
@@ -69,7 +69,7 @@
         >
         <p class="text-xs text-gray-400 mb-4">
             {{ __('Total sales for the shift, separate from any starting cash you entered.') }}
-            {{ __("Can't be less than today's recorded sales. Entering more is fine and gets noted in the Today report.") }}
+            {{ __("Can't be less than this shift's recorded sales. Entering more is fine and gets noted in the Today report.") }}
         </p>
 
         <div class="border-t border-gray-100 pt-3 mb-4">

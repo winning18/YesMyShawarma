@@ -154,7 +154,7 @@ class ShiftTest extends TestCase
         $this->actingAs($manager)->getJson(route('shift.show'))->assertJsonPath('active', false);
     }
 
-    public function test_staff_cannot_end_shift_reporting_less_than_todays_system_sales(): void
+    public function test_staff_cannot_end_shift_reporting_less_than_the_shifts_system_sales(): void
     {
         $staff = User::factory()->create();
         $this->assignRoleAt($staff, 'staff', $this->branch);
@@ -164,7 +164,7 @@ class ShiftTest extends TestCase
 
         $this->actingAs($staff)->postJson(route('shift.end'), ['total_sales' => '50.00', 'no_expenses' => true])
             ->assertUnprocessable()
-            ->assertJsonFragment(['message' => "Total sales cannot be less than today's recorded sales of GHS 100.00."]);
+            ->assertJsonFragment(['message' => "Total sales cannot be less than this shift's recorded sales of GHS 100.00."]);
 
         $this->assertDatabaseHas('shifts', ['user_id' => $staff->id, 'ended_at' => null]);
     }
@@ -190,7 +190,7 @@ class ShiftTest extends TestCase
         ]);
     }
 
-    public function test_staff_can_end_shift_reporting_exactly_todays_system_sales(): void
+    public function test_staff_can_end_shift_reporting_exactly_the_shifts_system_sales(): void
     {
         $staff = User::factory()->create();
         $this->assignRoleAt($staff, 'staff', $this->branch);
@@ -226,6 +226,41 @@ class ShiftTest extends TestCase
             ->assertOk()
             ->assertSee('Ama Staff')
             ->assertSee('GH₵30.00'); // the extra: 130.00 - 100.00
+    }
+
+    public function test_system_sales_does_not_include_orders_from_a_previous_shift(): void
+    {
+        // Regression: system_sales used to be a whole-calendar-day total
+        // (OrderReportService::financialSummary() over the full Accra day),
+        // so it never reset between shifts on the same day — a new shift
+        // would immediately show the previous shift's sales as its own,
+        // and reject an honest "0.00" as under-reporting.
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+
+        // Explicit time travel, not just sequential calls — MySQL datetime
+        // columns are second-granular, so two shifts started and ended
+        // within the same real-world second (as a fast test easily can)
+        // would otherwise share an identical started_at/placed_at and this
+        // test would pass even with the bug still present.
+        $this->travelTo(now()->setTime(10, 0));
+        $this->actingAs($staff)->postJson(route('shift.start'))->assertOk();
+        $this->revenueOrder(10000); // GHS 100.00, rung up during shift 1
+        $this->actingAs($staff)->postJson(route('shift.end'), ['total_sales' => '100.00', 'no_expenses' => true])->assertOk();
+
+        $this->travelTo(now()->addHour());
+        $this->actingAs($staff)->postJson(route('shift.start'))->assertOk();
+
+        $this->actingAs($staff)->getJson(route('shift.show'))
+            ->assertOk()
+            ->assertJsonPath('system_sales', 0);
+
+        $this->actingAs($staff)->postJson(route('shift.end'), ['total_sales' => '0.00', 'no_expenses' => true])
+            ->assertOk();
+
+        $this->assertDatabaseHas('shifts', [
+            'user_id' => $staff->id, 'total_sales' => 0, 'system_sales' => 0,
+        ]);
     }
 
     public function test_shift_show_includes_system_sales_for_staff(): void

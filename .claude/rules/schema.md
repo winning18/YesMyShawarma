@@ -171,9 +171,12 @@ makes handover explicit and makes "which shift had four cancellations" answerabl
   requirement.
 - `total_sales` — what was actually sold during the shift, entered by the person ending it.
   Required of everyone who ends a shift (`ShiftController::end()`), and can never be entered
-  below `system_sales` (the snapshot of what the system had actually recorded at that exact
-  moment) — an amount above it is accepted and shown as "Extra" in the Today report rather
-  than silently dropped.
+  below `system_sales` (revenue recorded from `started_at` to the moment of ending, this shift's
+  branch only — `ShiftController::systemSalesForShift()`, via `OrderReportService::
+  financialSummary()`) — an amount above it is accepted and shown as "Extra" in the Today
+  report rather than silently dropped. Scoped to the shift, not the calendar day: two shifts on
+  the same day each start back at 0, so starting a new shift right after ending one is never
+  rejected for "under-reporting" against sales that actually belonged to the shift before it.
 
 Both are `unsignedBigInteger` pesewas, both nullable at the column level — "required" is an
 application-layer rule (`ShiftController`), not a schema one.

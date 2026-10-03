@@ -4,13 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\ShiftException;
 use App\Models\Branch;
+use App\Models\Shift;
 use App\Services\Branches\BranchContext;
 use App\Services\Reports\OrderReportService;
 use App\Services\Shifts\ShiftService;
 use App\Support\Money;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 
 class ShiftController extends Controller
 {
@@ -26,7 +26,7 @@ class ShiftController extends Controller
             // shift sees the figure they're about to be checked against
             // before they type anything — total_sales is required and
             // validated against this for everyone now, not staff only.
-            'system_sales' => $shift ? $this->todaysSystemSales($reports) : null,
+            'system_sales' => $shift ? $this->systemSalesForShift($shift, $reports) : null,
         ]);
     }
 
@@ -92,7 +92,7 @@ class ShiftController extends Controller
             ], 422);
         }
 
-        $systemSales = $this->todaysSystemSales($reports);
+        $systemSales = $this->systemSalesForShift($shift, $reports);
         $entered = Money::toPesewas($validated['total_sales']);
 
         // Never allowed to under-report — an amount above system sales is
@@ -102,7 +102,7 @@ class ShiftController extends Controller
         if ($entered < $systemSales) {
             return response()->json([
                 'message' => __(
-                    'Total sales cannot be less than today\'s recorded sales of GHS :amount.',
+                    'Total sales cannot be less than this shift\'s recorded sales of GHS :amount.',
                     ['amount' => number_format($systemSales / 100, 2)]
                 ),
             ], 422);
@@ -121,22 +121,21 @@ class ShiftController extends Controller
     }
 
     /**
-     * Whole calendar day (Africa/Accra), any shift, any channel — matches
-     * TodayReportController's own definition of "today's sales" exactly,
-     * reusing OrderReportService rather than a second revenue calculation.
-     * A moving target while the day is still in progress: two shifts
-     * ending hours apart on the same day will see different figures here,
-     * each accurate as of its own moment — that's why it gets snapshotted
-     * onto the shift row rather than recomputed later.
+     * Revenue recorded since this specific shift started, not the whole
+     * calendar day — schema.md's Shifts section already describes
+     * total_sales as "what was actually sold during the shift"; this just
+     * makes system_sales (what it's checked against) match that, instead
+     * of the previous whole-day figure silently carrying over unchanged
+     * from shift to shift when no new orders came in between them. Reuses
+     * OrderReportService rather than a second revenue calculation; relies
+     * on the same implicit BranchScope as before (not an explicit
+     * $branchId) since a shift's own branch_id is always the branch
+     * BranchContext is currently resolved to (BranchSelectionController's
+     * blockWhileOnShift() guarantees this).
      */
-    private function todaysSystemSales(OrderReportService $reports): int
+    private function systemSalesForShift(Shift $shift, OrderReportService $reports): int
     {
-        $today = Carbon::now('Africa/Accra');
-
-        $summary = $reports->financialSummary(
-            $today->clone()->startOfDay()->utc(),
-            $today->clone()->endOfDay()->utc(),
-        );
+        $summary = $reports->financialSummary($shift->started_at, now());
 
         return $summary['revenue_total'];
     }
