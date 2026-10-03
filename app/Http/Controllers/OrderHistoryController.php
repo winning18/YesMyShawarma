@@ -38,10 +38,11 @@ class OrderHistoryController extends Controller
         $isStaff = $branchId && $context->primaryRoleFor($user, $branchId) === 'staff';
 
         // See OrderDashboardController::index()'s identical check — a
-        // multi-branch staff member with no shift open picks their branch
-        // and starts the shift in one screen instead of landing here first
-        // and hitting this page's own forced, branch-less start-shift modal.
-        if ($isStaff && ! $shifts->activeFor($user) && $context->branchIdsFor($user)->count() > 1) {
+        // multi-branch staff member whose branch has no shift open yet
+        // picks one and starts/joins the shift in one screen instead of
+        // landing here first and hitting this page's own forced,
+        // branch-less start-shift modal.
+        if ($isStaff && ! $shifts->activeForBranch($branchId) && $context->branchIdsFor($user)->count() > 1) {
             return redirect()->route('branches.select');
         }
 
@@ -56,7 +57,7 @@ class OrderHistoryController extends Controller
             'statuses' => Order::STATUSES,
             'locations' => DeliveryArea::orderBy('name')->pluck('name'),
             'isStaff' => $isStaff,
-            'forceShiftStart' => $isStaff && ! $shifts->activeFor($user),
+            'forceShiftStart' => $isStaff && ! $shifts->activeForBranch($branchId),
             'ordersUrl' => $isStaff ? route('dashboard') : route('dashboard.orders.live'),
             'branchId' => $branchId,
             // Owner can still review history, but the live board/POS it

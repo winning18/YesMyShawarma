@@ -38,16 +38,16 @@ class OrderActionController extends Controller
      * owner/general_manager can still accept without one, same as always.
      * This is what actually makes "an order placed while closed just sits
      * there" true in practice — there's no separate hold state, staff
-     * simply can't act on it until they clock in.
+     * simply can't act on it until someone's clocked in at that branch.
      */
     public function accept(Order $order, OrderStateMachine $stateMachine, BranchContext $context, ShiftService $shifts, Request $request): OrderResource|JsonResponse
     {
         Gate::authorize('accept', $order);
 
         $role = $context->primaryRoleFor($request->user(), $order->branch_id);
-        $shift = $shifts->activeFor($request->user());
+        $shift = $shifts->activeForBranch($order->branch_id);
 
-        if ($role === 'staff' && (! $shift || $shift->branch_id !== $order->branch_id)) {
+        if ($role === 'staff' && ! $shift) {
             return response()->json(['message' => ShiftException::mustBeOnShiftToAccept()->getMessage()], 422);
         }
 
@@ -65,7 +65,7 @@ class OrderActionController extends Controller
 
         $stateMachine->transition(
             $order, 'rejected', $context->primaryRoleFor($request->user(), $order->branch_id), $request->user()->id,
-            shiftId: $shifts->activeFor($request->user())?->id,
+            shiftId: $shifts->activeForBranch($order->branch_id)?->id,
         );
 
         return new OrderResource($order->fresh(['items.options', 'customer']));
@@ -81,7 +81,7 @@ class OrderActionController extends Controller
 
         $stateMachine->transition(
             $order, $validated['to'], $context->primaryRoleFor($request->user(), $order->branch_id), $request->user()->id,
-            shiftId: $shifts->activeFor($request->user())?->id,
+            shiftId: $shifts->activeForBranch($order->branch_id)?->id,
         );
 
         return new OrderResource($order->fresh(['items.options', 'customer']));
@@ -98,7 +98,7 @@ class OrderActionController extends Controller
         $stateMachine->transition(
             $order, 'cancelled', $context->primaryRoleFor($request->user(), $order->branch_id), $request->user()->id,
             cancellationReason: $validated['reason'],
-            shiftId: $shifts->activeFor($request->user())?->id,
+            shiftId: $shifts->activeForBranch($order->branch_id)?->id,
         );
 
         return new OrderResource($order->fresh(['items.options', 'customer']));
@@ -129,7 +129,7 @@ class OrderActionController extends Controller
             $payments->confirmMomo(
                 $order, $validated['transaction_id'],
                 $context->primaryRoleFor($request->user(), $order->branch_id), $request->user()->id,
-                $shifts->activeFor($request->user())?->id,
+                $shifts->activeForBranch($order->branch_id)?->id,
             );
         } catch (PaymentException $e) {
             if ($request->wantsJson()) {
@@ -175,7 +175,7 @@ class OrderActionController extends Controller
         $riderAssignment->assign(
             $order, $rider, $request->user(),
             $context->primaryRoleFor($request->user(), $order->branch_id),
-            $shifts->activeFor($request->user())?->id,
+            $shifts->activeForBranch($order->branch_id)?->id,
         );
 
         return new OrderResource($order->fresh(['items.options', 'customer']));
@@ -202,7 +202,7 @@ class OrderActionController extends Controller
                 $order->load('items'), $destination, $request->user(),
                 $context->primaryRoleFor($request->user(), $order->branch_id),
                 $validated['reason'] ?? null,
-                $shifts->activeFor($request->user())?->id,
+                $shifts->activeForBranch($order->branch_id)?->id,
                 Gate::allows('orders.refund'),
             );
         } catch (OrderTransferException|RefundException $e) {
@@ -234,7 +234,7 @@ class OrderActionController extends Controller
                 $order, Money::toPesewas($validated['delivery_fee']), $request->user(),
                 $context->primaryRoleFor($request->user(), $order->branch_id),
                 $validated['reason'] ?? null,
-                $shifts->activeFor($request->user())?->id,
+                $shifts->activeForBranch($order->branch_id)?->id,
             );
         } catch (DeliveryFeeAdjustmentException $e) {
             return response()->json(['message' => $e->getMessage()], 422);

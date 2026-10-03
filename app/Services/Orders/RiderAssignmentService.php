@@ -57,7 +57,7 @@ class RiderAssignmentService
                     continue;
                 }
 
-                $this->assignInternal($order, $rider, 'system', null, $this->shifts->activeFor($rider)?->id);
+                $this->assignInternal($order, $rider, 'system', null, $this->shifts->activeForBranch($order->branch_id)?->id);
 
                 return $rider;
             }

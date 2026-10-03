@@ -46,15 +46,19 @@ class OrderDashboardController extends Controller
             return redirect()->route('dashboard.performance');
         }
 
-        // A multi-branch staff member with no shift open yet picks a branch
-        // and starts their shift in one screen (staff.start-shift) rather
-        // than landing here first and hitting board()'s own forced,
-        // branch-less start-shift modal — that modal has no way to ask
-        // which branch, so it would otherwise just silently reuse whichever
-        // branch happened to be left over from a previous day
-        // (users.current_branch_id persists across logins/sessions; it's
-        // never cleared just because the shift it was set for has ended).
-        if ($role === 'staff' && ! $shifts->activeFor($user) && $context->branchIdsFor($user)->count() > 1) {
+        // A multi-branch staff member whose current branch has no shift
+        // open yet picks a branch and starts (or joins) a shift in one
+        // screen (staff.start-shift) rather than landing here first and
+        // hitting board()'s own forced, branch-less start-shift modal —
+        // that modal has no way to ask which branch, so it would otherwise
+        // just silently reuse whichever branch happened to be left over
+        // from a previous day (users.current_branch_id persists across
+        // logins/sessions; it's never cleared just because the shift it was
+        // set for has ended). If a shift is already open at the current
+        // branch (another staff member got there first today), there's
+        // nothing to pick — straight through to the board below, already
+        // on shift.
+        if ($role === 'staff' && ! $shifts->activeForBranch($branchId) && $context->branchIdsFor($user)->count() > 1) {
             return redirect()->route('branches.select');
         }
 
@@ -82,7 +86,7 @@ class OrderDashboardController extends Controller
         return view('orders.dashboard', [
             'branchId' => $branchId,
             'isStaff' => $isStaff,
-            'forceShiftStart' => $isStaff && ! $shifts->activeFor($user),
+            'forceShiftStart' => $isStaff && ! $shifts->activeForBranch($branchId),
             'ordersUrl' => $ordersUrl,
             // Staff holds this permission too (see permissions.md) — the
             // resulting refund, if any, is what stays gated to a pending

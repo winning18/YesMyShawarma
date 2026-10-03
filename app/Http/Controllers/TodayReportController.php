@@ -35,14 +35,15 @@ class TodayReportController extends Controller
             'channel' => $channel,
             'today' => $today,
             'summary' => $sales->summary($dayStart, $dayEnd, $channel),
-            // Shift model carries no BranchScope (ShiftService::activeFor()
-            // needs to see a user's shifts across every branch), so this
-            // filters explicitly rather than relying on the global scope
-            // every other branch-owned query here gets for free — null
-            // branch id (owner's cross-branch aggregate view) means show
-            // every branch's shifts, mirroring BranchScope's own no-op
-            // behaviour rather than silently returning none.
-            'shifts' => Shift::with(['user', 'expenses'])
+            // Shift model carries no BranchScope (ShiftService::
+            // activeForBranch() takes an explicit branch id rather than
+            // relying on it), so this filters explicitly rather than
+            // relying on the global scope every other branch-owned query
+            // here gets for free — null branch id (owner's cross-branch
+            // aggregate view) means show every branch's shifts, mirroring
+            // BranchScope's own no-op behaviour rather than silently
+            // returning none.
+            'shifts' => Shift::with(['user', 'endedBy', 'expenses'])
                 ->when($context->id(), fn ($query, $branchId) => $query->where('branch_id', $branchId))
                 ->whereBetween('started_at', [$dayStart->clone()->utc(), $dayEnd->clone()->utc()])
                 ->orderByDesc('started_at')

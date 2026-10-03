@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Exceptions\ShiftException;
 use App\Models\Branch;
 use App\Models\Shift;
 use App\Services\Branches\BranchContext;
@@ -14,9 +13,9 @@ use Illuminate\Http\Request;
 
 class ShiftController extends Controller
 {
-    public function show(Request $request, ShiftService $shifts, OrderReportService $reports): JsonResponse
+    public function show(Request $request, ShiftService $shifts, OrderReportService $reports, BranchContext $context): JsonResponse
     {
-        $shift = $shifts->activeFor($request->user());
+        $shift = $context->id() ? $shifts->activeForBranch($context->id()) : null;
 
         return response()->json([
             'active' => (bool) $shift,
@@ -43,26 +42,26 @@ class ShiftController extends Controller
             // Optional for every role — the "staff must be forced through
             // this before reaching the dashboard" requirement is about the
             // popup appearing at all, not about this field being filled.
+            // Silently ignored if a shift is already open at this branch
+            // (ShiftService::start() returns the existing one unchanged) —
+            // only the person who actually opens the branch's shift for the
+            // day has anything of their own to set these to.
             'starting_cash' => ['nullable', 'numeric', 'min:0'],
         ]);
 
-        try {
-            $shifts->start(
-                $request->user(),
-                Branch::findOrFail($branchId),
-                isset($validated['starting_cash']) ? Money::toPesewas($validated['starting_cash']) : null,
-                $validated['opening_note'] ?? null,
-            );
-        } catch (ShiftException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
-        }
+        $shifts->start(
+            $request->user(),
+            Branch::findOrFail($branchId),
+            isset($validated['starting_cash']) ? Money::toPesewas($validated['starting_cash']) : null,
+            $validated['opening_note'] ?? null,
+        );
 
         return response()->json(['message' => 'Shift started.']);
     }
 
-    public function end(Request $request, ShiftService $shifts, OrderReportService $reports): JsonResponse
+    public function end(Request $request, ShiftService $shifts, OrderReportService $reports, BranchContext $context): JsonResponse
     {
-        $shift = $shifts->activeFor($request->user());
+        $shift = $context->id() ? $shifts->activeForBranch($context->id()) : null;
 
         if (! $shift) {
             return response()->json(['message' => 'No open shift to end.'], 422);
@@ -115,7 +114,7 @@ class ShiftController extends Controller
             ])
             ->all();
 
-        $shifts->end($shift, $entered, $systemSales, $validated['closing_note'] ?? null, $expenses, $noExpenses);
+        $shifts->end($shift, $request->user(), $entered, $systemSales, $validated['closing_note'] ?? null, $expenses, $noExpenses);
 
         return response()->json(['message' => 'Shift ended.']);
     }

@@ -37,11 +37,15 @@
             </div>
         </div>
 
-        {{-- Shifts today — total_sales is the figure entered by whoever
-             ended the shift (required of everyone now), system_sales is
-             the snapshot of what the system had recorded at that exact
-             moment (see ShiftController::end()). Anything entered above it
-             shows here as "Extra" rather than getting silently dropped.
+        {{-- Shifts today — one row per branch per open/closed till session,
+             not per staff member (orders.md's Shifts section): "Opened by"
+             and "Closed by" can be different people, since any staff
+             working the branch while it's open can end it. total_sales is
+             the figure entered by whoever closed it (required of everyone
+             now), system_sales is the snapshot of what the system had
+             recorded for that shift at that exact moment (see
+             ShiftController::end()). Anything entered above it shows here
+             as "Extra" rather than getting silently dropped.
 
              Expenses: the sum of that shift's shift_expenses rows. "—"
              (never recorded — predates this feature) is kept visually
@@ -57,7 +61,8 @@
                     <table class="w-full text-sm">
                         <thead class="bg-gray-50 text-left text-gray-500">
                             <tr>
-                                <th class="px-4 py-2">{{ __('Staff') }}</th>
+                                <th class="px-4 py-2">{{ __('Opened by') }}</th>
+                                <th class="px-4 py-2">{{ __('Closed by') }}</th>
                                 <th class="px-4 py-2">{{ __('Started') }}</th>
                                 <th class="px-4 py-2">{{ __('Ended') }}</th>
                                 <th class="px-4 py-2 text-right">{{ __('Total sales') }}</th>
@@ -81,6 +86,7 @@
                                 @endphp
                                 <tr>
                                     <td class="px-4 py-2 text-gray-800">{{ $shift->user->name }}</td>
+                                    <td class="px-4 py-2 text-gray-500">{{ $shift->endedBy->name ?? '—' }}</td>
                                     <td class="px-4 py-2 text-gray-500">{{ $shift->started_at->timezone('Africa/Accra')->format('H:i') }}</td>
                                     <td class="px-4 py-2 text-gray-500">
                                         {{ $shift->ended_at?->timezone('Africa/Accra')->format('H:i') ?? __('Active') }}

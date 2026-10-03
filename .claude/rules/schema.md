@@ -153,14 +153,25 @@ Same applies to `delivery_address_snapshot` — customers edit saved addresses.
 ## Shifts
 
 ```
-shifts  id, user_id, branch_id, started_at, ended_at,
+shifts  id, user_id, branch_id, started_at, ended_at, ended_by_user_id,
         starting_cash, total_sales, system_sales, opening_note, closing_note, no_expenses
 
 shift_expenses  id, shift_id, description, amount, created_at
 ```
 
+One open shift per branch at a time, not one per staff member — `user_id` is who opened it,
+`ended_by_user_id` who closed it, and they may well be different people. A second staff member
+logging in while a branch's shift is already open joins it rather than getting one of their own
+(`ShiftService::start()` returns the existing row unchanged on a second call for the same
+branch) — reaching the dashboard, accepting/advancing orders, and ending the shared shift are
+all available to them exactly as if they'd opened it themselves. `BranchSelectionController`'s
+shift lock (see orders.md) is keyed the same way: the lock belongs to the branch's open shift,
+not to whoever happens to have started it.
+
 Orders attribute to a shift, not only a user. Terminals get shared between staff; the shift
-makes handover explicit and makes "which shift had four cancellations" answerable.
+makes handover explicit and makes "which shift had four cancellations" answerable — per
+individual action, that's still `order_events.actor_id`, not the shift; the shift groups a
+branch's orders into an operational session, it doesn't by itself say who served what.
 
 `starting_cash` and `total_sales` are two independent facts, never combined:
 

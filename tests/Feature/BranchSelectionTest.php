@@ -183,7 +183,7 @@ class BranchSelectionTest extends TestCase
 
         $this->assertSame($this->branchA->id, $staff->fresh()->current_branch_id);
 
-        $shift = app(ShiftService::class)->activeFor($staff);
+        $shift = app(ShiftService::class)->activeForBranch($this->branchA->id);
         $this->assertNotNull($shift);
         $this->assertSame($this->branchA->id, $shift->branch_id);
         $this->assertSame(5000, $shift->starting_cash);
@@ -202,7 +202,7 @@ class BranchSelectionTest extends TestCase
         $this->actingAs($hybrid)
             ->post(route('branches.select.store'), ['branch_id' => $this->branchA->id]);
 
-        $this->assertNull(app(ShiftService::class)->activeFor($hybrid));
+        $this->assertNull(app(ShiftService::class)->activeForBranch($this->branchA->id));
     }
 
     public function test_the_menu_editor_then_flag_does_not_leak_into_an_unrelated_selection(): void
@@ -262,7 +262,7 @@ class BranchSelectionTest extends TestCase
             ->post(route('branches.select.store'), ['branch_id' => $this->branchA->id]);
 
         $shifts = app(ShiftService::class);
-        $shifts->end($shifts->activeFor($staff), totalSales: 0, systemSales: 0, noExpenses: true);
+        $shifts->end($shifts->activeForBranch($this->branchA->id), $staff, totalSales: 0, systemSales: 0, noExpenses: true);
 
         $this->actingAs($staff)
             ->post(route('branches.select.store'), ['branch_id' => $this->branchB->id])

@@ -8,13 +8,18 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-// Deliberately no BranchScope here, unlike Order. ShiftService::
-// activeFor() relies on querying a user's shifts across every branch ("a
-// person is in one place at a time" — checked branch-wide, not just the one
-// they're clocking into right now). Scoping this model would silently
-// break that cross-branch check the first time someone tried to clock in
-// at a second branch while still active at another.
-#[Fillable(['user_id', 'branch_id', 'started_at', 'ended_at', 'starting_cash', 'total_sales', 'system_sales', 'opening_note', 'closing_note', 'no_expenses'])]
+// Deliberately no BranchScope here, unlike Order — ShiftService::
+// activeForBranch() takes an explicit branch id rather than relying on
+// BranchContext's currently-resolved branch, since not every call site is
+// guaranteed to already be scoped to the right one (e.g. ending a shift on
+// behalf of a different branch than whichever happens to be current).
+//
+// One open shift per branch, not per person: user_id is who *opened* it,
+// ended_by_user_id who *closed* it — staff working the same branch while
+// it's open join that single shift rather than each getting their own row
+// (orders.md's "Shifts" section). starting_cash/total_sales/system_sales
+// are therefore branch-wide figures for that session, not any one person's.
+#[Fillable(['user_id', 'branch_id', 'started_at', 'ended_at', 'ended_by_user_id', 'starting_cash', 'total_sales', 'system_sales', 'opening_note', 'closing_note', 'no_expenses'])]
 class Shift extends Model
 {
     use HasFactory;
@@ -31,6 +36,11 @@ class Shift extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function endedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'ended_by_user_id');
     }
 
     public function branch(): BelongsTo

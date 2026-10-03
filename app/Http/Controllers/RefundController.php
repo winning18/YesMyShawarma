@@ -100,7 +100,7 @@ class RefundController extends Controller
         $user = $request->user();
         $amount = Money::toPesewas($validated['amount']);
         $actorType = $context->primaryRoleFor($user, $order->branch_id);
-        $shiftId = $shifts->activeFor($user)?->id;
+        $shiftId = $shifts->activeForBranch($order->branch_id)?->id;
 
         try {
             $refund = Gate::allows('orders.refund')
@@ -155,7 +155,7 @@ class RefundController extends Controller
         $actorType = $context->primaryRoleFor($user, $refund->branch_id);
 
         try {
-            $refunds->complete($refund, $user, $actorType, $shifts->activeFor($user)?->id);
+            $refunds->complete($refund, $user, $actorType, $shifts->activeForBranch($refund->branch_id)?->id);
         } catch (RefundException $e) {
             return back()->withErrors(['refund' => $e->getMessage()]);
         }

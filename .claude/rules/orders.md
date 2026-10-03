@@ -118,22 +118,28 @@ disappears from their own dashboard just because they've since switched their cu
 
 Staff go through the identical switcher, but unlike riders they're locked to it once a shift is
 open: `BranchSelectionController::blockWhileOnShift()` rejects the switch (both the picker page
-and the POST) for as long as `ShiftService::activeFor()` finds an open shift for that user,
-regardless of role — a shift's own `branch_id` would otherwise drift out of sync with
-`users.current_branch_id`/session mid-till, misattributing orders, stock deductions and reports
-to whichever branch they switched to instead of the one the shift is actually open at. No
-separate "new login" unlock exists or is needed: ending the shift is the only gate, since
-`ShiftService::start()` already refuses a second concurrent shift for the same user.
+and the POST) for as long as `ShiftService::activeForBranch()` finds an open shift at their
+*current branch* — not "did this specific person start one." A shift belongs to the branch, not
+to whoever opened it (schema.md's Shifts section): a second staff member who only joined an
+already-open shift is just as locked to it as the one who started it, since switching away would
+leave the shift's own `branch_id` out of sync with `users.current_branch_id`/session mid-till for
+either of them, misattributing orders, stock deductions and reports to the wrong branch. No
+separate "new login" unlock exists or is needed: ending the shift is the only gate, and anyone
+working the branch can end it, not just whoever opened it.
 
 For a staff-only account (not a hybrid with manager/general_manager/owner/rider/stock_manager
-elsewhere), picking a branch and starting a shift are folded into one screen —
+elsewhere), picking a branch and starting (or joining) a shift are folded into one screen —
 `staff.start-shift`, shown instead of the generic `branches.select` whenever
-`BranchSelectionController::isStaffOnly()` matches. Submitting it both calls
-`BranchContext::setCurrent()` and `ShiftService::start()` in the same request, landing on
-`route('dashboard')` with the shift already active — there's no such thing as a staff member
-picking a branch without that also starting their shift there. A manager/general_manager/owner
-still gets the plain picker with no shift coupling; their dashboard access was never shift-gated
-to begin with (`forceShiftStart` is staff-only, `OrderDashboardController::board()`).
+`BranchContext::isStaffOnly()` matches. Submitting it calls `BranchContext::setCurrent()` and
+`ShiftService::start()` in the same request, landing on `route('dashboard')` with the shift
+already active — there's no such thing as a staff member picking a branch without that also
+putting them on a shift there, whether they opened it or a colleague did a few hours earlier.
+If the branch's shift is already open when a second staff member reaches the dashboard directly
+(no branch to pick — they're single-branch, or already resolved), they see no prompt at all:
+`forceShiftStart` is already false, same dashboard as anyone mid-shift. A manager/
+general_manager/owner still gets the plain picker with no shift coupling; their dashboard access
+was never shift-gated to begin with (`forceShiftStart` is staff-only, `OrderDashboardController
+::board()`).
 
 **Assignment is a resource allocation, not an order-status race** — the concurrency risk isn't
 two riders claiming the same order (there's no rider-initiated action to race), it's two

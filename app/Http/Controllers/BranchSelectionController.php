@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Exceptions\ShiftException;
 use App\Models\Branch;
 use App\Models\User;
 use App\Services\Branches\BranchContext;
@@ -19,7 +18,7 @@ class BranchSelectionController extends Controller
 {
     public function show(Request $request, BranchContext $context, ShiftService $shifts): View|RedirectResponse
     {
-        if ($blocked = $this->blockWhileOnShift($request, $shifts)) {
+        if ($blocked = $this->blockWhileOnShift($request, $context, $shifts)) {
             return $blocked;
         }
 
@@ -54,21 +53,23 @@ class BranchSelectionController extends Controller
     }
 
     /**
-     * Whoever's running an open shift is locked onto that shift's branch —
+     * Anyone whose current branch has an open shift is locked to it —
      * switching would leave the shift's own branch_id out of sync with
      * users.current_branch_id/session, corrupting which branch's orders,
      * stock and reports the rest of the app attributes to them while the
-     * till is still open. Riders never hold shifts (availability is
-     * login-driven, not shift-driven — see rider-navigation-links.blade.php),
-     * so activeFor() is always null for them and this is a no-op on their
-     * path. Ends the moment the shift itself ends, same session or not —
-     * there's no separate "new login" unlock, since starting a new shift
-     * is only ever possible once the old one has already ended anyway
-     * (ShiftService::start()'s own alreadyOnShift() guard).
+     * till is still open. This applies regardless of who actually opened
+     * that shift — a second staff member who only joined it is just as
+     * locked as whoever started it (orders.md's Shifts section), since
+     * they're equally part of the branch's open till right now. Riders
+     * never hold shifts (availability is login-driven, not shift-driven —
+     * see rider-navigation-links.blade.php), so this is a no-op on their
+     * path. Ends the moment the shift itself ends, same session or not.
      */
-    private function blockWhileOnShift(Request $request, ShiftService $shifts): ?RedirectResponse
+    private function blockWhileOnShift(Request $request, BranchContext $context, ShiftService $shifts): ?RedirectResponse
     {
-        if (! $shifts->activeFor($request->user())) {
+        $branchId = $context->id();
+
+        if (! $branchId || ! $shifts->activeForBranch($branchId)) {
             return null;
         }
 
@@ -110,7 +111,7 @@ class BranchSelectionController extends Controller
 
     public function store(Request $request, BranchContext $context, ShiftService $shifts): RedirectResponse
     {
-        if ($blocked = $this->blockWhileOnShift($request, $shifts)) {
+        if ($blocked = $this->blockWhileOnShift($request, $context, $shifts)) {
             return $blocked;
         }
 
@@ -128,23 +129,19 @@ class BranchSelectionController extends Controller
         $branch = Branch::findOrFail($validated['branch_id']);
         $context->setCurrent($branch->id);
 
-        // Picking a branch and starting a shift are the same decision for
-        // a staff member (staff.start-shift's whole reason to exist) — do
-        // both in one request so they land on an already-active-shift
-        // dashboard instead of the branch now being set but still having
-        // to clear the dashboard's own forced start-shift modal right
-        // after. blockWhileOnShift() above already guarantees no shift is
-        // open yet, so this can't double-start one.
+        // Picking a branch and starting (or joining, if another staff
+        // member already opened one there today) a shift are the same
+        // decision for a staff member (staff.start-shift's whole reason to
+        // exist) — do both in one request so they land on an
+        // already-active-shift dashboard instead of the branch now being
+        // set but still having to clear the dashboard's own forced
+        // start-shift modal right after.
         if ($context->isStaffOnly($user)) {
-            try {
-                $shifts->start(
-                    $user,
-                    $branch,
-                    isset($validated['starting_cash']) ? Money::toPesewas($validated['starting_cash']) : null,
-                );
-            } catch (ShiftException $e) {
-                return redirect()->route('branches.select')->with('status', $e->getMessage());
-            }
+            $shifts->start(
+                $user,
+                $branch,
+                isset($validated['starting_cash']) ? Money::toPesewas($validated['starting_cash']) : null,
+            );
 
             return redirect()->route('dashboard');
         }

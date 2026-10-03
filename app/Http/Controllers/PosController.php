@@ -81,10 +81,11 @@ class PosController extends Controller
         $isStaff = $context->primaryRoleFor($user, $branch->id) === 'staff';
 
         // See OrderDashboardController::index()'s identical check — a
-        // multi-branch staff member with no shift open picks their branch
-        // and starts the shift in one screen instead of landing here first
-        // and hitting this page's own forced, branch-less start-shift modal.
-        if ($isStaff && ! $shifts->activeFor($user) && $context->branchIdsFor($user)->count() > 1) {
+        // multi-branch staff member whose branch has no shift open yet
+        // picks one and starts/joins the shift in one screen instead of
+        // landing here first and hitting this page's own forced,
+        // branch-less start-shift modal.
+        if ($isStaff && ! $shifts->activeForBranch($branch->id) && $context->branchIdsFor($user)->count() > 1) {
             return redirect()->route('branches.select');
         }
 
@@ -96,7 +97,7 @@ class PosController extends Controller
             'ratePerKmPesewas' => DeliveryFeeCalculator::RATE_PER_KM_PESEWAS,
             'cart' => $this->cartPayload($cart),
             'isStaff' => $isStaff,
-            'forceShiftStart' => $isStaff && ! $shifts->activeFor($user),
+            'forceShiftStart' => $isStaff && ! $shifts->activeForBranch($branch->id),
             // Manager reaches this page via the dedicated Orders nav item
             // (dashboard.orders.live), never route('dashboard') — that now
             // redirects manager to the business overview instead.

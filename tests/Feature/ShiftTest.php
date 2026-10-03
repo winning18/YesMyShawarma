@@ -290,14 +290,55 @@ class ShiftTest extends TestCase
             ->assertJsonPath('system_sales', 5000);
     }
 
-    public function test_cannot_start_a_second_shift_while_one_is_active(): void
+    public function test_starting_a_shift_twice_joins_the_same_one_instead_of_erroring(): void
     {
         $staff = User::factory()->create();
         $this->assignRoleAt($staff, 'staff', $this->branch);
 
         $this->actingAs($staff)->postJson(route('shift.start'))->assertOk();
+        $firstShiftId = Shift::where('branch_id', $this->branch->id)->whereNull('ended_at')->sole()->id;
 
-        $this->actingAs($staff)->postJson(route('shift.start'))->assertUnprocessable();
+        $this->actingAs($staff)->postJson(route('shift.start'))->assertOk();
+
+        $this->assertSame(1, Shift::where('branch_id', $this->branch->id)->whereNull('ended_at')->count());
+        $this->assertSame($firstShiftId, Shift::where('branch_id', $this->branch->id)->whereNull('ended_at')->sole()->id);
+    }
+
+    public function test_a_second_staff_member_joins_the_branchs_open_shift_without_starting_their_own(): void
+    {
+        $staff1 = User::factory()->create();
+        $staff2 = User::factory()->create();
+        $this->assignRoleAt($staff1, 'staff', $this->branch);
+        $this->assignRoleAt($staff2, 'staff', $this->branch);
+
+        $this->actingAs($staff1)->postJson(route('shift.start'), ['starting_cash' => '20.00'])->assertOk();
+
+        // Staff 2 reaches the dashboard directly — no start-shift prompt at
+        // all, since the branch's shift is already open.
+        $this->actingAs($staff2)->get(route('dashboard'))->assertOk();
+
+        // An order recorded while the shared shift is open counts toward
+        // it regardless of which of the two staff members was the one
+        // actually working when it came in.
+        $this->revenueOrder(5000);
+
+        $this->assertSame(1, Shift::where('branch_id', $this->branch->id)->whereNull('ended_at')->count());
+
+        // Staff 2 (who never "started" anything) can still end the shared
+        // shift — ending it ends it for the whole branch, not just whoever
+        // opened it.
+        $this->actingAs($staff2)->postJson(route('shift.end'), [
+            'total_sales' => '50.00', 'no_expenses' => true,
+        ])->assertOk();
+
+        $this->assertDatabaseHas('shifts', [
+            'branch_id' => $this->branch->id,
+            'user_id' => $staff1->id,
+            'ended_by_user_id' => $staff2->id,
+            'total_sales' => 5000,
+            'system_sales' => 5000,
+            'starting_cash' => 2000,
+        ]);
     }
 
     public function test_ending_with_no_active_shift_is_rejected(): void

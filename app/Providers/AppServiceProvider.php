@@ -88,7 +88,7 @@ class AppServiceProvider extends ServiceProvider
 
             $view->with([
                 'navIsStaff' => $isStaff,
-                'navHasActiveShift' => $isStaff && (bool) app(ShiftService::class)->activeFor($user),
+                'navHasActiveShift' => $isStaff && $branchId && (bool) app(ShiftService::class)->activeForBranch($branchId),
                 // Manager's (and general_manager's) "Dashboard" link goes
                 // to the business overview (PerformanceController), same
                 // as owner's — the Orders nav item is how they reach the
