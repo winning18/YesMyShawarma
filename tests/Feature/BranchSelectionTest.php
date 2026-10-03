@@ -158,6 +158,53 @@ class BranchSelectionTest extends TestCase
             ->assertViewIs('branches.select');
     }
 
+    public function test_a_staff_only_account_sees_the_start_shift_picker(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branchA);
+        $this->assignRoleAt($staff, 'staff', $this->branchB);
+
+        $this->actingAs($staff)->get(route('branches.select'))
+            ->assertViewIs('staff.start-shift');
+    }
+
+    public function test_submitting_the_start_shift_picker_selects_the_branch_and_starts_the_shift(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branchA);
+        $this->assignRoleAt($staff, 'staff', $this->branchB);
+
+        $this->actingAs($staff)
+            ->post(route('branches.select.store'), [
+                'branch_id' => $this->branchA->id,
+                'starting_cash' => '50',
+            ])
+            ->assertRedirect(route('dashboard'));
+
+        $this->assertSame($this->branchA->id, $staff->fresh()->current_branch_id);
+
+        $shift = app(ShiftService::class)->activeFor($staff);
+        $this->assertNotNull($shift);
+        $this->assertSame($this->branchA->id, $shift->branch_id);
+        $this->assertSame(5000, $shift->starting_cash);
+    }
+
+    public function test_a_hybrid_staff_and_manager_account_sees_the_generic_picker_not_the_combined_one(): void
+    {
+        $hybrid = User::factory()->create();
+        $this->assignRoleAt($hybrid, 'staff', $this->branchA);
+        $this->assignRoleAt($hybrid, 'manager', $this->branchB);
+
+        $this->actingAs($hybrid)->get(route('branches.select'))
+            ->assertViewIs('branches.select');
+
+        // Submitting it must not start a shift on their behalf either.
+        $this->actingAs($hybrid)
+            ->post(route('branches.select.store'), ['branch_id' => $this->branchA->id]);
+
+        $this->assertNull(app(ShiftService::class)->activeFor($hybrid));
+    }
+
     public function test_the_menu_editor_then_flag_does_not_leak_into_an_unrelated_selection(): void
     {
         $manager = User::factory()->create();
@@ -186,10 +233,10 @@ class BranchSelectionTest extends TestCase
         $this->assignRoleAt($staff, 'staff', $this->branchA);
         $this->assignRoleAt($staff, 'staff', $this->branchB);
 
+        // A staff-only account's own store() submission already starts the
+        // shift (staff.start-shift) — no separate ShiftService call needed.
         $this->actingAs($staff)
             ->post(route('branches.select.store'), ['branch_id' => $this->branchA->id]);
-
-        app(ShiftService::class)->start($staff, $this->branchA);
 
         // The picker itself is skipped entirely — nothing to pick, it's locked.
         $this->actingAs($staff)->get(route('branches.select'))
@@ -215,8 +262,7 @@ class BranchSelectionTest extends TestCase
             ->post(route('branches.select.store'), ['branch_id' => $this->branchA->id]);
 
         $shifts = app(ShiftService::class);
-        $shift = $shifts->start($staff, $this->branchA);
-        $shifts->end($shift, totalSales: 0, systemSales: 0, noExpenses: true);
+        $shifts->end($shifts->activeFor($staff), totalSales: 0, systemSales: 0, noExpenses: true);
 
         $this->actingAs($staff)
             ->post(route('branches.select.store'), ['branch_id' => $this->branchB->id])

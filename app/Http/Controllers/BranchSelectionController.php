@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\ShiftException;
+use App\Models\Branch;
 use App\Models\User;
 use App\Services\Branches\BranchContext;
 use App\Services\Shifts\ShiftService;
+use App\Support\Money;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -31,10 +34,21 @@ class BranchSelectionController extends Controller
             $request->session()->forget('branch_select_then');
         }
 
-        $view = $this->isRiderOnly($request->user(), $context) ? 'rider.select-branch' : 'branches.select';
+        $user = $request->user();
+
+        $view = match (true) {
+            $this->isRiderOnly($user, $context) => 'rider.select-branch',
+            // A staff member has nothing to do with a branch once picked
+            // except start a shift there — folding the two into one step
+            // means they never see a bare "pick a branch" screen followed
+            // immediately by a separate forced "now start your shift"
+            // modal for the exact same decision.
+            $this->isStaffOnly($user, $context) => 'staff.start-shift',
+            default => 'branches.select',
+        };
 
         return view($view, [
-            'branches' => $context->selectableBranchesFor($request->user()),
+            'branches' => $context->selectableBranchesFor($user),
             'currentBranchId' => $context->id(),
         ]);
     }
@@ -94,19 +108,61 @@ class BranchSelectionController extends Controller
             && ! $context->hasRoleAtAnyBranch($user, 'stock_manager');
     }
 
+    /**
+     * Mirrors isRiderOnly() above — a hybrid account (staff at one branch,
+     * something else at another) falls through to the generic picker
+     * instead, same as a hybrid rider account would.
+     */
+    private function isStaffOnly(User $user, BranchContext $context): bool
+    {
+        return $context->hasRoleAtAnyBranch($user, 'staff')
+            && ! $context->hasRoleAtAnyBranch($user, 'manager')
+            && ! $context->hasRoleAtAnyBranch($user, 'general_manager')
+            && ! $context->hasRoleAtAnyBranch($user, 'owner')
+            && ! $context->hasRoleAtAnyBranch($user, 'rider')
+            && ! $context->hasRoleAtAnyBranch($user, 'stock_manager');
+    }
+
     public function store(Request $request, BranchContext $context, ShiftService $shifts): RedirectResponse
     {
         if ($blocked = $this->blockWhileOnShift($request, $shifts)) {
             return $blocked;
         }
 
-        $availableIds = $context->selectableBranchIdsFor($request->user());
+        $user = $request->user();
+        $availableIds = $context->selectableBranchIdsFor($user);
 
         $validated = $request->validate([
             'branch_id' => ['required', 'integer', Rule::in($availableIds)],
+            // Only ever shown/submitted from staff.start-shift — harmless
+            // to accept it here regardless, same as the field being absent
+            // from every other picker's form.
+            'starting_cash' => ['nullable', 'numeric', 'min:0'],
         ]);
 
-        $context->setCurrent((int) $validated['branch_id']);
+        $branch = Branch::findOrFail($validated['branch_id']);
+        $context->setCurrent($branch->id);
+
+        // Picking a branch and starting a shift are the same decision for
+        // a staff member (staff.start-shift's whole reason to exist) — do
+        // both in one request so they land on an already-active-shift
+        // dashboard instead of the branch now being set but still having
+        // to clear the dashboard's own forced start-shift modal right
+        // after. blockWhileOnShift() above already guarantees no shift is
+        // open yet, so this can't double-start one.
+        if ($this->isStaffOnly($user, $context)) {
+            try {
+                $shifts->start(
+                    $user,
+                    $branch,
+                    isset($validated['starting_cash']) ? Money::toPesewas($validated['starting_cash']) : null,
+                );
+            } catch (ShiftException $e) {
+                return redirect()->route('branches.select')->with('status', $e->getMessage());
+            }
+
+            return redirect()->route('dashboard');
+        }
 
         if ($request->session()->pull('branch_select_then') === 'menu') {
             return redirect()->route('dashboard.menu-items.index');
@@ -116,7 +172,7 @@ class BranchSelectionController extends Controller
         // here via redirect()->guest() (POS, or any branch-gated page the
         // ResolveCurrentBranch middleware bounced them from) — the fallback
         // below only applies when nothing specific was intended, e.g. a
-        // rider reaching this page via the sidebar's "Switch branch" link
+        // manager reaching this page via the sidebar's "Switch branch" link
         // rather than a guest()-redirect bounce.
         return Redirect::intended($this->guardAwareFallback());
     }

@@ -31,14 +31,15 @@
 {{--
     Only shown once staff actually holds the role at more than one branch —
     same precondition as rider-navigation-links.blade.php's own "Switch
-    branch" link, and the branch they pick here is what the shift they're
-    about to start gets opened against (ShiftController::start() uses
-    whichever branch is already current). Greyed out rather than hidden
-    while a shift is running — BranchSelectionController locks the switch
-    server-side too (a shift's branch can't change out from under it once
-    orders/stock/reports are already being attributed to it), and hiding
-    the link entirely would look like the capability vanished rather than
-    being temporarily locked until the shift ends.
+    branch" link. Lands on staff.start-shift (BranchSelectionController),
+    which starts the shift itself as part of picking the branch — there's
+    no "switch branch" for staff that isn't also "start my next shift
+    here". Greyed out rather than hidden while a shift is running —
+    BranchSelectionController locks the switch server-side too (a shift's
+    branch can't change out from under it once orders/stock/reports are
+    already being attributed to it), and hiding the link entirely would
+    look like the capability vanished rather than being temporarily locked
+    until the shift ends.
 --}}
 @if (($isStaff ?? false) && app(\App\Services\Branches\BranchContext::class)->branchIdsFor(auth()->user())->count() > 1)
     @if ($hasActiveShift ?? false)
