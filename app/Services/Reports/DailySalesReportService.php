@@ -47,6 +47,9 @@ class DailySalesReportService
             ->whereBetween('placed_at', [$dayStart->clone()->utc(), $dayEnd->clone()->utc()])
             ->where('channel', $channel)
             ->whereNotIn('status', Order::NON_REVENUE_STATUSES)
+            // Bolt Food orders are always channel 'pos' but never "our"
+            // sales — Bolt collects that money, not this till (orders.md).
+            ->whereNotIn('payment_method', Order::EXCLUDED_FROM_SALES_PAYMENT_METHODS)
             ->get();
 
         /** @var array<string, array<string, array{name: string, qty: int, unit: int, total: int}>> $categoryBuckets */

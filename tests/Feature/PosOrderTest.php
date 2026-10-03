@@ -285,6 +285,48 @@ class PosOrderTest extends TestCase
         $this->assertSame('Near the blue gate', $order->delivery_address_snapshot['landmark']);
     }
 
+    public function test_bolt_food_pickup_order_is_paid_immediately_with_its_own_payments_provider(): void
+    {
+        $staff = $this->makeStaff();
+        $this->addToPosCart($staff, 2);
+
+        $response = $this->actingAs($staff)->postJson(route('dashboard.pos.orders.store'), [
+            'phone' => '0241111111',
+            'fulfilment_type' => 'pickup',
+            'payment_method' => 'bolt_food',
+        ]);
+
+        $response->assertOk();
+
+        $order = Order::first();
+        $this->assertSame('paid', $order->status);
+        $this->assertSame('bolt_food', $order->payment_method);
+
+        $this->assertDatabaseHas('payments', [
+            'order_id' => $order->id, 'provider' => 'bolt_food', 'amount' => $order->total, 'status' => 'paid',
+        ]);
+    }
+
+    public function test_bolt_food_order_cannot_be_placed_as_delivery(): void
+    {
+        DeliveryArea::create(['name' => 'Osu Oxford Street', 'is_active' => true]);
+
+        $staff = $this->makeStaff();
+        $this->addToPosCart($staff, 1);
+
+        $area = DeliveryArea::first();
+
+        $this->actingAs($staff)->postJson(route('dashboard.pos.orders.store'), [
+            'phone' => '0241111111',
+            'fulfilment_type' => 'delivery',
+            'area_id' => $area->id,
+            'landmark' => 'Near the blue gate',
+            'payment_method' => 'bolt_food',
+        ])->assertJsonValidationErrors('fulfilment_type');
+
+        $this->assertDatabaseCount('orders', 0);
+    }
+
     public function test_a_multi_select_options_quantity_prices_as_a_fixed_total_for_the_line(): void
     {
         $staff = $this->makeStaff();

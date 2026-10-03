@@ -109,6 +109,23 @@ class PerformanceTest extends TestCase
         $this->assertSame(5000, $response->viewData('summary')['sales']['value']);
     }
 
+    public function test_bolt_food_orders_are_excluded_from_the_sales_figure(): void
+    {
+        $manager = User::factory()->create();
+        $this->assignRoleAt($manager, 'manager', $this->osu);
+
+        $this->makeOrder($this->osu, 'delivered', 5000);
+        $boltFoodOrder = $this->makeOrder($this->osu, 'delivered', 9000);
+        $boltFoodOrder->update(['payment_method' => 'bolt_food']);
+
+        $response = $this->actingAs($manager)
+            ->get(route('dashboard.performance', ['tab' => 'sales', 'range' => 'today']));
+
+        // Only the 5000 cash order counts — the 9000 Bolt Food order never
+        // touches this branch's till (schema.md).
+        $this->assertSame(5000, $response->viewData('summary')['sales']['value']);
+    }
+
     public function test_manager_never_sees_the_by_branch_breakdown(): void
     {
         $manager = User::factory()->create();
@@ -218,6 +235,24 @@ class PerformanceTest extends TestCase
         $cancelled = $this->makeOrder($this->osu, 'cancelled', 5000);
         OrderItem::create([
             'order_id' => $cancelled->id, 'menu_item_id' => $item->id, 'name_snapshot' => $item->name,
+            'unit_price_snapshot' => 5000, 'quantity' => 1, 'line_total' => 5000,
+        ]);
+
+        $response = $this->actingAs($owner)->get(route('dashboard.performance', ['tab' => 'sales', 'range' => 'today']));
+
+        $this->assertCount(0, $response->viewData('itemSales')->items());
+    }
+
+    public function test_item_sales_excludes_bolt_food_orders(): void
+    {
+        $owner = $this->makeOwner();
+        $category = Category::create(['name' => 'Wraps', 'slug' => 'wraps']);
+        $item = MenuItem::create(['category_id' => $category->id, 'name' => 'Chicken Shawarma', 'slug' => 'chicken-shawarma', 'base_price' => 5000]);
+
+        $boltFoodOrder = $this->makeOrder($this->osu, 'delivered', 5000);
+        $boltFoodOrder->update(['payment_method' => 'bolt_food']);
+        OrderItem::create([
+            'order_id' => $boltFoodOrder->id, 'menu_item_id' => $item->id, 'name_snapshot' => $item->name,
             'unit_price_snapshot' => 5000, 'quantity' => 1, 'line_total' => 5000,
         ]);
 

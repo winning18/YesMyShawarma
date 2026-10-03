@@ -78,7 +78,7 @@ class OrderHistoryController extends Controller
     }
 
     /**
-     * @return array{search: ?string, status: ?string, fulfilment_type: ?string, location: ?string, range: ?string, from: ?string, to: ?string}
+     * @return array{search: ?string, status: ?string, fulfilment_type: ?string, payment_method: ?string, location: ?string, range: ?string, from: ?string, to: ?string}
      */
     private function filters(Request $request): array
     {
@@ -86,6 +86,7 @@ class OrderHistoryController extends Controller
             'search' => ['nullable', 'string', 'max:255'],
             'status' => ['nullable', 'string', Rule::in(Order::STATUSES)],
             'fulfilment_type' => ['nullable', 'in:pickup,delivery'],
+            'payment_method' => ['nullable', 'in:cash,momo,paystack,bolt_food'],
             'location' => ['nullable', 'string', 'max:255'],
             'range' => ['nullable', Rule::in(self::RANGE_PRESETS)],
             'from' => ['nullable', 'date'],
@@ -131,6 +132,7 @@ class OrderHistoryController extends Controller
             ))
             ->when($filters['status'] ?? null, fn ($query, $value) => $query->where('status', $value))
             ->when($filters['fulfilment_type'] ?? null, fn ($query, $value) => $query->where('fulfilment_type', $value))
+            ->when($filters['payment_method'] ?? null, fn ($query, $value) => $query->where('payment_method', $value))
             ->when($filters['location'] ?? null, fn ($query, $value) => $query->where('delivery_address_snapshot->area_name', $value))
             ->when($from, fn ($query) => $query->where('placed_at', '>=', $from->clone()->utc()))
             ->when($to, fn ($query) => $query->where('placed_at', '<=', $to->clone()->utc()))

@@ -98,6 +98,7 @@ class PerformanceReportService
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->whereBetween('orders.placed_at', [$from, $to])
             ->whereNotIn('orders.status', Order::NON_REVENUE_STATUSES)
+            ->whereNotIn('orders.payment_method', Order::EXCLUDED_FROM_SALES_PAYMENT_METHODS)
             ->when(! $ignoreBranchScope && $branchIds !== null, fn ($query) => $query->whereIn('orders.branch_id', $branchIds))
             ->when(! $ignoreBranchScope && $branchIds === null, fn ($query) => $query->where('orders.branch_id', $branchId));
 

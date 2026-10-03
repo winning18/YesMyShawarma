@@ -163,6 +163,20 @@ class TodayReportTest extends TestCase
         $this->assertSame(0, $response->viewData('summary')['orders_count']);
     }
 
+    public function test_bolt_food_orders_are_excluded_from_todays_sales(): void
+    {
+        $staff = $this->makeStaff();
+        $order = $this->makeOrder(paymentMethod: 'bolt_food');
+        $this->addItem($order, $this->chickenShawarma, 1);
+
+        $response = $this->actingAs($staff)->get(route('dashboard.reports.today.index', ['channel' => 'pos']));
+        $summary = $response->viewData('summary');
+
+        $this->assertSame(0, $summary['orders_count']);
+        $this->assertSame(0, $summary['total_sales']);
+        $this->assertNull($summary['categories']->firstWhere('category', 'Shawarma'));
+    }
+
     public function test_channel_toggle_separates_web_and_pos(): void
     {
         $staff = $this->makeStaff();

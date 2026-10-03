@@ -24,6 +24,7 @@ class WeeklySalesReportService
     {
         $orders = Order::whereBetween('placed_at', [$weekStart->clone()->utc(), $weekEnd->clone()->utc()])
             ->whereNotIn('status', Order::NON_REVENUE_STATUSES)
+            ->whereNotIn('payment_method', Order::EXCLUDED_FROM_SALES_PAYMENT_METHODS)
             ->get(['id', 'total']);
 
         return [
@@ -56,6 +57,7 @@ class WeeklySalesReportService
     {
         return Order::query()
             ->whereNotIn('status', Order::NON_REVENUE_STATUSES)
+            ->whereNotIn('payment_method', Order::EXCLUDED_FROM_SALES_PAYMENT_METHODS)
             ->get(['id', 'placed_at', 'total'])
             ->groupBy(fn (Order $order) => $order->placed_at->clone()->timezone('Africa/Accra')->startOfWeek()->toDateString())
             ->map(function (Collection $orders, string $weekStartDate) {

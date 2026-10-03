@@ -89,12 +89,18 @@ class OrderReportService
      * per-method net figures aren't what shift close or the Performance
      * headline number need.
      *
+     * $revenueOrders also excludes Order::EXCLUDED_FROM_SALES_PAYMENT_METHODS
+     * (Bolt Food) — this is what makes the shift-end system_sales check
+     * (ShiftController, which calls this same method) never ask staff to
+     * reconcile money that never touched their till in the first place.
+     *
      * @param  ?list<int>  $branchIds  See operationalSummary().
      */
     public function financialSummary(Carbon $from, Carbon $to, bool $ignoreBranchScope = false, ?int $branchId = null, ?array $branchIds = null): array
     {
         $orders = $this->ordersInRange($from, $to, $ignoreBranchScope, $branchId, $branchIds);
-        $revenueOrders = $orders->whereNotIn('status', Order::NON_REVENUE_STATUSES);
+        $revenueOrders = $orders->whereNotIn('status', Order::NON_REVENUE_STATUSES)
+            ->whereNotIn('payment_method', Order::EXCLUDED_FROM_SALES_PAYMENT_METHODS);
         $grossRevenueTotal = (int) $revenueOrders->sum('total');
 
         $refunds = $this->refundsInRange($from, $to, $ignoreBranchScope, $branchId, $branchIds);

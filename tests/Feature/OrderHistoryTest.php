@@ -133,6 +133,42 @@ class OrderHistoryTest extends TestCase
         $this->assertFalse($posIds->contains($webOrder->id));
     }
 
+    public function test_payment_method_filter(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+
+        $cash = $this->makeOrder('delivered', 'pos');
+        $boltFood = $this->makeOrder('delivered', 'pos');
+        $boltFood->update(['payment_method' => 'bolt_food']);
+
+        $response = $this->actingAs($staff)->get(route('dashboard.orders.history', ['payment_method' => 'bolt_food']));
+
+        $ids = collect($response->viewData('orders')->items())->pluck('id');
+        $this->assertSame([$boltFood->id], $ids->all());
+        $this->assertFalse($ids->contains($cash->id));
+    }
+
+    public function test_bolt_food_tab_shows_only_bolt_food_orders_regardless_of_channel(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+
+        // Bolt Food orders are always entered via POS, but the tab filters
+        // by payment_method, not channel — a plain cash POS order (or a
+        // web order, hypothetically) must never leak in alongside it.
+        $boltFood = $this->makeOrder('delivered', 'pos');
+        $boltFood->update(['payment_method' => 'bolt_food']);
+        $this->makeOrder('delivered', 'pos');
+        $this->makeOrder('delivered', 'web');
+
+        $response = $this->actingAs($staff)->get(route('dashboard.orders.history', ['payment_method' => 'bolt_food']));
+
+        $ids = collect($response->viewData('orders')->items())->pluck('id');
+        $this->assertSame([$boltFood->id], $ids->all());
+        $response->assertSee('Bolt Food order history');
+    }
+
     public function test_search_filters_by_customer_name(): void
     {
         $staff = User::factory()->create();

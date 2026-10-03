@@ -72,6 +72,13 @@
             href="{{ route('dashboard.orders.history', ['channel' => 'pos']) }}"
             class="block px-3 py-1.5 rounded-md text-sm transition duration-150 ease-in-out {{ request()->routeIs('dashboard.orders.history') && request('channel') === 'pos' ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
         >{{ __('POS') }}</a>
+        {{-- Bolt Food is a payment_method, not a channel — these orders
+             are entered via POS like any other counter order, so this
+             filters by payment_method instead of reusing ?channel=. --}}
+        <a
+            href="{{ route('dashboard.orders.history', ['payment_method' => 'bolt_food']) }}"
+            class="block px-3 py-1.5 rounded-md text-sm transition duration-150 ease-in-out {{ request()->routeIs('dashboard.orders.history') && request('payment_method') === 'bolt_food' ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
+        >{{ __('Bolt Food') }}</a>
     </div>
 </div>
 

@@ -46,11 +46,27 @@ class Order extends Model
      * wait on, so the order enters straight at 'paid' (OrderCreationService)
      * instead of 'pending_payment'. Momo here is an in-house manual
      * payment (staff confirm the customer sent it) — not Paystack; only
-     * 'paystack' itself goes through PaystackPaymentService.
+     * 'paystack' itself goes through PaystackPaymentService. bolt_food is
+     * settled too, in the sense that Bolt already collected the customer's
+     * money before the order ever reaches us — staff is just logging that
+     * the kitchen needs to make it, not collecting anything themselves.
      *
      * @var list<string>
      */
-    public const MANUALLY_SETTLED_PAYMENT_METHODS = ['cash', 'momo'];
+    public const MANUALLY_SETTLED_PAYMENT_METHODS = ['cash', 'momo', 'bolt_food'];
+
+    /**
+     * Excluded from every revenue figure (Today report, Performance,
+     * Invoices and sales, and the shift-end cash-reconciliation check) —
+     * Bolt pays Bolt Food orders out separately, so this money never
+     * touches a branch's till and staff should never be asked to account
+     * for it as "today's sales". Still a real order everywhere else:
+     * order counts, operational stats, and the raw order history/exports
+     * all still include it.
+     *
+     * @var list<string>
+     */
+    public const EXCLUDED_FROM_SALES_PAYMENT_METHODS = ['bolt_food'];
 
     protected function casts(): array
     {

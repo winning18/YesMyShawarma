@@ -115,11 +115,14 @@
                                 <input type="radio" x-model="fulfilmentType" value="pickup"> {{ __('Pickup') }}
                             </label>
                             @if ($deliveryAvailable)
-                                <label class="flex items-center gap-1.5">
+                                <label class="flex items-center gap-1.5" x-show="paymentMethod !== 'bolt_food'">
                                     <input type="radio" x-model="fulfilmentType" value="delivery"> {{ __('Delivery') }}
                                 </label>
                             @endif
                         </div>
+                        <p class="text-xs text-gray-500 mt-1" x-show="paymentMethod === 'bolt_food'">
+                            {{ __('Bolt Food orders are always pickup — Bolt handles delivery themselves.') }}
+                        </p>
                     </div>
 
                     @if ($deliveryAvailable)
@@ -159,7 +162,13 @@
                             <label class="flex items-center gap-1.5">
                                 <input type="radio" x-model="paymentMethod" value="momo"> {{ __('Momo') }}
                             </label>
+                            <label class="flex items-center gap-1.5">
+                                <input type="radio" x-model="paymentMethod" value="bolt_food" @change="fulfilmentType = 'pickup'"> {{ __('Bolt Food') }}
+                            </label>
                         </div>
+                        <p class="text-xs text-gray-500 mt-1" x-show="paymentMethod === 'bolt_food'">
+                            {{ __('For an order placed through Bolt Food and brought here to prepare — not counted as this till\'s sales.') }}
+                        </p>
                     </div>
 
                     <div x-show="paymentMethod === 'momo'" x-cloak>

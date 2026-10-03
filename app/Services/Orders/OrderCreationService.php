@@ -135,9 +135,14 @@ class OrderCreationService
             //   collected — 'paid' immediately if staff entered one now,
             //   'pending' if they skipped it (busy-hour flow; entered later
             //   via PaymentConfirmationService::confirmMomo()).
+            // - bolt_food is already settled, by Bolt, before this order
+            //   ever reaches us — always 'paid' immediately, same as cash
+            //   on pickup, regardless of fulfilment_type (always pickup
+            //   anyway — see PosController's own validation).
             $initialPaymentStatus = match (true) {
                 $data->paymentMethod === 'cash' && $data->fulfilmentType === 'pickup' => 'paid',
                 $data->paymentMethod === 'momo' && $data->paymentReference !== null => 'paid',
+                $data->paymentMethod === 'bolt_food' => 'paid',
                 default => 'pending',
             };
 

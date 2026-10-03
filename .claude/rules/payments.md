@@ -20,13 +20,15 @@ Paystack. Cards and mobile money (MoMo). Currency GHS, stored in pesewas as inte
 - `paystack` — web checkout only. The *only* value `PaystackPaymentService` will initialise a
   transaction for. Paystack's own hosted page lets the customer pick card or Momo; the system
   doesn't know which, so this stays a single generic value.
+- `bolt_food` — **POS only, pickup only.** Not money this business collects at all — see "Bolt
+  Food orders" below.
 
-`cash` and `momo` are both `Order::MANUALLY_SETTLED_PAYMENT_METHODS` — both make the order
-enter at `status = 'paid'` immediately (`OrderCreationService::create()`), with their own
-`payments` row, no online transaction to wait on. The kitchen proceeds either way; only
-`payment_status` (the reconciliation flag, not the order's business state) differs by method
-and by fulfilment type — see below. `PaystackPaymentService::initializeForOrder()` rejects
-anything but `paystack` — `momo` included.
+`cash`, `momo`, and `bolt_food` are all `Order::MANUALLY_SETTLED_PAYMENT_METHODS` — all three
+make the order enter at `status = 'paid'` immediately (`OrderCreationService::create()`), with
+their own `payments` row, no online transaction to wait on. The kitchen proceeds either way;
+only `payment_status` (the reconciliation flag, not the order's business state) differs by
+method and by fulfilment type — see below. `PaystackPaymentService::initializeForOrder()`
+rejects anything but `paystack` — `momo`/`bolt_food` included.
 
 Reports (`OrderReportService::financialSummary()`'s `revenue_by_payment_method`) group by
 whatever string is stored here — a new value shows up as its own row with no code change.
@@ -138,6 +140,33 @@ enter it at the POS terminal.
 - `provider_reference` on `payments` is the transaction ID here, reusing the same unique
   column Paystack uses for its webhook idempotency key — a duplicate/reused ID is rejected
   (`PaymentException::duplicateTransactionReference`), it is not a formality field.
+
+## Bolt Food orders
+
+Staff recording an order that actually came in through the Bolt Food platform and needs
+preparing here — not a payment option a customer picks, a record of "this food has to be made,
+but Bolt already collected the money for it, not us."
+
+- **POS only** (`PosController::store()`), **pickup only** — enforced server-side (a closure
+  rule on `fulfilment_type`, not just hidden client-side), since Bolt's own courier handles
+  delivery; our rider/delivery-fee machinery has nothing to do for one of these.
+- Enters at `status = 'paid'` and `payment_status = 'paid'` immediately, same as cash on pickup
+  (`Order::MANUALLY_SETTLED_PAYMENT_METHODS`) — there's nothing to wait on, the money already
+  moved outside this system.
+- **Excluded from every revenue figure** — `Order::EXCLUDED_FROM_SALES_PAYMENT_METHODS` — the
+  Today report, Performance (both the headline sales figure and the item-sales/best-sellers
+  breakdown), Invoices and sales, and critically the shift-end `system_sales` check
+  (`ShiftController`, via `OrderReportService::financialSummary()`) all subtract it out, so
+  staff are never asked to reconcile cash they never touched. Still a real order everywhere
+  else that isn't about money: order counts, operational stats (`OrderReportService::
+  operationalSummary()`), the Order History list/CSV exports, and stock consumption (once
+  built) all still include it.
+- Order History has its own "Bolt Food" tab/filter (`payment_method=bolt_food`, not a
+  `channel` — these orders are still `channel = 'pos'` under the hood, same as any other
+  counter order) alongside the existing Web/POS channel tabs.
+- `RefundService` has no special case for it — falls through to the same generic
+  cash/momo-style ledger entry (`provider = 'bolt_food'`, no gateway call), same as any other
+  non-Paystack method.
 
 ## Refunds
 

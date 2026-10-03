@@ -207,8 +207,18 @@ class PosController extends Controller
         $rules = [
             'phone' => ['required', 'string'],
             'name' => ['nullable', 'string', 'max:255'],
-            'fulfilment_type' => ['required', 'in:pickup,delivery'],
-            'payment_method' => ['required', 'in:cash,momo'],
+            'fulfilment_type' => [
+                'required', 'in:pickup,delivery',
+                // Bolt's own courier handles delivery for a Bolt Food
+                // order — never ours, so there's nothing for our rider
+                // flow to do with one placed as 'delivery'.
+                function (string $attribute, mixed $value, Closure $fail) use ($request): void {
+                    if ($request->input('payment_method') === 'bolt_food' && $value !== 'pickup') {
+                        $fail(__('Bolt Food orders must be pickup — Bolt handles delivery themselves.'));
+                    }
+                },
+            ],
+            'payment_method' => ['required', 'in:cash,momo,bolt_food'],
             // Momo only, and optional even then — staff may skip it during a
             // rush and enter it later via orders.confirm_momo_payment. The
             // frontend only ever shows this field for momo, but validation

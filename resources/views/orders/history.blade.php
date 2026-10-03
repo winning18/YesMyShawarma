@@ -1,9 +1,10 @@
 <x-app-layout>
     <x-slot name="header">
         @include('dashboard._channel-header', [
-            'title' => match ($channel) {
-                'web' => __('Web order history'),
-                'pos' => __('POS order history'),
+            'title' => match (true) {
+                ($filters['payment_method'] ?? null) === 'bolt_food' => __('Bolt Food order history'),
+                $channel === 'web' => __('Web order history'),
+                $channel === 'pos' => __('POS order history'),
                 default => __('Order history'),
             },
             'active' => 'orders',
@@ -30,7 +31,7 @@
                         <input type="hidden" name="channel" value="{{ $channel }}">
                     @endif
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                         <div>
                             <label for="search" class="block text-xs font-medium text-gray-500 mb-1">{{ __('Search') }}</label>
                             <input
@@ -68,6 +69,17 @@
                                 @foreach ($locations as $location)
                                     <option value="{{ $location }}" @selected(($filters['location'] ?? null) === $location)>{{ $location }}</option>
                                 @endforeach
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="payment_method" class="block text-xs font-medium text-gray-500 mb-1">{{ __('Payment') }}</label>
+                            <select id="payment_method" name="payment_method" class="w-full rounded-md border-gray-300 text-sm">
+                                <option value="">{{ __('Any payment') }}</option>
+                                <option value="cash" @selected(($filters['payment_method'] ?? null) === 'cash')>{{ __('Cash') }}</option>
+                                <option value="momo" @selected(($filters['payment_method'] ?? null) === 'momo')>{{ __('Momo') }}</option>
+                                <option value="paystack" @selected(($filters['payment_method'] ?? null) === 'paystack')>{{ __('Paystack') }}</option>
+                                <option value="bolt_food" @selected(($filters['payment_method'] ?? null) === 'bolt_food')>{{ __('Bolt Food') }}</option>
                             </select>
                         </div>
                     </div>
@@ -130,6 +142,7 @@
                             @unless ($channel)
                                 <th class="px-4 py-2">{{ __('Channel') }}</th>
                             @endunless
+                            <th class="px-4 py-2">{{ __('Payment') }}</th>
                             <th class="px-4 py-2 text-right">{{ __('Total') }}</th>
                             <th class="px-4 py-2">{{ __('Placed') }}</th>
                         </tr>
@@ -159,12 +172,13 @@
                                 @unless ($channel)
                                     <td class="px-4 py-2 text-gray-500 uppercase">{{ $order->channel }}</td>
                                 @endunless
+                                <td class="px-4 py-2 text-gray-500">{{ ucwords(str_replace('_', ' ', $order->payment_method)) }}</td>
                                 <td class="px-4 py-2 text-right text-gray-800">GH₵{{ number_format($order->total / 100, 2) }}</td>
                                 <td class="px-4 py-2 text-gray-500">{{ $order->placed_at?->timezone('Africa/Accra')->format('d M Y, H:i') }}</td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ $channel ? 7 : 8 }}" class="px-4 py-6 text-center text-gray-500">{{ __('No orders match these filters.') }}</td>
+                                <td colspan="{{ $channel ? 8 : 9 }}" class="px-4 py-6 text-center text-gray-500">{{ __('No orders match these filters.') }}</td>
                             </tr>
                         @endforelse
                     </tbody>

@@ -102,6 +102,35 @@ class ReportsInvoicesTest extends TestCase
         $this->assertSame('Accra', $summary['city']);
     }
 
+    public function test_current_week_summary_excludes_bolt_food_orders(): void
+    {
+        $manager = $this->makeManager();
+        $monday = now('Africa/Accra')->startOfWeek();
+
+        $this->makeOrder('delivered', 5000, $monday->clone()->addDay());
+        $this->makeOrder('delivered', 9000, $monday->clone()->addDays(2))->update(['payment_method' => 'bolt_food']);
+
+        $response = $this->actingAs($manager)->get(route('dashboard.reports.invoices.index'));
+
+        $summary = $response->viewData('summary');
+        $this->assertSame(5000, $summary['total']);
+        $this->assertSame(1, $summary['orders_count']);
+    }
+
+    public function test_weekly_history_excludes_bolt_food_orders(): void
+    {
+        $manager = $this->makeManager();
+
+        $this->makeOrder('delivered', 5000);
+        $this->makeOrder('delivered', 9000)->update(['payment_method' => 'bolt_food']);
+
+        $response = $this->actingAs($manager)->get(route('dashboard.reports.invoices.index'));
+
+        $week = $response->viewData('history')->getCollection()
+            ->first(fn (array $week) => $week['start']->isSameDay(now('Africa/Accra')->startOfWeek()));
+        $this->assertSame(5000, $week['total']);
+    }
+
     public function test_last_week_link_shows_last_weeks_totals(): void
     {
         $manager = $this->makeManager();

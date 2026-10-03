@@ -169,6 +169,27 @@ class ShiftTest extends TestCase
         $this->assertDatabaseHas('shifts', ['user_id' => $staff->id, 'ended_at' => null]);
     }
 
+    public function test_bolt_food_orders_are_excluded_from_the_system_sales_check(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+        $this->actingAs($staff)->postJson(route('shift.start'))->assertOk();
+
+        $this->revenueOrder(10000); // GHS 100.00 — counts
+        $this->revenueOrder(5000)->update(['payment_method' => 'bolt_food']); // GHS 50.00 — must not count
+
+        // Reporting only the 100.00 that's actually in the till succeeds —
+        // if the Bolt Food order counted too, this would be rejected as
+        // under-reporting against a 150.00 system figure.
+        $this->actingAs($staff)->postJson(route('shift.end'), [
+            'total_sales' => '100.00', 'no_expenses' => true,
+        ])->assertOk();
+
+        $this->assertDatabaseHas('shifts', [
+            'user_id' => $staff->id, 'total_sales' => 10000, 'system_sales' => 10000,
+        ]);
+    }
+
     public function test_staff_can_end_shift_reporting_exactly_todays_system_sales(): void
     {
         $staff = User::factory()->create();

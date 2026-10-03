@@ -418,6 +418,7 @@
                 paymentLabel(order) {
                     if (order.payment_method === 'paystack') return @js(__('Paid via Paystack'));
                     if (order.payment_method === 'momo') return @js(__('Momo'));
+                    if (order.payment_method === 'bolt_food') return @js(__('Bolt Food'));
 
                     return order.fulfilment_type === 'delivery'
                         ? @js(__('Cash on delivery'))

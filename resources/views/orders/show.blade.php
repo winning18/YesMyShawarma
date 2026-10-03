@@ -171,7 +171,7 @@
                         </div>
                         <div class="flex justify-between">
                             <dt class="text-gray-500">{{ __('Payment method') }}</dt>
-                            <dd class="text-gray-800 capitalize">{{ $order->payment_method }}</dd>
+                            <dd class="text-gray-800">{{ ucwords(str_replace('_', ' ', $order->payment_method)) }}</dd>
                         </div>
                         <div class="flex justify-between">
                             <dt class="text-gray-500">{{ __('Payment status') }}</dt>
