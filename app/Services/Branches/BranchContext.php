@@ -151,6 +151,27 @@ class BranchContext
     }
 
     /**
+     * Holds the literal 'staff' role somewhere and nothing else — not
+     * manager/general_manager/owner/rider/stock_manager at any branch. The
+     * only role whose dashboard/POS/history access is shift-gated
+     * (OrderDashboardController/PosController/OrderHistoryController's own
+     * forceShiftStart), and the only one BranchSelectionController folds
+     * branch-pick + shift-start into a single screen for (staff.start-shift).
+     * A hybrid account (staff at one branch, something else at another)
+     * falls through to false, same as a hybrid rider account would for
+     * hasRoleAtAnyBranch($user, 'rider') elsewhere.
+     */
+    public function isStaffOnly(User $user): bool
+    {
+        return $this->hasRoleAtAnyBranch($user, 'staff')
+            && ! $this->hasRoleAtAnyBranch($user, 'manager')
+            && ! $this->hasRoleAtAnyBranch($user, 'general_manager')
+            && ! $this->hasRoleAtAnyBranch($user, 'owner')
+            && ! $this->hasRoleAtAnyBranch($user, 'rider')
+            && ! $this->hasRoleAtAnyBranch($user, 'stock_manager');
+    }
+
+    /**
      * Every user holding $role, at $branchId if given, or anywhere at all
      * when null — needed for owner, whose role assignment is anchored at
      * just one branch (see hasRoleAtAnyBranch) but who should still be

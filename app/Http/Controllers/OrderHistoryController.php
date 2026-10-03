@@ -8,6 +8,7 @@ use App\Services\Branches\BranchContext;
 use App\Services\Orders\RefundService;
 use App\Services\Shifts\ShiftService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
@@ -27,18 +28,26 @@ class OrderHistoryController extends Controller
      */
     private const RANGE_PRESETS = ['today', '7', '30', 'week', 'month', 'last_month', 'custom'];
 
-    public function index(Request $request, BranchContext $context, ShiftService $shifts): View
+    public function index(Request $request, BranchContext $context, ShiftService $shifts): View|RedirectResponse
     {
         Gate::authorize('viewAny', Order::class);
-
-        $channel = $this->channelFilter($request);
-        $filters = $this->filters($request);
-        [$from, $to] = $this->dateRange($filters);
 
         $user = $request->user();
         $branchId = $context->id();
         $isOwner = $context->hasRoleAtAnyBranch($user, 'owner');
         $isStaff = $branchId && $context->primaryRoleFor($user, $branchId) === 'staff';
+
+        // See OrderDashboardController::index()'s identical check — a
+        // multi-branch staff member with no shift open picks their branch
+        // and starts the shift in one screen instead of landing here first
+        // and hitting this page's own forced, branch-less start-shift modal.
+        if ($isStaff && ! $shifts->activeFor($user) && $context->branchIdsFor($user)->count() > 1) {
+            return redirect()->route('branches.select');
+        }
+
+        $channel = $this->channelFilter($request);
+        $filters = $this->filters($request);
+        [$from, $to] = $this->dateRange($filters);
 
         return view('orders.history', [
             'orders' => $this->orders($channel, $filters, $from, $to),

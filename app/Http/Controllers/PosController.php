@@ -80,6 +80,14 @@ class PosController extends Controller
         $user = $request->user();
         $isStaff = $context->primaryRoleFor($user, $branch->id) === 'staff';
 
+        // See OrderDashboardController::index()'s identical check — a
+        // multi-branch staff member with no shift open picks their branch
+        // and starts the shift in one screen instead of landing here first
+        // and hitting this page's own forced, branch-less start-shift modal.
+        if ($isStaff && ! $shifts->activeFor($user) && $context->branchIdsFor($user)->count() > 1) {
+            return redirect()->route('branches.select');
+        }
+
         return view('pos.index', [
             'branch' => $branch,
             'categories' => $categories,

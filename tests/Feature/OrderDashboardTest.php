@@ -65,6 +65,49 @@ class OrderDashboardTest extends TestCase
         return $order;
     }
 
+    public function test_a_multi_branch_staff_member_with_no_shift_is_sent_to_pick_a_branch(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branchA);
+        $this->assignRoleAt($staff, 'staff', $this->branchB);
+
+        // Already resolved to branch A this session (current_branch_id
+        // persists across logins/requests) — without the fix, an already-
+        // resolved branch alone satisfies ResolveCurrentBranch and the
+        // dashboard renders its own branch-less forced start-shift modal
+        // instead of ever offering a choice of branch for today's new shift.
+        $staff->update(['current_branch_id' => $this->branchA->id]);
+
+        $this->actingAs($staff)
+            ->withSession(['current_branch_id' => $this->branchA->id])
+            ->get(route('dashboard'))
+            ->assertRedirect(route('branches.select'));
+    }
+
+    public function test_a_single_branch_staff_member_with_no_shift_still_sees_the_dashboard(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branchA);
+
+        $this->actingAs($staff)->get(route('dashboard'))
+            ->assertOk();
+    }
+
+    public function test_a_multi_branch_staff_member_already_on_shift_sees_the_dashboard(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branchA);
+        $this->assignRoleAt($staff, 'staff', $this->branchB);
+        $staff->update(['current_branch_id' => $this->branchA->id]);
+
+        Shift::create(['user_id' => $staff->id, 'branch_id' => $this->branchA->id, 'started_at' => now()]);
+
+        $this->actingAs($staff)
+            ->withSession(['current_branch_id' => $this->branchA->id])
+            ->get(route('dashboard'))
+            ->assertOk();
+    }
+
     public function test_staff_sees_only_their_own_branchs_orders(): void
     {
         $staff = User::factory()->create();

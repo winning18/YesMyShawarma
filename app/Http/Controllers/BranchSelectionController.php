@@ -43,7 +43,7 @@ class BranchSelectionController extends Controller
             // means they never see a bare "pick a branch" screen followed
             // immediately by a separate forced "now start your shift"
             // modal for the exact same decision.
-            $this->isStaffOnly($user, $context) => 'staff.start-shift',
+            $context->isStaffOnly($user) => 'staff.start-shift',
             default => 'branches.select',
         };
 
@@ -108,21 +108,6 @@ class BranchSelectionController extends Controller
             && ! $context->hasRoleAtAnyBranch($user, 'stock_manager');
     }
 
-    /**
-     * Mirrors isRiderOnly() above — a hybrid account (staff at one branch,
-     * something else at another) falls through to the generic picker
-     * instead, same as a hybrid rider account would.
-     */
-    private function isStaffOnly(User $user, BranchContext $context): bool
-    {
-        return $context->hasRoleAtAnyBranch($user, 'staff')
-            && ! $context->hasRoleAtAnyBranch($user, 'manager')
-            && ! $context->hasRoleAtAnyBranch($user, 'general_manager')
-            && ! $context->hasRoleAtAnyBranch($user, 'owner')
-            && ! $context->hasRoleAtAnyBranch($user, 'rider')
-            && ! $context->hasRoleAtAnyBranch($user, 'stock_manager');
-    }
-
     public function store(Request $request, BranchContext $context, ShiftService $shifts): RedirectResponse
     {
         if ($blocked = $this->blockWhileOnShift($request, $shifts)) {
@@ -150,7 +135,7 @@ class BranchSelectionController extends Controller
         // to clear the dashboard's own forced start-shift modal right
         // after. blockWhileOnShift() above already guarantees no shift is
         // open yet, so this can't double-start one.
-        if ($this->isStaffOnly($user, $context)) {
+        if ($context->isStaffOnly($user)) {
             try {
                 $shifts->start(
                     $user,

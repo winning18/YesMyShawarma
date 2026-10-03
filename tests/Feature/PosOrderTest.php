@@ -75,6 +75,22 @@ class PosOrderTest extends TestCase
             ->assertSee('Chicken Shawarma');
     }
 
+    public function test_a_multi_branch_staff_member_with_no_shift_is_sent_to_pick_a_branch_instead_of_pos(): void
+    {
+        $otherBranch = Branch::create([
+            'name' => 'East Legon', 'slug' => 'east-legon', 'phone' => '+233200000002', 'address' => 'B',
+            'lat' => 5.6, 'lng' => -0.2, 'opens_at' => '10:00', 'closes_at' => '22:00',
+        ]);
+        $staff = $this->makeStaff();
+        $this->assignRoleAt($staff, 'staff', $otherBranch);
+        $staff->update(['current_branch_id' => $this->branch->id]);
+
+        $this->actingAs($staff)
+            ->withSession(['current_branch_id' => $this->branch->id])
+            ->get(route('dashboard.pos.index'))
+            ->assertRedirect(route('branches.select'));
+    }
+
     public function test_pos_page_includes_the_order_alert_widget_for_the_current_branch(): void
     {
         $staff = $this->makeStaff();
