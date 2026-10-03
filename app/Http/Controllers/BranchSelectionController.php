@@ -30,6 +30,7 @@ class BranchSelectionController extends Controller
 
         return view($view, [
             'branches' => $context->selectableBranchesFor($request->user()),
+            'currentBranchId' => $context->id(),
         ]);
     }
 

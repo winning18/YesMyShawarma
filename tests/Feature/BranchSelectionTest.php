@@ -126,6 +126,27 @@ class BranchSelectionTest extends TestCase
             ->assertViewIs('rider.select-branch');
     }
 
+    public function test_the_riders_current_branch_is_preselected_and_labelled(): void
+    {
+        $rider = User::factory()->create();
+        $this->assignRoleAt($rider, 'rider', $this->branchA);
+        $this->assignRoleAt($rider, 'rider', $this->branchB);
+
+        // Already serving branch A this session (e.g. selected earlier,
+        // or the single-branch auto-resolve before a second role was added).
+        $this->actingAs($rider, 'rider')
+            ->post(route('branches.select.store'), ['branch_id' => $this->branchA->id]);
+
+        $response = $this->actingAs($rider, 'rider')->get(route('branches.select'));
+
+        $response->assertViewHas('currentBranchId', $this->branchA->id);
+        $response->assertSee('Currently serving');
+
+        // Only branch A's radio is checked, not branch B's.
+        $response->assertSee('value="'.$this->branchA->id.'" checked', false);
+        $response->assertDontSee('value="'.$this->branchB->id.'" checked', false);
+    }
+
     public function test_a_manager_sees_the_generic_picker_not_the_rider_one(): void
     {
         $manager = User::factory()->create();
