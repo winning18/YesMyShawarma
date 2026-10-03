@@ -28,6 +28,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'orders.transfer_branch',
             'menu.toggle_availability',
             'reports.view_operational',
+            'damage_reports.file',
         ],
         'rider' => [
             'orders.view',
@@ -59,6 +60,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'users.transfer_branch',
             'dashboard.performance',
             'settings.manage',
+            'damage_reports.review',
         ],
         // Same operational permission set as 'manager' (including
         // orders.refund — see above), at every branch they're assigned to
@@ -90,6 +92,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'users.create_operational',
             'dashboard.performance',
             'settings.manage',
+            'damage_reports.review',
         ],
         'owner' => [
             'orders.view',
@@ -116,6 +119,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'dashboard.performance',
             'settings.manage',
             'stock.manage',
+            'damage_reports.review',
         ],
         // Owner-assignable delegation for stock management — deliberately
         // its own role rather than a per-user permission grant, since

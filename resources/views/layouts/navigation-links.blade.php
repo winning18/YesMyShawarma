@@ -225,6 +225,19 @@
 @endcanany
 
 {{--
+    damage_reports.file (staff — submit one) or damage_reports.review
+    (manager/general_manager/owner — approve/deny) — same shared-tab shape
+    as Refunds above. A rider never sees this link at all (they have no
+    dashboard nav); they file their own order-specific report from a modal
+    on their own rider dashboard instead.
+--}}
+@canany(['damage_reports.file', 'damage_reports.review'])
+    <x-sidebar-link :href="route('dashboard.damage-reports.index')" :active="request()->routeIs('dashboard.damage-reports.*')">
+        {{ __('Damage Reports') }}
+    </x-sidebar-link>
+@endcanany
+
+{{--
     Weekly opening schedule, owner+manager only — reuses
     reports.view_financial (already exactly that audience) rather than a
     dedicated permission. Its own sidebar item, not a Reports and invoices

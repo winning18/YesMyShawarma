@@ -138,6 +138,19 @@
                                         x-show="order.status === 'dispatched'"
                                         @click="if (confirm(@js(__('Mark this delivery as failed?')))) advance(order.id, 'failed')"
                                     >{{ __('Delivery failed') }}</button>
+                                    {{--
+                                        Broken seal, spilled food, a damaged
+                                        box — anything wrong with THIS order
+                                        while it's in the rider's hands, for
+                                        a superior to review (damage-reports
+                                        feature). Available at any point in
+                                        the delivery, not just at the end.
+                                    --}}
+                                    <button
+                                        type="button"
+                                        class="px-4 py-2 border border-amber-300 text-amber-700 text-sm font-semibold rounded-md hover:bg-amber-50"
+                                        @click="openDamageModal(order)"
+                                    >{{ __('Report damage') }}</button>
                                 </div>
                             </div>
                         </div>
@@ -146,6 +159,41 @@
                     <p x-show="mine.length === 0" class="text-sm text-gray-500">{{ __("You don't have any deliveries right now.") }}</p>
                 </div>
             </section>
+        </div>
+
+        {{--
+            Report damage modal — a rider reporting an order-specific
+            problem (broken seal, spilled food, etc.) for a manager/
+            general_manager/owner to review. Photo required (no exceptions
+            client-side; the server enforces this too).
+        --}}
+        <div x-show="damageModalOrder" x-cloak class="fixed inset-0 z-40 flex items-center justify-center p-4">
+            <div class="fixed inset-0 bg-black/50" @click="closeDamageModal()"></div>
+
+            <template x-if="damageModalOrder">
+                <div class="relative bg-white rounded-lg shadow-lg max-w-sm w-full p-6">
+                    <h3 class="font-semibold text-gray-800 mb-1">{{ __('Report damage') }}</h3>
+                    <p class="text-sm text-gray-500 mb-4" x-text="damageModalOrder?.reference"></p>
+
+                    <div x-show="damageError" x-cloak class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3 mb-3" x-text="damageError"></div>
+
+                    <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('What happened') }} <span class="text-red-600">*</span></label>
+                    <textarea x-model="damageDescription" rows="3" maxlength="1000" class="w-full rounded-md border-gray-300 text-sm mb-3" placeholder="{{ __('e.g. The bag tore and the drink spilled inside the box.') }}"></textarea>
+
+                    <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Photo') }} <span class="text-red-600">*</span></label>
+                    <input type="file" accept="image/*" capture="environment" @change="damagePhoto = $event.target.files[0]" class="text-sm w-full mb-1">
+                    <p class="text-xs text-gray-400 mb-4">{{ __('Required — this is what a manager reviews.') }}</p>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <button type="button" @click="closeDamageModal()" class="px-4 py-2 border border-gray-300 rounded-md text-sm">{{ __('Cancel') }}</button>
+                        <button
+                            type="button" @click="submitDamageReport()"
+                            :disabled="damageSubmitting"
+                            class="px-4 py-2 bg-gray-800 text-white rounded-md text-sm hover:bg-gray-900 disabled:opacity-50"
+                        ><span x-text="damageSubmitting ? @js(__('Submitting…')) : @js(__('Submit'))"></span></button>
+                    </div>
+                </div>
+            </template>
         </div>
     </div>
 
@@ -156,6 +204,11 @@
                 error: null,
                 actionError: null,
                 arriving: null,
+                damageModalOrder: null,
+                damageDescription: '',
+                damagePhoto: null,
+                damageSubmitting: false,
+                damageError: null,
 
                 init() {
                     this.fetchData();
@@ -339,6 +392,63 @@
 
                 formatMoney(pesewas) {
                     return 'GH₵' + ((pesewas ?? 0) / 100).toFixed(2);
+                },
+
+                openDamageModal(order) {
+                    this.damageModalOrder = order;
+                    this.damageDescription = '';
+                    this.damagePhoto = null;
+                    this.damageError = null;
+                },
+
+                closeDamageModal() {
+                    this.damageModalOrder = null;
+                },
+
+                // FormData, not JSON — a photo upload can't go through the
+                // JSON.stringify() path every other action on this page
+                // uses (post() above), since the server needs a real
+                // multipart file, not a base64 string.
+                async submitDamageReport() {
+                    if (!this.damageDescription.trim()) {
+                        this.damageError = @js(__('Please describe what happened.'));
+                        return;
+                    }
+
+                    if (!this.damagePhoto) {
+                        this.damageError = @js(__('A photo is required.'));
+                        return;
+                    }
+
+                    this.damageSubmitting = true;
+                    this.damageError = null;
+
+                    const body = new FormData();
+                    body.append('order_id', this.damageModalOrder.id);
+                    body.append('description', this.damageDescription);
+                    body.append('photo', this.damagePhoto);
+
+                    try {
+                        const response = await fetch('{{ route('dashboard.damage-reports.store') }}', {
+                            method: 'POST',
+                            headers: {
+                                Accept: 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            },
+                            body,
+                        });
+
+                        if (!response.ok) {
+                            const payload = await response.json().catch(() => null);
+                            throw new Error(payload?.message || @js(__('Could not submit the report.')));
+                        }
+
+                        this.closeDamageModal();
+                    } catch (e) {
+                        this.damageError = e.message;
+                    } finally {
+                        this.damageSubmitting = false;
+                    }
                 },
             };
         }

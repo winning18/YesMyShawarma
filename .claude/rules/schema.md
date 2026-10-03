@@ -245,6 +245,33 @@ workflow and why this never touches `orders.status`. `amount` can be less than `
 (partial refund) and an order can have more than one `refunds` row over time — the refundable
 remainder is `orders.total` minus every `completed` refund against it.
 
+## Damage reports
+
+```
+damage_reports  id, branch_id, order_id (nullable), stock_item_id (nullable),
+                reported_by, reporter_role, description, photo_path (nullable),
+                photo_viewed_at (nullable), status (pending|approved|denied),
+                reviewed_by, reviewed_at, review_note
+```
+
+A rider finds damage while delivering an order (`order_id` set), or staff finds a damaged item
+not tied to any specific order (`order_id` null, `stock_item_id` optionally set when it's about
+stock rather than e.g. equipment) — either way, one record, reviewed by manager/general_manager/
+owner (`damage_reports.review`, same equal-tier shape as `orders.refund`). Approving is an
+acknowledgement only — no automatic stock deduction or financial consequence, a deliberate v1
+scope decision (`DamageReportService`).
+
+`photo_path` lives on the **private** `local` disk (`config/filesystems.php`), never the public
+one branch/menu images use, and is served only through `DamageReportController::photo()`
+(`DamageReportPolicy::viewPhoto()` — the reviewer tier, or the original reporter seeing their
+own submission back). The first time an actual *reviewer* opens it, `photo_viewed_at` is set
+(`DamageReportService::markPhotoViewed()` — the reporter viewing their own photo never counts);
+24 hours after that, the scheduled `damage-reports:delete-expired-photos` command
+(`routes/console.php`, hourly) deletes the file and nulls `photo_path`, but the row itself stays
+permanently, same as every other audit table in this app outliving the artifact it was about. A
+report whose photo has never been viewed is never touched, however old it gets — the window only
+starts once someone's actually looked.
+
 ## Promotions (v1 scope only)
 
 ```

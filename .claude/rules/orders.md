@@ -169,6 +169,12 @@ in a given moment.
 `App.Models.User.{riderId}` channel) tells a specific rider's dashboard to refetch. The
 database write already decided the assignment before this ever fires.
 
+A rider finding something wrong with an order they're carrying (spilled food, a damaged box)
+reports it from a modal on their own dashboard, scoped to only the order actually assigned to
+them (`DamageReportPolicy::create()`) — see schema.md's Damage reports section and
+permissions.md's `damage_reports.*` entry for the full shape, including the photo's 24h
+post-review expiry.
+
 ## Branch transfer
 
 A customer sometimes ends up at the wrong branch — picked the farther of two by mistake, or

@@ -45,6 +45,8 @@ Roles: `staff`, `rider`, `manager`, `general_manager`, `owner`, `stock_manager`.
 | `dashboard.performance` | — | — | ✓ | ✓ | ✓ | — |
 | `settings.manage` | — | — | ✓ | ✓ | ✓ | — |
 | `stock.manage` | — | — | — | — | ✓ | ✓ |
+| `damage_reports.file` | ✓ | implicit | — | — | — | — |
+| `damage_reports.review` | — | — | ✓ | ✓ | ✓ | — |
 
 `general_manager` holds the exact same permission set as `manager` (see `RolesAndPermissionsSeeder`'s
 `$matrix` — the two lists are meant to be kept identical apart from `users.create_operational`),
@@ -131,6 +133,19 @@ a queue they can act on freely: the Blade view wraps Approve/Deny in `@can('appr
 $refund)`, which only `orders.refund` satisfies, so `staff` never sees those buttons at all —
 only `Complete` on an already-`approved` request, same as everywhere else `orders.refund_request`
 applies.
+
+`damage_reports.review` (`DamageReportController`/`DamageReportService`/`DamageReportPolicy` —
+schema.md's Damage reports section) is the same equal-tier shape as `orders.refund`:
+`manager`/`general_manager`/`owner` all approve/deny as equals, branch-scoped the same way
+(`manager` their one branch, `general_manager` every branch they hold that role at). Filing is
+split differently than refunds, though: `staff` holds a real permission
+(`damage_reports.file`, gating the "Report a damaged item" form on the Damage Reports page), but
+`rider` holds none at all — a rider's ability to file is purely structural
+(`DamageReportPolicy::create()`'s `$order->rider_id === $user->id` check, the same "own assigned
+order only" shape as `orders.advance_status`), not a spatie permission, since every rider may
+report on their own order and there's no sub-tier within the role that would need
+differentiating. The matrix's "implicit" for `rider` reflects that — there's no
+`damage_reports.file` row to hold, the ability comes from ownership of the order itself.
 
 `users.transfer_branch` (moving a `staff`/`rider`/`manager` role assignment from one branch to
 another — `UserManagementController::changeBranch()`, `UserPolicy::changeBranch()`) is a flat

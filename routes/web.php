@@ -11,6 +11,7 @@ use App\Http\Controllers\ContactController;
 use App\Http\Controllers\Customer\Auth\AuthenticatedSessionController as CustomerAuthenticatedSessionController;
 use App\Http\Controllers\Customer\Auth\RegisteredUserController as CustomerRegisteredUserController;
 use App\Http\Controllers\CustomerManagementController;
+use App\Http\Controllers\DamageReportController;
 use App\Http\Controllers\FaqController;
 use App\Http\Controllers\HeroSliderController;
 use App\Http\Controllers\HomeController;
@@ -166,6 +167,13 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::post('/dashboard/refunds/{refund}/approve', [RefundController::class, 'approve'])->name('dashboard.refunds.approve');
     Route::post('/dashboard/refunds/{refund}/deny', [RefundController::class, 'deny'])->name('dashboard.refunds.deny');
     Route::post('/dashboard/refunds/{refund}/complete', [RefundController::class, 'complete'])->name('dashboard.refunds.complete');
+
+    // store()/photo() are NOT here — a rider files/views their own
+    // order-specific report too, so those two live in the shared
+    // auth:web,rider group below instead (next to orders.advance/arrive).
+    Route::get('/dashboard/damage-reports', [DamageReportController::class, 'index'])->name('dashboard.damage-reports.index');
+    Route::post('/dashboard/damage-reports/{damageReport}/approve', [DamageReportController::class, 'approve'])->name('dashboard.damage-reports.approve');
+    Route::post('/dashboard/damage-reports/{damageReport}/deny', [DamageReportController::class, 'deny'])->name('dashboard.damage-reports.deny');
 
     Route::get('/dashboard/reviews', [ReviewManagementController::class, 'index'])->name('dashboard.reviews.index');
     Route::post('/dashboard/reviews/{review}/approve', [ReviewManagementController::class, 'approve'])->name('dashboard.reviews.approve');
@@ -327,6 +335,15 @@ Route::middleware('auth:web,rider')->group(function () {
 Route::middleware(['auth:web,rider', 'verified', 'branch', 'password.change_required'])->group(function () {
     Route::post('/dashboard/orders/{order}/advance', [OrderActionController::class, 'advance'])->name('orders.advance');
     Route::post('/dashboard/orders/{order}/arrive', [OrderActionController::class, 'arrive'])->name('orders.arrive');
+
+    // A rider files a damage report against the order they're carrying
+    // from their own dashboard's modal (no order_id = staff's general,
+    // not-order-specific report instead — DamageReportController::store()
+    // branches on whether one was sent). photo() is here too since a
+    // rider must be able to see their own submission back
+    // (DamageReportPolicy::viewPhoto()), not just reviewers.
+    Route::post('/dashboard/damage-reports', [DamageReportController::class, 'store'])->name('dashboard.damage-reports.store');
+    Route::get('/dashboard/damage-reports/{damageReport}/photo', [DamageReportController::class, 'photo'])->name('dashboard.damage-reports.photo');
 });
 
 require __DIR__.'/auth.php';

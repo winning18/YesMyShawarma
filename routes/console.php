@@ -2,6 +2,7 @@
 
 use App\Console\Commands\AbandonPendingPaymentOrders;
 use App\Console\Commands\ApplyMenuItemSchedules;
+use App\Console\Commands\DeleteExpiredDamageReportPhotos;
 use App\Console\Commands\EscalateUnacknowledgedOrders;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -14,3 +15,4 @@ Artisan::command('inspire', function () {
 Schedule::command(EscalateUnacknowledgedOrders::class)->everyMinute();
 Schedule::command(AbandonPendingPaymentOrders::class)->everyFiveMinutes();
 Schedule::command(ApplyMenuItemSchedules::class)->everyFiveMinutes();
+Schedule::command(DeleteExpiredDamageReportPhotos::class)->hourly();
