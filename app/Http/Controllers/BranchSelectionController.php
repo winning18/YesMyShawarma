@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Services\Branches\BranchContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -64,8 +65,22 @@ class BranchSelectionController extends Controller
 
         // intended() sends the user back to whatever page redirected them
         // here via redirect()->guest() (POS, or any branch-gated page the
-        // ResolveCurrentBranch middleware bounced them from) — Dashboard is
-        // only the fallback when nothing specific was intended.
-        return Redirect::intended(route('dashboard'));
+        // ResolveCurrentBranch middleware bounced them from) — the dashboard
+        // route below is only the fallback when nothing specific was
+        // intended, e.g. a rider reaching this page via the sidebar's
+        // "Switch branch" link rather than a guest()-redirect bounce.
+        //
+        // That fallback must match whichever guard actually authenticated
+        // this request — a rider-only account has no 'web' session at all,
+        // so falling back to the staff dashboard() route (behind the plain
+        // 'auth' = web-guard middleware) would bounce them to the staff
+        // login page, which looks exactly like being logged out even though
+        // their rider session is untouched. Checked in the same order
+        // auth:web,rider itself resolves a guard (web first, then rider),
+        // so a hybrid staff+rider account still lands on their staff
+        // dashboard when that's the guard this request authenticated on.
+        $fallback = Auth::guard('web')->check() ? route('dashboard') : route('rider.dashboard');
+
+        return Redirect::intended($fallback);
     }
 }

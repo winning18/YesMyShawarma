@@ -98,6 +98,24 @@ class BranchSelectionTest extends TestCase
         $this->assertSame($this->branchB->id, $manager->fresh()->current_branch_id);
     }
 
+    public function test_a_rider_switching_branches_with_no_intended_page_falls_back_to_the_rider_dashboard(): void
+    {
+        // Regression: the rider sidebar's "Switch branch" link visits the
+        // picker directly (no redirect()->guest() bounce), so there's no
+        // intended URL — the old fallback of route('dashboard') sent a
+        // rider-only account at the staff (web-guard) dashboard, which
+        // bounced them to the staff login page and looked like a logout.
+        $rider = User::factory()->create();
+        $this->assignRoleAt($rider, 'rider', $this->branchA);
+        $this->assignRoleAt($rider, 'rider', $this->branchB);
+
+        $this->actingAs($rider, 'rider')->get(route('branches.select'));
+
+        $this->actingAs($rider, 'rider')
+            ->post(route('branches.select.store'), ['branch_id' => $this->branchA->id])
+            ->assertRedirect(route('rider.dashboard'));
+    }
+
     public function test_a_rider_assigned_to_two_branches_sees_the_rider_branded_picker(): void
     {
         $rider = User::factory()->create();
