@@ -210,7 +210,10 @@
                     <p class="text-sm text-gray-500 mb-4" x-text="formatMoney(activeItem.price)"></p>
 
                     <template x-for="group in activeItem.optionGroups" :key="group.id">
-                        <fieldset class="mb-4">
+                        <fieldset
+                            class="mb-4 rounded-md transition-colors"
+                            :class="group.id in invalidGroups ? 'ring-2 ring-red-400 bg-red-50 p-2 -m-2' : ''"
+                        >
                             <legend class="text-sm text-brand-yellow-dark font-semibold mb-1.5">
                                 <span x-text="group.name"></span><span x-show="group.is_required" class="text-red-600"> *</span>
                             </legend>
@@ -239,8 +242,11 @@
                                     </div>
                                 </template>
                             </div>
+                            <p x-show="group.id in invalidGroups" x-cloak x-text="invalidGroups[group.id]" class="text-xs text-red-600 mt-1.5"></p>
                         </fieldset>
                     </template>
+
+                    <div x-show="error" x-cloak class="bg-red-50 border border-red-200 text-red-700 text-xs rounded-md p-2 mb-4" x-text="error"></div>
 
                     <div class="flex items-center gap-3 mb-4">
                         <label class="text-sm font-medium text-brand-yellow-dark">{{ __('Qty') }}</label>
@@ -291,6 +297,7 @@
                 activeItem: null,
                 selectedOptionQuantities: {},
                 itemQuantity: 1,
+                invalidGroups: {},
                 confirmation: null,
 
                 init() {},
@@ -299,6 +306,8 @@
                     this.activeItem = item;
                     this.selectedOptionQuantities = {};
                     this.itemQuantity = 1;
+                    this.invalidGroups = {};
+                    this.error = null;
                 },
 
                 toggleOption(id, groupId) {
@@ -308,14 +317,13 @@
                     if (group && group.max_select === 1 && !alreadySelected) {
                         group.options.forEach((o) => delete this.selectedOptionQuantities[o.id]);
                         this.selectedOptionQuantities[id] = 1;
-                        return;
-                    }
-
-                    if (alreadySelected) {
+                    } else if (alreadySelected) {
                         delete this.selectedOptionQuantities[id];
                     } else {
                         this.selectedOptionQuantities[id] = 1;
                     }
+
+                    this.refreshInvalidGroups();
                 },
 
                 adjustOptionQuantity(id, delta) {
@@ -324,14 +332,55 @@
                     this.selectedOptionQuantities[id] = Math.min(max, Math.max(1, current + delta));
                 },
 
+                // Mirrors MenuPricingService::assertGroupCountsSatisfied()'s
+                // two checks exactly (see menu-item-form-script.blade.php's
+                // equivalent for the customer-facing menu) — a fast front
+                // door so staff see which group is missing instantly instead
+                // of the "Add" button silently doing nothing while the real
+                // 422 rejection sits unnoticed behind the still-open modal.
+                validateOptionGroups() {
+                    const invalidGroups = {};
+
+                    for (const group of this.activeItem.optionGroups) {
+                        const count = group.options.filter((o) => o.id in this.selectedOptionQuantities).length;
+
+                        if (count < group.min_select || count > group.max_select) {
+                            invalidGroups[group.id] = `Requires between ${group.min_select} and ${group.max_select} selection(s).`;
+                        } else if (group.is_required && count < 1) {
+                            invalidGroups[group.id] = 'This selection is required.';
+                        }
+                    }
+
+                    return invalidGroups;
+                },
+
+                // Live-clears a group's highlight as soon as it's fixed,
+                // without nagging the user with validation before they've
+                // even tried to submit once.
+                refreshInvalidGroups() {
+                    if (Object.keys(this.invalidGroups).length === 0) return;
+                    this.invalidGroups = this.validateOptionGroups();
+                },
+
                 async confirmAddItem() {
-                    await this.mutateCart('{{ route('dashboard.pos.cart.add') }}', 'POST', {
+                    const invalidGroups = this.validateOptionGroups();
+
+                    if (Object.keys(invalidGroups).length > 0) {
+                        this.invalidGroups = invalidGroups;
+                        return;
+                    }
+
+                    const added = await this.mutateCart('{{ route('dashboard.pos.cart.add') }}', 'POST', {
                         menu_item_id: this.activeItem.id,
                         quantity: this.itemQuantity,
                         option_ids: Object.keys(this.selectedOptionQuantities).map(Number),
                         option_qty: this.selectedOptionQuantities,
                     });
-                    this.activeItem = null;
+
+                    if (added) {
+                        this.activeItem = null;
+                        this.invalidGroups = {};
+                    }
                 },
 
                 async changeQuantity(lineId, quantity) {
@@ -356,14 +405,16 @@
 
                         if (!response.ok) {
                             this.error = payload.message || '{{ __('Action failed.') }}';
-                            return;
+                            return false;
                         }
 
                         this.lines = payload.lines;
                         this.subtotal = payload.subtotal;
                         this.error = null;
+                        return true;
                     } catch (e) {
                         this.error = '{{ __('Action failed.') }}';
+                        return false;
                     }
                 },
 
