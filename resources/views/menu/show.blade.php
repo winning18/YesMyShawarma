@@ -3,7 +3,12 @@
     :og-image="$item->imageUrl()"
     :og-description="$item->description ? Str::limit($item->description, 160) : null"
 >
-    <script type="application/ld+json">{!! json_encode($productSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}</script>
+    {{-- JSON_HEX_TAG/JSON_HEX_AMP: $productSchema embeds staff-editable
+         item name/description verbatim (aeo.md) — without these, a name or
+         description containing a literal </script> would close this tag
+         early and let whatever follows execute as a new <script>, a stored
+         XSS reachable by anyone with menu.edit_content. --}}
+    <script type="application/ld+json">{!! json_encode($productSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) !!}</script>
 
     <a href="{{ route('menu.index') }}" class="text-sm underline text-brand-gray-500">&larr; {{ __('Back to menu') }}</a>
 

@@ -20,13 +20,20 @@ Route::middleware('guest')->group(function () {
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
         ->name('password.request');
 
+    // Unlike login (its own LoginRequest already rate-limits per email+IP),
+    // PasswordResetLinkController/NewPasswordController have no rate
+    // limiting of their own — without this, either route is wide open to
+    // being hammered with different emails/tokens (mail-bombing real
+    // users' inboxes, or brute-forcing a reset token).
     Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
+        ->middleware('throttle:6,1')
         ->name('password.email');
 
     Route::get('reset-password/{token}', [NewPasswordController::class, 'create'])
         ->name('password.reset');
 
     Route::post('reset-password', [NewPasswordController::class, 'store'])
+        ->middleware('throttle:6,1')
         ->name('password.store');
 });
 

@@ -1,5 +1,10 @@
 <x-customer-layout title="Menu · {{ config('app.name') }}" body-class="menu-hero-bg" main-class="max-w-7xl">
-    <script type="application/ld+json">{!! json_encode($menuSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}</script>
+    {{-- JSON_HEX_TAG/JSON_HEX_AMP: $menuSchema embeds every item's
+         staff-editable name/description verbatim (aeo.md) — without these,
+         a literal </script> in any of them would close this tag early and
+         let whatever follows execute as a new <script>, a stored XSS
+         reachable by anyone with menu.edit_content. --}}
+    <script type="application/ld+json">{!! json_encode($menuSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) !!}</script>
 
     <div class="text-center mb-6">
         <h1 class="text-2xl font-bold">{{ __('Menu') }}: {{ $branch->name }}</h1>

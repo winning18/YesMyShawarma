@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -51,6 +52,21 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Password::defaults() was the bare framework fallback (min 8,
+        // nothing else) until now — every password-setting form (register,
+        // reset, change, force-change) already calls Password::defaults(),
+        // so this one place raises the bar for staff, riders, customers and
+        // owners alike. uncompromised() checks the entered password against
+        // the Have I Been Pwned breach corpus via k-anonymity (only a hash
+        // prefix ever leaves the server, never the password itself) — left
+        // off in testing so the suite never depends on that external API's
+        // availability (and so fixture passwords like "password", almost
+        // certainly in that corpus, keep working in tests without every
+        // factory/test needing a "real-looking" one).
+        Password::defaults(fn () => app()->environment('testing')
+            ? Password::min(8)
+            : Password::min(8)->uncompromised());
+
         // Owner is "implicitly across all branches" (permissions.md) but
         // spatie's teams mode anchors their role row at a single branch (see
         // BranchContext::hasRoleAtAnyBranch) — every other ability check

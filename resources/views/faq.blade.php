@@ -1,7 +1,12 @@
 <x-customer-layout title="FAQ · {{ config('app.name') }}">
     <x-slot name="pageHeader">{{ __('Frequently asked questions') }}</x-slot>
 
-    <script type="application/ld+json">{!! json_encode($faqSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}</script>
+    {{-- JSON_HEX_TAG/JSON_HEX_AMP: FaqController::ITEMS is hardcoded today
+         (not admin-editable), but this stays defensively safe against a
+         literal </script> closing this tag early the same way it's handled
+         on every other JSON-LD block in this app (menu/home) — matters the
+         moment FAQ content ever becomes editable. --}}
+    <script type="application/ld+json">{!! json_encode($faqSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) !!}</script>
 
     {{--
         Native <details>/<summary> rather than an Alpine accordion: no JS

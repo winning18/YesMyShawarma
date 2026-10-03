@@ -10,6 +10,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Sentry\Laravel\Integration as SentryIntegration;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -52,4 +53,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        // Reports every exception Laravel would otherwise only write to
+        // storage/logs/laravel.log — no-op until SENTRY_LARAVEL_DSN is set
+        // (config/sentry.php), so this is safe to leave in across every
+        // environment including local dev with no DSN configured.
+        SentryIntegration::handles($exceptions);
     })->create();

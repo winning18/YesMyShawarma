@@ -9,8 +9,13 @@
     body-class="bg-brand-black"
     :og-image="data_get($heroSlides->first(), 'imageUrl')"
 >
+    {{-- JSON_HEX_TAG/JSON_HEX_AMP: $branchSchema embeds staff-editable
+         branch name/address verbatim (aeo.md) — without these, a literal
+         </script> in either would close this tag early and let whatever
+         follows execute as a new <script>, a stored XSS reachable by
+         anyone with branches.manage. --}}
     @foreach ($restaurantSchema as $branchSchema)
-        <script type="application/ld+json">{!! json_encode($branchSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}</script>
+        <script type="application/ld+json">{!! json_encode($branchSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) !!}</script>
     @endforeach
 
     <x-slot name="fullHero">

@@ -38,6 +38,7 @@ page weight is a product requirement, not polish.
 | Images | Cloudinary or S3 behind Cloudflare |
 | SMS | Arkesel (`ArkeselNotifier`), behind the `Notifier` contract — falls back to log-only (`LogNotifier`) if `ARKESEL_API_KEY` is unset |
 | Browser push | Web Push (`minishlink/web-push`, `WebPushNotifier`), behind the `PushNotifier` contract — falls back to log-only (`LogPushNotifier`) if VAPID keys are unset. See realtime.md's "Web Push" section |
+| Error tracking | Sentry (`sentry/sentry-laravel`), wired into `bootstrap/app.php`'s `withExceptions()` — a no-op until `SENTRY_LARAVEL_DSN` is set (`config/sentry.php`). `send_default_pii` is off by default |
 
 **No SPA.** No React or Vue on the customer site.
 

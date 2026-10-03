@@ -121,7 +121,11 @@ Route::middleware('track.visit')->group(function () {
 // /logout in routes/auth.php, and these would otherwise collide exactly.
 Route::middleware('guest:customer')->group(function () {
     Route::get('/customer/register', [CustomerRegisteredUserController::class, 'create'])->name('customer.register');
-    Route::post('/customer/register', [CustomerRegisteredUserController::class, 'store']);
+    // Unlike login (Customer\LoginRequest rate-limits per phone+IP itself),
+    // this has no rate limiting of its own — without this it's open to
+    // being hammered with phone numbers, probing which already have an
+    // account (the "already registered" error) or just spamming new rows.
+    Route::post('/customer/register', [CustomerRegisteredUserController::class, 'store'])->middleware('throttle:10,1');
 
     Route::get('/customer/login', [CustomerAuthenticatedSessionController::class, 'create'])->name('customer.login');
     Route::post('/customer/login', [CustomerAuthenticatedSessionController::class, 'store']);

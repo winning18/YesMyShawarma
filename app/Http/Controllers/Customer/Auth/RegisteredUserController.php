@@ -37,7 +37,7 @@ class RegisteredUserController extends Controller
                     }
                 },
             ],
-            'password' => ['required', 'confirmed', Password::min(6)],
+            'password' => ['required', 'confirmed', Password::defaults()],
         ]);
 
         $phone = $customers->normalizeGhanaPhone($validated['phone']);
