@@ -6,8 +6,11 @@ use App\Http\Requests\StoreOptionGroupRequest;
 use App\Http\Requests\StoreOptionRequest;
 use App\Http\Requests\UpdateOptionGroupRequest;
 use App\Http\Requests\UpdateOptionRequest;
+use App\Models\MenuItemRecipeItem;
 use App\Models\Option;
 use App\Models\OptionGroup;
+use App\Models\StockItem;
+use App\Services\Branches\BranchContext;
 use App\Support\Money;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
@@ -54,13 +57,29 @@ class OptionGroupManagementController extends Controller
             ->with('status', __(':name has been created.', ['name' => $group->name]));
     }
 
-    public function edit(OptionGroup $optionGroup): View
+    public function edit(OptionGroup $optionGroup, BranchContext $context): View
     {
         Gate::authorize('menu.edit_content');
 
+        $options = $optionGroup->options()->orderBy('name')->get();
+
         return view('dashboard.option-groups.edit', [
             'optionGroup' => $optionGroup,
-            'options' => $optionGroup->options()->orderBy('name')->get(),
+            'options' => $options,
+            // Recipes are per-branch (MenuItemRecipeItem's docblock) —
+            // null when owner has no branch selected, same gate as
+            // MenuItemManagementController::edit()'s own recipe section.
+            'recipeBranchId' => $context->id(),
+            'recipeItemsByOption' => $context->id()
+                ? MenuItemRecipeItem::with('stockItem')
+                    ->where('source_type', MenuItemRecipeItem::SOURCE_OPTION)
+                    ->whereIn('source_option_id', $options->pluck('id'))
+                    ->get()
+                    ->groupBy('source_option_id')
+                : collect(),
+            'stockItemChoices' => $context->id()
+                ? StockItem::orderBy('name')->get(['id', 'name', 'unit'])
+                : collect(),
         ]);
     }
 

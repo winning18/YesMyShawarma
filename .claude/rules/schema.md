@@ -280,19 +280,71 @@ stock_movements  id, stock_item_id, type (restock|sale), quantity (decimal 10,2)
 
 Branch-owned (`BranchScope`, like every other branch-owned table). `stock_items.quantity` is a
 denormalised running total — `stock_movements` is the source of truth, same relationship as
-`orders`/`order_events`. Every quantity change goes through `StockService::restock()` or
-`recordSale()`, both of which write a matching `stock_movements` row before updating the total,
-so the two can never drift; nothing else may write `stock_items.quantity` directly.
-`stock_movements` carries no `branch_id` of its own (reached only via `stock_item_id`), same as
-`order_events` has none of its own. `actor_id` is required, not nullable — every stock change
-must be attributable, no system-authored rows exist here the way `order_events` allows for
-escalation.
+`orders`/`order_events`. Every quantity change goes through `StockService::restock()`,
+`recordSale()`, or `recordAutomaticConsumption()`, all three of which write a matching
+`stock_movements` row before updating the total, so the two can never drift; nothing else may
+write `stock_items.quantity` directly. `stock_movements` carries no `branch_id` of its own
+(reached only via `stock_item_id`), same as `order_events` has none of its own. `actor_id` is
+required, not nullable — every stock change must be attributable, no system-authored rows exist
+here the way `order_events` allows for escalation (even automatic recipe deduction attributes
+to the staff member who accepted the order — see below).
 
 `low_stock_alerted_at` de-bounces the owner SMS (`StockAlertNotifier`): set the moment quantity
 crosses below `low_stock_threshold`, cleared by `restock()` once quantity is back at/above
 threshold. Without it, every subsequent sale while already low would re-send the same alert.
+`recordAutomaticConsumption()` can push quantity negative (deliberately never blocks an order
+over a stock-tracking gap) — `isLowStock()` already treats any quantity below threshold as low,
+negative included, so this reuses the exact same alert path with no separate "went negative"
+case.
 
 See `.claude/rules/permissions.md`'s "Stock management" section for who can do what.
+
+### Recipes and stock deduction
+
+```
+menu_item_recipe_items  id, branch_id, source_type (menu_item|option),
+                        source_menu_item_id, source_option_id, stock_item_id,
+                        quantity (decimal 10,2), timestamps
+```
+
+What one unit of a menu item — or a customer-chosen option — consumes from a branch's own
+stock, staff-configured (per branch, not globally) from each menu item's edit page and each
+option's own recipe panel on the option-groups edit page. **Per-branch, not shared**: unlike
+`menu_item_components` (which decomposes a combo into other `menu_items`/`options` purely for
+sales-reporting categorisation), this points at an actual `stock_item_id` — and `stock_items`
+are themselves per-branch with no shared ingredient catalog anywhere in this app, so a recipe
+has to say "at this branch" to know which row it means. Exactly one of `source_menu_item_id`/
+`source_option_id` is set, same validation-not-DB-constraint shape as `menu_item_components`.
+A unique index on `(branch_id, source_type, source_menu_item_id, source_option_id,
+stock_item_id)` stops the same stock item being added twice to the same recipe.
+
+An item or option with no rows configured simply never touches stock when ordered — this was
+deliberately not built as a day-one requirement (see CLAUDE.md's resolved "Inventory or stock
+depletion" note) and is opt-in per item/branch rather than retroactively assumed for every
+existing menu item.
+
+`RecipeStockService` (`App\Services\Stock`) resolves what an order actually consumes, mirroring
+`MenuPricingService`'s own per-unit-vs-fixed-for-the-line split exactly: a menu item's own
+recipe, and a single-select option's, both scale by the order item's quantity; a multi-select
+option's recipe is fixed for the whole line (its own `order_item_options.quantity`), never
+further multiplied by the item's quantity — same reasoning as pricing itself, "extra cheese x2"
+means 2, not 2 per unit.
+
+Deduction and reversal are driven entirely by `OrderStateMachine::transition()`, never called
+directly by a controller:
+
+- **Deducted the moment an order reaches `accepted`** — not `paid`, since that's the point
+  staff (the transition's actor, always a real user for this one) actually commits the kitchen
+  to making it.
+- **Reversed only if cancelled while still `accepted`** — i.e. `from === 'accepted'`. Once
+  `preparing` has started the food was likely actually made, so a later cancellation leaves
+  stock deducted on purpose rather than incorrectly restoring ingredients that were really used
+  and wasted. `rejected` never needs reversal logic at all: it's reachable only directly from
+  `paid` (never from `accepted`), so a rejected order never had stock deducted in the first
+  place.
+- Never blocks an order over insufficient stock — `recordAutomaticConsumption()` lets quantity
+  go negative and relies on the existing low-stock alert to surface it, rather than refusing to
+  accept a real order because this system's own count might be stale.
 
 ## Settings
 

@@ -137,7 +137,6 @@ Do not build these. If a task seems to require one, stop and raise it.
 - Loyalty points or stamp cards
 - Live rider GPS tracking on a map
 - Multi-currency
-- Inventory or stock depletion
 - Table reservations
 - Promo types beyond percentage and fixed discount
 - A lead pipeline with stages (v1 is a customer list, nothing more)
@@ -156,6 +155,9 @@ Resolved, no longer open: SMS provider (Arkesel, see Stack table above). Deliver
 implemented as continuous distance pricing — haversine distance from branch × a flat rate per
 km (`App\Services\Delivery\DeliveryFeeCalculator`), not the flat-per-zone or discretely-banded
 options originally listed here. See `.claude/rules/schema.md` and `.claude/rules/orders.md`.
+"Inventory or stock depletion" (removed from the list above) was deliberately built, flagged
+and approved mid-project rather than assumed — recipe-driven, per-branch, tied to order
+acceptance/cancellation. See `.claude/rules/schema.md`'s "Recipes and stock deduction" section.
 
 ---
 

@@ -237,3 +237,13 @@ Compute in this order, always server-side:
 4. `total` = subtotal − discount_total + delivery_fee
 
 Never trust a client-supplied total. Recalculate on every write and reject mismatches.
+
+## Stock deduction
+
+`OrderStateMachine::transition()` is also where recipe-driven stock deduction lives —
+deducted on reaching `accepted`, reversed only if cancelled while still `accepted` (before
+`preparing` starts). Keyed off status, never payment method or channel, so this applies
+identically to a web order, a POS order, or a Bolt Food order. Full detail — the
+`menu_item_recipe_items` table, the single-select-vs-multi-select consumption rule, why
+`rejected` never needs reversal — lives in schema.md's "Recipes and stock deduction" section;
+not duplicated here.

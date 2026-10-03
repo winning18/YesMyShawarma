@@ -119,6 +119,50 @@ class StockService
             return $movement;
         });
 
+        if ($itemToAlert) {
+            $this->alerts->lowStock($itemToAlert);
+        }
+
+        return $movement;
+    }
+
+    /**
+     * RecipeStockService's own entry point for automatic, recipe-driven
+     * deduction when an order is accepted — deliberately never throws on
+     * insufficient stock, unlike recordSale() above. A kitchen routinely
+     * has more of an ingredient on hand than this system has been told
+     * about, so blocking an order over a stock-tracking gap would be
+     * actively wrong; going negative is itself the visible signal
+     * something needs reconciling (isLowStock() already treats any
+     * quantity below threshold as low, negative included — the exact
+     * same alert path as recordSale() fires here for free, no separate
+     * "went negative" case needed).
+     */
+    public function recordAutomaticConsumption(StockItem $item, User $actor, float $quantity, ?int $shiftId = null, ?string $note = null): StockMovement
+    {
+        $itemToAlert = null;
+
+        $movement = DB::transaction(function () use ($item, $actor, $quantity, $shiftId, $note, &$itemToAlert) {
+            $locked = StockItem::withoutGlobalScopes()->whereKey($item->id)->lockForUpdate()->firstOrFail();
+
+            $locked->decrement('quantity', $quantity);
+
+            $movement = $locked->movements()->create([
+                'type' => StockMovement::TYPE_SALE,
+                'quantity' => $quantity,
+                'actor_id' => $actor->id,
+                'shift_id' => $shiftId,
+                'note' => $note,
+            ]);
+
+            if ($locked->isLowStock() && $locked->low_stock_alerted_at === null) {
+                $locked->update(['low_stock_alerted_at' => now()]);
+                $itemToAlert = $locked;
+            }
+
+            return $movement;
+        });
+
         // Sent after the transaction commits — never notify on a change
         // that might still roll back.
         if ($itemToAlert) {

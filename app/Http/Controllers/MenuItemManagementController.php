@@ -11,6 +11,7 @@ use App\Models\MenuItem;
 use App\Models\MenuItemComponent;
 use App\Models\Option;
 use App\Models\OptionGroup;
+use App\Models\StockItem;
 use App\Services\Branches\BranchContext;
 use App\Services\Media\ImageUploadService;
 use App\Support\Money;
@@ -143,7 +144,7 @@ class MenuItemManagementController extends Controller
             ->with('status', __(':name has been created.', ['name' => $item->name]));
     }
 
-    public function edit(MenuItem $menuItem): View
+    public function edit(MenuItem $menuItem, BranchContext $context): View
     {
         Gate::authorize('menu.edit_content');
 
@@ -159,6 +160,16 @@ class MenuItemManagementController extends Controller
             'modifierChoices' => Option::where('is_active', true)->with('optionGroup')->orderBy('name')->get(),
             'previousItem' => $previousItem,
             'nextItem' => $nextItem,
+            // Recipes are per-branch (MenuItemRecipeItem's docblock) —
+            // null when owner has no branch selected (cross-branch view),
+            // same "select a branch first" gate as stock management.
+            'recipeBranchId' => $context->id(),
+            'recipeItems' => $context->id()
+                ? $menuItem->recipeItems()->with('stockItem')->get()
+                : collect(),
+            'stockItemChoices' => $context->id()
+                ? StockItem::orderBy('name')->get(['id', 'name', 'unit'])
+                : collect(),
         ]);
     }
 

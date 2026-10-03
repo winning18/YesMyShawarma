@@ -170,6 +170,58 @@
             @enderror
         </div>
 
+        <div class="bg-white shadow rounded-lg p-6 space-y-3">
+            <div>
+                <h3 class="font-semibold text-gray-800">{{ __('Recipe (stock used)') }}</h3>
+                <p class="text-xs text-gray-500 mt-1">
+                    {{ __('What one order of this item deducts from this branch\'s own stock when accepted. Set up separately per branch.') }}
+                </p>
+            </div>
+
+            @if (is_null($recipeBranchId))
+                <p class="text-sm text-gray-500">{{ __('Select a branch to manage this item\'s recipe.') }}</p>
+            @else
+                @forelse ($recipeItems as $recipeItem)
+                    <div class="flex items-center justify-between gap-3 border-b border-gray-100 py-2 last:border-0">
+                        <span class="text-sm text-gray-800">
+                            {{ rtrim(rtrim(number_format($recipeItem->quantity, 2), '0'), '.') }} {{ $recipeItem->stockItem->unit }} — {{ $recipeItem->stockItem->name }}
+                        </span>
+                        <form
+                            method="POST" action="{{ route('dashboard.recipe.destroy', $recipeItem) }}"
+                            onsubmit="return confirm('{{ __('Remove this from the recipe?') }}')"
+                        >
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="text-xs text-red-600 hover:underline">{{ __('Remove') }}</button>
+                        </form>
+                    </div>
+                @empty
+                    <p class="text-sm text-gray-500">{{ __('No recipe set — ordering this item never touches stock.') }}</p>
+                @endforelse
+
+                @if ($stockItemChoices->isEmpty())
+                    <p class="text-xs text-gray-500">{{ __('No stock items at this branch yet — add one from Stock first.') }}</p>
+                @else
+                    <form method="POST" action="{{ route('dashboard.menu-items.recipe.store', $menuItem) }}" class="flex items-center gap-2 mt-3">
+                        @csrf
+                        <select name="stock_item_id" class="flex-1 rounded-md border-gray-300 text-sm" required>
+                            <option value="">{{ __('Select stock item… *') }}</option>
+                            @foreach ($stockItemChoices as $choice)
+                                <option value="{{ $choice->id }}">{{ $choice->name }} ({{ $choice->unit }})</option>
+                            @endforeach
+                        </select>
+                        <input type="number" name="quantity" step="0.01" min="0.01" value="1" placeholder="{{ __('Qty *') }}" class="w-20 rounded-md border-gray-300 text-sm" required>
+                        <button type="submit" class="shrink-0 px-3 py-1.5 bg-gray-800 text-white text-xs font-semibold rounded-md hover:bg-gray-900">
+                            {{ __('Add') }}
+                        </button>
+                    </form>
+                    @error('stock_item_id')
+                        <p class="text-xs text-red-600">{{ $message }}</p>
+                    @enderror
+                @endif
+            @endif
+        </div>
+
         <form
             method="POST" action="{{ route('dashboard.menu-items.destroy', $menuItem) }}"
             onsubmit="return confirm('{{ __('Remove :name from the menu?', ['name' => $menuItem->name]) }}')"

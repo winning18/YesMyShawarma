@@ -29,6 +29,7 @@ use App\Http\Controllers\PosController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PromotionManagementController;
 use App\Http\Controllers\PushSubscriptionController;
+use App\Http\Controllers\RecipeManagementController;
 use App\Http\Controllers\RefundController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\ReportsInvoicesController;
@@ -260,6 +261,9 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::post('/dashboard/menu-items/{menuItem}/components', [MenuItemManagementController::class, 'storeComponent'])->name('dashboard.menu-items.components.store');
     Route::delete('/dashboard/menu-items/{menuItem}/components/{component}', [MenuItemManagementController::class, 'destroyComponent'])->name('dashboard.menu-items.components.destroy');
 
+    Route::post('/dashboard/menu-items/{menuItem}/recipe', [RecipeManagementController::class, 'storeForMenuItem'])->name('dashboard.menu-items.recipe.store');
+    Route::delete('/dashboard/recipe/{recipeItem}', [RecipeManagementController::class, 'destroy'])->name('dashboard.recipe.destroy');
+
     Route::get('/dashboard/menu-items/timetable', [MenuItemScheduleController::class, 'index'])->name('dashboard.menu-items.timetable');
     Route::post('/dashboard/menu-items/{menuItem}/schedule', [MenuItemScheduleController::class, 'update'])->name('dashboard.menu-items.schedule.update');
     Route::delete('/dashboard/menu-items/{menuItem}/schedule', [MenuItemScheduleController::class, 'destroy'])->name('dashboard.menu-items.schedule.destroy');
@@ -272,6 +276,7 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::post('/dashboard/option-groups/{optionGroup}/options', [OptionGroupManagementController::class, 'storeOption'])->name('dashboard.option-groups.options.store');
     Route::put('/dashboard/option-groups/{optionGroup}/options/{option}', [OptionGroupManagementController::class, 'updateOption'])->name('dashboard.option-groups.options.update');
     Route::delete('/dashboard/option-groups/{optionGroup}/options/{option}', [OptionGroupManagementController::class, 'destroyOption'])->name('dashboard.option-groups.options.destroy');
+    Route::post('/dashboard/options/{option}/recipe', [RecipeManagementController::class, 'storeForOption'])->name('dashboard.options.recipe.store');
 });
 
 // Same `users` table as staff, but its own 'rider' guard (config/auth.php)

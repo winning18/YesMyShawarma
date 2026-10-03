@@ -61,6 +61,18 @@ class MenuItem extends Model
         return $this->hasMany(MenuItemComponent::class);
     }
 
+    /**
+     * What one unit of this item consumes from the *current* branch's own
+     * stock (BranchScope on MenuItemRecipeItem) — empty for an item with
+     * no recipe configured at this branch, which simply never touches
+     * stock when ordered. See MenuItemRecipeItem's docblock.
+     */
+    public function recipeItems(): HasMany
+    {
+        return $this->hasMany(MenuItemRecipeItem::class, 'source_menu_item_id')
+            ->where('source_type', MenuItemRecipeItem::SOURCE_MENU_ITEM);
+    }
+
     public function imageUrl(): ?string
     {
         return $this->image_path ? Storage::disk('public')->url($this->image_path) : null;

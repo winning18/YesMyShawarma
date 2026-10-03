@@ -9,6 +9,7 @@ use App\Models\Scopes\BranchScope;
 use App\Services\Delivery\DeliveryFeeCalculator;
 use App\Services\Notifications\CustomerOrderNotifier;
 use App\Services\Notifications\NewOrderPushNotifier;
+use App\Services\Stock\RecipeStockService;
 use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
 
@@ -19,6 +20,7 @@ class OrderStateMachine
         private readonly RiderAssignmentService $riderAssignment,
         private readonly CustomerOrderNotifier $notifier,
         private readonly NewOrderPushNotifier $pushNotifier,
+        private readonly RecipeStockService $recipeStock,
     ) {}
 
     /**
@@ -165,6 +167,32 @@ class OrderStateMachine
             }
 
             $order->save();
+
+            // Recipe-driven stock deduction happens here, not at 'paid' —
+            // staff accepting is the point the kitchen actually commits to
+            // making it (payments.md's "Bolt Food orders" section and
+            // orders.md cover the broader picture). $actorId is always a
+            // real user in practice for this transition (OrderActionController
+            // ::accept(), the only caller that ever reaches 'accepted') —
+            // the null check is just satisfying the type system's own
+            // nullability, not a case expected to actually happen; if it
+            // somehow did, skipping deduction is the safe failure mode,
+            // not crashing the accept action over a stock concern.
+            if ($to === 'accepted' && $actorId !== null) {
+                $this->recipeStock->deductForOrder($order, $actorId, $shiftId);
+            }
+
+            // Only reversed when cancelled while still 'accepted' — once
+            // 'preparing' has started the food was likely actually made,
+            // so a later cancellation leaves stock deducted on purpose
+            // rather than incorrectly restoring ingredients that were
+            // really used and wasted. 'rejected' never needs this at all:
+            // it's only reachable directly from 'paid' (TRANSITIONS
+            // above), so a rejected order was never accepted and never
+            // had stock deducted in the first place.
+            if ($to === 'cancelled' && $from === 'accepted' && $actorId !== null) {
+                $this->recipeStock->restoreForOrder($order, $actorId);
+            }
 
             $order->events()->create([
                 'from_status' => $from,

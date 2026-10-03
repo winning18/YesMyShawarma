@@ -159,8 +159,10 @@ but Bolt already collected the money for it, not us."
   (`ShiftController`, via `OrderReportService::financialSummary()`) all subtract it out, so
   staff are never asked to reconcile cash they never touched. Still a real order everywhere
   else that isn't about money: order counts, operational stats (`OrderReportService::
-  operationalSummary()`), the Order History list/CSV exports, and stock consumption (once
-  built) all still include it.
+  operationalSummary()`), the Order History list/CSV exports, and recipe-driven stock
+  consumption (schema.md's "Recipes and stock deduction" section — deduction/reversal are keyed
+  off order status, not payment method, so a Bolt Food order's `accepted`/`cancelled`
+  transitions deduct/restore stock exactly like any other order's) all still include it.
 - Order History has its own "Bolt Food" tab/filter (`payment_method=bolt_food`, not a
   `channel` — these orders are still `channel = 'pos'` under the hood, same as any other
   counter order) alongside the existing Web/POS channel tabs.
