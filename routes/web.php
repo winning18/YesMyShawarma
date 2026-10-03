@@ -287,7 +287,11 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
 // of one overwriting the other's session.
 Route::middleware('guest:rider')->prefix('rider')->name('rider.')->group(function () {
     Route::get('/login', [RiderAuthenticatedSessionController::class, 'create'])->name('login');
-    Route::post('/login', [RiderAuthenticatedSessionController::class, 'store']);
+    // Same IP-wide ceiling as the staff login route (routes/auth.php) — its
+    // own LoginRequest rate-limits per phone+IP, this catches a spray
+    // across many different rider phone numbers from one IP.
+    Route::post('/login', [RiderAuthenticatedSessionController::class, 'store'])
+        ->middleware('throttle:20,1');
 });
 
 Route::middleware(['auth:rider', 'verified', 'branch', 'password.change_required'])->prefix('rider')->name('rider.')->group(function () {

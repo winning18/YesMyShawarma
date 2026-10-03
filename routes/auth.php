@@ -15,7 +15,14 @@ Route::middleware('guest')->group(function () {
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');
 
-    Route::post('login', [AuthenticatedSessionController::class, 'store']);
+    // LoginRequest's own RateLimiter (5 attempts per email+IP) already
+    // stops repeated guesses against one account, but it resets per email
+    // — an attacker spraying many different addresses from one IP never
+    // trips it. This IP-wide ceiling catches that; set high enough that
+    // several staff logging in from the same branch router at once (a very
+    // real scenario here) never bumps into it.
+    Route::post('login', [AuthenticatedSessionController::class, 'store'])
+        ->middleware('throttle:20,1');
 
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
         ->name('password.request');
