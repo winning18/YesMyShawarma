@@ -45,7 +45,6 @@ Roles: `staff`, `rider`, `manager`, `general_manager`, `owner`, `stock_manager`.
 | `dashboard.performance` | — | — | ✓ | ✓ | ✓ | — |
 | `settings.manage` | — | — | ✓ | ✓ | ✓ | — |
 | `stock.manage` | — | — | — | — | ✓ | ✓ |
-| `stock.record_sale` | ✓ | — | ✓ | ✓ | ✓ | ✓ |
 
 `general_manager` holds the exact same permission set as `manager` (see `RolesAndPermissionsSeeder`'s
 `$matrix` — the two lists are meant to be kept identical apart from `users.create_operational`),
@@ -243,11 +242,13 @@ would, if binding even succeeded) — it looks like a plain crash: "No query res
 
 ## Stock management
 
-`stock.manage` (create/edit stock items, set quantities and low-stock thresholds) is
-`owner`-only in the base matrix, plus the dedicated `stock_manager` role. `stock.record_sale`
-(log a sale against a branch's stock) goes to everyone who works a branch day-to-day —
-`staff`, `manager`, `general_manager`, `owner`, `stock_manager` — deliberately excluding
-`rider`, who never touches ingredient stock.
+`stock.manage` (create/edit stock items, set quantities and low-stock thresholds, and view a
+branch's movement history) is `owner`-only in the base matrix, plus the dedicated
+`stock_manager` role — the only permission stock has at all now. Staff/manager/general_manager
+no longer hold any stock permission: stock moves entirely off recipe-driven automatic deduction
+(schema.md's "Recipes and stock deduction" section) rather than a day-to-day manual "record a
+sale" action, which was removed once that existed. `rider` never held any stock permission
+either way — they never touch ingredient stock.
 
 `stock_manager` exists because this app has **no mechanism to grant a permission to one
 specific user outside a role** (`givePermissionTo()` is never called anywhere except this

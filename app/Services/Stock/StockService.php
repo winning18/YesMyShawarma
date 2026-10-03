@@ -2,7 +2,6 @@
 
 namespace App\Services\Stock;
 
-use App\Exceptions\StockException;
 use App\Models\StockItem;
 use App\Models\StockMovement;
 use App\Models\User;
@@ -12,9 +11,13 @@ use Illuminate\Support\Facades\DB;
 /**
  * quantity on stock_items is a denormalised running total — stock_movements
  * is the source of truth, same relationship as orders/order_events. Every
- * change to quantity happens through restock()/recordSale() so the two
- * never drift; nothing else is allowed to write to stock_items.quantity
- * directly (see updateItem(), which deliberately excludes it).
+ * change to quantity happens through restock()/recordAutomaticConsumption()
+ * so the two never drift; nothing else is allowed to write to
+ * stock_items.quantity directly (see updateItem(), which deliberately
+ * excludes it). There is deliberately no manual "record a sale" entry
+ * point any more — stock moves entirely off recipe-driven deduction
+ * (RecipeStockService) now that it exists; see schema.md's "Recipes and
+ * stock deduction" section.
  */
 class StockService
 {
@@ -87,56 +90,16 @@ class StockService
         });
     }
 
-    public function recordSale(StockItem $item, User $actor, float $quantity, ?int $shiftId = null, ?string $note = null): StockMovement
-    {
-        $itemToAlert = null;
-
-        $movement = DB::transaction(function () use ($item, $actor, $quantity, $shiftId, $note, &$itemToAlert) {
-            $locked = StockItem::withoutGlobalScopes()->whereKey($item->id)->lockForUpdate()->firstOrFail();
-
-            if ($quantity > $locked->quantity) {
-                throw StockException::insufficientStock((float) $locked->quantity, $locked->unit);
-            }
-
-            $locked->decrement('quantity', $quantity);
-
-            $movement = $locked->movements()->create([
-                'type' => StockMovement::TYPE_SALE,
-                'quantity' => $quantity,
-                'actor_id' => $actor->id,
-                'shift_id' => $shiftId,
-                'note' => $note,
-            ]);
-
-            // De-bounced: only send once per "crossed below threshold"
-            // episode — restock() clears low_stock_alerted_at once it's
-            // back at/above threshold, re-arming this for next time.
-            if ($locked->isLowStock() && $locked->low_stock_alerted_at === null) {
-                $locked->update(['low_stock_alerted_at' => now()]);
-                $itemToAlert = $locked;
-            }
-
-            return $movement;
-        });
-
-        if ($itemToAlert) {
-            $this->alerts->lowStock($itemToAlert);
-        }
-
-        return $movement;
-    }
-
     /**
      * RecipeStockService's own entry point for automatic, recipe-driven
      * deduction when an order is accepted — deliberately never throws on
-     * insufficient stock, unlike recordSale() above. A kitchen routinely
-     * has more of an ingredient on hand than this system has been told
-     * about, so blocking an order over a stock-tracking gap would be
-     * actively wrong; going negative is itself the visible signal
-     * something needs reconciling (isLowStock() already treats any
-     * quantity below threshold as low, negative included — the exact
-     * same alert path as recordSale() fires here for free, no separate
-     * "went negative" case needed).
+     * insufficient stock. A kitchen routinely has more of an ingredient on
+     * hand than this system has been told about, so blocking an order over
+     * a stock-tracking gap would be actively wrong; going negative is
+     * itself the visible signal something needs reconciling (isLowStock()
+     * already treats any quantity below threshold as low, negative
+     * included, so this reuses the exact same alert path restock()'s own
+     * re-arming logic expects, no separate "went negative" case needed).
      */
     public function recordAutomaticConsumption(StockItem $item, User $actor, float $quantity, ?int $shiftId = null, ?string $note = null): StockMovement
     {

@@ -98,20 +98,30 @@ class StockTest extends TestCase
         $this->actingAs($manager)->get(route('dashboard.stock.index'))->assertOk();
     }
 
-    public function test_staff_can_record_a_sale_but_not_manage_stock(): void
+    public function test_staff_has_no_stock_access_at_all(): void
+    {
+        // Stock moves entirely off recipe-driven automatic deduction now —
+        // staff/manager/general_manager hold no stock permission at all,
+        // unlike before the manual "record a sale" action was removed.
+        $staff = $this->makeStaff();
+
+        $this->actingAs($staff)->get(route('dashboard.stock.index'))->assertForbidden();
+        $this->actingAs($staff)->get(route('dashboard.stock.create'))->assertForbidden();
+    }
+
+    public function test_staff_sees_no_stock_nav_link(): void
     {
         $staff = $this->makeStaff();
 
-        $this->actingAs($staff)->get(route('dashboard.stock.sales'))->assertOk();
-        $this->actingAs($staff)->get(route('dashboard.stock.index'))->assertForbidden();
-        $this->actingAs($staff)->get(route('dashboard.stock.create'))->assertForbidden();
+        $this->actingAs($staff)->get(route('profile.edit'))
+            ->assertOk()
+            ->assertDontSee(route('dashboard.stock.index'), false);
     }
 
     public function test_rider_cannot_reach_stock_at_all(): void
     {
         $rider = $this->makeRider();
 
-        $this->actingAs($rider)->get(route('dashboard.stock.sales'))->assertForbidden();
         $this->actingAs($rider)->get(route('dashboard.stock.index'))->assertForbidden();
     }
 
@@ -141,37 +151,11 @@ class StockTest extends TestCase
         ]);
     }
 
-    public function test_recording_a_sale_decreases_quantity_and_records_the_actor(): void
-    {
-        $item = $this->makeItem(quantity: 10, threshold: 2);
-        $staff = $this->makeStaff();
-
-        $this->actingAs($staff)->post(route('dashboard.stock.sales.store', $item), [
-            'quantity' => '3',
-        ])->assertRedirect();
-
-        $this->assertSame('7.00', $item->fresh()->quantity);
-        $this->assertDatabaseHas('stock_movements', [
-            'stock_item_id' => $item->id, 'type' => StockMovement::TYPE_SALE,
-            'quantity' => 3, 'actor_id' => $staff->id,
-        ]);
-    }
-
-    public function test_a_sale_cannot_exceed_remaining_stock(): void
-    {
-        $item = $this->makeItem(quantity: 5, threshold: 1);
-        $staff = $this->makeStaff();
-
-        $this->actingAs($staff)->post(route('dashboard.stock.sales.store', $item), [
-            'quantity' => '10',
-        ])->assertSessionHasErrors('quantity');
-
-        $this->assertSame('5.00', $item->fresh()->quantity);
-        $this->assertDatabaseCount('stock_movements', 1); // only the initial restock
-    }
-
     public function test_low_stock_sms_fires_once_when_crossing_the_threshold(): void
     {
+        // Exercised via recordAutomaticConsumption() — the recipe-driven
+        // deduction path — rather than the removed manual recordSale();
+        // both shared the identical alert logic, this is what's left of it.
         $item = $this->makeItem(quantity: 10, threshold: 5);
         $staff = $this->makeStaff();
 
@@ -180,15 +164,15 @@ class StockTest extends TestCase
         });
 
         // 10 -> 6: still at/above threshold, no alert yet.
-        app(StockService::class)->recordSale($item, $staff, 4);
+        app(StockService::class)->recordAutomaticConsumption($item, $staff, 4);
         $this->assertNull($item->fresh()->low_stock_alerted_at);
 
         // 6 -> 3: crosses below threshold, alert fires exactly once.
-        app(StockService::class)->recordSale($item, $staff, 3);
+        app(StockService::class)->recordAutomaticConsumption($item, $staff, 3);
         $this->assertNotNull($item->fresh()->low_stock_alerted_at);
 
         // 3 -> 1: still below threshold, must not fire again (mock expects ->once() total).
-        app(StockService::class)->recordSale($item, $staff, 2);
+        app(StockService::class)->recordAutomaticConsumption($item, $staff, 2);
     }
 
     public function test_restocking_above_threshold_rearms_the_low_stock_alert(): void
@@ -200,14 +184,25 @@ class StockTest extends TestCase
             $mock->shouldReceive('notify')->twice();
         });
 
-        app(StockService::class)->recordSale($item, $staff, 6); // 10 -> 4, crosses below, alerts
+        app(StockService::class)->recordAutomaticConsumption($item, $staff, 6); // 10 -> 4, crosses below, alerts
         $this->assertNotNull($item->fresh()->low_stock_alerted_at);
 
         app(StockService::class)->restock($item, $staff, 10); // 4 -> 14, back above threshold
         $this->assertNull($item->fresh()->low_stock_alerted_at);
 
-        app(StockService::class)->recordSale($item, $staff, 12); // 14 -> 2, crosses below again, alerts again
+        app(StockService::class)->recordAutomaticConsumption($item, $staff, 12); // 14 -> 2, crosses below again, alerts again
         $this->assertNotNull($item->fresh()->low_stock_alerted_at);
+    }
+
+    public function test_automatic_consumption_is_allowed_to_go_negative(): void
+    {
+        $item = $this->makeItem(quantity: 2, threshold: 1);
+        $staff = $this->makeStaff();
+
+        $movement = app(StockService::class)->recordAutomaticConsumption($item, $staff, 5);
+
+        $this->assertSame('-3.00', $item->fresh()->quantity);
+        $this->assertSame('sale', $movement->type);
     }
 
     public function test_a_stock_manager_at_one_branch_cannot_see_another_branchs_items(): void

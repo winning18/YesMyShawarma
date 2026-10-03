@@ -201,8 +201,6 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::put('/dashboard/stock/{stockItem}', [StockItemController::class, 'update'])->name('dashboard.stock.update');
     Route::post('/dashboard/stock/{stockItem}/restock', [StockItemController::class, 'restock'])->name('dashboard.stock.restock');
 
-    Route::get('/dashboard/stock-sales', [StockMovementController::class, 'index'])->name('dashboard.stock.sales');
-    Route::post('/dashboard/stock-sales/{stockItem}', [StockMovementController::class, 'store'])->name('dashboard.stock.sales.store');
     Route::get('/dashboard/stock/{stockItem}/history', [StockMovementController::class, 'history'])->name('dashboard.stock.history');
 
     Route::get('/dashboard/settings', [SettingsController::class, 'index'])->name('dashboard.settings.index');
