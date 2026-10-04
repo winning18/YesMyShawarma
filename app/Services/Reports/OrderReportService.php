@@ -100,17 +100,30 @@ class OrderReportService
      * (Bolt Food) — this is what makes the shift-end system_sales check
      * (ShiftController, which calls this same method) never ask staff to
      * reconcile money that never touched their till in the first place.
+     * $paymentMethod set (e.g. the Sales page's explicit "Bolt Food" view)
+     * means the caller wants exactly that method counted — including Bolt
+     * Food, which is otherwise always excluded — so the exclusion is
+     * skipped rather than fighting an explicit request for it.
+     *
+     * $channel/$paymentMethod let this serve as the Sales page's own
+     * "total sales" figure (`DailySalesReportService::summary()`) so both
+     * surfaces agree on one net-of-refunds number instead of maintaining
+     * two independent formulas for the same thing.
      *
      * @param  ?list<int>  $branchIds  See operationalSummary().
      */
-    public function financialSummary(Carbon $from, Carbon $to, bool $ignoreBranchScope = false, ?int $branchId = null, ?array $branchIds = null): array
+    public function financialSummary(Carbon $from, Carbon $to, bool $ignoreBranchScope = false, ?int $branchId = null, ?array $branchIds = null, ?string $channel = null, ?string $paymentMethod = null): array
     {
-        $orders = $this->ordersInRange($from, $to, $ignoreBranchScope, $branchId, $branchIds);
+        $orders = $this->ordersInRange($from, $to, $ignoreBranchScope, $branchId, $branchIds, $channel, $paymentMethod);
         $revenueOrders = $orders->whereNotIn('status', Order::NON_REVENUE_STATUSES)
-            ->whereNotIn('payment_method', Order::EXCLUDED_FROM_SALES_PAYMENT_METHODS);
+            ->when(
+                $paymentMethod,
+                fn ($query) => $query,
+                fn ($query) => $query->whereNotIn('payment_method', Order::EXCLUDED_FROM_SALES_PAYMENT_METHODS),
+            );
         $grossRevenueTotal = (int) $revenueOrders->sum('total');
 
-        $refunds = $this->refundsInRange($from, $to, $ignoreBranchScope, $branchId, $branchIds);
+        $refunds = $this->refundsInRange($from, $to, $ignoreBranchScope, $branchId, $branchIds, $channel, $paymentMethod);
         $refundTotal = (int) $refunds->sum('amount');
         $refundsByDay = $this->groupByAccraDay($refunds, 'completed_at')->map->sum('amount');
 
@@ -134,13 +147,32 @@ class OrderReportService
      * Refunds *completed* within the window — see financialSummary()'s
      * docblock for why this is keyed on completed_at, not the original
      * order's placed_at. Same branch-scoping precedence as ordersInRange().
+     * $channel/$paymentMethod (same meaning as financialSummary()'s own)
+     * are matched via the refund's own order — Refund carries no channel/
+     * payment_method column of its own, and the order's placed_at can fall
+     * well outside [$from, $to] (it's the refund, not the order, keyed to
+     * this window), so this can't reuse ordersInRange()'s own result set.
      *
      * @param  ?list<int>  $branchIds
      */
-    private function refundsInRange(Carbon $from, Carbon $to, bool $ignoreBranchScope = false, ?int $branchId = null, ?array $branchIds = null): Collection
+    private function refundsInRange(Carbon $from, Carbon $to, bool $ignoreBranchScope = false, ?int $branchId = null, ?array $branchIds = null, ?string $channel = null, ?string $paymentMethod = null): Collection
     {
         $query = Refund::where('status', Refund::STATUS_COMPLETED)
-            ->whereBetween('completed_at', [$from, $to]);
+            ->whereBetween('completed_at', [$from, $to])
+            ->when(
+                $channel || $paymentMethod,
+                // Order carries its own BranchScope, which would otherwise
+                // silently re-filter this by whatever branch happens to be
+                // ambient in session — branch scoping for this query is
+                // already fully handled below via $ignoreBranchScope/
+                // $branchId/$branchIds, so the related-order lookup here is
+                // channel/payment_method matching only, not a second
+                // (and differently-scoped) branch filter.
+                fn ($query) => $query->whereHas('order', fn ($q) => $q
+                    ->withoutGlobalScope(BranchScope::class)
+                    ->when($channel, fn ($q) => $q->where('channel', $channel))
+                    ->when($paymentMethod, fn ($q) => $q->where('payment_method', $paymentMethod))),
+            );
 
         if ($ignoreBranchScope) {
             $query->withoutGlobalScope(BranchScope::class);
@@ -166,9 +198,11 @@ class OrderReportService
      * never exactly one (that's the regular manager's branch-switcher
      * model). Takes precedence over $branchId when both are given.
      */
-    private function ordersInRange(Carbon $from, Carbon $to, bool $ignoreBranchScope = false, ?int $branchId = null, ?array $branchIds = null): Collection
+    private function ordersInRange(Carbon $from, Carbon $to, bool $ignoreBranchScope = false, ?int $branchId = null, ?array $branchIds = null, ?string $channel = null, ?string $paymentMethod = null): Collection
     {
-        $query = Order::whereBetween('placed_at', [$from, $to]);
+        $query = Order::whereBetween('placed_at', [$from, $to])
+            ->when($channel, fn ($query) => $query->where('channel', $channel))
+            ->when($paymentMethod, fn ($query) => $query->where('payment_method', $paymentMethod));
 
         if ($ignoreBranchScope) {
             $query->withoutGlobalScope(BranchScope::class);

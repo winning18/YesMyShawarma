@@ -20,6 +20,13 @@ use Illuminate\Support\Collection;
  * exact started_at/ended_at). Branch-scoped like the rest of the Reports
  * section (plain Order::query() calls, BranchScope applies).
  *
+ * total_sales/by_payment_method come from OrderReportService::
+ * financialSummary() (net of refunds) rather than being summed here
+ * independently — this page and Performance used to compute "total sales"
+ * two different ways (this one gross, Performance's net-of-refunds), which
+ * meant the same real-world sales could show two different numbers
+ * depending which screen you were on. One formula now, shared.
+ *
  * The category/modifier split is driven entirely by MenuItemComponent —
  * a combo item (e.g. "Signature (Chicken, Cheese & Sausage)") with
  * configured components is never itself recorded as a line; instead each
@@ -32,6 +39,8 @@ use Illuminate\Support\Collection;
  */
 class DailySalesReportService
 {
+    public function __construct(private readonly OrderReportService $reports) {}
+
     /**
      * @return array{
      *   categories: Collection<int, array{category: string, items: Collection<int, array{name: string, qty: int, unit: int, total: int}>, subtotal: int}>,
@@ -90,12 +99,14 @@ class DailySalesReportService
 
         $modifierLines = collect($modifierBucket)->sortByDesc('total')->values();
 
+        $financial = $this->reports->financialSummary($dayStart->clone()->utc(), $dayEnd->clone()->utc(), channel: $channel, paymentMethod: $paymentMethod);
+
         return [
             'categories' => $categories,
             'modifiers' => ['items' => $modifierLines, 'subtotal' => (int) $modifierLines->sum('total')],
-            'total_sales' => (int) $orders->sum('total'),
+            'total_sales' => $financial['revenue_total'],
             'orders_count' => $orders->count(),
-            'by_payment_method' => $orders->groupBy('payment_method')->map(fn ($group) => (int) $group->sum('total')),
+            'by_payment_method' => $financial['revenue_by_payment_method'],
         ];
     }
 

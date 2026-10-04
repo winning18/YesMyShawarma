@@ -10,6 +10,7 @@ use App\Models\Option;
 use App\Models\OptionGroup;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Refund;
 use App\Models\Shift;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -140,6 +141,80 @@ class TodayReportTest extends TestCase
         $this->actingAs($staff)->get(route('dashboard.reports.today.index'))
             ->assertOk()
             ->assertSee('Sales');
+    }
+
+    public function test_with_no_params_the_default_view_is_the_branchs_current_shift_not_calendar_today(): void
+    {
+        // The whole point of Phase B — a shift, not a calendar day, is the
+        // atomic sales record, so landing on Sales with no params at all
+        // must resolve to an actual shift rather than guessing "today".
+        $staff = $this->makeStaff();
+        $shift = Shift::create([
+            'user_id' => $staff->id, 'branch_id' => $this->branch->id,
+            'started_at' => now()->subHour(), 'ended_at' => null,
+        ]);
+
+        $response = $this->actingAs($staff)->get(route('dashboard.reports.today.index'));
+
+        $response->assertOk();
+        $this->assertFalse($response->viewData('isCalendarMode'));
+        $this->assertSame($shift->id, $response->viewData('shift')->id);
+    }
+
+    public function test_with_no_shift_ever_recorded_the_default_view_falls_back_to_today_with_a_notice(): void
+    {
+        $staff = $this->makeStaff();
+
+        $response = $this->actingAs($staff)->get(route('dashboard.reports.today.index'));
+
+        $response->assertOk();
+        $this->assertFalse($response->viewData('isCalendarMode'));
+        $this->assertNull($response->viewData('shift'));
+        $response->assertSee(__('No shifts recorded yet — showing today\'s calendar totals instead.'));
+    }
+
+    public function test_the_previous_shift_link_navigates_to_the_prior_shift_at_the_same_branch(): void
+    {
+        $staff = $this->makeStaff();
+        $earlier = Shift::create([
+            'user_id' => $staff->id, 'branch_id' => $this->branch->id,
+            'started_at' => now()->subDays(2), 'ended_at' => now()->subDays(2)->addHours(8),
+        ]);
+        $current = Shift::create([
+            'user_id' => $staff->id, 'branch_id' => $this->branch->id,
+            'started_at' => now()->subHour(), 'ended_at' => null,
+        ]);
+
+        $response = $this->actingAs($staff)->get(route('dashboard.reports.today.index'));
+
+        $this->assertSame($current->id, $response->viewData('shift')->id);
+        $this->assertSame($earlier->id, $response->viewData('previousShift')->id);
+        $this->assertNull($response->viewData('nextShift'));
+
+        $previousResponse = $this->actingAs($staff)->get(route('dashboard.reports.today.index', ['shift' => $earlier->id]));
+        $this->assertSame($earlier->id, $previousResponse->viewData('shift')->id);
+        $this->assertSame($current->id, $previousResponse->viewData('nextShift')->id);
+    }
+
+    public function test_a_shift_id_belonging_to_another_branch_is_silently_ignored(): void
+    {
+        $staff = $this->makeStaff();
+        $otherBranch = Branch::create([
+            'name' => 'Labone', 'slug' => 'labone', 'phone' => '+233200000003', 'address' => 'C',
+            'lat' => 5.6, 'lng' => -0.2, 'opens_at' => '10:00', 'closes_at' => '22:00',
+        ]);
+        $ownShift = Shift::create([
+            'user_id' => $staff->id, 'branch_id' => $this->branch->id,
+            'started_at' => now()->subHour(), 'ended_at' => null,
+        ]);
+        $otherShift = Shift::create([
+            'user_id' => $staff->id, 'branch_id' => $otherBranch->id,
+            'started_at' => now()->subHour(), 'ended_at' => null,
+        ]);
+
+        $response = $this->actingAs($staff)->get(route('dashboard.reports.today.index', ['shift' => $otherShift->id]));
+
+        $this->assertSame($ownShift->id, $response->viewData('shift')->id);
     }
 
     public function test_yesterdays_orders_are_excluded(): void
@@ -327,7 +402,7 @@ class TodayReportTest extends TestCase
         $summary = $pastResponse->viewData('summary');
         $this->assertSame(1, $summary['orders_count']);
         $this->assertNotNull($summary['categories']->firstWhere('category', 'Shawarma'));
-        $this->assertFalse($pastResponse->viewData('isCustomRange'));
+        $this->assertTrue($pastResponse->viewData('isCalendarMode'));
     }
 
     public function test_bolt_food_channel_shows_only_bolt_food_orders(): void
@@ -354,13 +429,44 @@ class TodayReportTest extends TestCase
         $boltResponse->assertDontSee('Chicken Shawarma');
     }
 
-    public function test_a_custom_from_to_range_scopes_to_exactly_that_window_across_midnight(): void
+    public function test_total_sales_nets_out_a_completed_refund_same_as_the_financial_report(): void
+    {
+        // Sales/Today used to sum gross order totals with no refund
+        // netting at all, while Detailed reports' financial summary
+        // (OrderReportService) always netted completed refunds out — the
+        // same real-world sales could show two different "total sales"
+        // figures depending which screen you were on. Both now share one
+        // formula (see DailySalesReportService's class docblock).
+        $staff = $this->makeStaff();
+        $manager = User::factory()->create();
+        $this->assignRoleAt($manager, 'manager', $this->branch);
+
+        $order = $this->makeOrder(paymentMethod: 'cash');
+        $this->addItem($order, $this->chickenShawarma, 1);
+
+        Refund::create([
+            'order_id' => $order->id, 'branch_id' => $this->branch->id,
+            'amount' => 2000, 'reason' => 'Customer complaint', 'status' => 'completed',
+            'requested_by' => $manager->id, 'completed_by' => $manager->id, 'completed_at' => now(),
+        ]);
+
+        $response = $this->actingAs($staff)->get(route('dashboard.reports.today.index', ['channel' => 'pos']));
+
+        $this->assertSame(5000 - 2000, $response->viewData('summary')['total_sales']);
+    }
+
+    public function test_a_shift_report_scopes_to_exactly_that_shifts_window_across_midnight(): void
     {
         $staff = $this->makeStaff();
+        $shift = Shift::create([
+            'user_id' => $staff->id, 'branch_id' => $this->branch->id,
+            'started_at' => Carbon::parse('2026-10-03 22:00:00', 'Africa/Accra'),
+            'ended_at' => Carbon::parse('2026-10-04 02:00:00', 'Africa/Accra'),
+        ]);
 
         // One order just before midnight, one just after — a shift that
-        // ran 11pm-1am should see both in one report, not have them split
-        // across two different "Today"s.
+        // ran 10pm-2am should see both in one report, not have them split
+        // across two different calendar days.
         $lateOrder = $this->makeOrder(placedAt: Carbon::parse('2026-10-03 23:30:00', 'Africa/Accra'));
         $this->addItem($lateOrder, $this->chickenShawarma, 1);
         $earlyOrder = $this->makeOrder(placedAt: Carbon::parse('2026-10-04 00:45:00', 'Africa/Accra'));
@@ -368,15 +474,15 @@ class TodayReportTest extends TestCase
 
         $response = $this->actingAs($staff)->get(route('dashboard.reports.today.index', [
             'channel' => 'pos',
-            'from' => '2026-10-03T22:00',
-            'to' => '2026-10-04T02:00',
+            'shift' => $shift->id,
         ]));
 
         $summary = $response->viewData('summary');
         $this->assertSame(2, $summary['orders_count']);
         $response->assertSee('Chicken Shawarma');
         $response->assertSee('Beef Shawarma');
-        $this->assertTrue($response->viewData('isCustomRange'));
+        $this->assertFalse($response->viewData('isCalendarMode'));
+        $this->assertSame($shift->id, $response->viewData('shift')->id);
     }
 
     public function test_a_single_shifts_own_report_does_not_show_the_shifts_table_itself(): void
@@ -385,15 +491,13 @@ class TodayReportTest extends TestCase
         // same table again underneath the report it was picked from was
         // redundant, not useful context (this used to render it anyway).
         $staff = $this->makeStaff();
-        Shift::create([
+        $shift = Shift::create([
             'user_id' => $staff->id, 'branch_id' => $this->branch->id,
             'started_at' => Carbon::parse('2026-10-03 23:00:00', 'Africa/Accra'),
             'ended_at' => Carbon::parse('2026-10-04 01:00:00', 'Africa/Accra'),
         ]);
 
-        $response = $this->actingAs($staff)->get(route('dashboard.reports.today.index', [
-            'from' => '2026-10-03T23:00', 'to' => '2026-10-04T01:00',
-        ]));
+        $response = $this->actingAs($staff)->get(route('dashboard.reports.today.index', ['shift' => $shift->id]));
 
         $this->assertTrue($response->viewData('shifts')->isEmpty());
         $response->assertDontSee(__('Shifts that day'));
@@ -422,18 +526,23 @@ class TodayReportTest extends TestCase
      * you switched to Bolt Food/Web — exactly the midnight-crossing
      * problem this feature exists to avoid, just one click deeper.
      */
-    public function test_switching_channel_within_a_custom_range_stays_locked_to_that_exact_window(): void
+    public function test_switching_channel_within_a_shift_report_stays_locked_to_that_shift(): void
     {
         $staff = $this->makeStaff();
+        $shift = Shift::create([
+            'user_id' => $staff->id, 'branch_id' => $this->branch->id,
+            'started_at' => Carbon::parse('2026-10-03 22:00:00', 'Africa/Accra'),
+            'ended_at' => Carbon::parse('2026-10-04 02:00:00', 'Africa/Accra'),
+        ]);
         $boltOrder = $this->makeOrder(paymentMethod: 'bolt_food', placedAt: Carbon::parse('2026-10-04 00:30:00', 'Africa/Accra'));
         $this->addItem($boltOrder, $this->beefShawarma, 1);
 
         $response = $this->actingAs($staff)->get(route('dashboard.reports.today.index', [
-            'channel' => 'pos', 'from' => '2026-10-03T22:00', 'to' => '2026-10-04T02:00',
+            'channel' => 'pos', 'shift' => $shift->id,
         ]));
 
         $expectedBoltFoodLink = str_replace('&', '&amp;', route('dashboard.reports.today.index', [
-            'from' => '2026-10-03T22:00:00', 'to' => '2026-10-04T02:00:00', 'channel' => 'bolt_food',
+            'shift' => $shift->id, 'channel' => 'bolt_food',
         ]));
         $response->assertSee($expectedBoltFoodLink, false);
     }

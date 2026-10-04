@@ -94,4 +94,50 @@ class ShiftService
     {
         return Shift::where('branch_id', $branchId)->whereNull('ended_at')->latest('started_at')->first();
     }
+
+    /**
+     * The shift the Sales report defaults to for $branchId — whichever is
+     * currently open, or the most recently closed one if none is. This is
+     * the shift-centric replacement for defaulting to "today" (Africa/
+     * Accra calendar date), which meant an overnight shift's own report
+     * depended on what time you happened to look, not on any shift that
+     * actually exists.
+     */
+    public function mostRecentForBranch(int $branchId): ?Shift
+    {
+        return $this->activeForBranch($branchId)
+            ?? Shift::where('branch_id', $branchId)->latest('started_at')->first();
+    }
+
+    /**
+     * The shift that started immediately before $shift at the same branch
+     * — "Previous shift" navigation on the Sales report. Ties on
+     * started_at (shouldn't happen — one open shift per branch — but the
+     * id tiebreak keeps this deterministic rather than DB-order-dependent)
+     * broken by id, same direction as the started_at ordering itself.
+     */
+    public function before(Shift $shift): ?Shift
+    {
+        return Shift::where('branch_id', $shift->branch_id)
+            ->where(fn ($query) => $query
+                ->where('started_at', '<', $shift->started_at)
+                ->orWhere(fn ($query) => $query->where('started_at', $shift->started_at)->where('id', '<', $shift->id)))
+            ->orderByDesc('started_at')->orderByDesc('id')
+            ->first();
+    }
+
+    /**
+     * The shift that started immediately after $shift at the same branch
+     * — "Next shift" navigation. Null once $shift is the branch's latest,
+     * same as the Sales report's old "no Next day arrow once on today".
+     */
+    public function after(Shift $shift): ?Shift
+    {
+        return Shift::where('branch_id', $shift->branch_id)
+            ->where(fn ($query) => $query
+                ->where('started_at', '>', $shift->started_at)
+                ->orWhere(fn ($query) => $query->where('started_at', $shift->started_at)->where('id', '>', $shift->id)))
+            ->orderBy('started_at')->orderBy('id')
+            ->first();
+    }
 }

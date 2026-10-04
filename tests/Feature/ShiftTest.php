@@ -222,7 +222,7 @@ class ShiftTest extends TestCase
         $manager = User::factory()->create();
         $this->assignRoleAt($manager, 'manager', $this->branch);
 
-        $this->actingAs($manager)->get(route('dashboard.reports.today.index'))
+        $this->actingAs($manager)->get(route('dashboard.reports.today.index', ['date' => now('Africa/Accra')->toDateString()]))
             ->assertOk()
             ->assertSee('Ama Staff')
             ->assertSee('GH₵30.00'); // the extra: 130.00 - 100.00
@@ -573,7 +573,7 @@ class ShiftTest extends TestCase
         $manager = User::factory()->create();
         $this->assignRoleAt($manager, 'manager', $this->branch);
 
-        $this->actingAs($manager)->get(route('dashboard.reports.today.index'))
+        $this->actingAs($manager)->get(route('dashboard.reports.today.index', ['date' => now('Africa/Accra')->toDateString()]))
             ->assertOk()
             ->assertSee('Ama Staff')
             ->assertSee('GH₵30.00') // Expenses
@@ -597,7 +597,7 @@ class ShiftTest extends TestCase
         $manager = User::factory()->create();
         $this->assignRoleAt($manager, 'manager', $this->branch);
 
-        $this->actingAs($manager)->get(route('dashboard.reports.today.index'))
+        $this->actingAs($manager)->get(route('dashboard.reports.today.index', ['date' => now('Africa/Accra')->toDateString()]))
             ->assertOk()
             ->assertSee('GH₵0.00'); // Expenses: confirmed none, not "—"
     }
@@ -617,7 +617,7 @@ class ShiftTest extends TestCase
         $owner = User::factory()->create();
         $this->assignRoleAt($owner, 'owner', $this->branch);
 
-        $response = $this->actingAs($owner)->get(route('dashboard.reports.today.index'))->assertOk();
+        $response = $this->actingAs($owner)->get(route('dashboard.reports.today.index', ['date' => now('Africa/Accra')->toDateString()]))->assertOk();
         $response->assertSeeInOrder(['Legacy Shift', '—']);
     }
 
@@ -647,5 +647,83 @@ class ShiftTest extends TestCase
         $response->assertSee(__('No expenses today'));
         $response->assertSee(__('Add expense'));
         $response->assertSee('x-model="closingNote"', false);
+    }
+
+    public function test_most_recent_for_branch_prefers_the_active_shift_over_a_closed_one(): void
+    {
+        $shifts = app(\App\Services\Shifts\ShiftService::class);
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+
+        $closed = Shift::create([
+            'user_id' => $staff->id, 'branch_id' => $this->branch->id,
+            'started_at' => now()->subHours(5), 'ended_at' => now()->subHours(2),
+        ]);
+        $active = Shift::create([
+            'user_id' => $staff->id, 'branch_id' => $this->branch->id,
+            'started_at' => now()->subHour(), 'ended_at' => null,
+        ]);
+
+        $this->assertSame($active->id, $shifts->mostRecentForBranch($this->branch->id)->id);
+
+        $active->update(['ended_at' => now()]);
+
+        $this->assertSame($active->id, $shifts->mostRecentForBranch($this->branch->id)->id);
+        $this->assertNotSame($closed->id, $shifts->mostRecentForBranch($this->branch->id)->id);
+    }
+
+    public function test_most_recent_for_branch_is_null_when_the_branch_has_never_had_a_shift(): void
+    {
+        $shifts = app(\App\Services\Shifts\ShiftService::class);
+
+        $this->assertNull($shifts->mostRecentForBranch($this->branch->id));
+    }
+
+    public function test_before_and_after_navigate_shifts_in_started_at_order(): void
+    {
+        $shifts = app(\App\Services\Shifts\ShiftService::class);
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+
+        $first = Shift::create([
+            'user_id' => $staff->id, 'branch_id' => $this->branch->id,
+            'started_at' => now()->subDays(2), 'ended_at' => now()->subDays(2)->addHours(8),
+        ]);
+        $second = Shift::create([
+            'user_id' => $staff->id, 'branch_id' => $this->branch->id,
+            'started_at' => now()->subDay(), 'ended_at' => now()->subDay()->addHours(8),
+        ]);
+        $third = Shift::create([
+            'user_id' => $staff->id, 'branch_id' => $this->branch->id,
+            'started_at' => now(), 'ended_at' => null,
+        ]);
+
+        $this->assertSame($first->id, $shifts->before($second)->id);
+        $this->assertSame($third->id, $shifts->after($second)->id);
+        $this->assertNull($shifts->before($first));
+        $this->assertNull($shifts->after($third));
+    }
+
+    public function test_before_and_after_are_scoped_to_their_own_branch(): void
+    {
+        $shifts = app(\App\Services\Shifts\ShiftService::class);
+        $staff = User::factory()->create();
+        $otherBranch = Branch::create([
+            'name' => 'Labone', 'slug' => 'labone', 'phone' => '+233200000002', 'address' => 'B',
+            'lat' => 5.6, 'lng' => -0.2, 'opens_at' => '10:00', 'closes_at' => '22:00',
+        ]);
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+        $this->assignRoleAt($staff, 'staff', $otherBranch);
+
+        $ours = Shift::create([
+            'user_id' => $staff->id, 'branch_id' => $this->branch->id,
+            'started_at' => now()->subHour(), 'ended_at' => null,
+        ]);
+        Shift::create([
+            'user_id' => $staff->id, 'branch_id' => $otherBranch->id,
+            'started_at' => now(), 'ended_at' => null,
+        ]);
+
+        $this->assertNull($shifts->after($ours));
     }
 }
