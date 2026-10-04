@@ -676,6 +676,36 @@ class ShiftTest extends TestCase
         $response->assertSee('x-model="closingNote"', false);
     }
 
+    public function test_the_forced_shift_modal_offers_a_skip_option_to_order_history(): void
+    {
+        // Starting a shift is only required for the Dashboard and POS —
+        // everything else (Order History included) works with no shift at
+        // all, so "not right now" needs a real destination, not just logout.
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+
+        $response = $this->actingAs($staff)->get(route('dashboard'))->assertOk();
+
+        $response->assertSee(__('Skip for now'));
+        $response->assertSee('href="'.route('dashboard.orders.history').'"', false);
+    }
+
+    public function test_the_skip_option_is_not_shown_once_a_shift_is_active(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+        $this->actingAs($staff)->postJson(route('shift.start'))->assertOk();
+
+        $response = $this->actingAs($staff)->get(route('dashboard'))->assertOk();
+
+        // The markup exists (shiftWidget() always renders both modals) but
+        // is only ever shown via x-show="forceStart" — forceStart itself
+        // is false here, which this just confirms via the widget's own
+        // constructor call rather than trying to evaluate Alpine's runtime
+        // x-show state.
+        $response->assertSee('shiftWidget(true, false)', false);
+    }
+
     public function test_most_recent_for_branch_prefers_the_active_shift_over_a_closed_one(): void
     {
         $shifts = app(\App\Services\Shifts\ShiftService::class);

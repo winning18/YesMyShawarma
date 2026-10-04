@@ -6,7 +6,6 @@ use App\Models\Branch;
 use App\Models\User;
 use App\Services\Branches\BranchContext;
 use App\Services\Shifts\ShiftService;
-use App\Support\Money;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -14,6 +13,19 @@ use Illuminate\Support\Facades\Redirect;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
+/**
+ * Picking a branch and starting a shift are two separate decisions for
+ * staff now, not one folded step — this controller only ever does the
+ * former. A staff member picks (or is auto-resolved to) a branch to see
+ * that branch's data everywhere (Order History, Damage Reports, Refunds,
+ * Reports — none of which need a shift at all); starting one is required
+ * only for the Dashboard and POS, and happens entirely on their own pages
+ * (the Dashboard's own forced shiftWidget modal, reached after a branch is
+ * already current — see OrderDashboardController's own redirect here,
+ * which still fires every time a multi-branch staff member has no active
+ * shift, deliberately offering a fresh branch choice before each new
+ * shift rather than silently reusing yesterday's).
+ */
 class BranchSelectionController extends Controller
 {
     public function show(Request $request, BranchContext $context, ShiftService $shifts): View|RedirectResponse
@@ -22,33 +34,18 @@ class BranchSelectionController extends Controller
             return $blocked;
         }
 
-        // Only the Menu Editor's "Branch" link sends ?then=menu — it marks
-        // this visit so store() knows to land on the Menu page afterwards
-        // instead of Dashboard. Cleared on any other visit (e.g. the
-        // guest()-redirect bounce from POS/Reports) so a stale flag from an
-        // abandoned earlier click can't hijack an unrelated selection.
-        if ($request->query('then') === 'menu') {
-            $request->session()->put('branch_select_then', 'menu');
-        } else {
-            $request->session()->forget('branch_select_then');
-        }
-
         $user = $request->user();
 
-        $view = match (true) {
-            $this->isRiderOnly($user, $context) => 'rider.select-branch',
-            // A staff member has nothing to do with a branch once picked
-            // except start a shift there — folding the two into one step
-            // means they never see a bare "pick a branch" screen followed
-            // immediately by a separate forced "now start your shift"
-            // modal for the exact same decision.
-            $context->isStaffOnly($user) => 'staff.start-shift',
-            default => 'branches.select',
-        };
+        $view = $this->isRiderOnly($user, $context) ? 'rider.select-branch' : 'branches.select';
 
         return view($view, [
             'branches' => $context->selectableBranchesFor($user),
             'currentBranchId' => $context->id(),
+            // Only the generic picker's own "Not ready? Log out instead"
+            // escape cares about this — a staff member landing here (most
+            // commonly: multi-branch, about to start a new shift) with
+            // truly nowhere else to go shouldn't be stuck with no way out.
+            'isStaff' => $context->isStaffOnly($user),
         ]);
     }
 
@@ -120,42 +117,31 @@ class BranchSelectionController extends Controller
 
         $validated = $request->validate([
             'branch_id' => ['required', 'integer', Rule::in($availableIds)],
-            // Only ever shown/submitted from staff.start-shift — harmless
-            // to accept it here regardless, same as the field being absent
-            // from every other picker's form.
-            'starting_cash' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $branch = Branch::findOrFail($validated['branch_id']);
         $context->setCurrent($branch->id);
 
-        // Picking a branch and starting (or joining, if another staff
-        // member already opened one there today) a shift are the same
-        // decision for a staff member (staff.start-shift's whole reason to
-        // exist) — do both in one request so they land on an
-        // already-active-shift dashboard instead of the branch now being
-        // set but still having to clear the dashboard's own forced
-        // start-shift modal right after.
-        if ($context->isStaffOnly($user)) {
-            $shifts->start(
-                $user,
-                $branch,
-                isset($validated['starting_cash']) ? Money::toPesewas($validated['starting_cash']) : null,
-            );
-
-            return redirect()->route('dashboard');
-        }
-
-        if ($request->session()->pull('branch_select_then') === 'menu') {
-            return redirect()->route('dashboard.menu-items.index');
-        }
+        // Breaks what would otherwise be an infinite loop: a first-ever
+        // visit to /dashboard with no branch resolved is caught by
+        // ResolveCurrentBranch itself (redirect()->guest(), storing plain
+        // /dashboard as the intended URL below) — OrderDashboardController
+        // ::index() never even runs yet to know "today's new shift" is
+        // what's actually going on. Once intended() sends them back to that
+        // same bare /dashboard, its own forceShiftStart redirect would
+        // normally fire again (no active shift, still multi-branch) and
+        // bounce them right back here. This one-request flash flag is the
+        // signal that this specific arrival is the direct result of having
+        // just picked a branch, so that one check should stand down —
+        // any other, later visit to /dashboard has no flash flag left and
+        // re-triggers the choice exactly as intended.
+        $request->session()->flash('branch_just_confirmed', true);
 
         // intended() sends the user back to whatever page redirected them
-        // here via redirect()->guest() (POS, or any branch-gated page the
-        // ResolveCurrentBranch middleware bounced them from) — the fallback
-        // below only applies when nothing specific was intended, e.g. a
-        // manager reaching this page via the sidebar's "Switch branch" link
-        // rather than a guest()-redirect bounce.
+        // here via redirect()->guest() — Order History, Damage Reports, any
+        // other branch-gated page, or /dashboard itself. The fallback below
+        // only applies when nothing was intended at all, e.g. reaching this
+        // page directly rather than via a redirect.
         return Redirect::intended($this->guardAwareFallback());
     }
 }

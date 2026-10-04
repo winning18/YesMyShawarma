@@ -150,6 +150,40 @@ class DashboardOverviewTest extends TestCase
         $this->actingAs($owner)->get(route('dashboard.performance'))->assertDontSee('href="'.route('dashboard.orders.live').'"', false);
     }
 
+    public function test_switch_branch_nav_link_no_longer_exists_for_multi_branch_staff(): void
+    {
+        $otherBranch = Branch::create([
+            'name' => 'Labone', 'slug' => 'labone', 'phone' => '+233200000002', 'address' => 'B',
+            'lat' => 5.6, 'lng' => -0.2, 'opens_at' => '10:00', 'closes_at' => '22:00',
+        ]);
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+        $this->assignRoleAt($staff, 'staff', $otherBranch);
+        $staff->update(['current_branch_id' => $this->branch->id]);
+
+        // Branch switching only ever happens via starting a new shift now
+        // (OrderDashboardController's own redirect), never as a standalone
+        // sidebar action — a shift keeps the dashboard board itself from
+        // rendering, but the sidebar chrome (and this assertion) doesn't
+        // depend on that.
+        Shift::create(['user_id' => $staff->id, 'branch_id' => $this->branch->id, 'started_at' => now(), 'ended_at' => null]);
+
+        $this->actingAs($staff)
+            ->withSession(['current_branch_id' => $this->branch->id])
+            ->get(route('dashboard'))
+            ->assertDontSee(__('Switch branch'));
+    }
+
+    public function test_branch_link_no_longer_exists_under_menu_editor(): void
+    {
+        $manager = User::factory()->create();
+        $this->assignRoleAt($manager, 'manager', $this->branch);
+
+        $this->actingAs($manager)->get(route('dashboard.performance'))
+            ->assertSee(__('Menu Editor'))
+            ->assertDontSee('href="'.route('branches.select', ['then' => 'menu']).'"', false);
+    }
+
     public function test_standalone_performance_nav_link_no_longer_exists(): void
     {
         // The content still lives at dashboard.performance — it's just

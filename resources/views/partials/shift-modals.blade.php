@@ -31,6 +31,17 @@
                 type="button" @click="closeStartModal()" x-show="!forceStart"
                 class="px-4 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50"
             >{{ __('Cancel') }}</button>
+            {{--
+                Starting a shift is only ever required to actually process
+                orders (Dashboard) or ring up a sale (POS) — every other
+                feature (Order History, Damage Reports, Refunds, Reports)
+                works with no shift at all, so "not right now" has a real
+                destination rather than just logging out.
+            --}}
+            <a
+                href="{{ route('dashboard.orders.history') }}" x-show="forceStart"
+                class="px-4 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50 inline-flex items-center"
+            >{{ __('Skip for now') }}</a>
             <form method="POST" action="{{ route('logout') }}" x-show="forceStart">
                 @csrf
                 <button

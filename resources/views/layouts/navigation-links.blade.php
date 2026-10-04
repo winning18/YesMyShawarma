@@ -29,30 +29,14 @@
 @endif
 
 {{--
-    Only shown once staff actually holds the role at more than one branch —
-    same precondition as rider-navigation-links.blade.php's own "Switch
-    branch" link. Lands on staff.start-shift (BranchSelectionController),
-    which starts the shift itself as part of picking the branch — there's
-    no "switch branch" for staff that isn't also "start my next shift
-    here". Greyed out rather than hidden while a shift is running —
-    BranchSelectionController locks the switch server-side too (a shift's
-    branch can't change out from under it once orders/stock/reports are
-    already being attributed to it), and hiding the link entirely would
-    look like the capability vanished rather than being temporarily locked
-    until the shift ends.
+    No standalone "Switch branch" link for staff — picking a branch is
+    never a bare standalone action for them anymore. A single-branch staff
+    member is auto-resolved and never sees a picker at all; a multi-branch
+    one is prompted to pick fresh every time they reach the Dashboard with
+    no active shift (OrderDashboardController's own redirect), which is
+    the only moment "switching branches" is ever actually relevant for
+    them — starting a new shift at a possibly-different branch.
 --}}
-@if (($isStaff ?? false) && app(\App\Services\Branches\BranchContext::class)->branchIdsFor(auth()->user())->count() > 1)
-    @if ($hasActiveShift ?? false)
-        <span
-            class="flex items-center px-3 py-2 rounded-md rounded-l-none border-l-4 border-transparent text-sm font-medium text-gray-300 cursor-not-allowed select-none"
-            title="{{ __('End your shift before switching branches.') }}"
-        >{{ __('Switch branch') }}</span>
-    @else
-        <x-sidebar-link :href="route('branches.select')" :active="request()->routeIs('branches.select')">
-            {{ __('Switch branch') }}
-        </x-sidebar-link>
-    @endif
-@endif
 
 {{--
     Manager only — the live acknowledgement/in-progress board + POS,
@@ -109,17 +93,20 @@
 </div>
 
 {{--
-    Menu Editor > Branch / Menu / Categories / Modifiers / Item availability
-    — everything to do with what's sellable lives under one dropdown,
+    Menu Editor > Menu / Categories / Modifiers / Item availability —
+    everything to do with what's sellable lives under one dropdown,
     replacing the separate top-level Menu/Categories/Option groups links.
     Open by default whenever the current page is any menu-editor page,
     collapsed otherwise; Alpine state resets on every full page load (this
     is a server-rendered app, not an SPA), so this re-evaluates fresh each
-    time rather than trying to persist.
+    time rather than trying to persist. No "Branch" link here anymore —
+    it rendered unconditionally regardless of whether there was ever more
+    than one branch to pick from, and branch selection isn't a menu-editor
+    concern specifically now that any branch-gated page can trigger it.
 --}}
 @canany(['menu.toggle_availability', 'menu.edit_content'])
     @php
-        $onMenuEditorSection = request()->routeIs('dashboard.menu-items.*', 'dashboard.categories.*', 'dashboard.option-groups.*', 'branches.select');
+        $onMenuEditorSection = request()->routeIs('dashboard.menu-items.*', 'dashboard.categories.*', 'dashboard.option-groups.*');
     @endphp
     <div x-data="{ menuEditorOpen: {{ $onMenuEditorSection ? 'true' : 'false' }} }">
         <button
@@ -134,11 +121,6 @@
         </button>
 
         <div x-show="menuEditorOpen" x-cloak class="mt-1 ml-3 pl-3 border-l border-gray-100 space-y-1">
-            <a
-                href="{{ route('branches.select', ['then' => 'menu']) }}"
-                class="block px-3 py-1.5 rounded-md text-sm transition duration-150 ease-in-out {{ request()->routeIs('branches.select') ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
-            >{{ __('Branch') }}</a>
-
             @can('menu.edit_content')
                 <a
                     href="{{ route('dashboard.menu-items.index') }}"

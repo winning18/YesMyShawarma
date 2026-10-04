@@ -30,6 +30,22 @@
 
                         <x-primary-button>{{ __('Continue') }}</x-primary-button>
                     </form>
+
+                    @if ($isStaff ?? false)
+                        {{--
+                            Picking a branch is mandatory for a multi-branch
+                            staff member (no shift is started here anymore —
+                            that only happens on the Dashboard, once a
+                            branch is current), so this is their only way
+                            off this page besides actually picking one.
+                        --}}
+                        <form method="POST" action="{{ route('logout') }}" class="mt-3">
+                            @csrf
+                            <button type="submit" class="text-sm text-gray-600 hover:text-gray-900 underline">
+                                {{ __('Not ready? Log out instead.') }}
+                            </button>
+                        </form>
+                    @endif
                 </div>
             </div>
         </div>

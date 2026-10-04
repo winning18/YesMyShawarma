@@ -71,19 +71,6 @@ class BranchSelectionTest extends TestCase
             ->assertRedirect(route('dashboard'));
     }
 
-    public function test_selecting_a_branch_from_the_menu_editor_link_lands_on_the_menu(): void
-    {
-        $manager = User::factory()->create();
-        $this->assignRoleAt($manager, 'manager', $this->branchA);
-        $this->assignRoleAt($manager, 'manager', $this->branchB);
-
-        $this->actingAs($manager)->get(route('branches.select', ['then' => 'menu']));
-
-        $this->actingAs($manager)
-            ->post(route('branches.select.store'), ['branch_id' => $this->branchA->id])
-            ->assertRedirect(route('dashboard.menu-items.index'));
-    }
-
     public function test_selecting_a_branch_persists_it_to_the_user_row(): void
     {
         // Not just the session — RiderAssignmentService needs to read
@@ -158,35 +145,78 @@ class BranchSelectionTest extends TestCase
             ->assertViewIs('branches.select');
     }
 
-    public function test_a_staff_only_account_sees_the_start_shift_picker(): void
+    public function test_a_staff_only_account_sees_the_generic_picker_not_a_combined_one(): void
     {
         $staff = User::factory()->create();
         $this->assignRoleAt($staff, 'staff', $this->branchA);
         $this->assignRoleAt($staff, 'staff', $this->branchB);
 
         $this->actingAs($staff)->get(route('branches.select'))
-            ->assertViewIs('staff.start-shift');
+            ->assertViewIs('branches.select')
+            ->assertSee(__('Not ready? Log out instead.'));
     }
 
-    public function test_submitting_the_start_shift_picker_selects_the_branch_and_starts_the_shift(): void
+    public function test_submitting_the_picker_selects_the_branch_but_never_starts_a_shift(): void
     {
+        // Picking a branch and starting a shift are two separate decisions
+        // now — the former just sets which branch's data staff sees
+        // everywhere; the latter only ever happens via the Dashboard's own
+        // forced shift-start modal, once a branch is already current.
         $staff = User::factory()->create();
         $this->assignRoleAt($staff, 'staff', $this->branchA);
         $this->assignRoleAt($staff, 'staff', $this->branchB);
 
         $this->actingAs($staff)
-            ->post(route('branches.select.store'), [
-                'branch_id' => $this->branchA->id,
-                'starting_cash' => '50',
-            ])
+            ->post(route('branches.select.store'), ['branch_id' => $this->branchA->id])
             ->assertRedirect(route('dashboard'));
 
         $this->assertSame($this->branchA->id, $staff->fresh()->current_branch_id);
+        $this->assertNull(app(ShiftService::class)->activeForBranch($this->branchA->id));
+    }
 
-        $shift = app(ShiftService::class)->activeForBranch($this->branchA->id);
-        $this->assertNotNull($shift);
-        $this->assertSame($this->branchA->id, $shift->branch_id);
-        $this->assertSame(5000, $shift->starting_cash);
+    public function test_a_multi_branch_staff_member_can_reach_order_history_directly_with_no_shift(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branchA);
+        $this->assignRoleAt($staff, 'staff', $this->branchB);
+
+        // ResolveCurrentBranch bounces this to the picker and remembers
+        // Order History as the intended destination (redirect()->guest()).
+        $this->actingAs($staff)->get(route('dashboard.orders.history'))
+            ->assertRedirect(route('branches.select'));
+
+        $this->actingAs($staff)
+            ->post(route('branches.select.store'), ['branch_id' => $this->branchA->id])
+            ->assertRedirect(route('dashboard.orders.history'));
+
+        $this->assertNull(app(ShiftService::class)->activeForBranch($this->branchA->id));
+    }
+
+    public function test_picking_a_branch_from_the_dashboards_own_redirect_does_not_loop_back_to_the_picker(): void
+    {
+        // Regression: a first-ever visit to /dashboard with no branch
+        // resolved is caught by ResolveCurrentBranch itself (redirect()->
+        // guest(), storing the bare /dashboard URL as intended) —
+        // OrderDashboardController::index() never runs yet to know "no
+        // active shift" is actually the reason. Once intended() sends them
+        // back to that same /dashboard, its own forceShiftStart redirect
+        // would otherwise fire again (still no shift, still multi-branch)
+        // and bounce them straight back to the picker in an infinite loop.
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branchA);
+        $this->assignRoleAt($staff, 'staff', $this->branchB);
+
+        $this->actingAs($staff)->get(route('dashboard'))
+            ->assertRedirect(route('branches.select'));
+
+        $this->actingAs($staff)
+            ->post(route('branches.select.store'), ['branch_id' => $this->branchA->id])
+            ->assertRedirect(route('dashboard'));
+
+        // The real assertion: landing on /dashboard a second time (as a
+        // browser actually following that redirect would) must show the
+        // board, not bounce back to the picker again.
+        $this->actingAs($staff)->get(route('dashboard'))->assertOk();
     }
 
     public function test_a_hybrid_staff_and_manager_account_sees_the_generic_picker_not_the_combined_one(): void
@@ -205,38 +235,15 @@ class BranchSelectionTest extends TestCase
         $this->assertNull(app(ShiftService::class)->activeForBranch($this->branchA->id));
     }
 
-    public function test_the_menu_editor_then_flag_does_not_leak_into_an_unrelated_selection(): void
-    {
-        $manager = User::factory()->create();
-        $this->assignRoleAt($manager, 'manager', $this->branchA);
-        $this->assignRoleAt($manager, 'manager', $this->branchB);
-
-        // Visit the Menu Editor's Branch link (sets the then=menu flag)...
-        $this->actingAs($manager)->get(route('branches.select', ['then' => 'menu']));
-
-        // ...then get bounced to the picker from a guarded page without
-        // submitting. A real browser follows this redirect immediately, so
-        // simulate that follow-up GET too — it must clear the stale flag
-        // so the pending Reports-style intended() redirect still wins.
-        $this->actingAs($manager)->get(route('dashboard.reports.index'))
-            ->assertRedirect(route('branches.select'));
-        $this->actingAs($manager)->get(route('branches.select'));
-
-        $this->actingAs($manager)
-            ->post(route('branches.select.store'), ['branch_id' => $this->branchA->id])
-            ->assertRedirect(route('dashboard.reports.index'));
-    }
-
     public function test_a_staff_member_cannot_switch_branches_while_on_an_active_shift(): void
     {
         $staff = User::factory()->create();
         $this->assignRoleAt($staff, 'staff', $this->branchA);
         $this->assignRoleAt($staff, 'staff', $this->branchB);
 
-        // A staff-only account's own store() submission already starts the
-        // shift (staff.start-shift) — no separate ShiftService call needed.
         $this->actingAs($staff)
             ->post(route('branches.select.store'), ['branch_id' => $this->branchA->id]);
+        app(ShiftService::class)->start($staff, $this->branchA);
 
         // The picker itself is skipped entirely — nothing to pick, it's locked.
         $this->actingAs($staff)->get(route('branches.select'))
@@ -262,6 +269,7 @@ class BranchSelectionTest extends TestCase
             ->post(route('branches.select.store'), ['branch_id' => $this->branchA->id]);
 
         $shifts = app(ShiftService::class);
+        $shifts->start($staff, $this->branchA);
         $shifts->end($shifts->activeForBranch($this->branchA->id), $staff, totalSales: 0, systemSales: 0, noExpenses: true);
 
         $this->actingAs($staff)

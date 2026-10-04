@@ -152,13 +152,16 @@ class BranchContext
 
     /**
      * Holds the literal 'staff' role somewhere and nothing else — not
-     * manager/general_manager/owner/rider/stock_manager at any branch. The
-     * only role whose dashboard/POS/history access is shift-gated
-     * (OrderDashboardController/PosController/OrderHistoryController's own
-     * forceShiftStart), and the only one BranchSelectionController folds
-     * branch-pick + shift-start into a single screen for (staff.start-shift).
-     * A hybrid account (staff at one branch, something else at another)
-     * falls through to false, same as a hybrid rider account would for
+     * manager/general_manager/owner/rider/stock_manager at any branch.
+     * Dashboard and POS are the only features shift-gated for this role
+     * (OrderDashboardController/PosController's own forceShiftStart) —
+     * everything else (Order History, Damage Reports, Refunds, Reports)
+     * works with no shift at all. Used by BranchSelectionController's
+     * `branches.select` view purely to decide whether to show a "log out
+     * instead" escape on the picker — picking a branch never starts a
+     * shift by itself for anyone, staff included. A hybrid account (staff
+     * at one branch, something else at another) falls through to false,
+     * same as a hybrid rider account would for
      * hasRoleAtAnyBranch($user, 'rider') elsewhere.
      */
     public function isStaffOnly(User $user): bool
