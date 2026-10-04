@@ -241,7 +241,24 @@
                                         {{ $extra ? 'GH₵'.number_format($extra / 100, 2) : 'N/A' }}
                                     </td>
                                     <td class="px-4 py-2 text-right text-gray-500">
-                                        {{ $hasExpenseRecord ? 'GH₵'.number_format($expensesTotal / 100, 2) : '—' }}
+                                        @if ($row->expenses->isNotEmpty())
+                                            <details class="inline-block text-left">
+                                                <summary class="cursor-pointer list-none inline-flex items-center gap-1 justify-end">
+                                                    <span>GH₵{{ number_format($expensesTotal / 100, 2) }}</span>
+                                                    <svg class="w-3 h-3 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                                                </summary>
+                                                <ul class="mt-1 text-xs text-gray-500 space-y-0.5 whitespace-nowrap">
+                                                    @foreach ($row->expenses as $expense)
+                                                        <li class="flex items-center justify-between gap-3">
+                                                            <span>{{ $expense->description }}</span>
+                                                            <span class="text-gray-700">GH₵{{ number_format($expense->amount / 100, 2) }}</span>
+                                                        </li>
+                                                    @endforeach
+                                                </ul>
+                                            </details>
+                                        @else
+                                            {{ $hasExpenseRecord ? 'GH₵'.number_format($expensesTotal / 100, 2) : '—' }}
+                                        @endif
                                     </td>
                                     <td class="px-4 py-2 text-right font-medium {{ $net !== null && $net < 0 ? 'text-red-600' : 'text-gray-800' }}">
                                         {{ $net !== null ? 'GH₵'.number_format($net / 100, 2) : 'N/A' }}

@@ -577,7 +577,34 @@ class ShiftTest extends TestCase
             ->assertOk()
             ->assertSee('Ama Staff')
             ->assertSee('GH₵30.00') // Expenses
-            ->assertSee('GH₵70.00'); // Net: 100.00 - 30.00
+            ->assertSee('GH₵70.00') // Net: 100.00 - 30.00
+            ->assertSee('Gas refill'); // the expense's own description, not just the summed total
+    }
+
+    public function test_each_expenses_description_and_amount_is_listed_individually(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+        $this->actingAs($staff)->postJson(route('shift.start'))->assertOk();
+
+        $this->actingAs($staff)->postJson(route('shift.end'), [
+            'total_sales' => '100.00',
+            'expenses' => [
+                ['description' => 'Gas refill', 'amount' => '30.00'],
+                ['description' => 'Cleaning supplies', 'amount' => '10.00'],
+            ],
+        ])->assertOk();
+
+        $manager = User::factory()->create();
+        $this->assignRoleAt($manager, 'manager', $this->branch);
+
+        $response = $this->actingAs($manager)->get(route('dashboard.reports.today.index', ['date' => now('Africa/Accra')->toDateString()]));
+
+        $response->assertOk();
+        $response->assertSee('Gas refill');
+        $response->assertSee('GH₵30.00');
+        $response->assertSee('Cleaning supplies');
+        $response->assertSee('GH₵10.00');
     }
 
     public function test_a_confirmed_no_expenses_shift_shows_a_zero_in_the_report(): void
