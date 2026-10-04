@@ -91,6 +91,37 @@ class PosOrderTest extends TestCase
             ->assertRedirect(route('branches.select'));
     }
 
+    public function test_picking_a_branch_from_poss_own_redirect_does_not_loop_back_to_the_picker(): void
+    {
+        // Regression: a first-ever visit to POS with no branch resolved at
+        // all is caught by ResolveCurrentBranch itself (redirect()->guest(),
+        // storing POS's own URL as intended) — PosController::index() never
+        // runs yet to know "no active shift" is the actual reason. Once
+        // intended() sends them back to that same POS URL, its own
+        // forceShiftStart-style redirect would otherwise fire again (still
+        // no shift, still multi-branch) and bounce them straight back to
+        // the picker in an infinite loop, exactly like the Dashboard's own
+        // version of this bug (BranchSelectionTest).
+        $otherBranch = Branch::create([
+            'name' => 'East Legon', 'slug' => 'east-legon', 'phone' => '+233200000003', 'address' => 'C',
+            'lat' => 5.6, 'lng' => -0.2, 'opens_at' => '10:00', 'closes_at' => '22:00',
+        ]);
+        $staff = $this->makeStaff();
+        $this->assignRoleAt($staff, 'staff', $otherBranch);
+
+        $this->actingAs($staff)->get(route('dashboard.pos.index'))
+            ->assertRedirect(route('branches.select'));
+
+        $this->actingAs($staff)
+            ->post(route('branches.select.store'), ['branch_id' => $this->branch->id])
+            ->assertRedirect(route('dashboard.pos.index'));
+
+        // The real assertion: landing on POS a second time (as a browser
+        // actually following that redirect would) must show the page, not
+        // bounce back to the picker again.
+        $this->actingAs($staff)->get(route('dashboard.pos.index'))->assertOk();
+    }
+
     public function test_pos_page_includes_the_order_alert_widget_for_the_current_branch(): void
     {
         $staff = $this->makeStaff();

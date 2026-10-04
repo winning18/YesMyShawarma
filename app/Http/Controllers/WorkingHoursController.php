@@ -34,8 +34,13 @@ class WorkingHoursController extends Controller
             'branch' => ['nullable', 'integer', 'exists:branches,id'],
         ]);
 
+        // validate()'s 'integer' rule checks the format but doesn't cast
+        // the query-string value, which would otherwise never strictly
+        // equal $branch->id's native int in the view's @selected() check
+        // below — the dropdown would silently keep showing the first
+        // branch regardless of which one was actually picked.
         $branchId = $isOwner
-            ? ($validated['branch'] ?? $branches->first()?->id)
+            ? (isset($validated['branch']) ? (int) $validated['branch'] : $branches->first()?->id)
             : $context->id();
 
         return view('dashboard.working-hours.index', [
@@ -52,7 +57,7 @@ class WorkingHoursController extends Controller
 
         $isOwner = $context->hasRoleAtAnyBranch($request->user(), 'owner');
         $validated = $request->validated();
-        $branchId = $isOwner ? $validated['branch'] ?? null : $context->id();
+        $branchId = $isOwner ? (isset($validated['branch']) ? (int) $validated['branch'] : null) : $context->id();
 
         abort_unless($branchId, 404);
         abort_if($isOwner && ! Branch::whereKey($branchId)->exists(), 404);

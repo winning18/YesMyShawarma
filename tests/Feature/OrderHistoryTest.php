@@ -95,8 +95,16 @@ class OrderHistoryTest extends TestCase
         $response->assertSee('shiftWidget(true, false)', false);
     }
 
-    public function test_a_multi_branch_staff_member_with_no_shift_is_sent_to_pick_a_branch_instead_of_history(): void
+    public function test_a_multi_branch_staff_member_with_no_shift_can_still_reach_order_history_directly(): void
     {
+        // Regression: Order History used to carry its own copy of
+        // Dashboard's "multi-branch + no shift -> pick a branch" redirect,
+        // directly contradicting this very file's "never forced here"
+        // design and the whole point of decoupling branch selection from
+        // starting a shift — a multi-branch staff member with a branch
+        // already resolved (from the mandatory picker, independent of any
+        // shift) must never be bounced away from a page that was never
+        // meant to need one in the first place.
         $otherBranch = Branch::create([
             'name' => 'East Legon', 'slug' => 'east-legon', 'phone' => '+233200000002', 'address' => 'B',
             'lat' => 5.6, 'lng' => -0.2, 'opens_at' => '10:00', 'closes_at' => '22:00',
@@ -109,7 +117,7 @@ class OrderHistoryTest extends TestCase
         $this->actingAs($staff)
             ->withSession(['current_branch_id' => $this->branch->id])
             ->get(route('dashboard.orders.history'))
-            ->assertRedirect(route('branches.select'));
+            ->assertOk();
     }
 
     public function test_order_history_includes_the_order_alert_widget_for_staff(): void

@@ -80,12 +80,16 @@ class PosController extends Controller
         $user = $request->user();
         $isStaff = $context->primaryRoleFor($user, $branch->id) === 'staff';
 
-        // See OrderDashboardController::index()'s identical check — a
-        // multi-branch staff member whose branch has no shift open yet
-        // picks one and starts/joins the shift in one screen instead of
-        // landing here first and hitting this page's own forced,
-        // branch-less start-shift modal.
-        if ($isStaff && ! $shifts->activeForBranch($branch->id) && $context->branchIdsFor($user)->count() > 1) {
+        // See OrderDashboardController::index()'s identical check (same
+        // `branch_just_confirmed` loop-prevention flash — without it, a
+        // multi-branch staff member reaching POS for the first time, with
+        // no branch resolved at all yet, would bounce: ResolveCurrentBranch
+        // sends them to pick one (storing POS itself as intended), picking
+        // returns them here via that same intended() call, and this check
+        // would immediately redirect them straight back to the picker
+        // again, forever, since nothing ever marks the branch as freshly
+        // confirmed).
+        if ($isStaff && ! $shifts->activeForBranch($branch->id) && $context->branchIdsFor($user)->count() > 1 && ! $request->session()->get('branch_just_confirmed')) {
             return redirect()->route('branches.select');
         }
 

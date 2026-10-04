@@ -132,4 +132,59 @@ class RedirectStaffToUnacceptedWebOrdersTest extends TestCase
         $this->actingAs($staff)->get(route('dashboard'))->assertOk();
         $this->actingAs($staff)->get(route('dashboard.pos.index'))->assertOk();
     }
+
+    /**
+     * Regression: a multi-branch staff member can now land directly on any
+     * of these as their very first navigation of a session (picking a
+     * branch no longer forces a detour through Dashboard first) — none of
+     * them require a shift, so none of them may get hijacked away to
+     * Dashboard just because a web order happens to be waiting.
+     */
+    public function test_order_history_is_never_hijacked_even_as_the_first_page_load(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+        $this->unacceptedWebOrder();
+
+        $this->actingAs($staff)->get(route('dashboard.orders.history'))->assertOk();
+    }
+
+    public function test_damage_reports_is_never_hijacked_even_as_the_first_page_load(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+        $this->unacceptedWebOrder();
+
+        $this->actingAs($staff)->get(route('dashboard.damage-reports.index'))->assertOk();
+    }
+
+    public function test_refunds_is_never_hijacked_even_as_the_first_page_load(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+        $this->unacceptedWebOrder();
+
+        $this->actingAs($staff)->get(route('dashboard.refunds.index'))->assertOk();
+    }
+
+    public function test_detailed_reports_is_never_hijacked_even_as_the_first_page_load(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+        $this->unacceptedWebOrder();
+
+        // A fresh session each time — the once-per-session flag would
+        // otherwise already be consumed by a prior call in this same test,
+        // making a second assertion here meaningless.
+        $this->actingAs($staff)->get(route('dashboard.reports.index'))->assertOk();
+    }
+
+    public function test_sales_report_is_never_hijacked_even_as_the_first_page_load(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+        $this->unacceptedWebOrder();
+
+        $this->actingAs($staff)->get(route('dashboard.reports.today.index'))->assertOk();
+    }
 }

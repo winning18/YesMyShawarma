@@ -150,6 +150,25 @@ class WorkingHoursTest extends TestCase
         ]);
     }
 
+    public function test_switching_branches_via_the_selector_actually_marks_the_new_one_selected(): void
+    {
+        // Regression: validate()'s 'integer' rule checks the format but
+        // doesn't cast the query-string value — comparing that raw string
+        // against $branch->id's native int in @selected() never strictly
+        // matched, so the dropdown silently kept showing the first branch
+        // (Osu) no matter which one was actually picked, even though the
+        // page's own content (the hours shown) was for the right branch.
+        $owner = User::factory()->create();
+        $this->assignRoleAt($owner, 'owner', $this->osu);
+        $this->assignRoleAt($owner, 'owner', $this->eastLegon);
+
+        $response = $this->actingAs($owner)->get(route('dashboard.working-hours.index', ['branch' => $this->eastLegon->id]));
+
+        $response->assertOk();
+        $response->assertSee('value="'.$this->eastLegon->id.'" selected', false);
+        $response->assertDontSee('value="'.$this->osu->id.'" selected', false);
+    }
+
     public function test_a_day_left_blank_is_stored_as_closed(): void
     {
         $owner = User::factory()->create();

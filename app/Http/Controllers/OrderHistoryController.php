@@ -6,9 +6,7 @@ use App\Models\DeliveryArea;
 use App\Models\Order;
 use App\Services\Branches\BranchContext;
 use App\Services\Orders\RefundService;
-use App\Services\Shifts\ShiftService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
@@ -28,7 +26,7 @@ class OrderHistoryController extends Controller
      */
     private const RANGE_PRESETS = ['today', '7', '30', 'week', 'month', 'last_month', 'custom'];
 
-    public function index(Request $request, BranchContext $context, ShiftService $shifts): View|RedirectResponse
+    public function index(Request $request, BranchContext $context): View
     {
         Gate::authorize('viewAny', Order::class);
 
@@ -36,15 +34,6 @@ class OrderHistoryController extends Controller
         $branchId = $context->id();
         $isOwner = $context->hasRoleAtAnyBranch($user, 'owner');
         $isStaff = $branchId && $context->primaryRoleFor($user, $branchId) === 'staff';
-
-        // See OrderDashboardController::index()'s identical check — a
-        // multi-branch staff member whose branch has no shift open yet
-        // picks one and starts/joins the shift in one screen instead of
-        // landing here first and hitting this page's own forced,
-        // branch-less start-shift modal.
-        if ($isStaff && ! $shifts->activeForBranch($branchId) && $context->branchIdsFor($user)->count() > 1) {
-            return redirect()->route('branches.select');
-        }
 
         $channel = $this->channelFilter($request);
         $filters = $this->filters($request);
@@ -59,10 +48,15 @@ class OrderHistoryController extends Controller
             'isStaff' => $isStaff,
             // Never forced here, unlike the Dashboard/POS — this is a
             // read-only page, not order processing, so a staff member with
-            // no active shift (most commonly: their shift just ended) must
-            // still be able to use it. The shift widget itself still shows
-            // and still lets them start one from here if they want to —
-            // "forced" only ever meant "blocking", never "hidden".
+            // no active shift (most commonly: their shift just ended, or a
+            // multi-branch account that's simply never started one today)
+            // must still be able to use it. No branch-pick redirect either,
+            // for the same reason — unlike Dashboard/POS, reaching this
+            // page was never meant to require a shift at a specific branch,
+            // only a branch (ResolveCurrentBranch already guarantees that
+            // much for every branch-gated page). The shift widget itself
+            // still shows and still lets them start one from here if they
+            // want to — "forced" only ever meant "blocking", never "hidden".
             'forceShiftStart' => false,
             'ordersUrl' => $isStaff ? route('dashboard') : route('dashboard.orders.live'),
             'branchId' => $branchId,

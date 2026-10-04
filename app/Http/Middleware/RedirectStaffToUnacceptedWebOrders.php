@@ -42,7 +42,14 @@ class RedirectStaffToUnacceptedWebOrders
 
         $request->session()->put('checked_unaccepted_web_orders', true);
 
-        if ($request->routeIs('dashboard', 'shift.*', 'logout')) {
+        // Order History, Damage Reports, Refunds, and Reports never require
+        // a shift (unlike Dashboard/POS) — a multi-branch staff member can
+        // now land directly on any of these as their very first navigation
+        // of the session (picking a branch no longer forces them through
+        // Dashboard first), so this must never hijack that first visit away
+        // from where they actually meant to go. The nag still applies to
+        // every other first navigation, same as before.
+        if ($request->routeIs('dashboard', 'shift.*', 'logout', 'dashboard.orders.*', 'dashboard.damage-reports.*', 'dashboard.refunds.*', 'dashboard.reports.*')) {
             return $next($request);
         }
 
