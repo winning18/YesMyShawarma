@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Branch;
+use App\Models\Shift;
 use App\Services\Branches\BranchContext;
 use App\Services\Performance\PerformanceReportService;
 use App\Services\Reports\OrderReportService;
+use App\Services\Shifts\ShiftService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -30,7 +32,7 @@ class PerformanceController extends Controller
      */
     private const RANGE_DAYS = ['today' => 1, '7' => 7, '30' => 30];
 
-    public function index(Request $request, PerformanceReportService $performance, OrderReportService $reports, BranchContext $context): View
+    public function index(Request $request, PerformanceReportService $performance, OrderReportService $reports, ShiftService $shifts, BranchContext $context): View
     {
         Gate::authorize('dashboard.performance');
 
@@ -97,6 +99,15 @@ class PerformanceController extends Controller
             $branchOptionsQuery->whereIn('id', $scopeBranchIds);
         }
 
+        $briefingBranchesQuery = Branch::orderBy('name');
+        if ($isGeneralManager) {
+            $briefingBranchesQuery->whereIn('id', $scopeBranchIds);
+        } elseif (! $isOwner) {
+            // Plain manager — just their own current branch, same scope as
+            // everything else they see on this page.
+            $briefingBranchesQuery->where('id', $branchId);
+        }
+
         $data = [
             'tab' => $tab,
             'rangeKey' => $rangeKey,
@@ -106,6 +117,12 @@ class PerformanceController extends Controller
             'crossBranch' => $crossBranch,
             'branchFilterId' => $filterBranchId,
             'branchOptions' => $crossBranch ? $branchOptionsQuery->get(['id', 'name']) : null,
+            // A glance at every branch this actor can see — is it mid-shift
+            // right now, and how's it doing — without having to drill into
+            // Sales per branch just to notice something's off. Independent
+            // of the tab/range filters above: this is always "right now",
+            // never a historical window.
+            'shiftBriefing' => $this->shiftBriefing($briefingBranchesQuery->get(['id', 'name']), $shifts, $reports),
         ];
 
         if ($tab === 'sales') {
@@ -164,6 +181,34 @@ class PerformanceController extends Controller
                 'avg_prep_time_minutes' => $operational['avg_prep_time_minutes'],
                 'avg_delivery_time_minutes' => $operational['avg_delivery_time_minutes'],
             ];
+        });
+    }
+
+    /**
+     * One row per branch — "is this branch mid-shift right now, and how's
+     * it doing" — reusing the exact same current/most-recent shift lookup
+     * (ShiftService::mostRecentForBranch()) and net-of-refunds sales
+     * figure (OrderReportService::financialSummary()) the Sales page
+     * itself uses, so this can never quietly disagree with what drilling
+     * into a branch's own report would show. $shift null means the branch
+     * has never had one at all yet, same meaning as on the Sales page.
+     *
+     * @return Collection<int, array{branch: Branch, shift: ?Shift, salesSoFar: ?int}>
+     */
+    private function shiftBriefing(Collection $branches, ShiftService $shifts, OrderReportService $reports): Collection
+    {
+        return $branches->map(function (Branch $branch) use ($shifts, $reports) {
+            $shift = $shifts->mostRecentForBranch($branch->id);
+
+            $salesSoFar = $shift
+                ? $reports->financialSummary(
+                    $shift->started_at->clone()->utc(),
+                    ($shift->ended_at ?? Carbon::now())->clone()->utc(),
+                    branchId: $branch->id,
+                )['revenue_total']
+                : null;
+
+            return ['branch' => $branch, 'shift' => $shift, 'salesSoFar' => $salesSoFar];
         });
     }
 }

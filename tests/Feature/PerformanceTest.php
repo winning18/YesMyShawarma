@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Shift;
 use App\Models\User;
 use App\Models\VisitorSession;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -513,5 +514,80 @@ class PerformanceTest extends TestCase
             ->get(route('dashboard.performance', ['tab' => 'traffic', 'range' => 'today']));
 
         $this->assertSame(2, $response->viewData('traffic')['new_visits']['value']);
+    }
+
+    public function test_shift_briefing_shows_every_branch_for_owner(): void
+    {
+        $owner = $this->makeOwner();
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->osu);
+        $shift = Shift::create([
+            'user_id' => $staff->id, 'branch_id' => $this->osu->id,
+            'started_at' => now()->subHour(), 'ended_at' => null,
+        ]);
+        $this->makeOrder($this->osu, 'delivered', 5000);
+
+        $response = $this->actingAs($owner)->get(route('dashboard.performance'));
+
+        $briefing = $response->viewData('shiftBriefing');
+        $this->assertCount(2, $briefing);
+
+        $osuRow = $briefing->firstWhere(fn ($row) => $row['branch']->id === $this->osu->id);
+        $this->assertSame($shift->id, $osuRow['shift']->id);
+        $this->assertSame(5000, $osuRow['salesSoFar']);
+
+        $eastLegonRow = $briefing->firstWhere(fn ($row) => $row['branch']->id === $this->eastLegon->id);
+        $this->assertNull($eastLegonRow['shift']);
+        $this->assertNull($eastLegonRow['salesSoFar']);
+
+        $response->assertSee(__('On shift'));
+        $response->assertSee(__('No shift yet'));
+        $response->assertSee(route('dashboard.reports.today.index', ['branch' => $this->osu->id]), false);
+    }
+
+    public function test_shift_briefing_is_scoped_to_their_own_branch_for_a_manager(): void
+    {
+        $manager = User::factory()->create();
+        $this->assignRoleAt($manager, 'manager', $this->osu);
+        Shift::create([
+            'user_id' => $manager->id, 'branch_id' => $this->eastLegon->id,
+            'started_at' => now()->subHour(), 'ended_at' => null,
+        ]);
+
+        $response = $this->actingAs($manager)->get(route('dashboard.performance'));
+
+        $briefing = $response->viewData('shiftBriefing');
+        $this->assertCount(1, $briefing);
+        $this->assertSame($this->osu->id, $briefing->first()['branch']->id);
+        // A manager only ever has one branch to see, so the link stays
+        // branch-less — same as every other link on their own Sales page.
+        $response->assertSee(route('dashboard.reports.today.index'), false);
+    }
+
+    public function test_shift_briefing_is_scoped_to_their_oversight_branches_for_a_general_manager(): void
+    {
+        $generalManager = User::factory()->create();
+        $this->assignRoleAt($generalManager, 'general_manager', $this->osu);
+
+        $response = $this->actingAs($generalManager)->get(route('dashboard.performance'));
+
+        $briefing = $response->viewData('shiftBriefing');
+        $this->assertCount(1, $briefing);
+        $this->assertSame($this->osu->id, $briefing->first()['branch']->id);
+    }
+
+    public function test_shift_briefing_shows_shift_ended_for_a_closed_shift(): void
+    {
+        $owner = $this->makeOwner();
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->osu);
+        Shift::create([
+            'user_id' => $staff->id, 'branch_id' => $this->osu->id,
+            'started_at' => now()->subHours(5), 'ended_at' => now()->subHour(),
+        ]);
+
+        $response = $this->actingAs($owner)->get(route('dashboard.performance'));
+
+        $response->assertSee(__('Shift ended'));
     }
 }

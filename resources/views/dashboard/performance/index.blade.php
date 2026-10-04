@@ -4,6 +4,52 @@
     </x-slot>
 
     <div class="max-w-6xl mx-auto py-8 px-4 space-y-6">
+        {{--
+            Always "right now", independent of the Sales/Operations/Traffic
+            tab and the date-range filter below — a glance at every branch
+            this actor can see without having to drill into each one's own
+            Sales report just to notice a shift never got started, or
+            check how it's doing so far (PerformanceController::
+            shiftBriefing(), reusing the exact same shift lookup and
+            net-of-refunds sales figure the Sales page itself uses).
+        --}}
+        @if ($shiftBriefing->isNotEmpty())
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                @foreach ($shiftBriefing as $row)
+                    <a
+                        href="{{ route('dashboard.reports.today.index', $crossBranch ? ['branch' => $row['branch']->id] : []) }}"
+                        class="block bg-white shadow rounded-lg p-4 hover:shadow-md transition-shadow"
+                    >
+                        <div class="flex items-center justify-between gap-2">
+                            <p class="font-semibold text-gray-800 truncate">{{ $row['branch']->name }}</p>
+                            @if ($row['shift'] && ! $row['shift']->ended_at)
+                                <span class="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-green-700">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>{{ __('On shift') }}
+                                </span>
+                            @elseif ($row['shift'])
+                                <span class="shrink-0 text-xs font-medium text-gray-500">{{ __('Shift ended') }}</span>
+                            @else
+                                <span class="shrink-0 text-xs font-medium text-amber-600">{{ __('No shift yet') }}</span>
+                            @endif
+                        </div>
+
+                        @if ($row['shift'])
+                            <p class="text-xs text-gray-500 mt-1">
+                                @if (! $row['shift']->ended_at)
+                                    {{ __('Since') }} {{ $row['shift']->started_at->timezone('Africa/Accra')->format('H:i') }} — {{ $row['shift']->user->name }}
+                                @else
+                                    {{ __('Ended') }} {{ $row['shift']->ended_at->timezone('Africa/Accra')->format('d M, H:i') }}
+                                @endif
+                            </p>
+                            <p class="text-lg font-bold text-gray-800 mt-1">GH₵{{ number_format($row['salesSoFar'] / 100, 2) }}</p>
+                        @else
+                            <p class="text-xs text-gray-500 mt-1">{{ __('Nothing recorded yet.') }}</p>
+                        @endif
+                    </a>
+                @endforeach
+            </div>
+        @endif
+
         <div class="border-b border-gray-200 flex items-center gap-6">
             <a
                 href="{{ route('dashboard.performance', ['tab' => 'sales', 'range' => $rangeKey]) }}"
