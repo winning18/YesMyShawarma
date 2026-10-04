@@ -10,13 +10,17 @@
                 <p class="text-sm text-gray-500">{{ __('Download a report of all your sales for the selected week.') }}</p>
             </div>
 
+            @php
+                $branchParam = $branchFilterId ? ['branch' => $branchFilterId] : [];
+            @endphp
+
             <div class="flex items-center gap-3">
                 <a
-                    href="{{ route('dashboard.reports.invoices.index') }}"
+                    href="{{ route('dashboard.reports.invoices.index', $branchParam) }}"
                     class="px-4 py-2 text-sm font-semibold rounded-full {{ $isThisWeek ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}"
                 >{{ __('This week') }}</a>
                 <a
-                    href="{{ route('dashboard.reports.invoices.index', ['week' => now('Africa/Accra')->subWeek()->toDateString()]) }}"
+                    href="{{ route('dashboard.reports.invoices.index', [...$branchParam, 'week' => now('Africa/Accra')->subWeek()->toDateString()]) }}"
                     class="px-4 py-2 text-sm font-semibold rounded-full {{ $isLastWeek ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}"
                 >{{ __('Last week') }}</a>
             </div>
@@ -30,22 +34,38 @@
                             onchange="this.form.submit()"
                             class="rounded-md border-gray-300 text-sm"
                         >
+                        @if ($branchFilterId)
+                            <input type="hidden" name="branch" value="{{ $branchFilterId }}">
+                        @endif
                         <span class="text-sm text-gray-500">
                             {{ $weekStart->format('d/m') }} - {{ $weekEnd->format('d/m') }} ({{ __('Week :week of :year', ['week' => $weekStart->isoWeek(), 'year' => $weekStart->isoWeekYear()]) }})
                         </span>
                     </form>
 
+                    @if ($crossBranch)
+                        <form method="GET" action="{{ route('dashboard.reports.invoices.index') }}" class="flex items-center gap-2">
+                            <input type="hidden" name="week" value="{{ $weekStart->toDateString() }}">
+                            <label for="branch" class="sr-only">{{ __('Branch') }}</label>
+                            <select id="branch" name="branch" onchange="this.form.submit()" class="rounded-md border-gray-300 text-sm">
+                                <option value="">{{ __('All branches') }}</option>
+                                @foreach ($branchOptions as $branch)
+                                    <option value="{{ $branch->id }}" @selected($branchFilterId === $branch->id)>{{ $branch->name }}</option>
+                                @endforeach
+                            </select>
+                        </form>
+                    @endif
+
                     <div class="flex items-center gap-2 ml-auto">
                         <a
-                            href="{{ route('dashboard.reports.invoices.download', ['format' => 'xlsx', 'week' => $weekStart->toDateString()]) }}"
+                            href="{{ route('dashboard.reports.invoices.download', [...$branchParam, 'format' => 'xlsx', 'week' => $weekStart->toDateString()]) }}"
                             class="px-4 py-2 bg-green-700 text-white text-sm font-semibold rounded-full hover:bg-green-800"
                         >{{ __('Download XLSX') }}</a>
                         <a
-                            href="{{ route('dashboard.reports.invoices.download', ['format' => 'csv', 'week' => $weekStart->toDateString()]) }}"
+                            href="{{ route('dashboard.reports.invoices.download', [...$branchParam, 'format' => 'csv', 'week' => $weekStart->toDateString()]) }}"
                             class="px-4 py-2 bg-green-700 text-white text-sm font-semibold rounded-full hover:bg-green-800"
                         >{{ __('Download CSV') }}</a>
                         <a
-                            href="{{ route('dashboard.reports.invoices.download', ['format' => 'pdf', 'week' => $weekStart->toDateString()]) }}"
+                            href="{{ route('dashboard.reports.invoices.download', [...$branchParam, 'format' => 'pdf', 'week' => $weekStart->toDateString()]) }}"
                             class="px-4 py-2 bg-green-700 text-white text-sm font-semibold rounded-full hover:bg-green-800"
                         >{{ __('Download PDF') }}</a>
                     </div>
@@ -95,7 +115,7 @@
                                 <td class="px-4 py-2 text-gray-500">{{ $week['currency'] }}</td>
                                 <td class="px-4 py-2 text-right">
                                     <a
-                                        href="{{ route('dashboard.reports.invoices.download', ['format' => 'csv', 'week' => $week['start']->toDateString()]) }}"
+                                        href="{{ route('dashboard.reports.invoices.download', [...$branchParam, 'format' => 'csv', 'week' => $week['start']->toDateString()]) }}"
                                         class="text-gray-400 hover:text-gray-700"
                                         title="{{ __('Download CSV') }}"
                                         aria-label="{{ __('Download CSV for the week of :date', ['date' => $week['start']->format('d/m/Y')]) }}"

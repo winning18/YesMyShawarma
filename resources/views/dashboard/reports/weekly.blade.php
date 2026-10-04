@@ -4,6 +4,10 @@
     </x-slot>
 
     <div class="max-w-5xl mx-auto py-8 px-4 space-y-6">
+        @php
+            $branchParam = $branchFilterId ? ['branch' => $branchFilterId] : [];
+        @endphp
+
         <h3 class="font-semibold text-lg text-gray-800">{{ __('Weekly report') }}</h3>
 
         <form method="GET" action="{{ route('dashboard.reports.weekly.index') }}" class="flex flex-wrap items-end gap-3">
@@ -15,13 +19,24 @@
                     class="rounded-md border-gray-300 text-sm"
                 >
             </div>
+            @if ($crossBranch)
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1" for="branch">{{ __('Branch') }}</label>
+                    <select id="branch" name="branch" onchange="this.form.submit()" class="rounded-md border-gray-300 text-sm">
+                        <option value="">{{ __('All branches') }}</option>
+                        @foreach ($branchOptions as $branch)
+                            <option value="{{ $branch->id }}" @selected($branchFilterId === $branch->id)>{{ $branch->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            @endif
             <span class="text-sm text-gray-500 pb-2">
                 {{ $weekStart->format('d/m/Y') }} {{ __('to') }} {{ $weekEnd->format('d/m/Y') }}
             </span>
         </form>
 
         <a
-            href="{{ route('dashboard.reports.weekly.download', ['week' => $weekStart->toDateString()]) }}"
+            href="{{ route('dashboard.reports.weekly.download', [...$branchParam, 'week' => $weekStart->toDateString()]) }}"
             class="inline-block px-5 py-2.5 bg-green-700 text-white text-sm font-semibold rounded-full hover:bg-green-800"
         >{{ __('Download CSV') }}</a>
 

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
+use App\Services\Branches\BranchContext;
 use App\Services\Reports\WeeklySalesReportService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -22,18 +24,24 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * deliberately not shown: nothing in this app tracks a VAT registration
  * or rate today, and fabricating one would misrepresent a real tax
  * figure to whoever downloads it.
+ *
+ * Defaults to the overall (cross-branch) picture for owner/
+ * general_manager, same as Detailed reports/Performance, rather than
+ * being silently pinned to whatever branch happens to be ambient in
+ * session — see resolveBranchArgs().
  */
 class ReportsInvoicesController extends Controller
 {
     public function __construct(private readonly WeeklySalesReportService $weeklySales) {}
 
-    public function index(Request $request): View
+    public function index(Request $request, BranchContext $context): View
     {
         Gate::authorize('reports.view_financial');
 
         [$weekStart, $weekEnd] = $this->resolveWeek($request);
+        [$branchArgs, $branchViewData] = $this->resolveBranchFilter($request, $context);
 
-        $history = $this->weeklySales->weeklyHistory();
+        $history = $this->weeklySales->weeklyHistory(...$branchArgs);
         $perPage = 20;
         $page = max(1, (int) $request->query('page', 1));
 
@@ -48,21 +56,23 @@ class ReportsInvoicesController extends Controller
         return view('dashboard.reports.invoices', [
             'weekStart' => $weekStart,
             'weekEnd' => $weekEnd,
-            'summary' => $this->weeklySales->summary($weekStart, $weekEnd),
+            'summary' => $this->weeklySales->summary($weekStart, $weekEnd, ...$branchArgs),
             'history' => $paginatedHistory,
             'isThisWeek' => $weekStart->isSameDay(Carbon::now('Africa/Accra')->startOfWeek()),
             'isLastWeek' => $weekStart->isSameDay(Carbon::now('Africa/Accra')->subWeek()->startOfWeek()),
+            ...$branchViewData,
         ]);
     }
 
-    public function download(Request $request, string $format): StreamedResponse|Response
+    public function download(Request $request, string $format, BranchContext $context): StreamedResponse|Response
     {
         Gate::authorize('reports.view_financial');
 
         abort_unless(in_array($format, ['csv', 'xlsx', 'pdf'], true), 404);
 
         [$weekStart, $weekEnd] = $this->resolveWeek($request);
-        $summary = $this->weeklySales->summary($weekStart, $weekEnd);
+        [$branchArgs] = $this->resolveBranchFilter($request, $context);
+        $summary = $this->weeklySales->summary($weekStart, $weekEnd, ...$branchArgs);
         $filename = 'sales-'.$weekStart->format('Y-m-d').'-to-'.$weekEnd->format('Y-m-d');
 
         return match ($format) {
@@ -70,6 +80,46 @@ class ReportsInvoicesController extends Controller
             'xlsx' => $this->downloadXlsx($summary, $filename),
             'pdf' => $this->downloadPdf($summary, $filename),
         };
+    }
+
+    /**
+     * Same "tampered input dropped, never trusted" branch-filter
+     * resolution as ReportsController/PerformanceController — a manager/
+     * staff submitting a branch is ignored (already pinned to their own),
+     * a general_manager is limited to branches they oversee, and no
+     * filter at all means "overall" for owner/general_manager rather than
+     * whatever's ambient in session.
+     *
+     * @return array{0: array<string, mixed>, 1: array<string, mixed>}
+     */
+    private function resolveBranchFilter(Request $request, BranchContext $context): array
+    {
+        $user = $request->user();
+        $isOwner = $context->hasRoleAtAnyBranch($user, 'owner');
+        $isGeneralManager = ! $isOwner && $context->hasRoleAtAnyBranch($user, 'general_manager');
+        $crossBranch = $isOwner || $isGeneralManager;
+        $scopeBranchIds = $isGeneralManager ? $context->branchIdsForRole($user, 'general_manager')->all() : null;
+
+        $validated = $request->validate(['branch' => ['nullable', 'integer', 'exists:branches,id']]);
+        $filterBranchId = isset($validated['branch']) ? (int) $validated['branch'] : null;
+        if (! $crossBranch || ($isGeneralManager && ! in_array($filterBranchId, $scopeBranchIds, true))) {
+            $filterBranchId = null;
+        }
+
+        $branchArgs = $filterBranchId !== null
+            ? ['branchId' => $filterBranchId]
+            : ($crossBranch ? ['ignoreBranchScope' => $isOwner, 'branchIds' => $scopeBranchIds] : []);
+
+        $branchOptionsQuery = Branch::orderBy('name');
+        if ($isGeneralManager) {
+            $branchOptionsQuery->whereIn('id', $scopeBranchIds);
+        }
+
+        return [$branchArgs, [
+            'crossBranch' => $crossBranch,
+            'branchFilterId' => $filterBranchId,
+            'branchOptions' => $crossBranch ? $branchOptionsQuery->get(['id', 'name']) : null,
+        ]];
     }
 
     /**

@@ -18,6 +18,8 @@ class WeeklyReportTest extends TestCase
 
     private Branch $branch;
 
+    private Branch $otherBranch;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -27,6 +29,10 @@ class WeeklyReportTest extends TestCase
         $this->branch = Branch::create([
             'name' => 'Osu', 'slug' => 'osu', 'phone' => '+233200000001', 'address' => 'A',
             'lat' => 5.5, 'lng' => -0.1, 'opens_at' => '10:00', 'closes_at' => '22:00',
+        ]);
+        $this->otherBranch = Branch::create([
+            'name' => 'East Legon', 'slug' => 'east-legon', 'phone' => '+233200000002', 'address' => 'B',
+            'lat' => 5.6, 'lng' => -0.2, 'opens_at' => '10:00', 'closes_at' => '22:00',
         ]);
     }
 
@@ -44,7 +50,7 @@ class WeeklyReportTest extends TestCase
         return $manager;
     }
 
-    private function makeOrder(string $status, int $total, ?Carbon $placedAt = null, ?Customer $customer = null, string $paymentMethod = 'cash'): Order
+    private function makeOrder(string $status, int $total, ?Carbon $placedAt = null, ?Customer $customer = null, string $paymentMethod = 'cash', ?Branch $branch = null): Order
     {
         $customer ??= Customer::create(['phone' => '+2332'.random_int(10000000, 99999999), 'name' => 'Ama Mensah']);
 
@@ -52,7 +58,7 @@ class WeeklyReportTest extends TestCase
             'reference' => 'ORD-'.uniqid(),
             'track_token' => bin2hex(random_bytes(16)),
             'customer_id' => $customer->id,
-            'branch_id' => $this->branch->id,
+            'branch_id' => ($branch ?? $this->branch)->id,
             'fulfilment_type' => 'pickup',
             'subtotal' => $total,
             'total' => $total,
@@ -137,5 +143,41 @@ class WeeklyReportTest extends TestCase
         $content = $response->streamedContent();
         $this->assertStringContainsString($inWeek->reference, $content);
         $this->assertStringNotContainsString($outsideWeek->reference, $content);
+    }
+
+    public function test_owner_sees_all_branches_combined_by_default(): void
+    {
+        $owner = User::factory()->create();
+        $this->assignRoleAt($owner, 'owner', $this->branch);
+        $monday = now('Africa/Accra')->startOfWeek();
+
+        $here = $this->makeOrder('delivered', 5000, $monday->clone()->addDay());
+        $there = $this->makeOrder('delivered', 9000, $monday->clone()->addDay(), branch: $this->otherBranch);
+
+        $response = $this->actingAs($owner)->get(route('dashboard.reports.weekly.download', [
+            'week' => $monday->toDateString(),
+        ]));
+
+        $content = $response->streamedContent();
+        $this->assertStringContainsString($here->reference, $content);
+        $this->assertStringContainsString($there->reference, $content);
+    }
+
+    public function test_owner_can_filter_the_weekly_download_to_one_branch(): void
+    {
+        $owner = User::factory()->create();
+        $this->assignRoleAt($owner, 'owner', $this->branch);
+        $monday = now('Africa/Accra')->startOfWeek();
+
+        $here = $this->makeOrder('delivered', 5000, $monday->clone()->addDay());
+        $there = $this->makeOrder('delivered', 9000, $monday->clone()->addDay(), branch: $this->otherBranch);
+
+        $response = $this->actingAs($owner)->get(route('dashboard.reports.weekly.download', [
+            'week' => $monday->toDateString(), 'branch' => $this->otherBranch->id,
+        ]));
+
+        $content = $response->streamedContent();
+        $this->assertStringNotContainsString($here->reference, $content);
+        $this->assertStringContainsString($there->reference, $content);
     }
 }

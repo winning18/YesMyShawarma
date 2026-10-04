@@ -27,6 +27,17 @@
                     <label class="block text-xs font-medium text-gray-500 mb-1" for="to">{{ __('To') }}</label>
                     <input type="date" id="to" name="to" value="{{ $to->toDateString() }}" class="rounded-md border-gray-300 text-sm">
                 </div>
+                @if ($crossBranch)
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1" for="branch">{{ __('Branch') }}</label>
+                        <select id="branch" name="branch" class="rounded-md border-gray-300 text-sm">
+                            <option value="">{{ __('All branches') }}</option>
+                            @foreach ($branchOptions as $branch)
+                                <option value="{{ $branch->id }}" @selected($branchFilterId === $branch->id)>{{ $branch->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                @endif
                 <button type="submit" class="px-4 py-2 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-900">{{ __('Apply') }}</button>
             </form>
         </div>

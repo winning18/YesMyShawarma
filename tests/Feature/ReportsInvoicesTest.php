@@ -18,6 +18,8 @@ class ReportsInvoicesTest extends TestCase
 
     private Branch $branch;
 
+    private Branch $otherBranch;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -27,6 +29,10 @@ class ReportsInvoicesTest extends TestCase
         $this->branch = Branch::create([
             'name' => 'Osu', 'slug' => 'osu', 'phone' => '+233200000001', 'address' => 'A',
             'lat' => 5.5, 'lng' => -0.1, 'opens_at' => '10:00', 'closes_at' => '22:00',
+        ]);
+        $this->otherBranch = Branch::create([
+            'name' => 'East Legon', 'slug' => 'east-legon', 'phone' => '+233200000002', 'address' => 'B',
+            'lat' => 5.6, 'lng' => -0.2, 'opens_at' => '10:00', 'closes_at' => '22:00',
         ]);
     }
 
@@ -44,7 +50,7 @@ class ReportsInvoicesTest extends TestCase
         return $manager;
     }
 
-    private function makeOrder(string $status, int $total, ?Carbon $placedAt = null): Order
+    private function makeOrder(string $status, int $total, ?Carbon $placedAt = null, ?Branch $branch = null): Order
     {
         $customer = Customer::create(['phone' => '+2332'.random_int(10000000, 99999999)]);
 
@@ -52,7 +58,7 @@ class ReportsInvoicesTest extends TestCase
             'reference' => 'ORD-'.uniqid(),
             'track_token' => bin2hex(random_bytes(16)),
             'customer_id' => $customer->id,
-            'branch_id' => $this->branch->id,
+            'branch_id' => ($branch ?? $this->branch)->id,
             'fulfilment_type' => 'pickup',
             'subtotal' => $total,
             'total' => $total,
@@ -246,10 +252,7 @@ class ReportsInvoicesTest extends TestCase
     public function test_report_is_scoped_to_the_current_branch(): void
     {
         $manager = $this->makeManager();
-        $otherBranch = Branch::create([
-            'name' => 'East Legon', 'slug' => 'east-legon', 'phone' => '+233200000002', 'address' => 'B',
-            'lat' => 5.6, 'lng' => -0.2, 'opens_at' => '10:00', 'closes_at' => '22:00',
-        ]);
+        $otherBranch = $this->otherBranch;
         $monday = now('Africa/Accra')->startOfWeek();
 
         $this->makeOrder('delivered', 5000, $monday->clone()->addDay());
@@ -268,5 +271,71 @@ class ReportsInvoicesTest extends TestCase
         $response = $this->actingAs($manager)->get(route('dashboard.reports.invoices.index'));
 
         $this->assertSame(5000, $response->viewData('summary')['total']);
+    }
+
+    public function test_owner_sees_all_branches_combined_by_default(): void
+    {
+        $owner = User::factory()->create();
+        $this->assignRoleAt($owner, 'owner', $this->branch);
+
+        $this->makeOrder('delivered', 5000);
+        $this->makeOrder('delivered', 9000, branch: $this->otherBranch);
+
+        $response = $this->actingAs($owner)->get(route('dashboard.reports.invoices.index'));
+
+        $this->assertSame(14000, $response->viewData('summary')['total']);
+    }
+
+    public function test_owner_can_filter_invoices_to_one_specific_branch(): void
+    {
+        $owner = User::factory()->create();
+        $this->assignRoleAt($owner, 'owner', $this->branch);
+
+        $this->makeOrder('delivered', 5000);
+        $this->makeOrder('delivered', 9000, branch: $this->otherBranch);
+
+        $response = $this->actingAs($owner)
+            ->get(route('dashboard.reports.invoices.index', ['branch' => $this->otherBranch->id]));
+
+        $this->assertSame(9000, $response->viewData('summary')['total']);
+    }
+
+    public function test_download_respects_the_branch_filter(): void
+    {
+        $owner = User::factory()->create();
+        $this->assignRoleAt($owner, 'owner', $this->branch);
+
+        $this->makeOrder('delivered', 5000);
+        $this->makeOrder('delivered', 9000, branch: $this->otherBranch);
+
+        $response = $this->actingAs($owner)->get(route('dashboard.reports.invoices.download', [
+            'format' => 'csv', 'branch' => $this->otherBranch->id,
+        ]));
+
+        $response->assertOk();
+        $content = $response->streamedContent();
+        $this->assertStringContainsString('90.00', $content);
+        $this->assertStringNotContainsString('50.00', $content);
+    }
+
+    public function test_a_never_placed_order_does_not_crash_the_weekly_history(): void
+    {
+        // An order stuck at pending_payment never gets placed_at stamped
+        // — weeklyHistory() groups all-time data with no date range of its
+        // own to naturally exclude it, so this must be filtered out
+        // explicitly rather than crashing on a null placed_at.
+        $manager = $this->makeManager();
+        $this->makeOrder('delivered', 5000);
+
+        $customer = Customer::create(['phone' => '+233209999998']);
+        Order::create([
+            'reference' => 'ORD-'.uniqid(), 'track_token' => bin2hex(random_bytes(16)),
+            'customer_id' => $customer->id, 'branch_id' => $this->branch->id,
+            'fulfilment_type' => 'pickup', 'subtotal' => 3000, 'total' => 3000,
+            'payment_method' => 'cash', 'payment_status' => 'pending', 'channel' => 'web',
+            'status' => 'pending_payment',
+        ]);
+
+        $this->actingAs($manager)->get(route('dashboard.reports.invoices.index'))->assertOk();
     }
 }

@@ -362,4 +362,80 @@ class ReportsTest extends TestCase
         // same regardless of channel.
         $this->assertSame(4000, $financial['revenue_by_channel']['pos']);
     }
+
+    public function test_owner_sees_all_branches_combined_by_default(): void
+    {
+        $owner = User::factory()->create();
+        $this->assignRoleAt($owner, 'owner', $this->branch);
+
+        $this->makeOrder($this->branch, 'delivered', 5000);
+        $this->makeOrder($this->otherBranch, 'delivered', 9000);
+
+        $response = $this->actingAs($owner)->get(route('dashboard.reports.index'));
+
+        $this->assertSame(2, $response->viewData('operational')['total_orders']);
+        $this->assertSame(14000, $response->viewData('financial')['revenue_total']);
+    }
+
+    public function test_owner_sees_all_branches_even_after_narrowing_via_the_branch_switcher(): void
+    {
+        // The actual complaint: once an owner picks one branch via the
+        // global switcher, Detailed reports used to stay silently pinned
+        // to it with no way back short of switching again. It must default
+        // to "overall" regardless of whatever's ambient in session.
+        $owner = User::factory()->create();
+        $this->assignRoleAt($owner, 'owner', $this->branch);
+
+        $this->makeOrder($this->branch, 'delivered', 5000);
+        $this->makeOrder($this->otherBranch, 'delivered', 9000);
+
+        $response = $this->actingAs($owner)
+            ->withSession(['current_branch_id' => $this->branch->id])
+            ->get(route('dashboard.reports.index'));
+
+        $this->assertSame(2, $response->viewData('operational')['total_orders']);
+        $this->assertSame(14000, $response->viewData('financial')['revenue_total']);
+    }
+
+    public function test_owner_can_filter_to_one_specific_branch_via_the_page_itself(): void
+    {
+        $owner = User::factory()->create();
+        $this->assignRoleAt($owner, 'owner', $this->branch);
+
+        $this->makeOrder($this->branch, 'delivered', 5000);
+        $this->makeOrder($this->otherBranch, 'delivered', 9000);
+
+        $response = $this->actingAs($owner)
+            ->get(route('dashboard.reports.index', ['branch' => $this->otherBranch->id]));
+
+        $this->assertSame(1, $response->viewData('operational')['total_orders']);
+        $this->assertSame(9000, $response->viewData('financial')['revenue_total']);
+    }
+
+    public function test_general_manager_cannot_filter_to_a_branch_outside_their_oversight(): void
+    {
+        $generalManager = User::factory()->create();
+        $this->assignRoleAt($generalManager, 'general_manager', $this->branch);
+
+        $this->makeOrder($this->branch, 'delivered', 5000);
+        $this->makeOrder($this->otherBranch, 'delivered', 9000);
+
+        $response = $this->actingAs($generalManager)
+            ->get(route('dashboard.reports.index', ['branch' => $this->otherBranch->id]));
+
+        // Tampered input dropped, not honoured — falls back to their own
+        // oversight set (just $this->branch here), never the other branch.
+        $this->assertSame(1, $response->viewData('operational')['total_orders']);
+        $this->assertSame(5000, $response->viewData('financial')['revenue_total']);
+    }
+
+    public function test_manager_never_sees_a_branch_filter_control(): void
+    {
+        $manager = User::factory()->create();
+        $this->assignRoleAt($manager, 'manager', $this->branch);
+
+        $response = $this->actingAs($manager)->get(route('dashboard.reports.index'));
+
+        $response->assertDontSee(__('All branches'));
+    }
 }
