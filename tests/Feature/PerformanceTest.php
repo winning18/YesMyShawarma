@@ -296,6 +296,37 @@ class PerformanceTest extends TestCase
         $this->assertSame(1, $osuRow['escalated']);
     }
 
+    public function test_by_branch_table_links_into_that_branchs_own_sales_report(): void
+    {
+        // Performance's KPI cards stay a cross-branch rollup — this link is
+        // the drilldown into the same per-shift Sales report staff use,
+        // rather than a second "Sales" implementation scoped to a branch.
+        $owner = $this->makeOwner();
+
+        $response = $this->actingAs($owner)->get(route('dashboard.performance', ['tab' => 'operations', 'range' => 'today']));
+
+        $response->assertSee(route('dashboard.reports.today.index', ['branch' => $this->eastLegon->id]), false);
+    }
+
+    public function test_sales_tab_offers_a_branch_selector_for_owner_linking_into_the_sales_report(): void
+    {
+        $owner = $this->makeOwner();
+
+        $response = $this->actingAs($owner)->get(route('dashboard.performance', ['tab' => 'sales']));
+
+        $response->assertSee(route('dashboard.reports.today.index', ['branch' => $this->eastLegon->id]), false);
+    }
+
+    public function test_sales_tab_branch_selector_is_absent_for_a_plain_manager(): void
+    {
+        $manager = User::factory()->create();
+        $this->assignRoleAt($manager, 'manager', $this->osu);
+
+        $response = $this->actingAs($manager)->get(route('dashboard.performance', ['tab' => 'sales']));
+
+        $response->assertDontSee(__("View a branch's Sales report…"));
+    }
+
     public function test_operations_tab_shows_avg_times_per_branch(): void
     {
         // "today" is computed in Africa/Accra (PerformanceController —

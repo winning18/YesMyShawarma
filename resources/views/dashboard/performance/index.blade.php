@@ -41,6 +41,30 @@
             @endif
         </form>
 
+        @if ($tab === 'sales' && $crossBranch)
+            {{--
+                The KPI cards/chart/item-table above stay the cross-branch
+                rollup (PerformanceReportService) — this instead drills
+                straight into one branch's own Sales report, the same
+                per-shift page staff use, rather than a second "Sales"
+                implementation scoped to a branch. Plain <select>, not tied
+                to the filter form above: picking a branch here navigates
+                away entirely rather than resubmitting this page's range.
+            --}}
+            <div>
+                <label for="sales-branch" class="sr-only">{{ __("View a branch's Sales report") }}</label>
+                <select
+                    id="sales-branch" class="rounded-md border-gray-300 text-sm"
+                    onchange="if (this.value) window.location.href = this.value"
+                >
+                    <option value="">{{ __("View a branch's Sales report…") }}</option>
+                    @foreach ($branchOptions as $branch)
+                        <option value="{{ route('dashboard.reports.today.index', ['branch' => $branch->id]) }}">{{ $branch->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+        @endif
+
         @if ($tab === 'sales')
             @include('dashboard.performance.partials.sales')
         @elseif ($tab === 'traffic')

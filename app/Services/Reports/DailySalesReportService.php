@@ -5,6 +5,7 @@ namespace App\Services\Reports;
 use App\Models\MenuItemComponent;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Scopes\BranchScope;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -50,7 +51,7 @@ class DailySalesReportService
      *   by_payment_method: Collection<string, int>,
      * }
      */
-    public function summary(Carbon $dayStart, Carbon $dayEnd, string $channel, ?string $paymentMethod = null): array
+    public function summary(Carbon $dayStart, Carbon $dayEnd, string $channel, ?string $paymentMethod = null, ?int $branchId = null): array
     {
         $orders = Order::with([
             'items.menuItem' => fn ($query) => $query->withTrashed(),
@@ -59,6 +60,13 @@ class DailySalesReportService
             'items.menuItem.components.componentOption',
             'items.options',
         ])
+            // $branchId is an explicit override — an owner/general_manager
+            // viewing a branch other than their ambient session one (same
+            // reasoning as OrderReportService's own $branchId param). Null
+            // (the normal staff/manager case) leaves BranchScope's own
+            // ambient-session filtering in place, unchanged from before
+            // this existed.
+            ->when($branchId, fn ($query, $id) => $query->withoutGlobalScope(BranchScope::class)->where('branch_id', $id))
             ->whereBetween('placed_at', [$dayStart->clone()->utc(), $dayEnd->clone()->utc()])
             ->where('channel', $channel)
             ->whereNotIn('status', Order::NON_REVENUE_STATUSES)
@@ -99,7 +107,7 @@ class DailySalesReportService
 
         $modifierLines = collect($modifierBucket)->sortByDesc('total')->values();
 
-        $financial = $this->reports->financialSummary($dayStart->clone()->utc(), $dayEnd->clone()->utc(), channel: $channel, paymentMethod: $paymentMethod);
+        $financial = $this->reports->financialSummary($dayStart->clone()->utc(), $dayEnd->clone()->utc(), branchId: $branchId, channel: $channel, paymentMethod: $paymentMethod);
 
         return [
             'categories' => $categories,

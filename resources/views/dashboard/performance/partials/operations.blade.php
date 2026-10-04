@@ -46,6 +46,7 @@
                         <th class="px-4 py-2 text-right">{{ __('Avg. prep time') }}</th>
                         <th class="px-4 py-2 text-right">{{ __('Avg. delivery time') }}</th>
                         <th class="px-4 py-2 text-right">{{ __('Escalated') }}</th>
+                        <th class="px-4 py-2"></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
@@ -60,9 +61,12 @@
                             <td class="px-4 py-2 text-right text-gray-700">{{ $row['avg_prep_time_minutes'] !== null ? $row['avg_prep_time_minutes'].' '.__('min') : 'N/A' }}</td>
                             <td class="px-4 py-2 text-right text-gray-700">{{ $row['avg_delivery_time_minutes'] !== null ? $row['avg_delivery_time_minutes'].' '.__('min') : 'N/A' }}</td>
                             <td class="px-4 py-2 text-right {{ $row['escalated'] > 0 ? 'text-brand-red font-semibold' : 'text-gray-500' }}">{{ $row['escalated'] }}</td>
+                            <td class="px-4 py-2 text-right">
+                                <a href="{{ route('dashboard.reports.today.index', ['branch' => $row['branch']->id]) }}" class="text-indigo-600 hover:underline whitespace-nowrap">{{ __('Sales report') }}</a>
+                            </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="px-4 py-6 text-center text-gray-500">{{ __('No branches yet.') }}</td></tr>
+                        <tr><td colspan="8" class="px-4 py-6 text-center text-gray-500">{{ __('No branches yet.') }}</td></tr>
                     @endforelse
                 </tbody>
             </table>

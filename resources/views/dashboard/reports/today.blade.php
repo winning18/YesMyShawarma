@@ -4,6 +4,26 @@
     </x-slot>
 
     <div class="max-w-5xl mx-auto py-8 px-4 space-y-6">
+        @php
+            // Carried into every link on this page so an owner/
+            // general_manager drilling into one branch's report from
+            // Performance stays locked to it while navigating shifts,
+            // dates and channels — never silently drops back to their own
+            // ambient session branch mid-browse.
+            $branchParam = $viewingBranch ? ['branch' => $viewingBranch->id] : [];
+        @endphp
+
+        @if ($viewingBranch)
+            <div class="flex items-center justify-between flex-wrap gap-3 bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-3">
+                <p class="text-sm text-indigo-800">
+                    {{ __('Viewing') }}: <span class="font-semibold">{{ $viewingBranch->name }}</span>
+                </p>
+                <a href="{{ route('dashboard.performance', ['tab' => 'sales']) }}" class="text-sm font-semibold text-indigo-800 underline shrink-0">
+                    {{ __('Back to Performance') }}
+                </a>
+            </div>
+        @endif
+
         @if ($isCalendarMode)
             {{--
                 The explicit secondary lens — "what did this branch sell on
@@ -19,6 +39,9 @@
                 <div class="flex items-center justify-between flex-wrap gap-3">
                     <form method="GET" action="{{ route('dashboard.reports.today.index') }}" class="flex flex-wrap items-end gap-3">
                         <input type="hidden" name="channel" value="{{ $channel }}">
+                        @if ($viewingBranch)
+                            <input type="hidden" name="branch" value="{{ $viewingBranch->id }}">
+                        @endif
                         <div>
                             <label class="block text-xs font-medium text-gray-500 mb-1" for="preset">{{ __('Date') }}</label>
                             <select id="preset" x-model="preset" class="rounded-md border-gray-300 text-sm" @change="if (preset !== 'custom') $refs.dateField.value = ''">
@@ -45,7 +68,7 @@
                         <button type="submit" class="px-4 py-2 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-900">{{ __('Apply') }}</button>
                     </form>
 
-                    <a href="{{ route('dashboard.reports.today.index', ['channel' => $channel]) }}" class="text-sm font-semibold text-indigo-600 hover:underline shrink-0">
+                    <a href="{{ route('dashboard.reports.today.index', [...$branchParam, 'channel' => $channel]) }}" class="text-sm font-semibold text-indigo-600 hover:underline shrink-0">
                         {{ __('Back to current shift') }}
                     </a>
                 </div>
@@ -53,15 +76,15 @@
 
             <div class="flex items-center justify-end gap-2">
                 <a
-                    href="{{ route('dashboard.reports.today.index', ['date' => $today->toDateString(), 'channel' => 'pos']) }}"
+                    href="{{ route('dashboard.reports.today.index', [...$branchParam, 'date' => $today->toDateString(), 'channel' => 'pos']) }}"
                     class="px-4 py-2 text-sm font-semibold rounded-full {{ $channel === 'pos' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}"
                 >{{ __('POS') }}</a>
                 <a
-                    href="{{ route('dashboard.reports.today.index', ['date' => $today->toDateString(), 'channel' => 'web']) }}"
+                    href="{{ route('dashboard.reports.today.index', [...$branchParam, 'date' => $today->toDateString(), 'channel' => 'web']) }}"
                     class="px-4 py-2 text-sm font-semibold rounded-full {{ $channel === 'web' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}"
                 >{{ __('Web') }}</a>
                 <a
-                    href="{{ route('dashboard.reports.today.index', ['date' => $today->toDateString(), 'channel' => 'bolt_food']) }}"
+                    href="{{ route('dashboard.reports.today.index', [...$branchParam, 'date' => $today->toDateString(), 'channel' => 'bolt_food']) }}"
                     class="px-4 py-2 text-sm font-semibold rounded-full {{ $channel === 'bolt_food' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}"
                 >{{ __('Bolt Food') }}</a>
             </div>
@@ -78,7 +101,7 @@
                 <div class="flex items-center justify-between flex-wrap gap-3 bg-white shadow rounded-lg px-4 py-3">
                     <div class="flex items-center gap-2 min-w-0">
                         <a
-                            href="{{ $previousShift ? route('dashboard.reports.today.index', ['shift' => $previousShift->id, 'channel' => $channel]) : '#' }}"
+                            href="{{ $previousShift ? route('dashboard.reports.today.index', [...$branchParam, 'shift' => $previousShift->id, 'channel' => $channel]) : '#' }}"
                             class="px-2.5 py-1.5 rounded-md shrink-0 {{ $previousShift ? 'text-gray-500 hover:text-gray-800 hover:bg-gray-100' : 'text-gray-300 cursor-not-allowed' }}"
                             aria-label="{{ __('Previous shift') }}" @if (! $previousShift) aria-disabled="true" @endif
                         >&larr;</a>
@@ -91,13 +114,13 @@
                         </div>
 
                         <a
-                            href="{{ $nextShift ? route('dashboard.reports.today.index', ['shift' => $nextShift->id, 'channel' => $channel]) : '#' }}"
+                            href="{{ $nextShift ? route('dashboard.reports.today.index', [...$branchParam, 'shift' => $nextShift->id, 'channel' => $channel]) : '#' }}"
                             class="px-2.5 py-1.5 rounded-md shrink-0 {{ $nextShift ? 'text-gray-500 hover:text-gray-800 hover:bg-gray-100' : 'text-gray-300 cursor-not-allowed' }}"
                             aria-label="{{ __('Next shift') }}" @if (! $nextShift) aria-disabled="true" @endif
                         >&rarr;</a>
                     </div>
 
-                    <a href="{{ route('dashboard.reports.today.index', ['date' => $today->toDateString(), 'channel' => $channel]) }}" class="text-sm font-semibold text-indigo-600 hover:underline shrink-0">
+                    <a href="{{ route('dashboard.reports.today.index', [...$branchParam, 'date' => $today->toDateString(), 'channel' => $channel]) }}" class="text-sm font-semibold text-indigo-600 hover:underline shrink-0">
                         {{ __('View by calendar date') }}
                     </a>
                 </div>
@@ -108,7 +131,7 @@
             @endif
 
             @php
-                $shiftParams = $shift ? ['shift' => $shift->id] : ['date' => $today->toDateString()];
+                $shiftParams = [...$branchParam, ...($shift ? ['shift' => $shift->id] : ['date' => $today->toDateString()])];
             @endphp
             <div class="flex items-center justify-end gap-2">
                 <a
@@ -239,7 +262,7 @@
                                             ShiftService::before()/after()).
                                         --}}
                                         <a
-                                            href="{{ route('dashboard.reports.today.index', ['shift' => $row->id, 'channel' => $channel]) }}"
+                                            href="{{ route('dashboard.reports.today.index', [...$branchParam, 'shift' => $row->id, 'channel' => $channel]) }}"
                                             class="text-indigo-600 hover:underline whitespace-nowrap"
                                         >{{ __('View full report') }}</a>
                                     </td>

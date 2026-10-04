@@ -196,6 +196,62 @@ class TodayReportTest extends TestCase
         $this->assertSame($current->id, $previousResponse->viewData('nextShift')->id);
     }
 
+    public function test_owner_can_drill_into_a_specific_branchs_sales_report_via_the_branch_param(): void
+    {
+        $owner = User::factory()->create();
+        $this->assignRoleAt($owner, 'owner', $this->branch);
+
+        $otherBranch = Branch::create([
+            'name' => 'Labone', 'slug' => 'labone', 'phone' => '+233200000004', 'address' => 'D',
+            'lat' => 5.6, 'lng' => -0.2, 'opens_at' => '10:00', 'closes_at' => '22:00',
+        ]);
+        $otherStaff = User::factory()->create();
+        $this->assignRoleAt($otherStaff, 'staff', $otherBranch);
+        $otherShift = Shift::create([
+            'user_id' => $otherStaff->id, 'branch_id' => $otherBranch->id,
+            'started_at' => now()->subHour(), 'ended_at' => null,
+        ]);
+
+        $response = $this->actingAs($owner)->get(route('dashboard.reports.today.index', ['branch' => $otherBranch->id]));
+
+        $response->assertOk();
+        $this->assertSame($otherShift->id, $response->viewData('shift')->id);
+        $this->assertSame($otherBranch->id, $response->viewData('viewingBranch')->id);
+        $response->assertSee('Labone');
+    }
+
+    public function test_a_manager_submitting_a_branch_param_is_ignored_since_they_only_have_their_own(): void
+    {
+        $manager = User::factory()->create();
+        $this->assignRoleAt($manager, 'manager', $this->branch);
+
+        $otherBranch = Branch::create([
+            'name' => 'Labone', 'slug' => 'labone', 'phone' => '+233200000005', 'address' => 'E',
+            'lat' => 5.6, 'lng' => -0.2, 'opens_at' => '10:00', 'closes_at' => '22:00',
+        ]);
+
+        $response = $this->actingAs($manager)->get(route('dashboard.reports.today.index', ['branch' => $otherBranch->id]));
+
+        $response->assertOk();
+        $this->assertNull($response->viewData('viewingBranch'));
+    }
+
+    public function test_a_general_manager_cannot_drill_into_a_branch_outside_their_own_oversight(): void
+    {
+        $generalManager = User::factory()->create();
+        $this->assignRoleAt($generalManager, 'general_manager', $this->branch);
+
+        $otherBranch = Branch::create([
+            'name' => 'Labone', 'slug' => 'labone', 'phone' => '+233200000006', 'address' => 'F',
+            'lat' => 5.6, 'lng' => -0.2, 'opens_at' => '10:00', 'closes_at' => '22:00',
+        ]);
+
+        $response = $this->actingAs($generalManager)->get(route('dashboard.reports.today.index', ['branch' => $otherBranch->id]));
+
+        $response->assertOk();
+        $this->assertNull($response->viewData('viewingBranch'));
+    }
+
     public function test_a_shift_id_belonging_to_another_branch_is_silently_ignored(): void
     {
         $staff = $this->makeStaff();

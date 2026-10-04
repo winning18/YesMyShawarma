@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
 use App\Models\Shift;
 use App\Services\Branches\BranchContext;
 use App\Services\Reports\DailySalesReportService;
@@ -41,6 +42,11 @@ class TodayReportController extends Controller
     {
         Gate::authorize('reports.view_operational');
 
+        $user = $request->user();
+        $isOwner = $context->hasRoleAtAnyBranch($user, 'owner');
+        $isGeneralManager = ! $isOwner && $context->hasRoleAtAnyBranch($user, 'general_manager');
+        $crossBranch = $isOwner || $isGeneralManager;
+
         $validated = $request->validate([
             // 'bolt_food' isn't a real `orders.channel` value — Bolt Food
             // orders are always channel 'pos' with payment_method
@@ -49,13 +55,27 @@ class TodayReportController extends Controller
             'channel' => ['nullable', 'in:web,pos,bolt_food'],
             'date' => ['nullable', 'date'],
             'shift' => ['nullable', 'integer'],
+            'branch' => ['nullable', 'integer', 'exists:branches,id'],
         ]);
 
         $selected = $validated['channel'] ?? 'pos';
         $channel = $selected === 'bolt_food' ? 'pos' : $selected;
         $paymentMethod = $selected === 'bolt_food' ? 'bolt_food' : null;
 
-        $branchId = $context->id();
+        // Same "tampered input dropped, never trusted" treatment
+        // PerformanceController gives this — a plain manager/staff viewing
+        // another branch is meaningless (they're already pinned to their
+        // own), and a general_manager is further limited to branches they
+        // actually oversee. Takes precedence over the ambient session
+        // branch when present and valid, which is what lets an owner/GM
+        // drill into one specific branch's real Sales report from
+        // Performance without switching their session branch.
+        $requestedBranchId = isset($validated['branch']) ? (int) $validated['branch'] : null;
+        if (! $crossBranch || ($isGeneralManager && ! in_array($requestedBranchId, $context->branchIdsForRole($user, 'general_manager')->all(), true))) {
+            $requestedBranchId = null;
+        }
+        $branchId = $requestedBranchId ?? $context->id();
+
         $isCalendarMode = isset($validated['date']);
 
         [$rangeStart, $rangeEnd, $date, $shift] = $isCalendarMode
@@ -71,7 +91,8 @@ class TodayReportController extends Controller
             'shift' => $shift,
             'previousShift' => $shift ? $shifts->before($shift) : null,
             'nextShift' => $shift ? $shifts->after($shift) : null,
-            'summary' => $sales->summary($rangeStart, $rangeEnd, $channel, $paymentMethod),
+            'viewingBranch' => $requestedBranchId ? Branch::find($requestedBranchId) : null,
+            'summary' => $sales->summary($rangeStart, $rangeEnd, $channel, $paymentMethod, $requestedBranchId),
             // Shift model carries no BranchScope (ShiftService::
             // activeForBranch() takes an explicit branch id rather than
             // relying on it), so this filters explicitly rather than
