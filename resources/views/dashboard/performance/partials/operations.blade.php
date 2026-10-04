@@ -97,7 +97,7 @@
             <tbody class="divide-y divide-gray-100">
                 @forelse ($operational['orders_by_channel'] as $channel => $count)
                     <tr>
-                        <td class="px-4 py-2 text-gray-800 uppercase">{{ $channel }}</td>
+                        <td class="px-4 py-2 text-gray-800 uppercase">{{ $channel === 'bolt_food' ? __('Bolt Food') : $channel }}</td>
                         <td class="px-4 py-2 text-right text-gray-500">{{ $count }}</td>
                     </tr>
                 @empty

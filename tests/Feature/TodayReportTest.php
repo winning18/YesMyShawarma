@@ -306,6 +306,101 @@ class TodayReportTest extends TestCase
         $this->assertSame(6500, $summary['by_payment_method']['momo']);
     }
 
+    public function test_a_past_date_can_be_viewed_via_the_date_param(): void
+    {
+        $staff = $this->makeStaff();
+        $yesterday = now('Africa/Accra')->subDay();
+        $order = $this->makeOrder(placedAt: $yesterday);
+        $this->addItem($order, $this->chickenShawarma, 1);
+
+        // Viewing today (the default) must not show yesterday's order —
+        // nothing "disappeared", it's just not in today's window.
+        $todayResponse = $this->actingAs($staff)->get(route('dashboard.reports.today.index', ['channel' => 'pos']));
+        $this->assertSame(0, $todayResponse->viewData('summary')['orders_count']);
+
+        // The exact same order, searched for on the day it actually
+        // happened, is fully there — categories, modifiers and all.
+        $pastResponse = $this->actingAs($staff)->get(route('dashboard.reports.today.index', [
+            'channel' => 'pos', 'date' => $yesterday->toDateString(),
+        ]));
+        $summary = $pastResponse->viewData('summary');
+        $this->assertSame(1, $summary['orders_count']);
+        $this->assertNotNull($summary['categories']->firstWhere('category', 'Shawarma'));
+        $this->assertFalse($pastResponse->viewData('isCustomRange'));
+    }
+
+    public function test_bolt_food_channel_shows_only_bolt_food_orders(): void
+    {
+        $staff = $this->makeStaff();
+        $realPosOrder = $this->makeOrder(paymentMethod: 'cash');
+        $this->addItem($realPosOrder, $this->chickenShawarma, 1);
+        $boltFoodOrder = $this->makeOrder(paymentMethod: 'bolt_food');
+        $this->addItem($boltFoodOrder, $this->beefShawarma, 1);
+
+        // The plain "POS" view still excludes Bolt Food entirely (it's not
+        // this till's own money) — unchanged from before this existed.
+        $posResponse = $this->actingAs($staff)->get(route('dashboard.reports.today.index', ['channel' => 'pos']));
+        $this->assertSame(1, $posResponse->viewData('summary')['orders_count']);
+        $posResponse->assertSee('Chicken Shawarma');
+        $posResponse->assertDontSee('Beef Shawarma');
+
+        // Selecting "Bolt Food" explicitly is the one place it's visible,
+        // on its own, separate from real in-house POS sales.
+        $boltResponse = $this->actingAs($staff)->get(route('dashboard.reports.today.index', ['channel' => 'bolt_food']));
+        $boltSummary = $boltResponse->viewData('summary');
+        $this->assertSame(1, $boltSummary['orders_count']);
+        $boltResponse->assertSee('Beef Shawarma');
+        $boltResponse->assertDontSee('Chicken Shawarma');
+    }
+
+    public function test_a_custom_from_to_range_scopes_to_exactly_that_window_across_midnight(): void
+    {
+        $staff = $this->makeStaff();
+
+        // One order just before midnight, one just after — a shift that
+        // ran 11pm-1am should see both in one report, not have them split
+        // across two different "Today"s.
+        $lateOrder = $this->makeOrder(placedAt: Carbon::parse('2026-10-03 23:30:00', 'Africa/Accra'));
+        $this->addItem($lateOrder, $this->chickenShawarma, 1);
+        $earlyOrder = $this->makeOrder(placedAt: Carbon::parse('2026-10-04 00:45:00', 'Africa/Accra'));
+        $this->addItem($earlyOrder, $this->beefShawarma, 1);
+
+        $response = $this->actingAs($staff)->get(route('dashboard.reports.today.index', [
+            'channel' => 'pos',
+            'from' => '2026-10-03T22:00',
+            'to' => '2026-10-04T02:00',
+        ]));
+
+        $summary = $response->viewData('summary');
+        $this->assertSame(2, $summary['orders_count']);
+        $response->assertSee('Chicken Shawarma');
+        $response->assertSee('Beef Shawarma');
+        $this->assertTrue($response->viewData('isCustomRange'));
+    }
+
+    /**
+     * Regression: the custom-range view (reached via a shift's "View full
+     * report" link) rendered its channel toggle links using the ordinary
+     * date-based route, which dropped back to a whole-day view the moment
+     * you switched to Bolt Food/Web — exactly the midnight-crossing
+     * problem this feature exists to avoid, just one click deeper.
+     */
+    public function test_switching_channel_within_a_custom_range_stays_locked_to_that_exact_window(): void
+    {
+        $staff = $this->makeStaff();
+        $boltOrder = $this->makeOrder(paymentMethod: 'bolt_food', placedAt: Carbon::parse('2026-10-04 00:30:00', 'Africa/Accra'));
+        $this->addItem($boltOrder, $this->beefShawarma, 1);
+
+        $response = $this->actingAs($staff)->get(route('dashboard.reports.today.index', [
+            'channel' => 'pos', 'from' => '2026-10-03T22:00', 'to' => '2026-10-04T02:00',
+        ]));
+
+        $expectedBoltFoodLink = str_replace('&', '&amp;', route('dashboard.reports.today.index', [
+            'from' => '2026-10-03T22:00:00', 'to' => '2026-10-04T02:00:00', 'channel' => 'bolt_food',
+        ]));
+        $response->assertSee($expectedBoltFoodLink, false);
+    }
+
     public function test_plain_item_uses_its_own_snapshot_price_not_live_price(): void
     {
         $staff = $this->makeStaff();

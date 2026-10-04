@@ -65,7 +65,14 @@ class OrderReportService
             'total_orders' => $orders->count(),
             'orders_by_day' => $this->fillDays($from, $to, $this->groupByAccraDay($orders)->map->count()),
             'status_breakdown' => $orders->countBy('status'),
-            'orders_by_channel' => $orders->countBy('channel'),
+            // Bolt Food orders are always channel 'pos' (payments.md), so
+            // a plain countBy('channel') would silently fold them into the
+            // same bucket as orders actually taken at the in-house POS
+            // till — reclassified into their own 'bolt_food' bucket here
+            // so "pos" means only real in-house counter/phone orders.
+            'orders_by_channel' => $orders->countBy(
+                fn (Order $order) => $order->payment_method === 'bolt_food' ? 'bolt_food' : $order->channel
+            ),
             'avg_time_to_accept_minutes' => $this->toMinutes($timeToAccept),
             'avg_prep_time_minutes' => $this->toMinutes($prepTime),
             'avg_delivery_time_minutes' => $this->toMinutes($deliveryTime),

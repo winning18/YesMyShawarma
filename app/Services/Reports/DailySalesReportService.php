@@ -9,10 +9,16 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
- * Backs the staff-facing "Today" report — day-of, single-channel (web or
- * pos), item-level sales by category plus a Modifiers section, and the
- * day's payment-method breakdown. Branch-scoped like the rest of the
- * Reports section (plain Order::query() calls, BranchScope applies).
+ * Backs the staff-facing "Today" report — single-channel (web or pos),
+ * item-level sales by category plus a Modifiers section, and the
+ * payment-method breakdown, for whatever window of time is given it.
+ * Despite the name, $dayStart/$dayEnd were never actually required to be
+ * a whole calendar day — this takes any precise Carbon range, which is
+ * what lets TodayReportController offer a date picker and a "view this
+ * shift's exact window" link (a shift that runs past midnight has no
+ * single calendar day that correctly represents it, but it always has an
+ * exact started_at/ended_at). Branch-scoped like the rest of the Reports
+ * section (plain Order::query() calls, BranchScope applies).
  *
  * The category/modifier split is driven entirely by MenuItemComponent —
  * a combo item (e.g. "Signature (Chicken, Cheese & Sausage)") with
@@ -35,7 +41,7 @@ class DailySalesReportService
      *   by_payment_method: Collection<string, int>,
      * }
      */
-    public function summary(Carbon $dayStart, Carbon $dayEnd, string $channel): array
+    public function summary(Carbon $dayStart, Carbon $dayEnd, string $channel, ?string $paymentMethod = null): array
     {
         $orders = Order::with([
             'items.menuItem' => fn ($query) => $query->withTrashed(),
@@ -47,9 +53,19 @@ class DailySalesReportService
             ->whereBetween('placed_at', [$dayStart->clone()->utc(), $dayEnd->clone()->utc()])
             ->where('channel', $channel)
             ->whereNotIn('status', Order::NON_REVENUE_STATUSES)
-            // Bolt Food orders are always channel 'pos' but never "our"
-            // sales — Bolt collects that money, not this till (orders.md).
-            ->whereNotIn('payment_method', Order::EXCLUDED_FROM_SALES_PAYMENT_METHODS)
+            // $paymentMethod set (e.g. TodayReportController's "Bolt Food"
+            // view) means the caller explicitly wants exactly that method
+            // — including Bolt Food, which is otherwise always excluded
+            // here: Bolt Food orders are always channel 'pos' but never
+            // "our" sales in the general case (Bolt collects that money,
+            // not this till — orders.md), so the default view must keep
+            // excluding it to stay an accurate picture of this till's own
+            // takings.
+            ->when(
+                $paymentMethod,
+                fn ($query) => $query->where('payment_method', $paymentMethod),
+                fn ($query) => $query->whereNotIn('payment_method', Order::EXCLUDED_FROM_SALES_PAYMENT_METHODS),
+            )
             ->get();
 
         /** @var array<string, array<string, array{name: string, qty: int, unit: int, total: int}>> $categoryBuckets */

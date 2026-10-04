@@ -323,6 +323,28 @@ class ReportsTest extends TestCase
         $this->assertSame(1, $operational['orders_by_channel']['pos']);
     }
 
+    /**
+     * Regression: Bolt Food orders are always channel 'pos' (payments.md),
+     * so a plain countBy('channel') folded them into the same bucket as
+     * orders actually taken at the in-house till — indistinguishable from
+     * one another, which is exactly the confusion staff reported.
+     */
+    public function test_orders_by_channel_separates_bolt_food_from_real_pos_orders(): void
+    {
+        $manager = User::factory()->create();
+        $this->assignRoleAt($manager, 'manager', $this->branch);
+
+        $this->makeOrder($this->branch, 'delivered', 4000, ['channel' => 'pos', 'payment_method' => 'cash']);
+        $this->makeOrder($this->branch, 'delivered', 4500, ['channel' => 'pos', 'payment_method' => 'bolt_food']);
+        $this->makeOrder($this->branch, 'delivered', 5000, ['channel' => 'pos', 'payment_method' => 'bolt_food']);
+
+        $response = $this->actingAs($manager)->get(route('dashboard.reports.index'));
+        $operational = $response->viewData('operational');
+
+        $this->assertSame(1, $operational['orders_by_channel']['pos']);
+        $this->assertSame(2, $operational['orders_by_channel']['bolt_food']);
+    }
+
     public function test_revenue_by_channel_breaks_down_web_and_pos(): void
     {
         $manager = User::factory()->create();

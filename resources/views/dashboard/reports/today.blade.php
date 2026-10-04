@@ -4,26 +4,94 @@
     </x-slot>
 
     <div class="max-w-5xl mx-auto py-8 px-4 space-y-6">
-        <div class="flex items-center justify-between flex-wrap gap-3">
-            <p class="text-sm text-gray-500">{{ $today->format('l, d F Y') }}</p>
+        @if ($isCustomRange)
+            {{--
+                Reached via a shift row's "View full report" link
+                (TodayReportController's from/to path) — an exact window,
+                not a whole calendar day, which is the whole point for a
+                shift that ran past midnight. Channel-switching links below
+                carry from/to forward instead of date so this stays locked
+                to the same shift while flipping POS/Web/Bolt Food.
+            --}}
+            <div class="flex items-center justify-between flex-wrap gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+                <p class="text-sm text-amber-800">
+                    {{ __('Showing one shift\'s exact window:') }}
+                    <span class="font-semibold">{{ $rangeStart->format('d M Y, H:i') }} – {{ $rangeEnd->format('d M Y, H:i') }}</span>
+                </p>
+                <a href="{{ route('dashboard.reports.today.index', ['date' => $today->toDateString(), 'channel' => $channel]) }}" class="text-sm font-semibold text-amber-800 underline shrink-0">
+                    {{ __('Back to the whole day') }}
+                </a>
+            </div>
 
-            <div class="flex items-center gap-2">
+            @php
+                $rangeParams = ['from' => $rangeStart->toDateTimeLocalString(), 'to' => $rangeEnd->toDateTimeLocalString()];
+            @endphp
+            <div class="flex items-center justify-end gap-2">
                 <a
-                    href="{{ route('dashboard.reports.today.index', ['channel' => 'pos']) }}"
+                    href="{{ route('dashboard.reports.today.index', [...$rangeParams, 'channel' => 'pos']) }}"
                     class="px-4 py-2 text-sm font-semibold rounded-full {{ $channel === 'pos' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}"
                 >{{ __('POS') }}</a>
                 <a
-                    href="{{ route('dashboard.reports.today.index', ['channel' => 'web']) }}"
+                    href="{{ route('dashboard.reports.today.index', [...$rangeParams, 'channel' => 'web']) }}"
                     class="px-4 py-2 text-sm font-semibold rounded-full {{ $channel === 'web' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}"
                 >{{ __('Web') }}</a>
+                <a
+                    href="{{ route('dashboard.reports.today.index', [...$rangeParams, 'channel' => 'bolt_food']) }}"
+                    class="px-4 py-2 text-sm font-semibold rounded-full {{ $channel === 'bolt_food' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}"
+                >{{ __('Bolt Food') }}</a>
             </div>
-        </div>
+        @else
+            <div class="flex items-center justify-between flex-wrap gap-3">
+                <div class="flex items-center gap-2">
+                    <a
+                        href="{{ route('dashboard.reports.today.index', ['date' => $today->clone()->subDay()->toDateString(), 'channel' => $channel]) }}"
+                        class="px-2.5 py-1.5 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-md" aria-label="{{ __('Previous day') }}"
+                    >&larr;</a>
+
+                    <form method="GET" action="{{ route('dashboard.reports.today.index') }}" class="flex items-center gap-2">
+                        <input type="hidden" name="channel" value="{{ $channel }}">
+                        <input
+                            type="date" name="date" value="{{ $today->toDateString() }}"
+                            max="{{ \Illuminate\Support\Carbon::now('Africa/Accra')->toDateString() }}"
+                            onchange="this.form.submit()"
+                            class="rounded-md border-gray-300 text-sm"
+                        >
+                    </form>
+
+                    @if ($today->toDateString() !== \Illuminate\Support\Carbon::now('Africa/Accra')->toDateString())
+                        <a
+                            href="{{ route('dashboard.reports.today.index', ['date' => $today->clone()->addDay()->toDateString(), 'channel' => $channel]) }}"
+                            class="px-2.5 py-1.5 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-md" aria-label="{{ __('Next day') }}"
+                        >&rarr;</a>
+                    @endif
+
+                    @if ($today->toDateString() !== \Illuminate\Support\Carbon::now('Africa/Accra')->toDateString())
+                        <a href="{{ route('dashboard.reports.today.index', ['channel' => $channel]) }}" class="text-sm text-indigo-600 hover:underline">{{ __('Jump to today') }}</a>
+                    @endif
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <a
+                        href="{{ route('dashboard.reports.today.index', ['date' => $today->toDateString(), 'channel' => 'pos']) }}"
+                        class="px-4 py-2 text-sm font-semibold rounded-full {{ $channel === 'pos' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}"
+                    >{{ __('POS') }}</a>
+                    <a
+                        href="{{ route('dashboard.reports.today.index', ['date' => $today->toDateString(), 'channel' => 'web']) }}"
+                        class="px-4 py-2 text-sm font-semibold rounded-full {{ $channel === 'web' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}"
+                    >{{ __('Web') }}</a>
+                    <a
+                        href="{{ route('dashboard.reports.today.index', ['date' => $today->toDateString(), 'channel' => 'bolt_food']) }}"
+                        class="px-4 py-2 text-sm font-semibold rounded-full {{ $channel === 'bolt_food' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}"
+                    >{{ __('Bolt Food') }}</a>
+                </div>
+            </div>
+        @endif
 
         {{-- Daily financial summary --}}
         <div class="bg-white shadow rounded-lg p-4">
-            <p class="text-xs text-gray-500">{{ __('Total sales') }} ({{ strtoupper($channel) }})</p>
+            <p class="text-xs text-gray-500">{{ __('Total sales') }} ({{ $channel === 'bolt_food' ? __('BOLT FOOD') : strtoupper($channel) }})</p>
             <p class="text-2xl font-bold text-gray-800">GH₵{{ number_format($summary['total_sales'] / 100, 2) }}</p>
-            <p class="text-xs text-gray-500 mt-1">{{ __(':count orders today', ['count' => $summary['orders_count']]) }}</p>
+            <p class="text-xs text-gray-500 mt-1">{{ __(':count orders', ['count' => $summary['orders_count']]) }}</p>
 
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 mt-3 border-t border-gray-100">
                 @forelse ($summary['by_payment_method'] as $method => $amount)
@@ -32,7 +100,7 @@
                         <p class="text-sm font-semibold text-gray-800">GH₵{{ number_format($amount / 100, 2) }}</p>
                     </div>
                 @empty
-                    <p class="text-sm text-gray-500">{{ __('No sales yet today.') }}</p>
+                    <p class="text-sm text-gray-500">{{ __('No sales recorded in this window.') }}</p>
                 @endforelse
             </div>
         </div>
@@ -56,7 +124,7 @@
              worth seeing, not hiding. --}}
         @if ($shifts->isNotEmpty())
             <section class="space-y-2">
-                <h3 class="font-semibold text-gray-800 uppercase text-sm tracking-wide">{{ __('Shifts today') }}</h3>
+                <h3 class="font-semibold text-gray-800 uppercase text-sm tracking-wide">{{ __('Shifts that day') }}</h3>
                 <div class="bg-white shadow rounded-lg overflow-hidden overflow-x-auto">
                     <table class="w-full text-sm">
                         <thead class="bg-gray-50 text-left text-gray-500">
@@ -70,6 +138,7 @@
                                 <th class="px-4 py-2 text-right">{{ __('Extra') }}</th>
                                 <th class="px-4 py-2 text-right">{{ __('Expenses') }}</th>
                                 <th class="px-4 py-2 text-right">{{ __('Net') }}</th>
+                                <th class="px-4 py-2"></th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
@@ -105,6 +174,29 @@
                                     </td>
                                     <td class="px-4 py-2 text-right font-medium {{ $net !== null && $net < 0 ? 'text-red-600' : 'text-gray-800' }}">
                                         {{ $net !== null ? 'GH₵'.number_format($net / 100, 2) : 'N/A' }}
+                                    </td>
+                                    <td class="px-4 py-2 text-right">
+                                        {{--
+                                            The actual fix for a shift that
+                                            crosses midnight — its exact
+                                            started_at/ended_at window, not
+                                            a calendar day, so a shift
+                                            running 6pm-2am shows as one
+                                            complete report instead of being
+                                            split (or half-lost) across two
+                                            different "Today"s. ended_at
+                                            null (still active) falls back
+                                            to now() server-side
+                                            (TodayReportController).
+                                        --}}
+                                        <a
+                                            href="{{ route('dashboard.reports.today.index', [
+                                                'from' => $shift->started_at->timezone('Africa/Accra')->toDateTimeLocalString(),
+                                                'to' => ($shift->ended_at ?? now())->timezone('Africa/Accra')->toDateTimeLocalString(),
+                                                'channel' => $channel,
+                                            ]) }}"
+                                            class="text-indigo-600 hover:underline whitespace-nowrap"
+                                        >{{ __('View full report') }}</a>
                                     </td>
                                 </tr>
                             @endforeach
@@ -145,7 +237,7 @@
                 </div>
             </section>
         @empty
-            <p class="text-sm text-gray-500">{{ __('No sales recorded yet today.') }}</p>
+            <p class="text-sm text-gray-500">{{ __('No sales recorded in this window.') }}</p>
         @endforelse
 
         {{-- Modifiers --}}
