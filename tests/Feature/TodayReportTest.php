@@ -575,6 +575,27 @@ class TodayReportTest extends TestCase
         $response->assertSee(__('+1'));
     }
 
+    public function test_shifts_table_does_not_crash_when_the_opener_account_has_since_been_deleted(): void
+    {
+        // Production bug: a staff account opened a shift, was later removed
+        // (soft-deleted), and the Shifts table's "Opened by" column crashed
+        // the whole page trying to read ->user->name off the now-null
+        // relation — a viewer couldn't even see that branch's sales at all.
+        $staff = $this->makeStaff();
+        $viewer = $this->makeStaff();
+        Shift::create([
+            'user_id' => $staff->id, 'branch_id' => $this->branch->id,
+            'started_at' => Carbon::parse('2026-10-03 10:00:00', 'Africa/Accra'),
+            'ended_at' => Carbon::parse('2026-10-03 18:00:00', 'Africa/Accra'),
+        ]);
+        $staff->delete();
+
+        $response = $this->actingAs($viewer)->get(route('dashboard.reports.today.index', ['date' => '2026-10-03']));
+
+        $response->assertOk();
+        $response->assertSee(__('Unknown'));
+    }
+
     /**
      * Regression: the custom-range view (reached via a shift's "View full
      * report" link) rendered its channel toggle links using the ordinary

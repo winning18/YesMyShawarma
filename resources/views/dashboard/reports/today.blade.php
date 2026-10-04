@@ -218,7 +218,7 @@
                                 @endphp
                                 <tr>
                                     <td class="px-4 py-2 text-gray-800 whitespace-nowrap">{{ $row->started_at->timezone('Africa/Accra')->format('d M Y') }}</td>
-                                    <td class="px-4 py-2 text-gray-800">{{ $row->user->name }}</td>
+                                    <td class="px-4 py-2 text-gray-800">{{ $row->user->name ?? __('Unknown') }}</td>
                                     <td class="px-4 py-2 text-gray-500">{{ $row->endedBy->name ?? '—' }}</td>
                                     <td class="px-4 py-2 text-gray-500">{{ $row->started_at->timezone('Africa/Accra')->format('H:i') }}</td>
                                     <td class="px-4 py-2 text-gray-500">

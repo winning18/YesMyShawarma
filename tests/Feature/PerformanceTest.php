@@ -590,4 +590,24 @@ class PerformanceTest extends TestCase
 
         $response->assertSee(__('Shift ended'));
     }
+
+    public function test_shift_briefing_does_not_crash_when_the_opener_account_has_since_been_deleted(): void
+    {
+        // Production bug: an active shift whose opener had since been
+        // removed (soft-deleted) crashed this strip for every viewer of
+        // Performance, reading ->user->name off the now-null relation.
+        $owner = $this->makeOwner();
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->osu);
+        Shift::create([
+            'user_id' => $staff->id, 'branch_id' => $this->osu->id,
+            'started_at' => now()->subHour(), 'ended_at' => null,
+        ]);
+        $staff->delete();
+
+        $response = $this->actingAs($owner)->get(route('dashboard.performance'));
+
+        $response->assertOk();
+        $response->assertSee(__('Unknown'));
+    }
 }

@@ -36,7 +36,7 @@
                         @if ($row['shift'])
                             <p class="text-xs text-gray-500 mt-1">
                                 @if (! $row['shift']->ended_at)
-                                    {{ __('Since') }} {{ $row['shift']->started_at->timezone('Africa/Accra')->format('H:i') }} — {{ $row['shift']->user->name }}
+                                    {{ __('Since') }} {{ $row['shift']->started_at->timezone('Africa/Accra')->format('H:i') }} — {{ $row['shift']->user->name ?? __('Unknown') }}
                                 @else
                                     {{ __('Ended') }} {{ $row['shift']->ended_at->timezone('Africa/Accra')->format('d M, H:i') }}
                                 @endif
