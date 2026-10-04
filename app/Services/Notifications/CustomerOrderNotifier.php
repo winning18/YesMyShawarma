@@ -47,6 +47,11 @@ class CustomerOrderNotifier
     public function refundProcessed(Refund $refund): void
     {
         $order = $refund->order;
+
+        if (! $order->customer->phone) {
+            return;
+        }
+
         $amount = number_format($refund->amount / 100, 2);
 
         $this->notifier->notify(
@@ -56,8 +61,17 @@ class CustomerOrderNotifier
         );
     }
 
+    /**
+     * A POS walk-in who skipped their phone number has no way to receive
+     * any of this — Notifier::notify() requires a real string, so this is
+     * skipped outright rather than passed a null/empty phone.
+     */
     private function send(Order $order, string $message): void
     {
+        if (! $order->customer->phone) {
+            return;
+        }
+
         $link = route('tracking.show', $order);
 
         $this->notifier->notify(

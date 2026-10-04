@@ -212,15 +212,41 @@ class PosOrderTest extends TestCase
         $response->assertJsonPath('lines.0.quantity', 1);
     }
 
-    public function test_pos_order_requires_a_phone_number(): void
+    public function test_pos_order_can_be_placed_without_a_phone_number(): void
     {
         $staff = $this->makeStaff();
         $this->addToPosCart($staff, 1);
 
-        $this->actingAs($staff)->postJson(route('dashboard.pos.orders.store'), [
+        $response = $this->actingAs($staff)->postJson(route('dashboard.pos.orders.store'), [
             'fulfilment_type' => 'pickup',
             'payment_method' => 'cash',
-        ])->assertJsonValidationErrors('phone');
+        ]);
+
+        $response->assertOk();
+        $order = Order::first();
+        $this->assertNull($order->customer->phone);
+    }
+
+    public function test_two_phone_less_walk_ins_get_separate_customer_records_not_merged(): void
+    {
+        // A shared "no phone" lookup key would silently merge every
+        // phone-less walk-in into one Customer, misattributing their order
+        // history to each other — each one must get its own fresh row.
+        $staff = $this->makeStaff();
+
+        $this->addToPosCart($staff, 1);
+        $this->actingAs($staff)->postJson(route('dashboard.pos.orders.store'), [
+            'fulfilment_type' => 'pickup', 'payment_method' => 'cash',
+        ])->assertOk();
+
+        $this->addToPosCart($staff, 1);
+        $this->actingAs($staff)->postJson(route('dashboard.pos.orders.store'), [
+            'fulfilment_type' => 'pickup', 'payment_method' => 'cash',
+        ])->assertOk();
+
+        $orders = Order::orderBy('id')->get();
+        $this->assertCount(2, $orders);
+        $this->assertNotSame($orders[0]->customer_id, $orders[1]->customer_id);
     }
 
     public function test_pos_order_rejects_an_empty_cart(): void
@@ -321,6 +347,58 @@ class PosOrderTest extends TestCase
         $this->assertDatabaseHas('payments', [
             'order_id' => $order->id, 'provider' => 'bolt_food', 'amount' => $order->total, 'status' => 'paid',
         ]);
+    }
+
+    public function test_bolt_food_order_gets_its_own_reference_prefix_not_the_plain_pos_one(): void
+    {
+        // Bolt Food orders are always channel 'pos' (payments.md), so
+        // without this they'd be indistinguishable from a real in-house
+        // sale on sight — the whole point of a separate prefix.
+        $staff = $this->makeStaff();
+        $this->addToPosCart($staff, 2);
+
+        $this->actingAs($staff)->postJson(route('dashboard.pos.orders.store'), [
+            'phone' => '0241111111',
+            'fulfilment_type' => 'pickup',
+            'payment_method' => 'bolt_food',
+        ])->assertOk();
+
+        $order = Order::first();
+        $this->assertStringStartsWith('YMGS-BOLT-', $order->reference);
+    }
+
+    public function test_bolt_food_order_reference_uses_a_configured_custom_prefix(): void
+    {
+        app(\App\Services\Settings\SettingsService::class)->set(
+            \App\Services\Settings\SettingsService::ORDER_REFERENCE_PREFIX_BOLT_FOOD, 'SHAWARMA-BOLT'
+        );
+
+        $staff = $this->makeStaff();
+        $this->addToPosCart($staff, 2);
+
+        $this->actingAs($staff)->postJson(route('dashboard.pos.orders.store'), [
+            'phone' => '0241111111',
+            'fulfilment_type' => 'pickup',
+            'payment_method' => 'bolt_food',
+        ])->assertOk();
+
+        $order = Order::first();
+        $this->assertStringStartsWith('SHAWARMA-BOLT-', $order->reference);
+    }
+
+    public function test_a_plain_cash_pos_order_still_uses_the_pos_prefix_not_bolt_food(): void
+    {
+        $staff = $this->makeStaff();
+        $this->addToPosCart($staff, 2);
+
+        $this->actingAs($staff)->postJson(route('dashboard.pos.orders.store'), [
+            'phone' => '0241111111',
+            'fulfilment_type' => 'pickup',
+            'payment_method' => 'cash',
+        ])->assertOk();
+
+        $order = Order::first();
+        $this->assertStringStartsWith('YMGS-POS-', $order->reference);
     }
 
     public function test_bolt_food_order_cannot_be_placed_as_delivery(): void

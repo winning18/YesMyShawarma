@@ -147,7 +147,7 @@ class OrderCreationService
             };
 
             $order = new Order([
-                'reference' => $this->generateReference($data->channel),
+                'reference' => $this->generateReference($data->channel, $data->paymentMethod),
                 'track_token' => Str::random(32),
                 'customer_id' => $customer->id,
                 'branch_id' => $branch->id,
@@ -311,11 +311,16 @@ class OrderCreationService
      * still a unique column — regenerating on the rare clash is cheap
      * insurance against a placement failing outright over it.
      */
-    private function generateReference(string $channel): string
+    private function generateReference(string $channel, string $paymentMethod): string
     {
-        $prefix = $channel === 'pos'
-            ? $this->settings->get(SettingsService::ORDER_REFERENCE_PREFIX_POS, 'YMGS-POS')
-            : $this->settings->get(SettingsService::ORDER_REFERENCE_PREFIX_WEB, 'YMGS-WEB');
+        // Bolt Food orders are always channel 'pos' (payments.md) — this
+        // check must come before the plain POS case below, or a Bolt Food
+        // order would be indistinguishable from a real in-house sale.
+        $prefix = match (true) {
+            $paymentMethod === 'bolt_food' => $this->settings->get(SettingsService::ORDER_REFERENCE_PREFIX_BOLT_FOOD, 'YMGS-BOLT'),
+            $channel === 'pos' => $this->settings->get(SettingsService::ORDER_REFERENCE_PREFIX_POS, 'YMGS-POS'),
+            default => $this->settings->get(SettingsService::ORDER_REFERENCE_PREFIX_WEB, 'YMGS-WEB'),
+        };
 
         do {
             $code = collect(range(1, 6))

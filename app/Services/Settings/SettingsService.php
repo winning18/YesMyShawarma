@@ -18,6 +18,14 @@ class SettingsService
     public const ORDER_REFERENCE_PREFIX_WEB = 'order_reference_prefix_web';
 
     /**
+     * Bolt Food orders are POS orders (payment_method === 'bolt_food',
+     * channel always 'pos' — payments.md) that otherwise got the plain POS
+     * prefix, indistinguishable from a real in-house counter/phone order
+     * at a glance. A separate prefix lets staff tell them apart on sight.
+     */
+    public const ORDER_REFERENCE_PREFIX_BOLT_FOOD = 'order_reference_prefix_bolt_food';
+
+    /**
      * Web checkout's Paystack option — see payments.md's "Paystack on/off"
      * section. Off by default (missing row, not just a falsy stored value)
      * so a fresh install/environment starts cash-only until someone

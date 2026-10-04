@@ -85,14 +85,19 @@ Price is always `menu_items.base_price` — no per-branch override.
 ## Customers
 
 ```
-customers           id, phone (unique), name, email, password,
+customers           id, phone (unique, nullable), name, email, password,
                     phone_verified_at, marketing_opt_in
 customer_addresses  id, customer_id, label, ghanapost_code,
                     landmark, lat, lng, is_default
 ```
 
-`phone` is the identity key, normalised to E.164. A guest row is created on first order;
-registration sets `password` on the existing row so history carries over.
+`phone` is the identity key, normalised to E.164, for every path except one: a POS walk-in who
+declines to give it. Web checkout and registration still require it. A guest row is created on
+first order; registration sets `password` on the existing row so history carries over.
+`CustomerService::findOrCreateByPhone()` never looks up or reuses a row by a null phone — each
+phone-less walk-in gets its own fresh, un-findable-again `Customer` row, never merged with
+another's order history. MySQL's unique index already permits multiple NULLs, so this needed no
+index change alongside the nullable column.
 
 Both `ghanapost_code` and free-text `landmark` are required on delivery orders. Riders use both.
 
@@ -400,9 +405,11 @@ exempt from the branch global scope.
 
 Current keys:
 
-- `order_reference_prefix_pos`, `order_reference_prefix_web` — the prefix
-  `OrderCreationService::generateReference()` uses per channel (default `YMGS-POS`/`YMGS-WEB`
-  when unset, so a fresh install needs no seeding). The reference itself is
+- `order_reference_prefix_pos`, `order_reference_prefix_web`, `order_reference_prefix_bolt_food`
+  — the prefix `OrderCreationService::generateReference()` uses (default `YMGS-POS`/`YMGS-WEB`/
+  `YMGS-BOLT` when unset, so a fresh install needs no seeding). Bolt Food orders are always
+  channel `pos` (payments.md) but get their own prefix — checked before the plain POS case, or
+  they'd be indistinguishable from a real in-house sale on sight. The reference itself is
   `{prefix}-{6-character random code}` — letters/digits only, ambiguous characters (0/O, 1/I/L)
   excluded, same alphabet as `UserManagementService`'s temporary passwords, since this is
   another value read off a screen or receipt and typed back in by hand. Changing a prefix only

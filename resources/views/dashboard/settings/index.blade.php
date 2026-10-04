@@ -39,6 +39,17 @@
                 <x-input-error class="mt-2" :messages="$errors->get('order_reference_prefix_web')" />
             </div>
 
+            <div>
+                <x-input-label for="order_reference_prefix_bolt_food" :value="__('Bolt Food orders prefix')" required />
+                <x-text-input
+                    id="order_reference_prefix_bolt_food" name="order_reference_prefix_bolt_food" type="text"
+                    class="mt-1 block w-full uppercase" :value="old('order_reference_prefix_bolt_food', $boltFoodPrefix)" required
+                    pattern="[A-Za-z0-9-]+" maxlength="20"
+                />
+                <p class="text-xs text-gray-400 mt-1">{{ __('For orders taken at the POS with payment method set to Bolt Food, so they\'re distinguishable from real in-house sales at a glance.') }}</p>
+                <x-input-error class="mt-2" :messages="$errors->get('order_reference_prefix_bolt_food')" />
+            </div>
+
             <p class="text-xs text-gray-400">
                 {{ __('Letters, numbers and dashes only. Only applies to new orders. Existing references are never changed.') }}
             </p>

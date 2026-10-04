@@ -7,6 +7,10 @@ use DateTimeInterface;
 final class PlaceOrderData
 {
     /**
+     * @param  ?string  $customerPhone  Required at web checkout; optional at the POS
+     *                                  (CustomerService::findOrCreateByPhone() never
+     *                                  deduplicates a null phone — each walk-in with
+     *                                  none gets its own anonymous Customer row).
      * @param  string  $fulfilmentType  'delivery' | 'pickup'
      * @param  string  $paymentMethod  'paystack' | 'cash' | 'momo'
      * @param  PlaceOrderItemData[]  $items
@@ -27,7 +31,7 @@ final class PlaceOrderData
      *                                     paystack — see payments.md.
      */
     public function __construct(
-        public readonly string $customerPhone,
+        public readonly ?string $customerPhone,
         public readonly ?string $customerName,
         public readonly int $branchId,
         public readonly string $fulfilmentType,

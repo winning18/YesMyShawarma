@@ -226,6 +226,28 @@ class OrderCreationServiceTest extends TestCase
         ));
     }
 
+    public function test_a_phone_less_walk_in_order_never_calls_the_notifier(): void
+    {
+        // A POS walk-in who skipped their phone has no way to receive an
+        // SMS — Notifier::notify() requires a real string, so this must be
+        // skipped outright rather than crash on a null phone.
+        $this->mock(Notifier::class, function ($mock) {
+            $mock->shouldNotReceive('notify');
+        });
+
+        $order = app(OrderCreationService::class)->create(new PlaceOrderData(
+            customerPhone: null,
+            customerName: null,
+            branchId: $this->branch->id,
+            fulfilmentType: 'pickup',
+            paymentMethod: 'cash',
+            items: [$this->baseItem([$this->chiliSauce->id])],
+            channel: 'pos',
+        ));
+
+        $this->assertNull($order->customer->phone);
+    }
+
     public function test_a_paystack_order_does_not_send_a_placed_sms_yet(): void
     {
         // Still pending_payment at creation — the "placed" SMS only fires

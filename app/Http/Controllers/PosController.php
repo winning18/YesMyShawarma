@@ -214,7 +214,7 @@ class PosController extends Controller
         $deliveryAvailable = DeliveryArea::where('is_active', true)->exists();
 
         $rules = [
-            'phone' => ['required', 'string'],
+            'phone' => ['nullable', 'string'],
             'name' => ['nullable', 'string', 'max:255'],
             'fulfilment_type' => [
                 'required', 'in:pickup,delivery',
@@ -273,7 +273,7 @@ class PosController extends Controller
 
         try {
             $order = $orders->create(new PlaceOrderData(
-                customerPhone: $customers->normalizeGhanaPhone($validated['phone']),
+                customerPhone: ! empty($validated['phone']) ? $customers->normalizeGhanaPhone($validated['phone']) : null,
                 customerName: $validated['name'] ?? null,
                 branchId: $branch->id,
                 fulfilmentType: $validated['fulfilment_type'],

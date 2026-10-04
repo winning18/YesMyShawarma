@@ -93,15 +93,20 @@
 
                 <div class="space-y-3 border-t border-gray-100 pt-4">
                     <div>
-                        <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Customer phone') }} <span class="text-red-600">*</span></label>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Customer phone (optional)') }}</label>
                         <input
                             type="tel" inputmode="numeric" autocomplete="off"
                             :value="phone.formatted" @input="phone.onInput($event)" @blur="phone.onBlur()"
                             placeholder="024-123-4567" maxlength="12"
                             class="w-full rounded-md text-sm"
-                            :class="phone.invalid ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'"
+                            :class="phone.raw.length > 0 && phone.invalid ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'"
                         >
-                        <p class="text-xs text-red-600 mt-1" x-show="phone.invalid">{{ __('Enter a 10-digit phone number.') }}</p>
+                        {{--
+                            Optional here, unlike every other phoneField()
+                            use — empty is valid (a walk-in who skips it), a
+                            half-typed number still isn't.
+                        --}}
+                        <p class="text-xs text-red-600 mt-1" x-show="phone.raw.length > 0 && phone.invalid">{{ __('Enter a 10-digit phone number, or leave it blank.') }}</p>
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Customer name (optional)') }}</label>
@@ -472,7 +477,11 @@
                 // front door only, the server-side check stays the actual
                 // authority.
                 validationError() {
-                    if (!this.phone.valid) return '{{ __('Enter a valid 10-digit customer phone number.') }}';
+                    // Optional at the POS (unlike every other use of
+                    // phoneField() — checkout, registration, etc.) — empty
+                    // is fine for a walk-in customer who doesn't want to
+                    // give it, but a half-typed number still isn't.
+                    if (this.phone.raw.length > 0 && !this.phone.valid) return '{{ __('Enter a valid 10-digit customer phone number, or leave it blank.') }}';
 
                     if (this.fulfilmentType === 'delivery') {
                         if (!this.areaId) return '{{ __('Delivery area is required.') }}';

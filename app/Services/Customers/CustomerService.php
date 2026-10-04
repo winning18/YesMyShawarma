@@ -24,9 +24,20 @@ class CustomerService
      *
      * Assumes $phone already arrives normalised to E.164 — that's a
      * validation concern at the HTTP boundary, not this service's job.
+     *
+     * $phone null (POS only — a staff member left it blank for a walk-in)
+     * never looks up or reuses an existing row: a shared "no phone"
+     * lookup key would silently merge every phone-less walk-in into one
+     * Customer, misattributing their order history to each other. Each
+     * one gets its own fresh, un-findable-again row instead — the
+     * expected trade-off of skipping the phone, not a bug.
      */
-    public function findOrCreateByPhone(string $phone, ?string $name = null): Customer
+    public function findOrCreateByPhone(?string $phone, ?string $name = null): Customer
     {
+        if ($phone === null) {
+            return Customer::create(['phone' => null, 'name' => $name]);
+        }
+
         $customer = Customer::firstOrCreate(['phone' => $phone], ['name' => $name]);
 
         if ($name && $customer->name !== $name) {

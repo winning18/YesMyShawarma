@@ -49,7 +49,8 @@ class SettingsTest extends TestCase
         $this->actingAs($owner)->get(route('dashboard.settings.index'))
             ->assertOk()
             ->assertSee('YMGS-POS')
-            ->assertSee('YMGS-WEB');
+            ->assertSee('YMGS-WEB')
+            ->assertSee('YMGS-BOLT');
     }
 
     public function test_owner_can_update_the_order_reference_prefixes(): void
@@ -59,11 +60,13 @@ class SettingsTest extends TestCase
         $this->actingAs($owner)->put(route('dashboard.settings.update'), [
             'order_reference_prefix_pos' => 'shawarma-pos',
             'order_reference_prefix_web' => 'shawarma-web',
+            'order_reference_prefix_bolt_food' => 'shawarma-bolt',
         ])->assertRedirect();
 
         $settings = app(SettingsService::class);
         $this->assertSame('SHAWARMA-POS', $settings->get(SettingsService::ORDER_REFERENCE_PREFIX_POS));
         $this->assertSame('SHAWARMA-WEB', $settings->get(SettingsService::ORDER_REFERENCE_PREFIX_WEB));
+        $this->assertSame('SHAWARMA-BOLT', $settings->get(SettingsService::ORDER_REFERENCE_PREFIX_BOLT_FOOD));
     }
 
     public function test_paystack_is_off_by_default(): void
@@ -81,6 +84,7 @@ class SettingsTest extends TestCase
         $this->actingAs($owner)->put(route('dashboard.settings.update'), [
             'order_reference_prefix_pos' => 'YMGS-POS',
             'order_reference_prefix_web' => 'YMGS-WEB',
+            'order_reference_prefix_bolt_food' => 'YMGS-BOLT',
             'paystack_enabled' => '1',
         ])->assertRedirect();
 
@@ -90,6 +94,7 @@ class SettingsTest extends TestCase
         $this->actingAs($owner)->put(route('dashboard.settings.update'), [
             'order_reference_prefix_pos' => 'YMGS-POS',
             'order_reference_prefix_web' => 'YMGS-WEB',
+            'order_reference_prefix_bolt_food' => 'YMGS-BOLT',
         ])->assertRedirect();
 
         $this->assertFalse($settings->getBool(SettingsService::PAYSTACK_ENABLED));
@@ -102,7 +107,19 @@ class SettingsTest extends TestCase
         $this->actingAs($owner)->put(route('dashboard.settings.update'), [
             'order_reference_prefix_pos' => 'YMGS POS!',
             'order_reference_prefix_web' => 'YMGS-WEB',
+            'order_reference_prefix_bolt_food' => 'YMGS-BOLT',
         ])->assertSessionHasErrors('order_reference_prefix_pos');
+    }
+
+    public function test_bolt_food_prefix_also_rejects_spaces_and_punctuation(): void
+    {
+        $owner = $this->makeOwner();
+
+        $this->actingAs($owner)->put(route('dashboard.settings.update'), [
+            'order_reference_prefix_pos' => 'YMGS-POS',
+            'order_reference_prefix_web' => 'YMGS-WEB',
+            'order_reference_prefix_bolt_food' => 'YMGS BOLT!',
+        ])->assertSessionHasErrors('order_reference_prefix_bolt_food');
     }
 
     public function test_manager_can_view_the_settings_page(): void
