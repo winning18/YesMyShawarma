@@ -2,17 +2,26 @@
     Shared by all four Reports and invoices pages — $active is one of
     'detailed' | 'invoices' | 'weekly' | 'today'. Each tab is a full
     navigation (own route, own query params), not a client-side switch —
-    same server-rendered tab convention as the Performance page.
+    same server-rendered tab convention as the Performance page. $active
+    stays 'today' (matches TodayReportController/the route name) even
+    though the tab itself is labelled "Sales" — purely an internal key,
+    never shown to a user.
 
-    Today sits outside the reports.view_financial guard, same as Detailed
+    Sales sits outside the reports.view_financial guard, same as Detailed
     reports — reaching this partial at all already required
     reports.view_operational (every page including it authorizes that),
-    and Today is deliberately staff-visible, unlike Invoices/Weekly.
+    and Sales is deliberately staff-visible, unlike Invoices/Weekly. It's
+    first because it's the one staff reach for day-to-day use (per-shift
+    sales, not the historical/financial views the other three cover).
 --}}
 <div>
     <h2 class="font-semibold text-xl text-gray-800 leading-tight mb-4">{{ __('Reports and invoices') }}</h2>
 
     <div class="border-b border-gray-200 flex items-center gap-6">
+        <a
+            href="{{ route('dashboard.reports.today.index') }}"
+            class="pb-3 text-sm font-semibold border-b-2 -mb-px {{ $active === 'today' ? 'border-green-600 text-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700' }}"
+        >{{ __('Sales') }}</a>
         <a
             href="{{ route('dashboard.reports.index') }}"
             class="pb-3 text-sm font-semibold border-b-2 -mb-px {{ $active === 'detailed' ? 'border-green-600 text-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700' }}"
@@ -27,9 +36,5 @@
                 class="pb-3 text-sm font-semibold border-b-2 -mb-px {{ $active === 'weekly' ? 'border-green-600 text-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700' }}"
             >{{ __('Weekly report') }}</a>
         @endcan
-        <a
-            href="{{ route('dashboard.reports.today.index') }}"
-            class="pb-3 text-sm font-semibold border-b-2 -mb-px {{ $active === 'today' ? 'border-green-600 text-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700' }}"
-        >{{ __('Today') }}</a>
     </div>
 </div>

@@ -10,6 +10,7 @@ use App\Models\Option;
 use App\Models\OptionGroup;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Shift;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -138,7 +139,7 @@ class TodayReportTest extends TestCase
 
         $this->actingAs($staff)->get(route('dashboard.reports.today.index'))
             ->assertOk()
-            ->assertSee('Today');
+            ->assertSee('Sales');
     }
 
     public function test_yesterdays_orders_are_excluded(): void
@@ -376,6 +377,42 @@ class TodayReportTest extends TestCase
         $response->assertSee('Chicken Shawarma');
         $response->assertSee('Beef Shawarma');
         $this->assertTrue($response->viewData('isCustomRange'));
+    }
+
+    public function test_a_single_shifts_own_report_does_not_show_the_shifts_table_itself(): void
+    {
+        // Reached via a shift row's "View full report" link — showing that
+        // same table again underneath the report it was picked from was
+        // redundant, not useful context (this used to render it anyway).
+        $staff = $this->makeStaff();
+        Shift::create([
+            'user_id' => $staff->id, 'branch_id' => $this->branch->id,
+            'started_at' => Carbon::parse('2026-10-03 23:00:00', 'Africa/Accra'),
+            'ended_at' => Carbon::parse('2026-10-04 01:00:00', 'Africa/Accra'),
+        ]);
+
+        $response = $this->actingAs($staff)->get(route('dashboard.reports.today.index', [
+            'from' => '2026-10-03T23:00', 'to' => '2026-10-04T01:00',
+        ]));
+
+        $this->assertTrue($response->viewData('shifts')->isEmpty());
+        $response->assertDontSee(__('Shifts that day'));
+    }
+
+    public function test_shifts_table_shows_a_date_and_flags_a_shift_that_ended_the_next_day(): void
+    {
+        $staff = $this->makeStaff();
+        Shift::create([
+            'user_id' => $staff->id, 'branch_id' => $this->branch->id,
+            'started_at' => Carbon::parse('2026-10-03 23:00:00', 'Africa/Accra'),
+            'ended_at' => Carbon::parse('2026-10-04 01:00:00', 'Africa/Accra'),
+        ]);
+
+        $response = $this->actingAs($staff)->get(route('dashboard.reports.today.index', ['date' => '2026-10-03']));
+
+        $response->assertOk();
+        $response->assertSee('03 Oct 2026');
+        $response->assertSee(__('+1'));
     }
 
     /**

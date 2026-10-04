@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Branch;
+use App\Models\Shift;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -62,8 +63,29 @@ class DashboardOverviewTest extends TestCase
     {
         $staff = User::factory()->create();
         $this->assignRoleAt($staff, 'staff', $this->branch);
+        Shift::create(['user_id' => $staff->id, 'branch_id' => $this->branch->id, 'started_at' => now(), 'ended_at' => null]);
 
-        $this->actingAs($staff)->get(route('dashboard'))->assertOk();
+        $this->actingAs($staff)->get(route('dashboard'))->assertOk()->assertSee('x-data="orderDashboard(', false);
+    }
+
+    public function test_staff_with_no_active_shift_does_not_get_the_live_board_at_all(): void
+    {
+        // The forced start-shift modal (shared header) used to be the only
+        // thing standing between an off-shift staff member and the live
+        // board — client-side only, so it could be defeated from devtools.
+        // Now the board markup itself is never rendered while off shift.
+        // (The <script> block's orderDashboard() function declaration and
+        // its own comments always render regardless, so assertions below
+        // target the x-data usage and the heading's own tag, not just the
+        // bare words, to avoid false-matching those.)
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+
+        $response = $this->actingAs($staff)->get(route('dashboard'))->assertOk();
+
+        $response->assertSee(__('Start your shift to access the dashboard.'));
+        $response->assertDontSee('x-data="orderDashboard(', false);
+        $response->assertDontSee('>'.__('Needs acknowledgement'), false);
     }
 
     public function test_manager_can_reach_the_live_board_via_the_orders_route(): void

@@ -3,6 +3,24 @@
         @include('dashboard._channel-header', ['title' => __('Orders'), 'active' => 'orders', 'isStaff' => $isStaff, 'forceShiftStart' => $forceShiftStart, 'ordersUrl' => $ordersUrl, 'branchId' => $branchId])
     </x-slot>
 
+    {{--
+        A staff member with no active shift gets the forced start-shift
+        modal from the shared header above, but nothing else — the actual
+        board (order list, accept/reject, rider assignment, etc.) is never
+        rendered to the page at all while they're off shift, not just
+        hidden behind the modal. A client-side-only block could be
+        defeated from devtools (close the modal, the full board and its
+        live data were sitting right there); not rendering it at all
+        closes that gap. Once they start a shift, a normal reload shows
+        the real board — nothing here is reactive to the modal closing.
+    --}}
+    @if ($forceShiftStart)
+        <div class="py-12">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <p class="text-center text-gray-500">{{ __('Start your shift to access the dashboard.') }}</p>
+            </div>
+        </div>
+    @else
     <div
         class="py-12"
         x-data="orderDashboard({{ $branchId ?? 'null' }}, {{ Js::from($canTransfer) }}, {{ Js::from($transferBranches) }}, {{ Js::from($canAdjustFee) }})"
@@ -250,6 +268,7 @@
             </section>
         </div>
     </div>
+    @endif
 
     <script>
         function orderDashboard(branchId, canTransfer, branches, canAdjustFee) {

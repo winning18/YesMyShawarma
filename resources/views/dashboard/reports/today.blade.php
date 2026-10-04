@@ -129,6 +129,7 @@
                     <table class="w-full text-sm">
                         <thead class="bg-gray-50 text-left text-gray-500">
                             <tr>
+                                <th class="px-4 py-2">{{ __('Date') }}</th>
                                 <th class="px-4 py-2">{{ __('Opened by') }}</th>
                                 <th class="px-4 py-2">{{ __('Closed by') }}</th>
                                 <th class="px-4 py-2">{{ __('Started') }}</th>
@@ -154,11 +155,19 @@
                                         : null;
                                 @endphp
                                 <tr>
+                                    <td class="px-4 py-2 text-gray-800 whitespace-nowrap">{{ $shift->started_at->timezone('Africa/Accra')->format('d M Y') }}</td>
                                     <td class="px-4 py-2 text-gray-800">{{ $shift->user->name }}</td>
                                     <td class="px-4 py-2 text-gray-500">{{ $shift->endedBy->name ?? '—' }}</td>
                                     <td class="px-4 py-2 text-gray-500">{{ $shift->started_at->timezone('Africa/Accra')->format('H:i') }}</td>
                                     <td class="px-4 py-2 text-gray-500">
-                                        {{ $shift->ended_at?->timezone('Africa/Accra')->format('H:i') ?? __('Active') }}
+                                        @if ($shift->ended_at)
+                                            {{ $shift->ended_at->timezone('Africa/Accra')->format('H:i') }}
+                                            @if (! $shift->ended_at->timezone('Africa/Accra')->isSameDay($shift->started_at->timezone('Africa/Accra')))
+                                                <span class="text-xs text-amber-600 font-medium" title="{{ __('Ended the next day') }}">{{ __('+1') }}</span>
+                                            @endif
+                                        @else
+                                            {{ __('Active') }}
+                                        @endif
                                     </td>
                                     <td class="px-4 py-2 text-right text-gray-800">
                                         {{ $shift->total_sales !== null ? 'GH₵'.number_format($shift->total_sales / 100, 2) : 'N/A' }}

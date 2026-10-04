@@ -59,11 +59,11 @@ class TodayReportController extends Controller
             // here gets for free — null branch id (owner's cross-branch
             // aggregate view) means show every branch's shifts, mirroring
             // BranchScope's own no-op behaviour rather than silently
-            // returning none. Still scoped to the whole calendar day even
-            // when $isCustomRange — a single shift's own report should
-            // still show it sitting alongside that day's other shifts for
-            // context, not list itself in isolation.
-            'shifts' => Shift::with(['user', 'endedBy', 'expenses'])
+            // returning none. Not queried at all for a single shift's own
+            // report ($isCustomRange) — that page is reached by picking a
+            // shift from this very list, so showing the list again
+            // underneath it was redundant, not useful context.
+            'shifts' => $isCustomRange ? collect() : Shift::with(['user', 'endedBy', 'expenses'])
                 ->when($context->id(), fn ($query, $branchId) => $query->where('branch_id', $branchId))
                 ->whereBetween('started_at', [$date->clone()->startOfDay()->utc(), $date->clone()->endOfDay()->utc()])
                 ->orderByDesc('started_at')
