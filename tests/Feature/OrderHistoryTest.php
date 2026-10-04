@@ -75,6 +75,26 @@ class OrderHistoryTest extends TestCase
         $this->actingAs($staff)->get(route('dashboard.orders.history'))->assertOk();
     }
 
+    /**
+     * Regression: Order History shares _channel-header.blade.php with the
+     * Dashboard/POS, whose shift widget shows a forced, non-dismissable
+     * "Start your shift" modal (no backdrop click, no close button — only
+     * Log out) when forceShiftStart is true. That's the right behaviour
+     * for *processing* orders, but History is read-only — a staff member
+     * whose shift just ended must still be able to browse it, not get
+     * trapped behind a blocking popup with logging out as the only escape.
+     */
+    public function test_staff_with_no_active_shift_can_still_use_order_history_without_a_forced_modal(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+
+        $response = $this->actingAs($staff)->get(route('dashboard.orders.history'));
+
+        $response->assertOk();
+        $response->assertSee('shiftWidget(true, false)', false);
+    }
+
     public function test_a_multi_branch_staff_member_with_no_shift_is_sent_to_pick_a_branch_instead_of_history(): void
     {
         $otherBranch = Branch::create([

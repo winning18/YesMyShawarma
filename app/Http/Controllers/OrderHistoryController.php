@@ -57,7 +57,13 @@ class OrderHistoryController extends Controller
             'statuses' => Order::STATUSES,
             'locations' => DeliveryArea::orderBy('name')->pluck('name'),
             'isStaff' => $isStaff,
-            'forceShiftStart' => $isStaff && ! $shifts->activeForBranch($branchId),
+            // Never forced here, unlike the Dashboard/POS — this is a
+            // read-only page, not order processing, so a staff member with
+            // no active shift (most commonly: their shift just ended) must
+            // still be able to use it. The shift widget itself still shows
+            // and still lets them start one from here if they want to —
+            // "forced" only ever meant "blocking", never "hidden".
+            'forceShiftStart' => false,
             'ordersUrl' => $isStaff ? route('dashboard') : route('dashboard.orders.live'),
             'branchId' => $branchId,
             // Owner can still review history, but the live board/POS it
