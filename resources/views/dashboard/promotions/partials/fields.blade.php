@@ -3,12 +3,15 @@
     $value = fn (string $field, $default = null) => old($field, $promotion?->{$field} ?? $default);
     $money = fn (string $field) => old($field, $promotion?->{$field} !== null ? $promotion->{$field} / 100 : null);
     $selectedBranchIds = old('branch_ids', $promotion?->branches->pluck('id')->all() ?? []);
+    $selectedDays = old('recurring_days', $promotion?->recurring_days ?? []);
+    $weekdays = [0 => __('Sun'), 1 => __('Mon'), 2 => __('Tue'), 3 => __('Wed'), 4 => __('Thu'), 5 => __('Fri'), 6 => __('Sat')];
 @endphp
 
-<div x-data="{ type: @js($value('type', 'percentage')) }" class="space-y-6">
+<div x-data="{ type: @js($value('type', 'percentage')), isAutomatic: @js((bool) $value('is_automatic', false)) }" class="space-y-6">
     <div>
         <x-input-label for="code" :value="__('Code')" required />
         <x-text-input id="code" name="code" type="text" class="mt-1 block w-full uppercase" :value="$value('code')" required placeholder="{{ __('e.g. WELCOME10') }}" />
+        <p class="text-xs text-gray-500 mt-1" x-show="isAutomatic">{{ __('Never shown to customers for an automatic promotion — just an internal label.') }}</p>
         <x-input-error class="mt-2" :messages="$errors->get('code')" />
     </div>
 
@@ -17,16 +20,18 @@
         <select id="type" name="type" x-model="type" class="mt-1 block w-full rounded-md border-gray-300" required>
             <option value="percentage" @selected($value('type', 'percentage') === 'percentage')>{{ __('Percentage off') }}</option>
             <option value="fixed" @selected($value('type') === 'fixed')>{{ __('Fixed amount off') }}</option>
+            <option value="buy_x_get_y_free" @selected($value('type') === 'buy_x_get_y_free')>{{ __('Buy X get Y free') }}</option>
         </select>
         <x-input-error class="mt-2" :messages="$errors->get('type')" />
     </div>
 
-    <div>
+    <div x-show="type !== 'buy_x_get_y_free'" x-cloak>
         <x-input-label for="value" :value="__('Value')" required />
         <div class="relative mt-1">
             <x-text-input
                 id="value" name="value" type="number" min="0" class="block w-full"
-                :value="$value('type') === 'fixed' ? $money('value') : $value('value')" required
+                :value="$value('type') === 'fixed' ? $money('value') : $value('value')"
+                x-bind:required="type !== 'buy_x_get_y_free'"
                 x-bind:step="type === 'percentage' ? 1 : 0.01" x-bind:max="type === 'percentage' ? 100 : null"
             />
             <span class="absolute inset-y-0 right-3 flex items-center text-sm text-gray-400" x-text="type === 'percentage' ? '%' : 'GH₵'"></span>
@@ -35,10 +40,85 @@
         <x-input-error class="mt-2" :messages="$errors->get('value')" />
     </div>
 
+    <div x-show="type === 'buy_x_get_y_free'" x-cloak class="grid grid-cols-2 gap-4">
+        <div>
+            <x-input-label for="buy_quantity" :value="__('Buy quantity')" />
+            <x-text-input
+                id="buy_quantity" name="buy_quantity" type="number" min="2" class="mt-1 block w-full"
+                :value="$value('buy_quantity', 3)" x-bind:required="type === 'buy_x_get_y_free'"
+            />
+            <p class="text-xs text-gray-500 mt-1">{{ __('Of the SAME menu item, e.g. 3.') }}</p>
+            <x-input-error class="mt-2" :messages="$errors->get('buy_quantity')" />
+        </div>
+        <div>
+            <x-input-label for="free_quantity" :value="__('Free quantity')" />
+            <x-text-input
+                id="free_quantity" name="free_quantity" type="number" min="1" class="mt-1 block w-full"
+                :value="$value('free_quantity', 1)" x-bind:required="type === 'buy_x_get_y_free'"
+            />
+            <p class="text-xs text-gray-500 mt-1">{{ __('Repeats per group, e.g. 1 free per 3 bought.') }}</p>
+            <x-input-error class="mt-2" :messages="$errors->get('free_quantity')" />
+        </div>
+    </div>
+
     <div>
         <x-input-label for="min_order_total" :value="__('Minimum order total (optional, GH₵)')" />
         <x-text-input id="min_order_total" name="min_order_total" type="number" step="0.01" min="0" class="mt-1 block w-full" :value="$money('min_order_total')" />
         <x-input-error class="mt-2" :messages="$errors->get('min_order_total')" />
+    </div>
+
+    <div class="border-t border-gray-100 pt-4">
+        <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="is_automatic" value="1" x-model="isAutomatic" class="rounded border-gray-300">
+            {{ __('Applies automatically, no code needed') }}
+        </label>
+        <p class="text-xs text-gray-500 mt-1">{{ __("Hides the discount-code field at checkout/POS on any day this applies — it always takes the order's one promotion slot over a customer-entered code.") }}</p>
+    </div>
+
+    <div x-show="isAutomatic" x-cloak class="space-y-4">
+        <div>
+            <x-input-label :value="__('Repeats on')" />
+            <div class="mt-2 flex gap-3">
+                @foreach ($weekdays as $day => $label)
+                    <label class="flex items-center gap-1 text-sm">
+                        <input type="checkbox" name="recurring_days[]" value="{{ $day }}" @checked(in_array($day, $selectedDays)) class="rounded border-gray-300">
+                        {{ $label }}
+                    </label>
+                @endforeach
+            </div>
+            <x-input-error class="mt-2" :messages="$errors->get('recurring_days')" />
+        </div>
+
+        <div>
+            <x-input-label for="banner_headline" :value="__('Homepage banner headline (optional)')" />
+            <x-text-input id="banner_headline" name="banner_headline" type="text" class="mt-1 block w-full" :value="$value('banner_headline')" placeholder="{{ __('e.g. Buy 2 Get 1 Free — every Wednesday!') }}" />
+            <x-input-error class="mt-2" :messages="$errors->get('banner_headline')" />
+        </div>
+
+        @if ($promotion)
+            <div>
+                <x-input-label :value="__('Homepage banner image (optional)')" />
+                @if ($promotion->bannerImageUrl())
+                    <img src="{{ $promotion->bannerImageUrl() }}" alt="" class="mt-2 max-h-32 rounded-md">
+                @endif
+                <div class="mt-2 flex items-center gap-3">
+                    <form method="POST" action="{{ route('dashboard.promotions.banner-image.update', $promotion) }}" enctype="multipart/form-data" class="flex items-center gap-2">
+                        @csrf
+                        <input type="file" name="image" accept="image/*" class="text-sm">
+                        <x-secondary-button type="submit">{{ __('Upload') }}</x-secondary-button>
+                    </form>
+                    @if ($promotion->bannerImageUrl())
+                        <form method="POST" action="{{ route('dashboard.promotions.banner-image.destroy', $promotion) }}" onsubmit="return confirm('{{ __('Remove the banner image?') }}')">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="text-sm text-red-600 hover:underline">{{ __('Remove') }}</button>
+                        </form>
+                    @endif
+                </div>
+            </div>
+        @else
+            <p class="text-xs text-gray-500">{{ __('Save this promotion first to upload a banner image.') }}</p>
+        @endif
     </div>
 
     <div class="grid grid-cols-2 gap-4">

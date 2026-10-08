@@ -277,17 +277,49 @@ permanently, same as every other audit table in this app outliving the artifact 
 report whose photo has never been viewed is never touched, however old it gets — the window only
 starts once someone's actually looked.
 
-## Promotions (v1 scope only)
+## Promotions
 
 ```
-promotions             id, code, type (percentage|fixed), value,
-                       min_order_total, starts_at, ends_at,
+promotions             id, code, type (percentage|fixed|buy_x_get_y_free), value,
+                       buy_quantity, free_quantity, min_order_total,
+                       starts_at, ends_at, recurring_days, is_automatic,
+                       banner_headline, banner_image_path,
                        max_redemptions, max_per_customer, is_active
 promotion_branch       promotion_id, branch_id
 promotion_redemptions  id, promotion_id, order_id, customer_id, amount_discounted
 ```
 
-Do not add promo types beyond percentage and fixed without being asked.
+Do not add a promo type beyond these three without being asked — `buy_x_get_y_free` was
+itself flagged and approved mid-project (CLAUDE.md's "Resolved, no longer open" note), not
+assumed.
+
+`buy_quantity`/`free_quantity` are only meaningful for `type === 'buy_x_get_y_free'` — `value`
+stays `0` (the column is `NOT NULL`) and unused for that type. `PromotionService::
+calculateDiscount()` groups the order's `itemRows` by `menu_item_id` (not by cart line — the
+same item can be split across several lines with different options) and gives `free_quantity`
+units for every `buy_quantity` units of that same item, repeating per group rather than capping
+at one freebie per order. Priced at `unit_price_snapshot` only (the item's base price, no
+option `price_delta` folded in) — so a free unit's own chosen options are still billed in full.
+
+`recurring_days` (nullable JSON array of weekday ints, Carbon's own numbering — 0=Sunday..
+6=Saturday, matching `menu_item_schedules`) and `is_automatic` (boolean) together drive a
+promotion that applies with **no code at all** — `PromotionService::findActiveAutomatic()`
+finds the one such promotion (if any) active for a branch today, Africa/Accra local. At most
+one is ever returned: `orders.promotion_id` only ever holds a single promotion, so an automatic
+one always takes that slot and the checkout/POS UI hides coupon-code entry entirely on a day
+one applies — `validate()` itself also rejects an automatic promotion's own `code` if it's
+somehow submitted manually, since that code exists only to satisfy the column's uniqueness, not
+to be typed in. Never applies to a `payment_method === 'bolt_food'` order, the same blanket
+exclusion `Order::EXCLUDED_FROM_SALES_PAYMENT_METHODS` already applies to sales reporting —
+Bolt Food orders are settled entirely on Bolt's own platform. A promotion with no branch rows
+(every branch) is the only kind `findActiveAutomatic()` can match when called with no branch at
+all (the homepage banner, before a customer has picked one) — a branch-restricted automatic
+promotion only ever shows once a branch is actually selected.
+
+`banner_headline`/`banner_image_path` drive the homepage banner shown ahead of the normal hero
+slider on a day an automatic promotion is active (`HomeController::index()`) — kept on the same
+row as the discount itself so the banner and the live discount can never disagree about whether
+today counts.
 
 ## Visitor tracking
 

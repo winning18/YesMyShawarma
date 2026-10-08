@@ -139,7 +139,6 @@ Do not build these. If a task seems to require one, stop and raise it.
 - Live rider GPS tracking on a map
 - Multi-currency
 - Table reservations
-- Promo types beyond percentage and fixed discount
 - A lead pipeline with stages (v1 is a customer list, nothing more)
 - Native mobile app
 
@@ -159,6 +158,10 @@ options originally listed here. See `.claude/rules/schema.md` and `.claude/rules
 "Inventory or stock depletion" (removed from the list above) was deliberately built, flagged
 and approved mid-project rather than assumed — recipe-driven, per-branch, tied to order
 acceptance/cancellation. See `.claude/rules/schema.md`'s "Recipes and stock deduction" section.
+"Promo types beyond percentage and fixed discount" (removed from the list above) was likewise
+flagged and approved mid-project: a `buy_x_get_y_free` type now exists alongside the original
+two, built for a recurring "every Wednesday" storewide promotion. See
+`.claude/rules/schema.md`'s "Promotions" section.
 
 ---
 

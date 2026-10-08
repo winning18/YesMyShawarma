@@ -14,6 +14,7 @@ use App\Services\Orders\Data\DeliveryAddressData;
 use App\Services\Orders\Data\PlaceOrderData;
 use App\Services\Orders\Data\PlaceOrderItemData;
 use App\Services\Orders\OrderCreationService;
+use App\Services\Promotions\PromotionService;
 use App\Services\Shifts\ShiftService;
 use Closure;
 use Illuminate\Http\JsonResponse;
@@ -33,7 +34,7 @@ use Illuminate\View\View;
  */
 class PosController extends Controller
 {
-    public function index(Request $request, BranchContext $context, PosCartService $cart, ShiftService $shifts): View|RedirectResponse
+    public function index(Request $request, BranchContext $context, PosCartService $cart, ShiftService $shifts, PromotionService $promotions): View|RedirectResponse
     {
         Gate::authorize('orders.create');
 
@@ -99,7 +100,7 @@ class PosController extends Controller
             'deliveryAreas' => $deliveryAreas,
             'deliveryAvailable' => $deliveryAreas->isNotEmpty(),
             'ratePerKmPesewas' => DeliveryFeeCalculator::RATE_PER_KM_PESEWAS,
-            'cart' => $this->cartPayload($cart),
+            'cart' => $this->cartPayload($cart, $promotions),
             'isStaff' => $isStaff,
             'forceShiftStart' => $isStaff && ! $shifts->activeForBranch($branch->id),
             // Manager reaches this page via the dedicated Orders nav item
@@ -109,7 +110,7 @@ class PosController extends Controller
         ]);
     }
 
-    public function addItem(Request $request, PosCartService $cart, MenuPricingService $pricing, BranchContext $context): JsonResponse
+    public function addItem(Request $request, PosCartService $cart, MenuPricingService $pricing, BranchContext $context, PromotionService $promotions): JsonResponse
     {
         Gate::authorize('orders.create');
 
@@ -148,10 +149,10 @@ class PosController extends Controller
             $optionQuantities,
         );
 
-        return response()->json($this->cartPayload($cart));
+        return response()->json($this->cartPayload($cart, $promotions));
     }
 
-    public function updateQuantity(Request $request, string $line, PosCartService $cart): JsonResponse
+    public function updateQuantity(Request $request, string $line, PosCartService $cart, PromotionService $promotions): JsonResponse
     {
         Gate::authorize('orders.create');
 
@@ -161,10 +162,10 @@ class PosController extends Controller
 
         $cart->updateQuantity($line, $validated['quantity']);
 
-        return response()->json($this->cartPayload($cart));
+        return response()->json($this->cartPayload($cart, $promotions));
     }
 
-    public function updateOptionQuantity(Request $request, string $line, int $option, PosCartService $cart): JsonResponse
+    public function updateOptionQuantity(Request $request, string $line, int $option, PosCartService $cart, PromotionService $promotions): JsonResponse
     {
         Gate::authorize('orders.create');
 
@@ -174,7 +175,7 @@ class PosController extends Controller
 
         $cart->updateOptionQuantity($line, $option, $validated['quantity']);
 
-        return response()->json($this->cartPayload($cart));
+        return response()->json($this->cartPayload($cart, $promotions));
     }
 
     /**
@@ -190,13 +191,13 @@ class PosController extends Controller
             ->all();
     }
 
-    public function removeItem(string $line, PosCartService $cart): JsonResponse
+    public function removeItem(string $line, PosCartService $cart, PromotionService $promotions): JsonResponse
     {
         Gate::authorize('orders.create');
 
         $cart->remove($line);
 
-        return response()->json($this->cartPayload($cart));
+        return response()->json($this->cartPayload($cart, $promotions));
     }
 
     public function store(
@@ -306,17 +307,29 @@ class PosController extends Controller
     }
 
     /**
-     * @return array{branch: ?array<string, mixed>, lines: list<array<string, mixed>>, subtotal: int, dropped: string[]}
+     * $discount assumes a non-Bolt-Food payment method — cart-building
+     * happens before payment_method is necessarily final (it's a radio
+     * alongside the cart, not a separate step), so the live preview can't
+     * know yet whether this will end up excluded. pos/index.blade.php
+     * zeroes it client-side the moment Bolt Food is selected; store()'s
+     * actual OrderCreationService::create() call re-checks payment_method
+     * itself regardless, so a wrong preview can never place a wrongly
+     * discounted order.
+     *
+     * @return array{branch: ?array<string, mixed>, lines: list<array<string, mixed>>, subtotal: int, dropped: string[], discount: int, promotionBanner: ?string}
      */
-    private function cartPayload(PosCartService $cart): array
+    private function cartPayload(PosCartService $cart, PromotionService $promotions): array
     {
         $summary = $cart->summary();
+        $promotion = $summary['branch'] ? $promotions->findActiveAutomatic($summary['branch']) : null;
 
         return [
             'branch' => $summary['branch'] ? ['id' => $summary['branch']->id, 'name' => $summary['branch']->name] : null,
             'lines' => $summary['lines'],
             'subtotal' => $summary['subtotal'],
             'dropped' => $summary['dropped'],
+            'discount' => $promotion ? $promotions->calculateDiscount($promotion, $summary['subtotal'], $summary['lines']) : 0,
+            'promotionBanner' => $promotion?->banner_headline,
         ];
     }
 }

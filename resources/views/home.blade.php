@@ -19,6 +19,22 @@
     @endforeach
 
     <x-slot name="fullHero">
+        @if ($promotionBanner)
+            {{--
+                The one thing shown ahead of the normal hero slider on a day
+                an automatic promotion (PromotionService::findActiveAutomatic())
+                is active — see HomeController::index(). Plain server-rendered
+                markup, no extra request or JS, so it never costs anything
+                against the 3G performance budget.
+            --}}
+            <section class="relative bg-brand-red text-white text-center px-4 py-6">
+                @if ($promotionBanner['imageUrl'])
+                    <img src="{{ $promotionBanner['imageUrl'] }}" alt="" class="mx-auto mb-3 max-h-40 rounded-lg" loading="eager">
+                @endif
+                <p class="font-bold text-lg">{{ $promotionBanner['headline'] ?: __('A promotion is live today.') }}</p>
+            </section>
+        @endif
+
         {{--
             Full-bleed hero slider — each slide is a featured category with
             its own uploadable background image (staff dashboard → Hero

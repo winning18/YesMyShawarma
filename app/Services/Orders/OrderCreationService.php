@@ -104,14 +104,23 @@ class OrderCreationService
 
             [$itemRows, $subtotal] = $this->pricing->priceItems($branch, $data->items);
 
+            // An automatic promotion (e.g. "every Wednesday") always wins
+            // the order's single promotion_id slot over a customer-entered
+            // code — the checkout/POS UI already hides the code field on a
+            // day one applies, so $data->promoCode is never expected to be
+            // set at the same time, but re-checking automatic first here
+            // means a stale/forced code can never bypass it either.
+            //
             // Re-validated here even though checkout's "Apply" button
             // already checked it live — that check only ever priced the
             // cart's subtotal at that moment, never trust it as the final
             // word. See PromotionService::validate().
-            $promotion = null;
+            $promotion = $this->promotions->findActiveAutomatic($branch, $data->paymentMethod);
             $discountTotal = 0;
 
-            if ($data->promoCode !== null) {
+            if ($promotion) {
+                $discountTotal = $this->promotions->calculateDiscount($promotion, $subtotal, $itemRows);
+            } elseif ($data->promoCode !== null) {
                 $promotion = $this->promotions->validate($data->promoCode, $branch, $customer, $subtotal);
                 $discountTotal = $this->promotions->calculateDiscount($promotion, $subtotal);
             }

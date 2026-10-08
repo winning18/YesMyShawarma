@@ -24,9 +24,22 @@
                     @unless ($promotion->is_active)
                         <span class="text-xs px-2 py-0.5 rounded-md bg-gray-100 text-gray-500 align-middle font-sans">{{ __('Inactive') }}</span>
                     @endunless
+                    @if ($promotion->is_automatic)
+                        <span class="text-xs px-2 py-0.5 rounded-md bg-green-100 text-green-700 align-middle font-sans">{{ __('Automatic') }}</span>
+                    @endif
                 </p>
                 <p class="text-sm text-gray-500">
-                    {{ $promotion->type === 'percentage' ? $promotion->value.'% off' : 'GH₵'.number_format($promotion->value / 100, 2).' off' }}
+                    @switch($promotion->type)
+                        @case('percentage')
+                            {{ $promotion->value.'% off' }}
+                            @break
+                        @case('fixed')
+                            {{ 'GH₵'.number_format($promotion->value / 100, 2).' off' }}
+                            @break
+                        @case('buy_x_get_y_free')
+                            {{ __('Buy :buy get :free free', ['buy' => $promotion->buy_quantity, 'free' => $promotion->free_quantity]) }}
+                            @break
+                    @endswitch
                     · {{ __(':count uses', ['count' => $promotion->redemptions_count]) }}
                 </p>
                 <a href="{{ route('dashboard.promotions.edit', $promotion) }}" class="text-sm text-gray-600 hover:underline">

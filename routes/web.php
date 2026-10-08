@@ -233,6 +233,8 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::get('/dashboard/promotions/{promotion}/edit', [PromotionManagementController::class, 'edit'])->name('dashboard.promotions.edit');
     Route::put('/dashboard/promotions/{promotion}', [PromotionManagementController::class, 'update'])->name('dashboard.promotions.update');
     Route::delete('/dashboard/promotions/{promotion}', [PromotionManagementController::class, 'destroy'])->name('dashboard.promotions.destroy');
+    Route::post('/dashboard/promotions/{promotion}/banner-image', [PromotionManagementController::class, 'updateBannerImage'])->name('dashboard.promotions.banner-image.update');
+    Route::delete('/dashboard/promotions/{promotion}/banner-image', [PromotionManagementController::class, 'destroyBannerImage'])->name('dashboard.promotions.banner-image.destroy');
 
     Route::get('/dashboard/customers', [CustomerManagementController::class, 'index'])->name('dashboard.customers.index');
     Route::get('/dashboard/customers/export', [CustomerManagementController::class, 'export'])->name('dashboard.customers.export');

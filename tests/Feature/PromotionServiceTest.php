@@ -197,6 +197,114 @@ class PromotionServiceTest extends TestCase
         $this->assertSame(3000, $this->service->calculateDiscount($promotion, 3000));
     }
 
+    public function test_buy_x_get_y_free_discounts_one_free_unit_per_group_of_three(): void
+    {
+        $promotion = $this->makePromotion(['type' => 'buy_x_get_y_free', 'value' => 0, 'buy_quantity' => 3, 'free_quantity' => 1]);
+        $itemRows = [['menu_item_id' => 1, 'unit_price_snapshot' => 1000, 'quantity' => 3]];
+
+        $this->assertSame(1000, $this->service->calculateDiscount($promotion, 3000, $itemRows));
+    }
+
+    public function test_buy_x_get_y_free_repeats_per_group_rather_than_capping_at_one(): void
+    {
+        $promotion = $this->makePromotion(['type' => 'buy_x_get_y_free', 'value' => 0, 'buy_quantity' => 3, 'free_quantity' => 1]);
+        // 7 units: floor(7/3) = 2 free, not capped at 1 and not rounded up to 3.
+        $itemRows = [['menu_item_id' => 1, 'unit_price_snapshot' => 1000, 'quantity' => 7]];
+
+        $this->assertSame(2000, $this->service->calculateDiscount($promotion, 7000, $itemRows));
+    }
+
+    public function test_buy_x_get_y_free_requires_the_same_menu_item_not_any_three(): void
+    {
+        $promotion = $this->makePromotion(['type' => 'buy_x_get_y_free', 'value' => 0, 'buy_quantity' => 3, 'free_quantity' => 1]);
+        // 2 of item A + 1 of item B — neither reaches 3 units of the SAME item.
+        $itemRows = [
+            ['menu_item_id' => 1, 'unit_price_snapshot' => 1000, 'quantity' => 2],
+            ['menu_item_id' => 2, 'unit_price_snapshot' => 1500, 'quantity' => 1],
+        ];
+
+        $this->assertSame(0, $this->service->calculateDiscount($promotion, 3500, $itemRows));
+    }
+
+    public function test_buy_x_get_y_free_sums_quantity_across_separate_lines_of_the_same_item(): void
+    {
+        $promotion = $this->makePromotion(['type' => 'buy_x_get_y_free', 'value' => 0, 'buy_quantity' => 3, 'free_quantity' => 1]);
+        // Same menu item split across two cart lines (e.g. different notes/options) — 2 + 1 = 3 units.
+        $itemRows = [
+            ['menu_item_id' => 1, 'unit_price_snapshot' => 1000, 'quantity' => 2],
+            ['menu_item_id' => 1, 'unit_price_snapshot' => 1000, 'quantity' => 1],
+        ];
+
+        $this->assertSame(1000, $this->service->calculateDiscount($promotion, 3000, $itemRows));
+    }
+
+    public function test_findActiveAutomatic_returns_a_promotion_matching_today(): void
+    {
+        $today = now('Africa/Accra')->dayOfWeek;
+        $this->makePromotion(['is_automatic' => true, 'recurring_days' => [$today]]);
+
+        $result = $this->service->findActiveAutomatic($this->branch);
+
+        $this->assertNotNull($result);
+    }
+
+    public function test_findActiveAutomatic_ignores_a_promotion_not_recurring_today(): void
+    {
+        $today = now('Africa/Accra')->dayOfWeek;
+        $otherDay = ($today + 1) % 7;
+        $this->makePromotion(['is_automatic' => true, 'recurring_days' => [$otherDay]]);
+
+        $this->assertNull($this->service->findActiveAutomatic($this->branch));
+    }
+
+    public function test_findActiveAutomatic_ignores_a_non_automatic_promotion(): void
+    {
+        $today = now('Africa/Accra')->dayOfWeek;
+        $this->makePromotion(['is_automatic' => false, 'recurring_days' => [$today]]);
+
+        $this->assertNull($this->service->findActiveAutomatic($this->branch));
+    }
+
+    public function test_findActiveAutomatic_excludes_bolt_food(): void
+    {
+        $today = now('Africa/Accra')->dayOfWeek;
+        $this->makePromotion(['is_automatic' => true, 'recurring_days' => [$today]]);
+
+        $this->assertNull($this->service->findActiveAutomatic($this->branch, 'bolt_food'));
+    }
+
+    public function test_findActiveAutomatic_respects_branch_restriction(): void
+    {
+        $today = now('Africa/Accra')->dayOfWeek;
+        $promotion = $this->makePromotion(['is_automatic' => true, 'recurring_days' => [$today]]);
+        $otherBranch = Branch::create([
+            'name' => 'East Legon', 'slug' => 'east-legon', 'phone' => '+233200000003', 'address' => 'C',
+            'lat' => 5.6, 'lng' => -0.2, 'opens_at' => '10:00', 'closes_at' => '22:00',
+        ]);
+        $promotion->branches()->attach($otherBranch->id);
+
+        $this->assertNull($this->service->findActiveAutomatic($this->branch));
+    }
+
+    public function test_findActiveAutomatic_with_no_branch_only_matches_storewide_promotions(): void
+    {
+        $today = now('Africa/Accra')->dayOfWeek;
+        $promotion = $this->makePromotion(['is_automatic' => true, 'recurring_days' => [$today]]);
+        $promotion->branches()->attach($this->branch->id);
+
+        $this->assertNull($this->service->findActiveAutomatic(null));
+    }
+
+    public function test_an_automatic_promotions_own_code_cannot_be_applied_manually(): void
+    {
+        $today = now('Africa/Accra')->dayOfWeek;
+        $this->makePromotion(['is_automatic' => true, 'recurring_days' => [$today]]);
+
+        $this->expectException(OrderPlacementException::class);
+
+        $this->service->validate('WELCOME10', $this->branch, $this->customer, 10000);
+    }
+
     private function makeOrder(): Order
     {
         $order = Order::create([

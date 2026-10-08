@@ -632,6 +632,95 @@ class OrderCreationServiceTest extends TestCase
         ]);
     }
 
+    public function test_an_automatic_buy_x_get_y_free_promotion_applies_with_no_code(): void
+    {
+        $today = now('Africa/Accra')->dayOfWeek;
+        Promotion::create([
+            'code' => 'WEDNESDAY-AUTO', 'type' => 'buy_x_get_y_free', 'value' => 0,
+            'buy_quantity' => 3, 'free_quantity' => 1, 'is_automatic' => true,
+            'recurring_days' => [$today], 'is_active' => true,
+        ]);
+
+        $order = $this->service->create(new PlaceOrderData(
+            customerPhone: '+233241111111',
+            customerName: 'Ama',
+            branchId: $this->branch->id,
+            fulfilmentType: 'pickup',
+            paymentMethod: 'cash',
+            items: [new PlaceOrderItemData(
+                menuItemId: $this->shawarma->id,
+                quantity: 3,
+                optionQuantities: [$this->garlicSauce->id => 1],
+            )],
+        ));
+
+        // 3 units at 3500 = 10500 subtotal; 1 free unit (base price only,
+        // no option) = 3500 discount.
+        $this->assertSame(10500, $order->subtotal);
+        $this->assertSame(3500, $order->discount_total);
+        $this->assertSame(7000, $order->total);
+        $this->assertNotNull($order->promotion_id);
+        // Every unit is still a real order_items row at full price — the
+        // discount lives only in discount_total, stock deduction (keyed
+        // off quantity, not price) is completely unaffected.
+        $this->assertSame(3, $order->items->first()->quantity);
+        $this->assertSame(3500, $order->items->first()->unit_price_snapshot);
+    }
+
+    public function test_an_automatic_promotion_excludes_bolt_food_orders(): void
+    {
+        $today = now('Africa/Accra')->dayOfWeek;
+        Promotion::create([
+            'code' => 'WEDNESDAY-AUTO', 'type' => 'buy_x_get_y_free', 'value' => 0,
+            'buy_quantity' => 3, 'free_quantity' => 1, 'is_automatic' => true,
+            'recurring_days' => [$today], 'is_active' => true,
+        ]);
+
+        $order = $this->service->create(new PlaceOrderData(
+            customerPhone: '+233241111111',
+            customerName: 'Ama',
+            branchId: $this->branch->id,
+            fulfilmentType: 'pickup',
+            paymentMethod: 'bolt_food',
+            items: [new PlaceOrderItemData(
+                menuItemId: $this->shawarma->id,
+                quantity: 3,
+                optionQuantities: [$this->garlicSauce->id => 1],
+            )],
+        ));
+
+        $this->assertSame(0, $order->discount_total);
+        $this->assertNull($order->promotion_id);
+    }
+
+    public function test_an_active_automatic_promotion_takes_priority_over_a_submitted_code(): void
+    {
+        $today = now('Africa/Accra')->dayOfWeek;
+        $automatic = Promotion::create([
+            'code' => 'WEDNESDAY-AUTO', 'type' => 'buy_x_get_y_free', 'value' => 0,
+            'buy_quantity' => 3, 'free_quantity' => 1, 'is_automatic' => true,
+            'recurring_days' => [$today], 'is_active' => true,
+        ]);
+        Promotion::create(['code' => 'TENOFF', 'type' => 'percentage', 'value' => 10, 'is_active' => true]);
+
+        $order = $this->service->create(new PlaceOrderData(
+            customerPhone: '+233241111111',
+            customerName: 'Ama',
+            branchId: $this->branch->id,
+            fulfilmentType: 'pickup',
+            paymentMethod: 'cash',
+            items: [new PlaceOrderItemData(
+                menuItemId: $this->shawarma->id,
+                quantity: 3,
+                optionQuantities: [$this->garlicSauce->id => 1],
+            )],
+            promoCode: 'TENOFF',
+        ));
+
+        $this->assertSame($automatic->id, $order->promotion_id);
+        $this->assertSame(3500, $order->discount_total);
+    }
+
     public function test_an_invalid_promo_code_is_rejected(): void
     {
         $this->expectException(OrderPlacementException::class);

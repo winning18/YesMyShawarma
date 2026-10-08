@@ -86,9 +86,21 @@
                     </template>
                 </ul>
 
-                <div class="flex justify-between font-semibold border-t border-gray-100 pt-3 mb-4">
+                <div x-show="promotionBanner && paymentMethod !== 'bolt_food'" x-cloak class="text-sm text-green-700 bg-green-50 rounded-md px-3 py-2 mb-3" x-text="promotionBanner"></div>
+
+                <div class="flex justify-between border-t border-gray-100 pt-3">
                     <span>{{ __('Subtotal') }}</span>
                     <span x-text="formatMoney(subtotal)"></span>
+                </div>
+
+                <div class="flex justify-between text-sm mt-2" x-show="displayedDiscount() > 0" x-cloak>
+                    <span>{{ __('Discount') }}</span>
+                    <span x-text="'-' + formatMoney(displayedDiscount())"></span>
+                </div>
+
+                <div class="flex justify-between font-semibold border-t border-gray-100 pt-3 mt-2 mb-4">
+                    <span>{{ __('Total') }}</span>
+                    <span x-text="formatMoney(subtotal - displayedDiscount())"></span>
                 </div>
 
                 <div class="space-y-3 border-t border-gray-100 pt-4">
@@ -287,6 +299,8 @@
             return {
                 lines: @json($cart['lines']),
                 subtotal: {{ $cart['subtotal'] }},
+                discount: {{ $cart['discount'] }},
+                promotionBanner: @json($cart['promotionBanner']),
                 phone: phoneField(''),
                 name: '',
                 fulfilmentType: 'pickup',
@@ -306,6 +320,16 @@
                 confirmation: null,
 
                 init() {},
+
+                // The server's own discount assumes a non-Bolt-Food order
+                // (it's priced before payment method is necessarily final)
+                // — zeroed here the moment Bolt Food is selected, matching
+                // OrderCreationService/PromotionService's own exclusion so
+                // the displayed total never promises a discount that
+                // won't actually be charged.
+                displayedDiscount() {
+                    return this.paymentMethod === 'bolt_food' ? 0 : this.discount;
+                },
 
                 openItem(item) {
                     this.activeItem = item;
@@ -415,6 +439,8 @@
 
                         this.lines = payload.lines;
                         this.subtotal = payload.subtotal;
+                        this.discount = payload.discount;
+                        this.promotionBanner = payload.promotionBanner;
                         this.error = null;
                         return true;
                     } catch (e) {

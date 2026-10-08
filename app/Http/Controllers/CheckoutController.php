@@ -27,7 +27,7 @@ use Illuminate\View\View;
 
 class CheckoutController extends Controller
 {
-    public function show(CartService $cart, WorkingHoursService $workingHours, SettingsService $settings): View|RedirectResponse
+    public function show(CartService $cart, WorkingHoursService $workingHours, SettingsService $settings, PromotionService $promotions): View|RedirectResponse
     {
         $summary = $cart->summary();
 
@@ -38,8 +38,20 @@ class CheckoutController extends Controller
         $deliveryAreas = DeliveryArea::where('is_active', true)->orderBy('name')->get();
         $branchOpen = $workingHours->isOpenNow($summary['branch']);
 
+        // Web checkout never submits payment_method bolt_food (that's
+        // POS-only — see store()'s $rules), so no payment method needs
+        // passing here for the exclusion to apply correctly.
+        $automaticPromotion = $promotions->findActiveAutomatic($summary['branch']);
+
         return view('checkout.show', [
             ...$summary,
+            'automaticPromotion' => $automaticPromotion,
+            // A fixed preview, same spirit as the existing live "Apply"
+            // check — OrderCreationService::create() is still the
+            // authoritative recalculation at actual placement.
+            'automaticDiscount' => $automaticPromotion
+                ? $promotions->calculateDiscount($automaticPromotion, $summary['subtotal'], $summary['lines'])
+                : 0,
             'deliveryAvailable' => $deliveryAreas->isNotEmpty(),
             'deliveryAreas' => $deliveryAreas,
             'customer' => Auth::guard('customer')->user(),
@@ -198,6 +210,16 @@ class CheckoutController extends Controller
 
         if (! $summary['branch']) {
             return response()->json(['message' => __('Your cart is empty.')], 422);
+        }
+
+        // The checkout page already hides this field entirely on a day an
+        // automatic promotion is active (show()) — this is the same
+        // defence-in-depth as validate()'s own is_automatic guard, for a
+        // request that reaches this endpoint directly rather than through
+        // that hidden input. Automatic always wins the order's single
+        // promotion_id slot, so no code can apply alongside it.
+        if ($promotions->findActiveAutomatic($summary['branch'])) {
+            return response()->json(['message' => __('A promotion is already applied automatically today.')], 422);
         }
 
         // Not yet a real Customer row until the order is actually placed

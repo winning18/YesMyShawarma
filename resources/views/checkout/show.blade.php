@@ -46,7 +46,7 @@
             minimumDeliveryFeePesewas: {{ $minimumDeliveryFeePesewas }},
             subtotalPesewas: {{ $subtotal }},
             discountCode: @js(old('promo_code', '')),
-            discountAmount: 0,
+            discountAmount: {{ $automaticDiscount }},
             promoMessage: '',
             reviewing: false,
             name: @js(old('name', $customer->name ?? '')),
@@ -485,23 +485,29 @@
                 </p>
             @endif
 
-            <div class="border-t border-brand-gray-100 pt-3 mt-3">
-                <label class="block text-sm font-medium mb-1" for="discount_code">{{ __('Discount code') }}</label>
-                <div class="flex gap-2">
-                    <input
-                        type="text" id="discount_code" name="promo_code" form="checkout-form"
-                        x-model="discountCode"
-                        placeholder="{{ __('Enter code') }}"
-                        class="w-full rounded-md {{ $errors->has('promo_code') ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300' }}"
-                    >
-                    <button
-                        type="button" @click="applyPromoCode()"
-                        class="px-4 py-2 bg-brand-gray-100 text-brand-black text-sm font-semibold rounded-md hover:bg-brand-gray-300 shrink-0"
-                    >{{ __('Apply') }}</button>
+            @if ($automaticPromotion)
+                <div class="border-t border-brand-gray-100 pt-3 mt-3 text-sm text-green-700 bg-green-50 rounded-md px-3 py-2">
+                    {{ $automaticPromotion->banner_headline ?: __('A promotion has been applied automatically.') }}
                 </div>
-                <p x-show="promoMessage" x-cloak class="text-xs mt-1" :class="discountAmount > 0 ? 'text-green-600' : 'text-brand-red'" x-text="promoMessage"></p>
-                @error('promo_code') <p class="text-sm text-brand-red mt-1">{{ $message }}</p> @enderror
-            </div>
+            @else
+                <div class="border-t border-brand-gray-100 pt-3 mt-3">
+                    <label class="block text-sm font-medium mb-1" for="discount_code">{{ __('Discount code') }}</label>
+                    <div class="flex gap-2">
+                        <input
+                            type="text" id="discount_code" name="promo_code" form="checkout-form"
+                            x-model="discountCode"
+                            placeholder="{{ __('Enter code') }}"
+                            class="w-full rounded-md {{ $errors->has('promo_code') ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300' }}"
+                        >
+                        <button
+                            type="button" @click="applyPromoCode()"
+                            class="px-4 py-2 bg-brand-gray-100 text-brand-black text-sm font-semibold rounded-md hover:bg-brand-gray-300 shrink-0"
+                        >{{ __('Apply') }}</button>
+                    </div>
+                    <p x-show="promoMessage" x-cloak class="text-xs mt-1" :class="discountAmount > 0 ? 'text-green-600' : 'text-brand-red'" x-text="promoMessage"></p>
+                    @error('promo_code') <p class="text-sm text-brand-red mt-1">{{ $message }}</p> @enderror
+                </div>
+            @endif
         </div>
     </div>
 

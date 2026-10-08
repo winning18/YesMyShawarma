@@ -8,10 +8,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 #[Fillable([
-    'code', 'type', 'value', 'min_order_total', 'starts_at', 'ends_at',
-    'max_redemptions', 'max_per_customer', 'is_active',
+    'code', 'type', 'value', 'buy_quantity', 'free_quantity', 'min_order_total',
+    'starts_at', 'ends_at', 'recurring_days', 'is_automatic', 'banner_headline',
+    'banner_image_path', 'max_redemptions', 'max_per_customer', 'is_active',
 ])]
 class Promotion extends Model
 {
@@ -22,8 +24,15 @@ class Promotion extends Model
         return [
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',
+            'recurring_days' => 'array',
+            'is_automatic' => 'boolean',
             'is_active' => 'boolean',
         ];
+    }
+
+    public function bannerImageUrl(): ?string
+    {
+        return $this->banner_image_path ? Storage::disk('public')->url($this->banner_image_path) : null;
     }
 
     /**

@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\MenuItem;
 use App\Services\Branches\WorkingHoursService;
 use App\Services\Customers\CustomerBranchSelection;
+use App\Services\Promotions\PromotionService;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
@@ -32,7 +33,7 @@ class HomeController extends Controller
         5 => 'Friday', 6 => 'Saturday', 7 => 'Sunday',
     ];
 
-    public function index(CustomerBranchSelection $selection, WorkingHoursService $workingHours): View
+    public function index(CustomerBranchSelection $selection, WorkingHoursService $workingHours, PromotionService $promotions): View
     {
         // Every category is hero-slide-eligible (Hero Slider dashboard
         // page), but only ones staff actually gave a photo appear on the
@@ -49,8 +50,18 @@ class HomeController extends Controller
             ])
             ->values();
 
+        // Shown ahead of the normal hero slider on a day an automatic
+        // promotion is active (recurring_days) — see PromotionService::
+        // findActiveAutomatic()'s own note on why a branch-restricted
+        // promotion only shows once a branch is actually selected.
+        $promotion = $promotions->findActiveAutomatic($selection->current());
+
         return view('home', [
             'heroSlides' => $heroSlides,
+            'promotionBanner' => $promotion ? [
+                'headline' => $promotion->banner_headline,
+                'imageUrl' => $promotion->bannerImageUrl(),
+            ] : null,
             'menuSliders' => $this->menuSliders($selection->current()),
             'restaurantSchema' => $this->restaurantSchema($workingHours),
         ]);
