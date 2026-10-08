@@ -17,6 +17,37 @@
             <x-primary-button>{{ __('Save') }}</x-primary-button>
         </form>
 
+        {{--
+            Deliberately its own form, siblings with the one above rather
+            than nested inside it — a <form> nested inside another <form>
+            is invalid HTML, and browsers silently close the OUTER form the
+            moment they hit the inner one's closing tag, stranding every
+            field after it (the Save button included) outside any form at
+            all, so it does nothing when clicked.
+        --}}
+        @if ($promotion->is_automatic)
+            <div class="bg-white shadow rounded-lg p-6 space-y-3">
+                <x-input-label :value="__('Homepage banner image (optional)')" />
+                @if ($promotion->bannerImageUrl())
+                    <img src="{{ $promotion->bannerImageUrl() }}" alt="" class="max-h-32 rounded-md">
+                @endif
+                <div class="flex items-center gap-3">
+                    <form method="POST" action="{{ route('dashboard.promotions.banner-image.update', $promotion) }}" enctype="multipart/form-data" class="flex items-center gap-2">
+                        @csrf
+                        <input type="file" name="image" accept="image/*" class="text-sm">
+                        <x-secondary-button type="submit">{{ __('Upload') }}</x-secondary-button>
+                    </form>
+                    @if ($promotion->bannerImageUrl())
+                        <form method="POST" action="{{ route('dashboard.promotions.banner-image.destroy', $promotion) }}" onsubmit="return confirm('{{ __('Remove the banner image?') }}')">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="text-sm text-red-600 hover:underline">{{ __('Remove') }}</button>
+                        </form>
+                    @endif
+                </div>
+            </div>
+        @endif
+
         <form method="POST" action="{{ route('dashboard.promotions.destroy', $promotion) }}" onsubmit="return confirm('{{ __('Remove this promotion?') }}')">
             @csrf
             @method('DELETE')

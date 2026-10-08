@@ -186,6 +186,36 @@ class PromotionManagementTest extends TestCase
         ])->assertSessionHasErrors('recurring_days');
     }
 
+    /**
+     * Regression: the banner-image upload/remove forms on the edit page
+     * must never be nested inside the main update <form> — a <form>
+     * nested inside another is invalid HTML, and a browser silently
+     * closes the OUTER form the instant it hits the inner one's closing
+     * tag, stranding the Save button outside any form at all (it does
+     * nothing when clicked). A PHPUnit request to the controller can't
+     * catch this on its own, since nothing here actually parses/corrects
+     * HTML the way a browser does — this only catches it by checking the
+     * raw markup's own ordering.
+     */
+    public function test_the_save_button_is_not_stranded_outside_the_form_by_a_nested_banner_upload_form(): void
+    {
+        $manager = $this->makeManager();
+        $promotion = Promotion::create([
+            'code' => 'WEDNESDAY-AUTO', 'type' => 'buy_x_get_y_free', 'value' => 0,
+            'buy_quantity' => 3, 'free_quantity' => 1, 'is_automatic' => true, 'recurring_days' => [3],
+        ]);
+
+        $html = $this->actingAs($manager)->get(route('dashboard.promotions.edit', $promotion))->getContent();
+
+        $updateFormOpen = strpos($html, 'action="'.route('dashboard.promotions.update', $promotion).'"');
+        $updateFormClose = strpos($html, '</form>', $updateFormOpen);
+        $bannerFormOpen = strpos($html, 'action="'.route('dashboard.promotions.banner-image.update', $promotion).'"');
+
+        $this->assertNotFalse($updateFormOpen);
+        $this->assertNotFalse($bannerFormOpen);
+        $this->assertLessThan($bannerFormOpen, $updateFormClose, 'The update form must close before the banner upload form opens.');
+    }
+
     public function test_manager_can_upload_and_remove_a_promotion_banner_image(): void
     {
         $manager = $this->makeManager();

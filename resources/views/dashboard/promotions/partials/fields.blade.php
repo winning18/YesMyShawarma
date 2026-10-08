@@ -95,30 +95,9 @@
             <x-input-error class="mt-2" :messages="$errors->get('banner_headline')" />
         </div>
 
-        @if ($promotion)
-            <div>
-                <x-input-label :value="__('Homepage banner image (optional)')" />
-                @if ($promotion->bannerImageUrl())
-                    <img src="{{ $promotion->bannerImageUrl() }}" alt="" class="mt-2 max-h-32 rounded-md">
-                @endif
-                <div class="mt-2 flex items-center gap-3">
-                    <form method="POST" action="{{ route('dashboard.promotions.banner-image.update', $promotion) }}" enctype="multipart/form-data" class="flex items-center gap-2">
-                        @csrf
-                        <input type="file" name="image" accept="image/*" class="text-sm">
-                        <x-secondary-button type="submit">{{ __('Upload') }}</x-secondary-button>
-                    </form>
-                    @if ($promotion->bannerImageUrl())
-                        <form method="POST" action="{{ route('dashboard.promotions.banner-image.destroy', $promotion) }}" onsubmit="return confirm('{{ __('Remove the banner image?') }}')">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="text-sm text-red-600 hover:underline">{{ __('Remove') }}</button>
-                        </form>
-                    @endif
-                </div>
-            </div>
-        @else
+        @unless ($promotion)
             <p class="text-xs text-gray-500">{{ __('Save this promotion first to upload a banner image.') }}</p>
-        @endif
+        @endunless
     </div>
 
     <div class="grid grid-cols-2 gap-4">
