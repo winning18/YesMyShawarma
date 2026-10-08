@@ -7,6 +7,7 @@ use App\Models\Branch;
 use App\Services\Cart\CartService;
 use App\Services\Menu\MenuPricingService;
 use App\Services\Orders\Data\PlaceOrderItemData;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -60,16 +61,26 @@ class CartController extends Controller
         return back()->with('added_to_cart', true);
     }
 
-    public function updateQuantity(Request $request, string $line, CartService $cart): RedirectResponse
+    /**
+     * Returns the fresh summary rather than a bare redirect — a
+     * buy_x_get_y_free promotion's free line depends on every paid line
+     * of the same menu item combined, so a quantity change on ANY one of
+     * them can change the free line's own quantity too (or create/remove
+     * it entirely). The page's own JS applies this response wholesale
+     * instead of recomputing the changed line in isolation, which could
+     * never know about that cross-line effect on its own.
+     */
+    public function updateQuantity(Request $request, string $line, CartService $cart): JsonResponse
     {
         $validated = $request->validate(['quantity' => ['required', 'integer', 'min:1', 'max:'.CartService::MAX_LINE_QUANTITY]]);
 
         $cart->updateQuantity($line, $validated['quantity']);
 
-        return back();
+        return response()->json($this->summaryPayload($cart));
     }
 
-    public function updateOptionQuantity(Request $request, string $line, int $option, CartService $cart): RedirectResponse
+    /** See updateQuantity()'s docblock — same reasoning. */
+    public function updateOptionQuantity(Request $request, string $line, int $option, CartService $cart): JsonResponse
     {
         $validated = $request->validate([
             'quantity' => ['required', 'integer', 'min:1', 'max:'.MenuPricingService::MAX_OPTION_QUANTITY],
@@ -77,7 +88,17 @@ class CartController extends Controller
 
         $cart->updateOptionQuantity($line, $option, $validated['quantity']);
 
-        return back();
+        return response()->json($this->summaryPayload($cart));
+    }
+
+    /**
+     * @return array{lines: list<array<string, mixed>>, subtotal: int}
+     */
+    private function summaryPayload(CartService $cart): array
+    {
+        $summary = $cart->summary();
+
+        return ['lines' => $summary['lines'], 'subtotal' => $summary['subtotal']];
     }
 
     /**

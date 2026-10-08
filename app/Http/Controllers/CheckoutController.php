@@ -46,11 +46,15 @@ class CheckoutController extends Controller
         return view('checkout.show', [
             ...$summary,
             'automaticPromotion' => $automaticPromotion,
-            // A fixed preview, same spirit as the existing live "Apply"
-            // check — OrderCreationService::create() is still the
-            // authoritative recalculation at actual placement.
-            'automaticDiscount' => $automaticPromotion
-                ? $promotions->calculateDiscount($automaticPromotion, $summary['subtotal'], $summary['lines'])
+            // buy_x_get_y_free never has a number to show here — the free
+            // unit is already its own line in $summary['lines']
+            // (CartService::summary()), not a value subtracted off the
+            // total. A fixed preview for percentage/fixed, same spirit as
+            // the existing live "Apply" check — OrderCreationService::
+            // create() is still the authoritative recalculation at actual
+            // placement.
+            'automaticDiscount' => ($automaticPromotion && $automaticPromotion->type !== 'buy_x_get_y_free')
+                ? $promotions->calculateDiscount($automaticPromotion, $summary['subtotal'])
                 : 0,
             'deliveryAvailable' => $deliveryAreas->isNotEmpty(),
             'deliveryAreas' => $deliveryAreas,

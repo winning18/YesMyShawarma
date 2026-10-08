@@ -6,6 +6,7 @@ use App\Exceptions\OrderPlacementException;
 use App\Models\Branch;
 use App\Services\Menu\MenuPricingService;
 use App\Services\Orders\Data\PlaceOrderItemData;
+use App\Services\Promotions\PromotionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -22,6 +23,7 @@ class CartService
     public function __construct(
         private readonly Request $request,
         private readonly MenuPricingService $pricing,
+        private readonly PromotionService $promotions,
     ) {}
 
     /**
@@ -197,6 +199,14 @@ class CartService
             $cart['items'] = $stillValidItems;
             $this->save($cart);
         }
+
+        // Appended for display only, never written back into the stored
+        // cart — recomputed fresh on every summary() call, so it always
+        // reflects whatever's actually in the cart right now (today's
+        // promotion, current quantities), with nothing to keep in sync by
+        // hand. $subtotal is already set above from the real lines alone;
+        // a free line's own 0 price can never change it either way.
+        $lines = $this->promotions->appendFreeLines($this->promotions->findActiveAutomatic($branch), $lines);
 
         return ['branch' => $branch, 'lines' => $lines, 'subtotal' => $subtotal, 'dropped' => $dropped];
     }

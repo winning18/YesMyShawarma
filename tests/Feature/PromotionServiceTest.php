@@ -197,45 +197,80 @@ class PromotionServiceTest extends TestCase
         $this->assertSame(3000, $this->service->calculateDiscount($promotion, 3000));
     }
 
-    public function test_buy_x_get_y_free_discounts_one_free_unit_per_group_of_three(): void
+    public function test_free_units_for_quantity_buy_2_get_1_free(): void
     {
-        $promotion = $this->makePromotion(['type' => 'buy_x_get_y_free', 'value' => 0, 'buy_quantity' => 3, 'free_quantity' => 1]);
-        $itemRows = [['menu_item_id' => 1, 'unit_price_snapshot' => 1000, 'quantity' => 3]];
+        $promotion = $this->makePromotion(['type' => 'buy_x_get_y_free', 'value' => 0, 'buy_quantity' => 2, 'free_quantity' => 1]);
 
-        $this->assertSame(1000, $this->service->calculateDiscount($promotion, 3000, $itemRows));
+        $this->assertSame(0, $this->service->freeUnitsForQuantity($promotion, 1));
+        $this->assertSame(1, $this->service->freeUnitsForQuantity($promotion, 2));
     }
 
-    public function test_buy_x_get_y_free_repeats_per_group_rather_than_capping_at_one(): void
+    public function test_free_units_for_quantity_repeats_per_group_rather_than_capping_at_one(): void
     {
-        $promotion = $this->makePromotion(['type' => 'buy_x_get_y_free', 'value' => 0, 'buy_quantity' => 3, 'free_quantity' => 1]);
-        // 7 units: floor(7/3) = 2 free, not capped at 1 and not rounded up to 3.
-        $itemRows = [['menu_item_id' => 1, 'unit_price_snapshot' => 1000, 'quantity' => 7]];
+        $promotion = $this->makePromotion(['type' => 'buy_x_get_y_free', 'value' => 0, 'buy_quantity' => 2, 'free_quantity' => 1]);
 
-        $this->assertSame(2000, $this->service->calculateDiscount($promotion, 7000, $itemRows));
+        // 4 paid: two full groups of 2, so 2 free — not capped at 1.
+        $this->assertSame(2, $this->service->freeUnitsForQuantity($promotion, 4));
+        // 5 paid: two full groups plus one short of a third, still 2 free.
+        $this->assertSame(2, $this->service->freeUnitsForQuantity($promotion, 5));
     }
 
-    public function test_buy_x_get_y_free_requires_the_same_menu_item_not_any_three(): void
+    public function test_append_free_lines_adds_a_separate_zero_priced_row(): void
     {
-        $promotion = $this->makePromotion(['type' => 'buy_x_get_y_free', 'value' => 0, 'buy_quantity' => 3, 'free_quantity' => 1]);
-        // 2 of item A + 1 of item B — neither reaches 3 units of the SAME item.
-        $itemRows = [
-            ['menu_item_id' => 1, 'unit_price_snapshot' => 1000, 'quantity' => 2],
-            ['menu_item_id' => 2, 'unit_price_snapshot' => 1500, 'quantity' => 1],
+        $promotion = $this->makePromotion(['type' => 'buy_x_get_y_free', 'value' => 0, 'buy_quantity' => 2, 'free_quantity' => 1]);
+        $rows = [['menu_item_id' => 1, 'name_snapshot' => 'Shawarma', 'unit_price_snapshot' => 1000, 'quantity' => 2, 'line_total' => 2000]];
+
+        $result = $this->service->appendFreeLines($promotion, $rows);
+
+        $this->assertCount(2, $result);
+        $this->assertSame(0, $result[1]['unit_price_snapshot']);
+        $this->assertSame(1, $result[1]['quantity']);
+        $this->assertSame(0, $result[1]['line_total']);
+        $this->assertTrue($result[1]['is_free']);
+        $this->assertSame([], $result[1]['options']);
+    }
+
+    public function test_append_free_lines_requires_the_same_menu_item_not_any_two(): void
+    {
+        $promotion = $this->makePromotion(['type' => 'buy_x_get_y_free', 'value' => 0, 'buy_quantity' => 2, 'free_quantity' => 1]);
+        // 1 of item A + 1 of item B — neither reaches 2 units of the SAME item.
+        $rows = [
+            ['menu_item_id' => 1, 'name_snapshot' => 'Shawarma', 'unit_price_snapshot' => 1000, 'quantity' => 1, 'line_total' => 1000],
+            ['menu_item_id' => 2, 'name_snapshot' => 'Burger', 'unit_price_snapshot' => 1500, 'quantity' => 1, 'line_total' => 1500],
         ];
 
-        $this->assertSame(0, $this->service->calculateDiscount($promotion, 3500, $itemRows));
+        $this->assertCount(2, $this->service->appendFreeLines($promotion, $rows));
     }
 
-    public function test_buy_x_get_y_free_sums_quantity_across_separate_lines_of_the_same_item(): void
+    public function test_append_free_lines_sums_quantity_across_separate_lines_of_the_same_item(): void
     {
-        $promotion = $this->makePromotion(['type' => 'buy_x_get_y_free', 'value' => 0, 'buy_quantity' => 3, 'free_quantity' => 1]);
-        // Same menu item split across two cart lines (e.g. different notes/options) — 2 + 1 = 3 units.
-        $itemRows = [
-            ['menu_item_id' => 1, 'unit_price_snapshot' => 1000, 'quantity' => 2],
-            ['menu_item_id' => 1, 'unit_price_snapshot' => 1000, 'quantity' => 1],
+        $promotion = $this->makePromotion(['type' => 'buy_x_get_y_free', 'value' => 0, 'buy_quantity' => 2, 'free_quantity' => 1]);
+        // Same menu item split across two cart lines (e.g. different notes/options) — 1 + 1 = 2 units.
+        $rows = [
+            ['menu_item_id' => 1, 'name_snapshot' => 'Shawarma', 'unit_price_snapshot' => 1000, 'quantity' => 1, 'line_total' => 1000],
+            ['menu_item_id' => 1, 'name_snapshot' => 'Shawarma', 'unit_price_snapshot' => 1000, 'quantity' => 1, 'line_total' => 1000],
         ];
 
-        $this->assertSame(1000, $this->service->calculateDiscount($promotion, 3000, $itemRows));
+        $result = $this->service->appendFreeLines($promotion, $rows);
+
+        $this->assertCount(3, $result);
+        $this->assertSame(1, $result[2]['quantity']);
+        $this->assertTrue($result[2]['is_free']);
+    }
+
+    public function test_append_free_lines_ignores_other_promo_types(): void
+    {
+        $promotion = $this->makePromotion(['type' => 'percentage', 'value' => 10]);
+        $rows = [['menu_item_id' => 1, 'name_snapshot' => 'Shawarma', 'unit_price_snapshot' => 1000, 'quantity' => 5, 'line_total' => 5000]];
+
+        $this->assertSame($rows, $this->service->appendFreeLines($promotion, $rows));
+    }
+
+    public function test_append_free_lines_passes_through_unchanged_with_no_promotion(): void
+    {
+        $rows = [['menu_item_id' => 1, 'name_snapshot' => 'Shawarma', 'unit_price_snapshot' => 1000, 'quantity' => 5, 'line_total' => 5000]];
+
+        $this->assertSame($rows, $this->service->appendFreeLines(null, $rows));
     }
 
     public function test_findActiveAutomatic_returns_a_promotion_matching_today(): void

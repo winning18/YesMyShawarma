@@ -67,20 +67,30 @@
                 <p class="text-sm text-gray-500" x-show="lines.length === 0">{{ __('No items yet.') }}</p>
 
                 <ul class="space-y-3 mb-4 text-sm" x-show="lines.length > 0">
-                    <template x-for="line in lines" :key="line.line_id">
+                    <template x-for="line in visibleLines()" :key="line.line_id">
                         <li class="flex justify-between items-start gap-2">
                             <div class="flex-1 min-w-0">
-                                <p class="text-gray-800 truncate" x-text="line.name_snapshot"></p>
+                                <p class="text-gray-800 truncate">
+                                    <span x-text="line.name_snapshot"></span>
+                                    <span x-show="line.is_free" class="ml-1 text-xs font-semibold text-green-700 bg-green-50 rounded px-1.5 py-0.5">{{ __('FREE') }}</span>
+                                </p>
                                 <p class="text-xs text-gray-500" x-show="line.options.length" x-text="line.options.map(o => o.name_snapshot + (o.quantity > 1 ? ' x' + o.quantity : '')).join(', ')"></p>
-                                <div class="flex items-center gap-2 mt-1">
+                                <div class="flex items-center gap-2 mt-1" x-show="!line.is_free">
                                     <button type="button" @click="changeQuantity(line.line_id, line.quantity - 1)" class="w-5 h-5 flex items-center justify-center border border-gray-300 rounded text-xs text-gray-600">-</button>
                                     <span class="text-xs w-4 text-center" x-text="line.quantity"></span>
                                     <button type="button" @click="changeQuantity(line.line_id, line.quantity + 1)" class="w-5 h-5 flex items-center justify-center border border-gray-300 rounded text-xs text-gray-600">+</button>
                                 </div>
+                                {{-- A free line's quantity is entirely
+                                     derived from its paid sibling lines —
+                                     never independently editable or
+                                     removable, it just disappears on its
+                                     own the next time the cart no longer
+                                     earns one. --}}
+                                <p class="text-xs text-gray-500 mt-1" x-show="line.is_free" x-text="'{{ __('Qty') }} ' + line.quantity"></p>
                             </div>
                             <div class="text-right shrink-0">
-                                <p class="text-gray-800" x-text="formatMoney(line.line_total)"></p>
-                                <button type="button" @click="removeLine(line.line_id)" class="text-xs text-red-600 hover:underline mt-1">{{ __('Remove') }}</button>
+                                <p class="text-gray-800" x-text="line.is_free ? '{{ __('FREE') }}' : formatMoney(line.line_total)"></p>
+                                <button type="button" x-show="!line.is_free" @click="removeLine(line.line_id)" class="text-xs text-red-600 hover:underline mt-1">{{ __('Remove') }}</button>
                             </div>
                         </li>
                     </template>
@@ -329,6 +339,18 @@
                 // won't actually be charged.
                 displayedDiscount() {
                     return this.paymentMethod === 'bolt_food' ? 0 : this.discount;
+                },
+
+                // Same reasoning as displayedDiscount() above, applied to
+                // a buy_x_get_y_free promotion's free line instead of a
+                // discount number — the server includes it in `lines`
+                // assuming a non-Bolt-Food order, since payment_method
+                // isn't necessarily final while the cart's still being
+                // built.
+                visibleLines() {
+                    return this.paymentMethod === 'bolt_food'
+                        ? this.lines.filter((line) => !line.is_free)
+                        : this.lines;
                 },
 
                 openItem(item) {

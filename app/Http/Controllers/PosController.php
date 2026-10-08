@@ -307,14 +307,17 @@ class PosController extends Controller
     }
 
     /**
-     * $discount assumes a non-Bolt-Food payment method — cart-building
-     * happens before payment_method is necessarily final (it's a radio
-     * alongside the cart, not a separate step), so the live preview can't
-     * know yet whether this will end up excluded. pos/index.blade.php
-     * zeroes it client-side the moment Bolt Food is selected; store()'s
-     * actual OrderCreationService::create() call re-checks payment_method
-     * itself regardless, so a wrong preview can never place a wrongly
-     * discounted order.
+     * $discount (percentage/fixed only — buy_x_get_y_free's free line is
+     * already part of $summary['lines'], nothing to subtract) and the
+     * free line itself both assume a non-Bolt-Food payment method —
+     * cart-building happens before payment_method is necessarily final
+     * (it's a radio alongside the cart, not a separate step), so the live
+     * preview can't know yet whether this will end up excluded.
+     * pos/index.blade.php hides the free line and zeroes the discount
+     * client-side the moment Bolt Food is selected; store()'s actual
+     * OrderCreationService::create() call re-checks payment_method itself
+     * regardless, so a wrong preview can never place a wrongly discounted
+     * or wrongly free order.
      *
      * @return array{branch: ?array<string, mixed>, lines: list<array<string, mixed>>, subtotal: int, dropped: string[], discount: int, promotionBanner: ?string}
      */
@@ -322,13 +325,16 @@ class PosController extends Controller
     {
         $summary = $cart->summary();
         $promotion = $summary['branch'] ? $promotions->findActiveAutomatic($summary['branch']) : null;
+        $discount = ($promotion && $promotion->type !== 'buy_x_get_y_free')
+            ? $promotions->calculateDiscount($promotion, $summary['subtotal'])
+            : 0;
 
         return [
             'branch' => $summary['branch'] ? ['id' => $summary['branch']->id, 'name' => $summary['branch']->name] : null,
             'lines' => $summary['lines'],
             'subtotal' => $summary['subtotal'],
             'dropped' => $summary['dropped'],
-            'discount' => $promotion ? $promotions->calculateDiscount($promotion, $summary['subtotal'], $summary['lines']) : 0,
+            'discount' => $discount,
             'promotionBanner' => $promotion?->banner_headline,
         ];
     }

@@ -75,7 +75,7 @@ class CartServiceTest extends TestCase
 
         $lineId = $this->extractLineId();
 
-        $this->patch(route('cart.update', $lineId), ['quantity' => 3])->assertRedirect();
+        $this->patch(route('cart.update', $lineId), ['quantity' => 3])->assertOk();
 
         $this->get(route('cart.show'))->assertSee('150.00'); // 5000 * 3
     }
@@ -215,7 +215,7 @@ class CartServiceTest extends TestCase
         $lineId = $this->extractLineId();
 
         $this->patch(route('cart.options.update', [$lineId, $this->cheese->id]), ['quantity' => 3])
-            ->assertRedirect();
+            ->assertOk();
 
         // 5000 + 300 * 3 = 5900
         $this->get(route('cart.show'))->assertSee('59.00');

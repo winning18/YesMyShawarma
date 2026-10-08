@@ -117,12 +117,34 @@ class OrderCreationService
             // word. See PromotionService::validate().
             $promotion = $this->promotions->findActiveAutomatic($branch, $data->paymentMethod);
             $discountTotal = 0;
+            $redemptionValue = 0;
 
-            if ($promotion) {
-                $discountTotal = $this->promotions->calculateDiscount($promotion, $subtotal, $itemRows);
+            if ($promotion && $promotion->type === 'buy_x_get_y_free') {
+                // Never reduces subtotal — it grants a separate, zero-priced
+                // order_items row instead (appendFreeLines() below), so
+                // there's nothing left to discount here. $subtotal/$total
+                // already exclude the free unit's value entirely, since
+                // priceItems() above only ever priced what the customer
+                // actually submitted — the free row is pure addition.
+                $priceByMenuItem = collect($itemRows)->groupBy('menu_item_id')
+                    ->map(fn ($rows) => $rows->first()['unit_price_snapshot']);
+
+                $itemRows = $this->promotions->appendFreeLines($promotion, $itemRows);
+
+                // Still worth tracking in full for reporting — see
+                // PromotionRedemption's own docblock: "how much did we give
+                // away" never depends on how the order's own subtotal/
+                // discount_total columns happen to be structured.
+                $redemptionValue = collect($itemRows)
+                    ->where('is_free', true)
+                    ->sum(fn ($row) => $row['quantity'] * $priceByMenuItem[$row['menu_item_id']]);
+            } elseif ($promotion) {
+                $discountTotal = $this->promotions->calculateDiscount($promotion, $subtotal);
+                $redemptionValue = $discountTotal;
             } elseif ($data->promoCode !== null) {
                 $promotion = $this->promotions->validate($data->promoCode, $branch, $customer, $subtotal);
                 $discountTotal = $this->promotions->calculateDiscount($promotion, $subtotal);
+                $redemptionValue = $discountTotal;
             }
 
             [$deliveryFee, $addressSnapshot] = $data->fulfilmentType === 'delivery'
@@ -178,7 +200,7 @@ class OrderCreationService
             $order->save();
 
             if ($promotion) {
-                $this->promotions->redeem($promotion, $order, $customer, $discountTotal);
+                $this->promotions->redeem($promotion, $order, $customer, $redemptionValue);
             }
 
             foreach ($itemRows as $row) {
@@ -188,6 +210,7 @@ class OrderCreationService
                     'unit_price_snapshot' => $row['unit_price_snapshot'],
                     'quantity' => $row['quantity'],
                     'line_total' => $row['line_total'],
+                    'is_free' => $row['is_free'] ?? false,
                     'notes' => $row['notes'],
                 ]);
 

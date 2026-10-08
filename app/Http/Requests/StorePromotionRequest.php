@@ -27,12 +27,29 @@ class StorePromotionRequest extends FormRequest
                     }
                 },
             ],
-            'buy_quantity' => [Rule::requiredIf(fn () => $this->input('type') === 'buy_x_get_y_free'), 'nullable', 'integer', 'min:2'],
+            // buy_quantity is how many the customer pays for per grant
+            // (e.g. "buy 2 get 1 free" is buy_quantity=2, free_quantity=1)
+            // — not a total group size, so 1 is a valid, if generous,
+            // "buy 1 get 1 free".
+            'buy_quantity' => [Rule::requiredIf(fn () => $this->input('type') === 'buy_x_get_y_free'), 'nullable', 'integer', 'min:1'],
             'free_quantity' => [Rule::requiredIf(fn () => $this->input('type') === 'buy_x_get_y_free'), 'nullable', 'integer', 'min:1'],
             'min_order_total' => ['nullable', 'numeric', 'min:0'],
             'starts_at' => ['nullable', 'date'],
             'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
-            'is_automatic' => ['nullable', 'boolean'],
+            // buy_x_get_y_free only ever grants its free line through the
+            // automatic, no-code lookup (PromotionService::
+            // findActiveAutomatic()/appendFreeLines()) — a code-entered one
+            // would validate but silently do nothing, since nothing calls
+            // appendFreeLines() for the code path.
+            'is_automatic' => [
+                Rule::requiredIf(fn () => $this->input('type') === 'buy_x_get_y_free'),
+                'nullable', 'boolean',
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    if ($this->input('type') === 'buy_x_get_y_free' && ! $value) {
+                        $fail('A "Buy X get Y free" promotion must apply automatically — it has no way to grant the free item through a code.');
+                    }
+                },
+            ],
             'recurring_days' => [Rule::requiredIf($this->boolean('is_automatic')), 'nullable', 'array'],
             'recurring_days.*' => ['integer', 'between:0,6'],
             'banner_headline' => ['nullable', 'string', 'max:255'],

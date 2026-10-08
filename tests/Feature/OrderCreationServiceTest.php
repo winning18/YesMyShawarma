@@ -637,7 +637,7 @@ class OrderCreationServiceTest extends TestCase
         $today = now('Africa/Accra')->dayOfWeek;
         Promotion::create([
             'code' => 'WEDNESDAY-AUTO', 'type' => 'buy_x_get_y_free', 'value' => 0,
-            'buy_quantity' => 3, 'free_quantity' => 1, 'is_automatic' => true,
+            'buy_quantity' => 2, 'free_quantity' => 1, 'is_automatic' => true,
             'recurring_days' => [$today], 'is_active' => true,
         ]);
 
@@ -649,22 +649,45 @@ class OrderCreationServiceTest extends TestCase
             paymentMethod: 'cash',
             items: [new PlaceOrderItemData(
                 menuItemId: $this->shawarma->id,
-                quantity: 3,
+                quantity: 2,
                 optionQuantities: [$this->garlicSauce->id => 1],
             )],
         ));
 
-        // 3 units at 3500 = 10500 subtotal; 1 free unit (base price only,
-        // no option) = 3500 discount.
-        $this->assertSame(10500, $order->subtotal);
-        $this->assertSame(3500, $order->discount_total);
+        // 2 paid units at 3500 = 7000 subtotal — the free 3rd unit is a
+        // separate order_items row, never folded into this one, so
+        // nothing here is discounted; subtotal/total already exclude the
+        // free unit's value entirely.
+        $this->assertSame(7000, $order->subtotal);
+        $this->assertSame(0, $order->discount_total);
         $this->assertSame(7000, $order->total);
         $this->assertNotNull($order->promotion_id);
-        // Every unit is still a real order_items row at full price — the
-        // discount lives only in discount_total, stock deduction (keyed
-        // off quantity, not price) is completely unaffected.
-        $this->assertSame(3, $order->items->first()->quantity);
-        $this->assertSame(3500, $order->items->first()->unit_price_snapshot);
+
+        $order->load('items');
+        $this->assertCount(2, $order->items);
+
+        $paidRow = $order->items->firstWhere('is_free', false);
+        $this->assertSame(2, $paidRow->quantity);
+        $this->assertSame(3500, $paidRow->unit_price_snapshot);
+
+        // The free row is its own line — quantity 1, priced at 0, no
+        // options (a free unit's own options still bill in full on
+        // whichever paid line earned it, but the free row itself is
+        // always the plain base item) — still a real unit for stock
+        // purposes (RecipeStockService has no is_free check of its own).
+        $freeRow = $order->items->firstWhere('is_free', true);
+        $this->assertSame(1, $freeRow->quantity);
+        $this->assertSame(0, $freeRow->unit_price_snapshot);
+        $this->assertSame(0, $freeRow->line_total);
+        $this->assertCount(0, $freeRow->options);
+
+        // The redemption ledger still records the full value given away,
+        // regardless of how the order's own subtotal/discount_total are
+        // structured — see PromotionRedemption's docblock.
+        $this->assertDatabaseHas('promotion_redemptions', [
+            'order_id' => $order->id,
+            'amount_discounted' => 3500,
+        ]);
     }
 
     public function test_an_automatic_promotion_excludes_bolt_food_orders(): void
@@ -672,7 +695,7 @@ class OrderCreationServiceTest extends TestCase
         $today = now('Africa/Accra')->dayOfWeek;
         Promotion::create([
             'code' => 'WEDNESDAY-AUTO', 'type' => 'buy_x_get_y_free', 'value' => 0,
-            'buy_quantity' => 3, 'free_quantity' => 1, 'is_automatic' => true,
+            'buy_quantity' => 2, 'free_quantity' => 1, 'is_automatic' => true,
             'recurring_days' => [$today], 'is_active' => true,
         ]);
 
@@ -684,13 +707,16 @@ class OrderCreationServiceTest extends TestCase
             paymentMethod: 'bolt_food',
             items: [new PlaceOrderItemData(
                 menuItemId: $this->shawarma->id,
-                quantity: 3,
+                quantity: 2,
                 optionQuantities: [$this->garlicSauce->id => 1],
             )],
         ));
 
         $this->assertSame(0, $order->discount_total);
         $this->assertNull($order->promotion_id);
+        $order->load('items');
+        $this->assertCount(1, $order->items);
+        $this->assertFalse($order->items->first()->is_free);
     }
 
     public function test_an_active_automatic_promotion_takes_priority_over_a_submitted_code(): void
@@ -698,7 +724,7 @@ class OrderCreationServiceTest extends TestCase
         $today = now('Africa/Accra')->dayOfWeek;
         $automatic = Promotion::create([
             'code' => 'WEDNESDAY-AUTO', 'type' => 'buy_x_get_y_free', 'value' => 0,
-            'buy_quantity' => 3, 'free_quantity' => 1, 'is_automatic' => true,
+            'buy_quantity' => 2, 'free_quantity' => 1, 'is_automatic' => true,
             'recurring_days' => [$today], 'is_active' => true,
         ]);
         Promotion::create(['code' => 'TENOFF', 'type' => 'percentage', 'value' => 10, 'is_active' => true]);
@@ -711,14 +737,19 @@ class OrderCreationServiceTest extends TestCase
             paymentMethod: 'cash',
             items: [new PlaceOrderItemData(
                 menuItemId: $this->shawarma->id,
-                quantity: 3,
+                quantity: 2,
                 optionQuantities: [$this->garlicSauce->id => 1],
             )],
             promoCode: 'TENOFF',
         ));
 
         $this->assertSame($automatic->id, $order->promotion_id);
-        $this->assertSame(3500, $order->discount_total);
+        // The automatic promotion wins outright — the submitted code is
+        // never even looked at, so there's no percentage discount here,
+        // just the automatic promotion's own free line.
+        $this->assertSame(0, $order->discount_total);
+        $order->load('items');
+        $this->assertTrue($order->items->contains('is_free', true));
     }
 
     public function test_an_invalid_promo_code_is_rejected(): void

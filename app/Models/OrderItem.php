@@ -10,11 +10,18 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'order_id', 'menu_item_id', 'name_snapshot', 'unit_price_snapshot',
-    'quantity', 'line_total', 'notes',
+    'quantity', 'line_total', 'is_free', 'notes',
 ])]
 class OrderItem extends Model
 {
     use HasFactory;
+
+    protected function casts(): array
+    {
+        return [
+            'is_free' => 'boolean',
+        ];
+    }
 
     public function order(): BelongsTo
     {

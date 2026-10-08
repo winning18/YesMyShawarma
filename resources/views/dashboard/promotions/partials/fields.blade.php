@@ -44,10 +44,10 @@
         <div>
             <x-input-label for="buy_quantity" :value="__('Buy quantity')" />
             <x-text-input
-                id="buy_quantity" name="buy_quantity" type="number" min="2" class="mt-1 block w-full"
-                :value="$value('buy_quantity', 3)" x-bind:required="type === 'buy_x_get_y_free'"
+                id="buy_quantity" name="buy_quantity" type="number" min="1" class="mt-1 block w-full"
+                :value="$value('buy_quantity', 2)" x-bind:required="type === 'buy_x_get_y_free'"
             />
-            <p class="text-xs text-gray-500 mt-1">{{ __('Of the SAME menu item, e.g. 3.') }}</p>
+            <p class="text-xs text-gray-500 mt-1">{{ __('How many of the SAME item the customer pays for, e.g. 2.') }}</p>
             <x-input-error class="mt-2" :messages="$errors->get('buy_quantity')" />
         </div>
         <div>
@@ -56,7 +56,7 @@
                 id="free_quantity" name="free_quantity" type="number" min="1" class="mt-1 block w-full"
                 :value="$value('free_quantity', 1)" x-bind:required="type === 'buy_x_get_y_free'"
             />
-            <p class="text-xs text-gray-500 mt-1">{{ __('Repeats per group, e.g. 1 free per 3 bought.') }}</p>
+            <p class="text-xs text-gray-500 mt-1">{{ __('How many extra they get free each time, e.g. 1 — repeats: paying for 4 grants 2 free.') }}</p>
             <x-input-error class="mt-2" :messages="$errors->get('free_quantity')" />
         </div>
     </div>

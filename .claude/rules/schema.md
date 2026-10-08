@@ -124,7 +124,7 @@ orders
 
 order_items
   id, order_id, menu_item_id,
-  name_snapshot, unit_price_snapshot, quantity, line_total, notes
+  name_snapshot, unit_price_snapshot, quantity, line_total, is_free, notes
 
 order_item_options
   id, order_item_id, option_id, name_snapshot, price_delta_snapshot, quantity
@@ -154,6 +154,11 @@ Same applies to `delivery_address_snapshot` — customers edit saved addresses.
   defaults to `'customer'`/the resolved `Customer` id, but a caller may pass an explicit actor.
 - Status timestamps are denormalised for reporting speed. `order_events` remains the source
   of truth; if the two disagree, `order_events` wins.
+- `is_free` is set only on the synthetic row a `buy_x_get_y_free` promotion grants — see the
+  Promotions section below. It's never folded into the paid row it was earned from, so it
+  shows distinctly on the receipt/kitchen ticket; `unit_price_snapshot`/`line_total` are both 0
+  on that row, but `quantity` is a real count — stock deduction treats it like any other row,
+  with no `is_free` check of its own (a free shawarma still consumes real ingredients).
 
 ## Shifts
 
@@ -294,12 +299,30 @@ itself flagged and approved mid-project (CLAUDE.md's "Resolved, no longer open" 
 assumed.
 
 `buy_quantity`/`free_quantity` are only meaningful for `type === 'buy_x_get_y_free'` — `value`
-stays `0` (the column is `NOT NULL`) and unused for that type. `PromotionService::
-calculateDiscount()` groups the order's `itemRows` by `menu_item_id` (not by cart line — the
-same item can be split across several lines with different options) and gives `free_quantity`
-units for every `buy_quantity` units of that same item, repeating per group rather than capping
-at one freebie per order. Priced at `unit_price_snapshot` only (the item's base price, no
-option `price_delta` folded in) — so a free unit's own chosen options are still billed in full.
+stays `0` (the column is `NOT NULL`) and unused for that type. **`buy_quantity` is how many of
+the same item the customer pays for per grant, not a total group size** — "buy 2 get 1 free" is
+`buy_quantity=2, free_quantity=1`, not 3. `PromotionService::freeUnitsForQuantity()` computes
+`floor(paidQuantity / buy_quantity) * free_quantity`, repeating per group rather than capping at
+one freebie per order (paying for 4 grants 2, not 1). A `buy_x_get_y_free` promotion is always
+`is_automatic` — enforced in `Store`/`UpdatePromotionRequest` — since it has no code-entry path
+that could ever grant it (see below).
+
+Rather than reducing a price, `buy_x_get_y_free` grants a genuinely separate, zero-priced
+`order_items` row (`is_free`) — visible as its own line in the cart, checkout, POS, and the
+receipt/kitchen ticket, not a generic "Discount: -GH₵X" figure. `PromotionService::
+appendFreeLines()` is the one place this row gets built — grouped by `menu_item_id` (not by
+cart line, since the same item can be split across several lines with different options) and
+priced at 0 with no options of its own (a free unit's own chosen options still bill in full on
+whichever paid line earned it — the free row itself is always the plain base item). Called
+identically by `CartService::summary()` (so the free line shows up — and recalculates — the
+moment it's earned, purely a view-time augmentation, never written back into the stored cart)
+and `OrderCreationService::create()` (so the same row becomes the real `order_items` entry).
+Because of this, `orders.discount_total` is always `0` for this type — `subtotal`/`total`
+already exclude the free unit's value entirely, since `priceItems()` only ever prices what the
+customer actually submitted; the free row is pure addition, not a reduction. The redemption
+ledger (`promotion_redemptions.amount_discounted`) still records the free unit's full value
+regardless, since "how much did we give away" shouldn't depend on how the order's own columns
+happen to be structured.
 
 `recurring_days` (nullable JSON array of weekday ints, Carbon's own numbering — 0=Sunday..
 6=Saturday, matching `menu_item_schedules`) and `is_automatic` (boolean) together drive a
@@ -311,10 +334,14 @@ one applies — `validate()` itself also rejects an automatic promotion's own `c
 somehow submitted manually, since that code exists only to satisfy the column's uniqueness, not
 to be typed in. Never applies to a `payment_method === 'bolt_food'` order, the same blanket
 exclusion `Order::EXCLUDED_FROM_SALES_PAYMENT_METHODS` already applies to sales reporting —
-Bolt Food orders are settled entirely on Bolt's own platform. A promotion with no branch rows
-(every branch) is the only kind `findActiveAutomatic()` can match when called with no branch at
-all (the homepage banner, before a customer has picked one) — a branch-restricted automatic
-promotion only ever shows once a branch is actually selected.
+Bolt Food orders are settled entirely on Bolt's own platform; in POS specifically, the free
+line/discount preview is computed before payment_method is necessarily final (it's a radio
+alongside the cart, not a separate step), so it assumes non-Bolt-Food and the page itself hides
+it client-side the moment Bolt Food is actually selected — `OrderCreationService::create()` is
+still what authoritatively excludes it regardless of what the preview showed. A promotion with
+no branch rows (every branch) is the only kind `findActiveAutomatic()` can match when called
+with no branch at all (the homepage banner, before a customer has picked one) — a branch-
+restricted automatic promotion only ever shows once a branch is actually selected.
 
 `banner_headline`/`banner_image_path` drive the homepage banner shown ahead of the normal hero
 slider on a day an automatic promotion is active (`HomeController::index()`) — kept on the same

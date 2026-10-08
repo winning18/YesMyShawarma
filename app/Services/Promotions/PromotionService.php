@@ -116,19 +116,14 @@ class PromotionService
     }
 
     /**
-     * Capped at subtotal — never a negative total. See orders.md's totals
-     * section. $itemRows (MenuPricingService::priceItems()'s own row
-     * shape) is only read for type === 'buy_x_get_y_free'; every other
-     * type is still a plain subtotal-based calculation and ignores it.
-     *
-     * @param  list<array{menu_item_id: int, unit_price_snapshot: int, quantity: int}>  $itemRows
+     * Percentage/fixed only — buy_x_get_y_free never reduces a price, it
+     * grants an extra unit instead (see appendFreeLines()), so it has
+     * nothing to compute here; orders.discount_total stays 0 for that
+     * type (OrderCreationService never calls this for it). Capped at
+     * subtotal — never a negative total. See orders.md's totals section.
      */
-    public function calculateDiscount(Promotion $promotion, int $subtotal, array $itemRows = []): int
+    public function calculateDiscount(Promotion $promotion, int $subtotal): int
     {
-        if ($promotion->type === 'buy_x_get_y_free') {
-            return min($this->calculateBuyXGetYFreeDiscount($promotion, $itemRows), $subtotal);
-        }
-
         $discount = $promotion->type === 'percentage'
             ? (int) round($subtotal * $promotion->value / 100)
             : $promotion->value;
@@ -137,26 +132,75 @@ class PromotionService
     }
 
     /**
-     * Groups by menu_item_id (not by cart line — the same item can be
-     * split across several lines with different options) and gives
-     * free_quantity units for every buy_quantity units of that same item,
-     * repeating per group rather than capping at one freebie per order.
-     * Priced at unit_price_snapshot only — the item's base price, with no
-     * option price_delta folded in (MenuPricingService never includes
-     * options there) — so a free unit's own chosen options are still
-     * billed in full, exactly as confirmed for this promo.
-     *
-     * @param  list<array{menu_item_id: int, unit_price_snapshot: int, quantity: int}>  $itemRows
+     * How many free units a buy_x_get_y_free promotion grants for however
+     * many of the same item were actually paid for — buy_quantity IS the
+     * number paid per grant (e.g. "buy 2 get 1 free" is buy_quantity=2,
+     * free_quantity=1), not a total group size, and it repeats: paying
+     * for 4 (two full groups of 2) grants 2 free, not 1.
      */
-    private function calculateBuyXGetYFreeDiscount(Promotion $promotion, array $itemRows): int
+    public function freeUnitsForQuantity(Promotion $promotion, int $paidQuantity): int
     {
-        return collect($itemRows)
-            ->groupBy('menu_item_id')
-            ->sum(function ($rows) use ($promotion) {
-                $freeUnits = intdiv($rows->sum('quantity'), $promotion->buy_quantity) * $promotion->free_quantity;
+        if ($promotion->type !== 'buy_x_get_y_free' || $promotion->buy_quantity < 1) {
+            return 0;
+        }
 
-                return $freeUnits * $rows->first()['unit_price_snapshot'];
-            });
+        return intdiv($paidQuantity, $promotion->buy_quantity) * $promotion->free_quantity;
+    }
+
+    /**
+     * Returns $rows (MenuPricingService::priceItems()'s own row shape)
+     * with one synthetic row appended per menu item that has earned a
+     * free unit — never mutates an existing row. Grouped by menu_item_id,
+     * not by cart line, since the same item can be split across several
+     * lines with different options/notes and they all count toward the
+     * same free-unit tally. The synthetic row is priced at 0 (not the
+     * item's real unit_price_snapshot) and carries no options — a free
+     * unit's own chosen options are still billed in full on whichever
+     * paid line earned it, exactly as confirmed for this promo; the free
+     * row itself is always the plain base item. Used identically by
+     * CartService::summary() (so the free line shows up the moment it's
+     * earned, before any order exists) and OrderCreationService::create()
+     * (so the same row becomes a real, separate order_items row, not
+     * folded into the paid one — see is_free on that table).
+     *
+     * @param  list<array{menu_item_id: int, name_snapshot: string, unit_price_snapshot: int, quantity: int}>  $rows
+     * @return list<array<string, mixed>>
+     */
+    public function appendFreeLines(?Promotion $promotion, array $rows): array
+    {
+        if (! $promotion || $promotion->type !== 'buy_x_get_y_free') {
+            return $rows;
+        }
+
+        $freeRows = collect($rows)
+            ->groupBy('menu_item_id')
+            ->map(function ($group) use ($promotion) {
+                $freeUnits = $this->freeUnitsForQuantity($promotion, $group->sum('quantity'));
+
+                if ($freeUnits < 1) {
+                    return null;
+                }
+
+                $first = $group->first();
+
+                return [
+                    'menu_item_id' => $first['menu_item_id'],
+                    'name_snapshot' => $first['name_snapshot'],
+                    'unit_price_snapshot' => 0,
+                    'quantity' => $freeUnits,
+                    'line_total' => 0,
+                    'notes' => null,
+                    'options' => [],
+                    'is_free' => true,
+                    'line_id' => 'free-'.$first['menu_item_id'],
+                    'image_url' => $first['image_url'] ?? null,
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
+
+        return [...$rows, ...$freeRows];
     }
 
     /**

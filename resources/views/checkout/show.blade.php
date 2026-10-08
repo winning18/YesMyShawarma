@@ -444,8 +444,13 @@
                                 </div>
                             @endif
                             <div class="flex-1 flex justify-between gap-2 min-w-0">
-                                <span class="truncate">{{ $line['quantity'] }}x {{ $line['name_snapshot'] }}</span>
-                                <span class="shrink-0">GH₵{{ number_format($line['line_total'] / 100, 2) }}</span>
+                                <span class="truncate">
+                                    {{ $line['quantity'] }}x {{ $line['name_snapshot'] }}
+                                    @if ($line['is_free'] ?? false)
+                                        <span class="text-xs font-semibold text-green-700 bg-green-50 rounded px-1.5 py-0.5 align-middle">{{ __('FREE') }}</span>
+                                    @endif
+                                </span>
+                                <span class="shrink-0">{{ ($line['is_free'] ?? false) ? __('FREE') : 'GH₵'.number_format($line['line_total'] / 100, 2) }}</span>
                             </div>
                         </div>
                         @foreach ($line['options'] as $option)

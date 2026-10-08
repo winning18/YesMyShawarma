@@ -258,8 +258,11 @@ charged until the rider actually reaches the door.
 
 Compute in this order, always server-side:
 
-1. `subtotal` = sum of `order_items.line_total`
-2. `discount_total` = promotion applied to subtotal, capped at subtotal
+1. `subtotal` = sum of `order_items.line_total` — a `buy_x_get_y_free` promotion's free row is
+   already included in this sum at `line_total = 0`, so `subtotal` naturally excludes its value
+   with nothing further to subtract (see schema.md's Promotions section).
+2. `discount_total` = promotion applied to subtotal, capped at subtotal — always `0` for
+   `buy_x_get_y_free`, which grants an extra item rather than reducing a price.
 3. `delivery_fee` = `DeliveryFeeCalculator::calculate()` — haversine distance from the branch ×
    a flat rate per km, zero for pickup. Only priced here when geolocation was captured at
    checkout; otherwise deferred to the rider marking the order arrived (see this file's
