@@ -56,7 +56,12 @@ class PromotionService
             ->where(fn ($query) => $query->whereNull('ends_at')->orWhere('ends_at', '>=', $now))
             ->with('branches')
             ->get()
-            ->first(fn (Promotion $promotion) => in_array($today, $promotion->recurring_days ?? [], true)
+            // array_map('intval', ...) rather than trusting recurring_days
+            // already holds ints — PromotionManagementController casts on
+            // the way in, but in_array(..., true) is strict, and a single
+            // uncast write path (a future seeder, a direct DB edit) would
+            // otherwise make this silently never match any day at all.
+            ->first(fn (Promotion $promotion) => in_array($today, array_map('intval', $promotion->recurring_days ?? []), true)
                 && ($promotion->branches->isEmpty() || ($branch && $promotion->branches->contains('id', $branch->id))));
     }
 

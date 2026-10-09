@@ -139,6 +139,43 @@ class PromotionManagementTest extends TestCase
         $this->assertSoftDeleted($promotion);
     }
 
+    /**
+     * Regression: $request->validate()'s 'integer' rule validates but
+     * never casts — a real browser form POST sends every value as a
+     * string, so without an explicit cast this column stored ["4"]
+     * instead of [4]. PromotionService::findActiveAutomatic()'s own
+     * strict in_array($today, ..., true) check (int vs string) then
+     * never matched any day at all, regardless of what was configured —
+     * the promotion silently never applied. Submitting recurring_days as
+     * strings here (['3'], not [3]) is deliberate: passing a native PHP
+     * int array, the way an earlier test in this file does, never
+     * exercises this bug at all, since nothing coerces it to a string
+     * the way a real form submission does.
+     */
+    public function test_recurring_days_are_stored_as_integers_not_strings(): void
+    {
+        $manager = $this->makeManager();
+
+        $this->actingAs($manager)->post(route('dashboard.promotions.store'), [
+            'code' => 'THURSDAY-AUTO',
+            'type' => 'buy_x_get_y_free',
+            'buy_quantity' => 2,
+            'free_quantity' => 1,
+            'is_automatic' => '1',
+            'is_active' => '1',
+            'recurring_days' => ['4'],
+        ]);
+
+        $promotion = Promotion::where('code', 'THURSDAY-AUTO')->first();
+
+        $this->assertSame([4], $promotion->recurring_days);
+
+        $today = now('Africa/Accra')->dayOfWeek;
+        $promotion->update(['recurring_days' => ["{$today}"]]);
+
+        $this->assertNotNull(app(\App\Services\Promotions\PromotionService::class)->findActiveAutomatic($this->branch));
+    }
+
     public function test_manager_can_create_an_automatic_buy_x_get_y_free_promotion(): void
     {
         $manager = $this->makeManager();

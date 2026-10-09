@@ -49,7 +49,7 @@ class PromotionManagementController extends Controller
             'starts_at' => $validated['starts_at'] ?? null,
             'ends_at' => $validated['ends_at'] ?? null,
             'is_automatic' => $request->boolean('is_automatic'),
-            'recurring_days' => $validated['recurring_days'] ?? null,
+            'recurring_days' => $this->recurringDaysAsInts($validated),
             'banner_headline' => $validated['banner_headline'] ?? null,
             'max_redemptions' => $validated['max_redemptions'] ?? null,
             'max_per_customer' => $validated['max_per_customer'] ?? null,
@@ -88,7 +88,7 @@ class PromotionManagementController extends Controller
             'starts_at' => $validated['starts_at'] ?? null,
             'ends_at' => $validated['ends_at'] ?? null,
             'is_automatic' => $request->boolean('is_automatic'),
-            'recurring_days' => $validated['recurring_days'] ?? null,
+            'recurring_days' => $this->recurringDaysAsInts($validated),
             'banner_headline' => $validated['banner_headline'] ?? null,
             'max_redemptions' => $validated['max_redemptions'] ?? null,
             'max_per_customer' => $validated['max_per_customer'] ?? null,
@@ -139,6 +139,21 @@ class PromotionManagementController extends Controller
             'buy_x_get_y_free' => 0,
             default => (int) $validated['value'],
         };
+    }
+
+    /**
+     * $request->validate()'s 'integer' rule validates the submitted
+     * checkbox values but never casts them — left as-is, this column
+     * would store ["4"] instead of [4], and PromotionService::
+     * findActiveAutomatic()'s own strict in_array($today, ..., true)
+     * check (int vs string) would then never match any day at all,
+     * regardless of what's actually configured.
+     *
+     * @return ?list<int>
+     */
+    private function recurringDaysAsInts(array $validated): ?array
+    {
+        return isset($validated['recurring_days']) ? array_map('intval', $validated['recurring_days']) : null;
     }
 
     public function destroy(Promotion $promotion): RedirectResponse
