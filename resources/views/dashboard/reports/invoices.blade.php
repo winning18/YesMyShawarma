@@ -29,16 +29,17 @@
                 <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Chosen dates') }}</label>
                 <div class="flex flex-wrap items-center gap-3">
                     <form method="GET" action="{{ route('dashboard.reports.invoices.index') }}" class="flex items-center gap-2">
-                        <input
-                            type="date" name="week" value="{{ $weekStart->toDateString() }}"
-                            onchange="this.form.submit()"
-                            class="rounded-md border-gray-300 text-sm"
-                        >
                         @if ($branchFilterId)
                             <input type="hidden" name="branch" value="{{ $branchFilterId }}">
                         @endif
+                        <x-date-range-picker
+                            single
+                            field-name="week"
+                            :from="$weekStart->toDateString()"
+                            :label="$weekStart->format('d/m').' - '.$weekEnd->format('d/m')"
+                        />
                         <span class="text-sm text-gray-500">
-                            {{ $weekStart->format('d/m') }} - {{ $weekEnd->format('d/m') }} ({{ __('Week :week of :year', ['week' => $weekStart->isoWeek(), 'year' => $weekStart->isoWeekYear()]) }})
+                            ({{ __('Week :week of :year', ['week' => $weekStart->isoWeek(), 'year' => $weekStart->isoWeekYear()]) }})
                         </span>
                     </form>
 

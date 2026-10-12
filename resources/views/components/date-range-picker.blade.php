@@ -1,7 +1,8 @@
 {{--
-    Shared by Order History, Detailed Reports, and the Sales tab — a
-    Litepicker calendar behind a single trigger button, replacing each
-    page's own "range" <select> + custom from/to inputs.
+    Shared by Order History, Detailed Reports, the Sales tab, Invoices
+    and sales, and Weekly report — a Litepicker calendar behind a single
+    trigger button, replacing each page's own "range" <select>/date
+    <input> + custom from/to inputs.
 
     Named presets (Today, Last 7 days, …) are NOT driven through this
     component's JS at all: each caller builds them as plain server-
@@ -13,15 +14,19 @@
     tab's Today/Yesterday off an Alpine dropdown onto plain links.
 
     The calendar itself is the only path that needs JS, for the one case
-    that genuinely needs a widget: picking an arbitrary custom range.
-    Its 'selected' callback is a direct, synchronous write into the
-    hidden from/to fields followed by a real form submit — no x-model/
-    x-show reactivity involved, so it carries none of the timing risk
-    that bug class had.
+    that genuinely needs a widget: picking an arbitrary custom range (or,
+    with `single`, one date — Invoices/Weekly only ever snap a single
+    picked date to its containing week server-side, same as their
+    previous plain `<input type="date">`). Its 'selected' callback is a
+    direct, synchronous write into the hidden field(s) followed by a
+    real form submit — no x-model/x-show reactivity involved, so it
+    carries none of the timing risk that bug class had.
 --}}
 @props([
     'from' => null,
     'to' => null,
+    'single' => false,
+    'fieldName' => 'from',
     'maxDate' => null,
     'label' => null,
     'presetLinks' => [],
@@ -30,7 +35,9 @@
 
 @php
     $maxDate ??= \Illuminate\Support\Carbon::now('Africa/Accra')->toDateString();
-    $displayLabel = $label ?? (($from && $to) ? "{$from} → {$to}" : __('Any time'));
+    $displayLabel = $label ?? ($single
+        ? ($from ?? __('Pick a date'))
+        : (($from && $to) ? "{$from} → {$to}" : __('Any time')));
 
     $presetHtml = collect($presetLinks)->map(function ($link) {
         $classes = ($link['active'] ?? false)
@@ -47,18 +54,31 @@
     $footerHtml = $presetHtml !== '' ? '<div class="p-2 grid grid-cols-2 gap-1 border-t border-gray-100">'.$presetHtml.'</div>' : '';
 @endphp
 
-<div x-data="dateRangePicker(@js(['from' => $from, 'to' => $to, 'maxDate' => $maxDate, 'footerHtml' => $footerHtml]))" {{ $attributes }}>
-    <input type="hidden" name="from" x-ref="fromField" value="{{ $from }}">
-    <input type="hidden" name="to" x-ref="toField" value="{{ $to }}">
+<div x-data="dateRangePicker(@js(['single' => $single, 'from' => $from, 'to' => $to, 'maxDate' => $maxDate, 'footerHtml' => $footerHtml]))" {{ $attributes }}>
+    @if ($single)
+        <input type="hidden" name="{{ $fieldName }}" x-ref="fromField" value="{{ $from }}">
+    @else
+        <input type="hidden" name="from" x-ref="fromField" value="{{ $from }}">
+        <input type="hidden" name="to" x-ref="toField" value="{{ $to }}">
+    @endif
 
+    {{--
+        Litepicker's click handler decides whether to open using strict
+        `event.target === element` (dist/litepicker.umd.js's shouldShown())
+        — not .closest()/.contains(). A click landing on this button's own
+        icon or label text makes event.target that child node, not the
+        button, so the picker silently never opens. pointer-events-none on
+        every child forces the browser to always report the button itself
+        as the target, regardless of where inside it gets clicked.
+    --}}
     <button
         type="button"
         x-ref="trigger"
         class="flex items-center gap-2 px-3 py-2 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 w-full sm:w-auto"
     >
-        <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+        <svg class="w-4 h-4 text-gray-400 shrink-0 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
-        <span>{{ $displayLabel }}</span>
+        <span class="pointer-events-none">{{ $displayLabel }}</span>
     </button>
 </div>

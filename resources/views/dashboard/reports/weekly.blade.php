@@ -12,12 +12,13 @@
 
         <form method="GET" action="{{ route('dashboard.reports.weekly.index') }}" class="flex flex-wrap items-end gap-3">
             <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1" for="week">{{ __('Week of') }}</label>
-                <input
-                    type="date" id="week" name="week" value="{{ $weekStart->toDateString() }}"
-                    onchange="this.form.submit()"
-                    class="rounded-md border-gray-300 text-sm"
-                >
+                <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Week of') }}</label>
+                <x-date-range-picker
+                    single
+                    field-name="week"
+                    :from="$weekStart->toDateString()"
+                    :label="$weekStart->format('d/m/Y').' '.__('to').' '.$weekEnd->format('d/m/Y')"
+                />
             </div>
             @if ($crossBranch)
                 <div>
@@ -30,9 +31,6 @@
                     </select>
                 </div>
             @endif
-            <span class="text-sm text-gray-500 pb-2">
-                {{ $weekStart->format('d/m/Y') }} {{ __('to') }} {{ $weekEnd->format('d/m/Y') }}
-            </span>
         </form>
 
         <a
