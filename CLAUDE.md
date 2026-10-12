@@ -15,8 +15,9 @@ Riders claim and deliver them. Owners and managers run the business from an admi
 Replaces an existing WhatsApp-group ordering process and becomes the profitable direct channel
 alongside Bolt Food.
 
-**Context:** Accra, Ghana. Three branches (two live, one opening). Mobile data is often slow —
-page weight is a product requirement, not polish.
+**Context:** Accra, Ghana. Two branches (Ga Odumase, Pokuase Y-Junction), both live — the
+earlier "one opening" third branch was never actually created and isn't planned. Mobile data is
+often slow — page weight is a product requirement, not polish.
 
 **Future:** a React Native app will consume this backend. Assume a second client is coming.
 
