@@ -18,10 +18,24 @@ class UpdatePromotionRequest extends FormRequest
         return [
             'code' => ['required', 'string', 'max:50', 'alpha_dash', Rule::unique(Promotion::class)->ignore($this->route('promotion'))],
             'type' => ['required', 'string', Rule::in(['percentage', 'fixed', 'buy_x_get_y_free'])],
+            // min:0.01 only enforced in the closure below, not as a
+            // static rule — the form's Value input stays in the DOM
+            // (just hidden) when type is buy_x_get_y_free, disabled
+            // client-side so it's excluded from submission, but this is
+            // the server-side half of that same guard: a stale 0 here
+            // must never fail validation and reject the whole update.
             'value' => [
                 Rule::requiredIf(fn () => $this->input('type') !== 'buy_x_get_y_free'),
-                'nullable', 'numeric', 'min:0.01',
+                'nullable', 'numeric',
                 function (string $attribute, mixed $value, Closure $fail): void {
+                    if ($this->input('type') === 'buy_x_get_y_free') {
+                        return;
+                    }
+
+                    if ($value < 0.01) {
+                        $fail('The value field must be at least 0.01.');
+                    }
+
                     if ($this->input('type') === 'percentage' && ($value < 1 || $value > 100 || (float) $value != (int) $value)) {
                         $fail('A percentage discount must be a whole number between 1 and 100.');
                     }

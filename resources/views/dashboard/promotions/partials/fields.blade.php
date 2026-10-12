@@ -35,10 +35,21 @@
     <div x-show="type !== 'buy_x_get_y_free'" x-cloak>
         <x-input-label for="value" :value="__('Value')" required />
         <div class="relative mt-1">
+            {{--
+                x-bind:disabled, not just x-show hiding it — a disabled
+                field is excluded from form submission entirely, where a
+                merely-hidden one is not. Without this, switching type to
+                buy_x_get_y_free still submits this field's last real
+                value (e.g. a stale 0 on an existing promotion), which
+                then fails the min:0.01 rule below and silently rejects
+                the WHOLE update — every other field in the same
+                submission reverting right along with it.
+            --}}
             <x-text-input
                 id="value" name="value" type="number" min="0" class="block w-full"
                 :value="$value('type') === 'fixed' ? $money('value') : $value('value')"
                 x-bind:required="type !== 'buy_x_get_y_free'"
+                x-bind:disabled="type === 'buy_x_get_y_free'"
                 x-bind:step="type === 'percentage' ? 1 : 0.01" x-bind:max="type === 'percentage' ? 100 : null"
             />
             <span class="absolute inset-y-0 right-3 flex items-center text-sm text-gray-400" x-text="type === 'percentage' ? '%' : 'GH₵'"></span>

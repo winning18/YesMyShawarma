@@ -177,6 +177,43 @@ class PromotionManagementTest extends TestCase
     }
 
     /**
+     * Regression: the Value field is only visually hidden for
+     * buy_x_get_y_free (x-show), not removed from the DOM — before
+     * x-bind:disabled was added, a real browser form submission still
+     * included it with whatever was last rendered there. On any EDIT of
+     * an existing buy_x_get_y_free promotion, that's the stored value
+     * column, which is always 0 for this type (PromotionManagementController
+     * ::valueInPesewas()) — "0" then failed the min:0.01 rule and
+     * rejected the ENTIRE update, reverting every other field in the
+     * same submission (recurring_days included) right along with it.
+     * This is deliberately what made every single edit of an existing
+     * automatic promotion look like "my changes don't save" — not an
+     * edge case, the ordinary path.
+     */
+    public function test_updating_a_buy_x_get_y_free_promotion_with_a_stale_zero_value_still_saves(): void
+    {
+        $manager = $this->makeManager();
+        $promotion = Promotion::create([
+            'code' => 'STALE-VALUE', 'type' => 'buy_x_get_y_free', 'value' => 0,
+            'buy_quantity' => 2, 'free_quantity' => 1, 'is_automatic' => true,
+            'recurring_days' => [1], 'is_active' => true,
+        ]);
+
+        $this->actingAs($manager)->put(route('dashboard.promotions.update', $promotion), [
+            'code' => 'STALE-VALUE',
+            'type' => 'buy_x_get_y_free',
+            'value' => '0',
+            'buy_quantity' => 2,
+            'free_quantity' => 1,
+            'is_automatic' => '1',
+            'is_active' => '1',
+            'recurring_days' => [3],
+        ])->assertSessionDoesntHaveErrors();
+
+        $this->assertSame([3], $promotion->refresh()->recurring_days);
+    }
+
+    /**
      * Regression: unchecking every recurring_days checkbox while
      * "Applies automatically" stays checked fails validation
      * (required_if) server-side — correctly, since an automatic
