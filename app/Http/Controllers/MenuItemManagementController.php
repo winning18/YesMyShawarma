@@ -286,7 +286,14 @@ class MenuItemManagementController extends Controller
         $pivot = $menuItem->branches()->where('branches.id', $branch->id)->first()?->pivot;
         $available = ! ($pivot?->is_available ?? true);
 
-        $menuItem->branches()->updateExistingPivot($branch->id, ['is_available' => $available]);
+        // syncWithoutDetaching, not updateExistingPivot — a branch created
+        // before this item existed (or vice versa, from before the
+        // symmetric attach-on-create was added) can still be missing this
+        // row entirely. updateExistingPivot runs a plain UPDATE, which
+        // silently affects zero rows when there's nothing to update; this
+        // creates the row if missing and updates it otherwise, so the
+        // toggle can never again appear to work while doing nothing.
+        $menuItem->branches()->syncWithoutDetaching([$branch->id => ['is_available' => $available]]);
 
         return back()->with('status', __(':name is now :state at :branch.', [
             'name' => $menuItem->name,

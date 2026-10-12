@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreBranchRequest;
 use App\Http\Requests\UpdateBranchRequest;
 use App\Models\Branch;
+use App\Models\MenuItem;
 use App\Services\Media\ImageUploadService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -48,6 +49,17 @@ class BranchManagementController extends Controller
             'is_active' => $request->boolean('is_active'),
         ]);
 
+        // Symmetric with MenuItemManagementController::store() attaching a
+        // new item to every existing branch — a new branch likewise starts
+        // sellable on every existing item by default, not silently absent
+        // from the branch_menu_item pivot until someone else opts it in.
+        // Without this, every item shows as "Available" in the dashboard
+        // anyway (a missing pivot row defaults to that in the UI), so
+        // staff have no way to tell it was never actually wired up, and
+        // the toggle itself only updates an existing row — it can't create
+        // one either.
+        $branch->menuItems()->attach(MenuItem::pluck('id'), ['is_available' => true]);
+
         return redirect()->route('dashboard.branches.edit', $branch)
             ->with('status', __(':name has been created.', ['name' => $branch->name]));
     }
@@ -70,6 +82,21 @@ class BranchManagementController extends Controller
             'is_accepting_orders' => $request->boolean('is_accepting_orders'),
             'is_active' => $request->boolean('is_active'),
         ]);
+
+        // Self-heals a branch that predates the attach-on-create fix in
+        // store() above (or any other gap) — only ever attaches a menu
+        // item with no pivot row for this branch at all, is_available
+        // true, same default as a brand new branch gets. Never touches a
+        // row that already exists, so an item staff have deliberately
+        // toggled off at this branch is never silently reset back on by
+        // just re-saving the branch's own edit form.
+        $missingItemIds = MenuItem::whereDoesntHave(
+            'branches', fn ($query) => $query->where('branches.id', $branch->id)
+        )->pluck('id');
+
+        if ($missingItemIds->isNotEmpty()) {
+            $branch->menuItems()->attach($missingItemIds, ['is_available' => true]);
+        }
 
         return redirect()->route('dashboard.branches.edit', $branch)
             ->with('status', __('Branch updated.'));

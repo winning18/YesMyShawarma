@@ -111,6 +111,37 @@ class MenuItemManagementTest extends TestCase
         $this->assertTrue((bool) $item->branches()->where('branches.id', $this->otherBranch->id)->first()->pivot->is_available);
     }
 
+    /**
+     * Regression: toggleAvailability() used to call updateExistingPivot(),
+     * a plain UPDATE that silently affects zero rows when the branch_item
+     * pivot doesn't exist at all (e.g. a branch created before this item,
+     * or vice versa, before branch creation attached every existing item
+     * — see BranchManagementController::store()). The dashboard's own
+     * "Available" badge for a missing pivot already defaults to available
+     * (?? true), so this looked like it worked — the flash message
+     * claimed it toggled — while the customer-facing menu, which requires
+     * a real pivot row, never changed at all.
+     */
+    public function test_toggling_availability_with_no_existing_pivot_row_creates_one(): void
+    {
+        $staff = $this->makeStaff();
+        $item = MenuItem::create([
+            'category_id' => $this->category->id, 'name' => 'Beef Burger', 'slug' => 'beef-burger', 'base_price' => 4000,
+        ]);
+        // Deliberately never attached to any branch — simulates a branch
+        // or item created before the other existed.
+        $this->assertDatabaseMissing('branch_menu_item', ['branch_id' => $this->branch->id, 'menu_item_id' => $item->id]);
+
+        $this->actingAs($staff)->post(route('dashboard.menu-items.toggle-availability', $item))
+            ->assertRedirect();
+
+        // A missing pivot defaults to "available" in the UI, so toggling
+        // it should land on "sold out" (false), not silently stay absent.
+        $this->assertDatabaseHas('branch_menu_item', [
+            'branch_id' => $this->branch->id, 'menu_item_id' => $item->id, 'is_available' => false,
+        ]);
+    }
+
     public function test_staff_can_view_the_availability_page(): void
     {
         $staff = $this->makeStaff();
