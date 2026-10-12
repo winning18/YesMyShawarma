@@ -7,7 +7,14 @@
     $weekdays = [0 => __('Sun'), 1 => __('Mon'), 2 => __('Tue'), 3 => __('Wed'), 4 => __('Thu'), 5 => __('Fri'), 6 => __('Sat')];
 @endphp
 
-<div x-data="{ type: @js($value('type', 'percentage')), isAutomatic: @js((bool) $value('is_automatic', false)) }" class="space-y-6">
+<div
+    x-data="{
+        type: @js($value('type', 'percentage')),
+        isAutomatic: @js((bool) $value('is_automatic', false)),
+        recurringDays: @js(array_values(array_map('intval', $selectedDays))),
+    }"
+    class="space-y-6"
+>
     <div>
         <x-input-label for="code" :value="__('Code')" required />
         <x-text-input id="code" name="code" type="text" class="mt-1 block w-full uppercase" :value="$value('code')" required placeholder="{{ __('e.g. WELCOME10') }}" />
@@ -81,11 +88,28 @@
             <div class="mt-2 flex gap-3">
                 @foreach ($weekdays as $day => $label)
                     <label class="flex items-center gap-1 text-sm">
-                        <input type="checkbox" name="recurring_days[]" value="{{ $day }}" @checked(in_array($day, $selectedDays)) class="rounded border-gray-300">
+                        <input
+                            type="checkbox" name="recurring_days[]" value="{{ $day }}"
+                            x-model.number="recurringDays"
+                            x-bind:required="isAutomatic && recurringDays.length === 0"
+                            class="rounded border-gray-300"
+                        >
                         {{ $label }}
                     </label>
                 @endforeach
             </div>
+            {{--
+                Each checkbox becomes required the moment none are
+                checked — the browser's own native validation then blocks
+                submission and points at this group, instead of a round
+                trip to the server that (correctly, but silently from the
+                admin's point of view) rejects the whole save and reverts
+                every field in the form, branches included, back to
+                whatever was last stored.
+            --}}
+            <p class="text-xs text-red-600 mt-1" x-show="isAutomatic && recurringDays.length === 0">
+                {{ __('At least one day is required while this applies automatically.') }}
+            </p>
             <x-input-error class="mt-2" :messages="$errors->get('recurring_days')" />
         </div>
 

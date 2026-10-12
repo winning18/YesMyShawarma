@@ -176,6 +176,46 @@ class PromotionManagementTest extends TestCase
         $this->assertNotNull(app(\App\Services\Promotions\PromotionService::class)->findActiveAutomatic($this->branch));
     }
 
+    /**
+     * Regression: unchecking every recurring_days checkbox while
+     * "Applies automatically" stays checked fails validation
+     * (required_if) server-side — correctly, since an automatic
+     * promotion needs at least one day to ever apply — but with no
+     * client-side guard, this rejected the ENTIRE update, reverting every
+     * other field in the same submission (branches included) back to
+     * whatever was already stored, which read as "unchecking doesn't
+     * work" rather than a validation error on a specific field.
+     */
+    public function test_updating_with_no_recurring_days_fails_without_corrupting_the_promotion(): void
+    {
+        $manager = $this->makeManager();
+        $otherBranch = Branch::create([
+            'name' => 'East Legon', 'slug' => 'east-legon', 'phone' => '+233200000003', 'address' => 'C',
+            'lat' => 5.6, 'lng' => -0.2, 'opens_at' => '10:00', 'closes_at' => '22:00',
+        ]);
+        $promotion = Promotion::create([
+            'code' => 'MONDAY-AUTO', 'type' => 'buy_x_get_y_free', 'value' => 0,
+            'buy_quantity' => 2, 'free_quantity' => 1, 'is_automatic' => true,
+            'recurring_days' => [1], 'is_active' => true,
+        ]);
+        $promotion->branches()->sync([$this->branch->id, $otherBranch->id]);
+
+        $this->actingAs($manager)->put(route('dashboard.promotions.update', $promotion), [
+            'code' => 'MONDAY-AUTO',
+            'type' => 'buy_x_get_y_free',
+            'buy_quantity' => 2,
+            'free_quantity' => 1,
+            'is_automatic' => '1',
+            'is_active' => '1',
+            // recurring_days and branch_ids both omitted — simulates
+            // unchecking every box in both groups before saving.
+        ])->assertSessionHasErrors('recurring_days');
+
+        $promotion->refresh();
+        $this->assertSame([1], $promotion->recurring_days);
+        $this->assertCount(2, $promotion->branches);
+    }
+
     public function test_manager_can_create_an_automatic_buy_x_get_y_free_promotion(): void
     {
         $manager = $this->makeManager();
