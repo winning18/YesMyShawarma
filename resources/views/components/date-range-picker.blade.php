@@ -51,7 +51,21 @@
         $presetHtml .= '<a href="'.e($clearUrl).'" class="block px-3 py-1.5 rounded-md text-xs font-semibold text-center col-span-2 text-gray-500 hover:text-gray-700 hover:underline">'.e(__('Clear')).'</a>';
     }
 
-    $footerHtml = $presetHtml !== '' ? '<div class="p-2 grid grid-cols-2 gap-1 border-t border-gray-100">'.$presetHtml.'</div>' : '';
+    // Litepicker's own renderFooter() unconditionally does
+    // t.querySelector('.preview-date-range')/('.button-apply') on
+    // whatever footerHTML it's given — including a fully custom one —
+    // and calls .innerHTML=/.setAttribute('disabled', '') on the
+    // result. Supplying a custom footerHTML with neither element
+    // present (ours never did) makes that throw a TypeError the moment
+    // a day is picked, since datePicked.length becomes 1 there,
+    // aborting Litepicker's whole click handler before it ever reaches
+    // the 'preselect'/'selected' emits our own JS listens for — the
+    // picker silently stopped doing anything, on every page, the
+    // instant you clicked a day. These two hidden elements exist
+    // purely to satisfy that internal lookup; they're never shown.
+    $footerHtml = ($presetHtml !== '' ? '<div class="p-2 grid grid-cols-2 gap-1 border-t border-gray-100">'.$presetHtml.'</div>' : '')
+        .'<span class="preview-date-range" style="display:none"></span>'
+        .'<button type="button" class="button-apply" style="display:none" tabindex="-1" aria-hidden="true"></button>';
 @endphp
 
 <div x-data="dateRangePicker(@js(['single' => $single, 'from' => $from, 'to' => $to, 'maxDate' => $maxDate, 'footerHtml' => $footerHtml]))" {{ $attributes }}>
