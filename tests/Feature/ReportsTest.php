@@ -283,6 +283,22 @@ class ReportsTest extends TestCase
         $this->assertSame(1, $response->viewData('operational')['total_orders']);
     }
 
+    public function test_range_yesterday_excludes_today_and_older_orders(): void
+    {
+        $manager = User::factory()->create();
+        $this->assignRoleAt($manager, 'manager', $this->branch);
+
+        $today = now('Africa/Accra');
+        $this->makeOrder($this->branch, 'delivered', 5000, ['placed_at' => $today]);
+        $this->makeOrder($this->branch, 'delivered', 4000, ['placed_at' => $today->clone()->subDay()]);
+        $this->makeOrder($this->branch, 'delivered', 3000, ['placed_at' => $today->clone()->subDays(3)]);
+
+        $response = $this->actingAs($manager)->get(route('dashboard.reports.index', ['range' => 'yesterday']));
+
+        $this->assertSame(1, $response->viewData('operational')['total_orders']);
+        $this->assertSame(4000, $response->viewData('financial')['revenue_total']);
+    }
+
     public function test_range_last_month_computes_the_previous_calendar_month(): void
     {
         $manager = User::factory()->create();

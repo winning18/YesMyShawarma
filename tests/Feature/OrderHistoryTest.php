@@ -305,6 +305,22 @@ class OrderHistoryTest extends TestCase
         $this->assertSame([$today->id], $ids->all());
     }
 
+    public function test_range_yesterday_excludes_today_and_older_orders(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+
+        $today = $this->makeOrder('delivered', 'web', minutesAgo: 5);
+        $yesterday = $this->makeOrder('delivered', 'web', minutesAgo: 60 * 24 + 5);
+        $this->makeOrder('delivered', 'web', minutesAgo: 60 * 24 * 3);
+
+        $response = $this->actingAs($staff)->get(route('dashboard.orders.history', ['range' => 'yesterday']));
+
+        $ids = collect($response->viewData('orders')->items())->pluck('id');
+        $this->assertSame([$yesterday->id], $ids->all());
+        $this->assertFalse($ids->contains($today->id));
+    }
+
     public function test_range_last_7_days_excludes_older_orders(): void
     {
         $staff = User::factory()->create();

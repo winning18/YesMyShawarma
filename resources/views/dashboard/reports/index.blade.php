@@ -11,6 +11,7 @@
                     <select id="range" name="range" x-model="range" class="rounded-md border-gray-300 text-sm">
                         <option value="">{{ __('Last 7 days (default)') }}</option>
                         <option value="today">{{ __('Today') }}</option>
+                        <option value="yesterday">{{ __('Yesterday') }}</option>
                         <option value="7">{{ __('Last 7 days') }}</option>
                         <option value="30">{{ __('Last 30 days') }}</option>
                         <option value="week">{{ __('This week') }}</option>

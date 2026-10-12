@@ -24,7 +24,7 @@ class OrderHistoryController extends Controller
     /**
      * @var list<string>
      */
-    private const RANGE_PRESETS = ['today', '7', '30', 'week', 'month', 'last_month', 'custom'];
+    private const RANGE_PRESETS = ['today', 'yesterday', '7', '30', 'week', 'month', 'last_month', 'custom'];
 
     public function index(Request $request, BranchContext $context): View
     {
@@ -119,6 +119,7 @@ class OrderHistoryController extends Controller
 
         return match ($filters['range'] ?? null) {
             'today' => [$now->clone()->startOfDay(), $now->clone()->endOfDay()],
+            'yesterday' => [$now->clone()->subDay()->startOfDay(), $now->clone()->subDay()->endOfDay()],
             '7' => [$now->clone()->subDays(6)->startOfDay(), $now->clone()->endOfDay()],
             '30' => [$now->clone()->subDays(29)->startOfDay(), $now->clone()->endOfDay()],
             'week' => [$now->clone()->startOfWeek(), $now->clone()->endOfWeek()],
