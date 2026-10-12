@@ -59,8 +59,15 @@ class Branch extends Model
         return $this->reviews()->where('status', Review::STATUS_APPROVED);
     }
 
+    /**
+     * ?v= cache-busts on the deterministic branches/{id}.{ext} filename
+     * ImageUploadService reuses on every upload — without it, Cloudflare
+     * and the browser both keep serving whatever they already cached at
+     * that exact URL after a clear-and-reupload cycle, since nothing
+     * about the URL itself ever changes to signal new content.
+     */
     public function imageUrl(): ?string
     {
-        return $this->image_path ? Storage::disk('public')->url($this->image_path) : null;
+        return $this->image_path ? Storage::disk('public')->url($this->image_path).'?v='.$this->updated_at->timestamp : null;
     }
 }

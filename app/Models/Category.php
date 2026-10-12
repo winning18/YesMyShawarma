@@ -25,8 +25,9 @@ class Category extends Model
         return $this->hasMany(MenuItem::class);
     }
 
+    /** See Branch::imageUrl()'s docblock — same cache-busting, same reason. */
     public function heroImageUrl(): ?string
     {
-        return $this->hero_image_path ? Storage::disk('public')->url($this->hero_image_path) : null;
+        return $this->hero_image_path ? Storage::disk('public')->url($this->hero_image_path).'?v='.$this->updated_at->timestamp : null;
     }
 }

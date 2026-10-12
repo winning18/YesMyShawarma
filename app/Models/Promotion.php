@@ -30,9 +30,10 @@ class Promotion extends Model
         ];
     }
 
+    /** See Branch::imageUrl()'s docblock — same cache-busting, same reason. */
     public function bannerImageUrl(): ?string
     {
-        return $this->banner_image_path ? Storage::disk('public')->url($this->banner_image_path) : null;
+        return $this->banner_image_path ? Storage::disk('public')->url($this->banner_image_path).'?v='.$this->updated_at->timestamp : null;
     }
 
     /**

@@ -82,12 +82,15 @@ class CustomerPagesTest extends TestCase
 
     public function test_home_page_uses_the_first_hero_slides_photo_as_the_link_preview_image(): void
     {
-        Category::create(['name' => 'Shawarma', 'slug' => 'shawarma', 'hero_image_path' => 'category-hero/1.jpg', 'sort_order' => 1]);
+        $shawarma = Category::create(['name' => 'Shawarma', 'slug' => 'shawarma', 'hero_image_path' => 'category-hero/1.jpg', 'sort_order' => 1]);
         Category::create(['name' => 'Burgers', 'slug' => 'burgers', 'hero_image_path' => 'category-hero/2.jpg', 'sort_order' => 2]);
 
         $response = $this->get(route('home'))->assertOk();
 
-        $response->assertSee('property="og:image" content="'.\Illuminate\Support\Facades\Storage::disk('public')->url('category-hero/1.jpg').'"', false);
+        // Via the model's own heroImageUrl() (cache-busted with ?v=
+        // updated_at), not a bare Storage URL — see that method's own
+        // docblock for why.
+        $response->assertSee('property="og:image" content="'.$shawarma->heroImageUrl().'"', false);
     }
 
     public function test_home_page_marquee_links_to_an_available_item_when_a_branch_is_selected(): void

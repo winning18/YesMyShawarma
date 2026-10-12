@@ -73,8 +73,9 @@ class MenuItem extends Model
             ->where('source_type', MenuItemRecipeItem::SOURCE_MENU_ITEM);
     }
 
+    /** See Branch::imageUrl()'s docblock — same cache-busting, same reason. */
     public function imageUrl(): ?string
     {
-        return $this->image_path ? Storage::disk('public')->url($this->image_path) : null;
+        return $this->image_path ? Storage::disk('public')->url($this->image_path).'?v='.$this->updated_at->timestamp : null;
     }
 }

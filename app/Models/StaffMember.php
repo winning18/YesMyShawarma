@@ -24,8 +24,9 @@ class StaffMember extends Model
         ];
     }
 
+    /** See Branch::imageUrl()'s docblock — same cache-busting, same reason. */
     public function photoUrl(): ?string
     {
-        return $this->photo_path ? Storage::disk('public')->url($this->photo_path) : null;
+        return $this->photo_path ? Storage::disk('public')->url($this->photo_path).'?v='.$this->updated_at->timestamp : null;
     }
 }
