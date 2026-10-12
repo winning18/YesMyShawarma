@@ -22,10 +22,7 @@
                 $hasActiveFilters = collect($filters)->filter()->isNotEmpty();
             @endphp
 
-            <div
-                x-data="{ range: '{{ $filters['range'] ?? '' }}' }"
-                class="bg-white shadow rounded-lg p-4"
-            >
+            <div class="bg-white shadow rounded-lg p-4">
                 <form method="GET" action="{{ route('dashboard.orders.history') }}" class="space-y-3">
                     @if ($channel)
                         <input type="hidden" name="channel" value="{{ $channel }}">
@@ -84,36 +81,35 @@
                         </div>
                     </div>
 
+                    @php
+                        $rangePresets = [
+                            'today' => __('Today'),
+                            'yesterday' => __('Yesterday'),
+                            '7' => __('Last 7 days'),
+                            '30' => __('Last 30 days'),
+                            'week' => __('This week'),
+                            'month' => __('This month'),
+                            'last_month' => __('Last month'),
+                        ];
+                        $dateRangePresetLinks = collect($rangePresets)->map(fn ($presetLabel, $value) => [
+                            'label' => $presetLabel,
+                            'url' => request()->fullUrlWithQuery(['range' => $value, 'from' => null, 'to' => null, 'page' => null]),
+                            'active' => ($filters['range'] ?? null) === $value,
+                        ])->values()->all();
+                        $hasDateFilter = filled($filters['range'] ?? null) || filled($filters['from'] ?? null) || filled($filters['to'] ?? null);
+                        $dateRangeLabel = $rangePresets[$filters['range'] ?? ''] ?? null;
+                    @endphp
+
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
                         <div>
-                            <label for="range" class="block text-xs font-medium text-gray-500 mb-1">{{ __('When') }}</label>
-                            <select id="range" name="range" x-model="range" class="w-full rounded-md border-gray-300 text-sm">
-                                <option value="">{{ __('Any time') }}</option>
-                                <option value="today">{{ __('Today') }}</option>
-                                <option value="yesterday">{{ __('Yesterday') }}</option>
-                                <option value="7">{{ __('Last 7 days') }}</option>
-                                <option value="30">{{ __('Last 30 days') }}</option>
-                                <option value="week">{{ __('This week') }}</option>
-                                <option value="month">{{ __('This month') }}</option>
-                                <option value="last_month">{{ __('Last month') }}</option>
-                                <option value="custom">{{ __('Custom range…') }}</option>
-                            </select>
-                        </div>
-
-                        <div x-show="range === 'custom'" x-cloak>
-                            <label for="from" class="block text-xs font-medium text-gray-500 mb-1">{{ __('From') }}</label>
-                            <input
-                                type="datetime-local" id="from" name="from" value="{{ $filters['from'] ?? '' }}"
-                                class="w-full rounded-md border-gray-300 text-sm"
-                            >
-                        </div>
-
-                        <div x-show="range === 'custom'" x-cloak>
-                            <label for="to" class="block text-xs font-medium text-gray-500 mb-1">{{ __('To') }}</label>
-                            <input
-                                type="datetime-local" id="to" name="to" value="{{ $filters['to'] ?? '' }}"
-                                class="w-full rounded-md border-gray-300 text-sm"
-                            >
+                            <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('When') }}</label>
+                            <x-date-range-picker
+                                :from="$dateFrom"
+                                :to="$dateTo"
+                                :label="$dateRangeLabel"
+                                :preset-links="$dateRangePresetLinks"
+                                :clear-url="$hasDateFilter ? request()->fullUrlWithQuery(['range' => null, 'from' => null, 'to' => null, 'page' => null]) : null"
+                            />
                         </div>
 
                         <div class="flex items-center gap-3">

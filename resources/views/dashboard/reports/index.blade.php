@@ -4,29 +4,34 @@
     </x-slot>
 
     <div class="max-w-5xl mx-auto py-8 px-4 space-y-8">
-        <div x-data="{ range: '{{ $range ?? '' }}' }" class="bg-white shadow rounded-lg p-4">
+        @php
+            $rangePresets = [
+                'today' => __('Today'),
+                'yesterday' => __('Yesterday'),
+                '7' => __('Last 7 days'),
+                '30' => __('Last 30 days'),
+                'week' => __('This week'),
+                'month' => __('This month'),
+                'last_month' => __('Last month'),
+            ];
+            $dateRangePresetLinks = collect($rangePresets)->map(fn ($presetLabel, $value) => [
+                'label' => $presetLabel,
+                'url' => request()->fullUrlWithQuery(['range' => $value, 'from' => null, 'to' => null]),
+                'active' => ($range ?? null) === $value,
+            ])->values()->all();
+            $dateRangeLabel = $rangePresets[$range ?? ''] ?? (($range ?? null) === null ? __('Last 7 days (default)') : null);
+        @endphp
+
+        <div class="bg-white shadow rounded-lg p-4">
             <form method="GET" action="{{ route('dashboard.reports.index') }}" class="flex flex-wrap items-end gap-3">
                 <div>
-                    <label class="block text-xs font-medium text-gray-500 mb-1" for="range">{{ __('When') }}</label>
-                    <select id="range" name="range" x-model="range" class="rounded-md border-gray-300 text-sm">
-                        <option value="">{{ __('Last 7 days (default)') }}</option>
-                        <option value="today">{{ __('Today') }}</option>
-                        <option value="yesterday">{{ __('Yesterday') }}</option>
-                        <option value="7">{{ __('Last 7 days') }}</option>
-                        <option value="30">{{ __('Last 30 days') }}</option>
-                        <option value="week">{{ __('This week') }}</option>
-                        <option value="month">{{ __('This month') }}</option>
-                        <option value="last_month">{{ __('Last month') }}</option>
-                        <option value="custom">{{ __('Custom range…') }}</option>
-                    </select>
-                </div>
-                <div x-show="range === 'custom'" x-cloak>
-                    <label class="block text-xs font-medium text-gray-500 mb-1" for="from">{{ __('From') }}</label>
-                    <input type="date" id="from" name="from" value="{{ $from->toDateString() }}" class="rounded-md border-gray-300 text-sm">
-                </div>
-                <div x-show="range === 'custom'" x-cloak>
-                    <label class="block text-xs font-medium text-gray-500 mb-1" for="to">{{ __('To') }}</label>
-                    <input type="date" id="to" name="to" value="{{ $to->toDateString() }}" class="rounded-md border-gray-300 text-sm">
+                    <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('When') }}</label>
+                    <x-date-range-picker
+                        :from="$from->toDateString()"
+                        :to="$to->toDateString()"
+                        :label="$dateRangeLabel"
+                        :preset-links="$dateRangePresetLinks"
+                    />
                 </div>
                 @if ($crossBranch)
                     <div>

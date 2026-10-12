@@ -55,5 +55,6 @@
         </div>
 
         @include('partials.shift-widget-script')
+        @include('partials.date-range-picker-script')
     </body>
 </html>

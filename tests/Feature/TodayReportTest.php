@@ -505,6 +505,78 @@ class TodayReportTest extends TestCase
         $this->assertTrue($pastResponse->viewData('isCalendarMode'));
     }
 
+    public function test_a_multi_day_range_can_be_viewed_via_from_and_to_params(): void
+    {
+        $staff = $this->makeStaff();
+
+        $threeDaysAgo = now('Africa/Accra')->subDays(3);
+        $twoDaysAgo = now('Africa/Accra')->subDays(2);
+        $tenDaysAgo = now('Africa/Accra')->subDays(10);
+
+        $inRangeOld = $this->makeOrder(placedAt: $threeDaysAgo);
+        $this->addItem($inRangeOld, $this->chickenShawarma, 1);
+        $inRangeNew = $this->makeOrder(placedAt: $twoDaysAgo);
+        $this->addItem($inRangeNew, $this->beefShawarma, 1);
+        $outOfRange = $this->makeOrder(placedAt: $tenDaysAgo);
+        $this->addItem($outOfRange, $this->signature, 1);
+
+        $response = $this->actingAs($staff)->get(route('dashboard.reports.today.index', [
+            'channel' => 'pos',
+            'from' => $threeDaysAgo->toDateString(),
+            'to' => $twoDaysAgo->toDateString(),
+        ]));
+
+        $summary = $response->viewData('summary');
+        $this->assertSame(2, $summary['orders_count']);
+        $this->assertNotNull($summary['categories']->firstWhere('category', 'Shawarma'));
+        $this->assertTrue($response->viewData('isCalendarMode'));
+        $this->assertTrue($response->viewData('isRangeMode'));
+    }
+
+    public function test_a_single_day_range_behaves_like_the_date_param(): void
+    {
+        $staff = $this->makeStaff();
+        $yesterday = now('Africa/Accra')->subDay();
+        $order = $this->makeOrder(placedAt: $yesterday);
+        $this->addItem($order, $this->chickenShawarma, 1);
+
+        $response = $this->actingAs($staff)->get(route('dashboard.reports.today.index', [
+            'channel' => 'pos',
+            'from' => $yesterday->toDateString(),
+            'to' => $yesterday->toDateString(),
+        ]));
+
+        $this->assertSame(1, $response->viewData('summary')['orders_count']);
+    }
+
+    public function test_the_range_also_scopes_the_shifts_table(): void
+    {
+        $staff = $this->makeStaff();
+
+        $threeDaysAgo = now('Africa/Accra')->subDays(3)->setTime(9, 0);
+        $tenDaysAgo = now('Africa/Accra')->subDays(10)->setTime(9, 0);
+
+        $inRangeShift = Shift::create([
+            'branch_id' => $this->branch->id, 'user_id' => $staff->id,
+            'started_at' => $threeDaysAgo, 'ended_at' => $threeDaysAgo->clone()->addHours(6),
+            'total_sales' => 5000, 'system_sales' => 5000,
+        ]);
+        Shift::create([
+            'branch_id' => $this->branch->id, 'user_id' => $staff->id,
+            'started_at' => $tenDaysAgo, 'ended_at' => $tenDaysAgo->clone()->addHours(6),
+            'total_sales' => 3000, 'system_sales' => 3000,
+        ]);
+
+        $response = $this->actingAs($staff)->get(route('dashboard.reports.today.index', [
+            'channel' => 'pos',
+            'from' => now('Africa/Accra')->subDays(4)->toDateString(),
+            'to' => now('Africa/Accra')->subDays(2)->toDateString(),
+        ]));
+
+        $shifts = $response->viewData('shifts');
+        $this->assertSame([$inRangeShift->id], $shifts->pluck('id')->all());
+    }
+
     public function test_bolt_food_channel_shows_only_bolt_food_orders(): void
     {
         $staff = $this->makeStaff();

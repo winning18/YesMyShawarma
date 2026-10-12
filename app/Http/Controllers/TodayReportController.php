@@ -26,14 +26,19 @@ use Illuminate\View\View;
  * links) picks any other shift at the branch; `before()`/`after()`
  * (ShiftService) drive that navigation.
  *
- * Calendar mode (`date` param) is the explicit secondary lens for "what did
- * this branch sell on this specific calendar date" — still useful (e.g.
- * comparing one date across branches later), but never the default and
- * never confused with a shift's own report. Owner's cross-branch aggregate
- * view (no branch resolved at all) has no single branch's shift to default
- * to, so it falls back to calendar "today" until a branch is picked — the
- * shifts/expenses table falls back the same way, across every branch, not
- * just the summary figures.
+ * Calendar mode (`date` param, or `from`+`to` for a genuine multi-day
+ * range) is the explicit secondary lens for "what did this branch sell in
+ * this calendar window" — still useful (e.g. comparing dates across
+ * branches later, or totalling a week for reconciliation), but never the
+ * default and never confused with a shift's own report. `date` alone is
+ * just the single-day case of this same mode (from === to), kept as its
+ * own param rather than folded into from/to so every existing deep link
+ * (Performance's "shifts that day" card, the Today/Yesterday links below)
+ * keeps working unchanged. Owner's cross-branch aggregate view (no branch
+ * resolved at all) has no single branch's shift to default to, so it falls
+ * back to calendar "today" until a branch is picked — the shifts/expenses
+ * table falls back the same way, across every branch, not just the
+ * summary figures.
  *
  * See DailySalesReportService for the actual decomposition logic, which is
  * range-agnostic regardless of which mode produced the range.
@@ -56,6 +61,8 @@ class TodayReportController extends Controller
             // column, translated to channel+payment_method below.
             'channel' => ['nullable', 'in:web,pos,bolt_food'],
             'date' => ['nullable', 'date'],
+            'from' => ['nullable', 'date', 'required_with:to'],
+            'to' => ['nullable', 'date', 'required_with:from'],
             'shift' => ['nullable', 'integer'],
             'branch' => ['nullable', 'integer', 'exists:branches,id'],
         ]);
@@ -78,7 +85,8 @@ class TodayReportController extends Controller
         }
         $branchId = $requestedBranchId ?? $context->id();
 
-        $isCalendarMode = isset($validated['date']);
+        $isRangeMode = isset($validated['from']) && isset($validated['to']);
+        $isCalendarMode = $isRangeMode || isset($validated['date']);
 
         [$rangeStart, $rangeEnd, $date, $shift] = $isCalendarMode
             ? $this->resolveCalendarMode($validated)
@@ -90,6 +98,7 @@ class TodayReportController extends Controller
             'rangeStart' => $rangeStart,
             'rangeEnd' => $rangeEnd,
             'isCalendarMode' => $isCalendarMode,
+            'isRangeMode' => $isRangeMode,
             'shift' => $shift,
             'previousShift' => $shift ? $shifts->before($shift) : null,
             'nextShift' => $shift ? $shifts->after($shift) : null,
@@ -118,12 +127,12 @@ class TodayReportController extends Controller
             'shifts' => match (true) {
                 $isCalendarMode => Shift::with(['user', 'endedBy', 'expenses'])
                     ->when($branchId, fn ($query, $id) => $query->where('branch_id', $id))
-                    ->whereBetween('started_at', [$date->clone()->startOfDay()->utc(), $date->clone()->endOfDay()->utc()])
+                    ->whereBetween('started_at', [$rangeStart->clone()->utc(), $rangeEnd->clone()->utc()])
                     ->orderByDesc('started_at')
                     ->get(),
                 $shift !== null => collect([$shift]),
                 $branchId === null => Shift::with(['user', 'endedBy', 'expenses'])
-                    ->whereBetween('started_at', [$date->clone()->startOfDay()->utc(), $date->clone()->endOfDay()->utc()])
+                    ->whereBetween('started_at', [$rangeStart->clone()->utc(), $rangeEnd->clone()->utc()])
                     ->orderByDesc('started_at')
                     ->get(),
                 default => collect(),
@@ -132,10 +141,27 @@ class TodayReportController extends Controller
     }
 
     /**
+     * `from`+`to` (the date-range picker's calendar) takes priority over a
+     * bare `date` when somehow both are present — same "explicit range
+     * wins outright" rule OrderHistoryController/ReportsController apply.
+     * A `from`/`to` picked the same day collapses to exactly the single-
+     * day case below, so there's no behavioural seam between the two.
+     *
      * @return array{0: Carbon, 1: Carbon, 2: Carbon, 3: null}
      */
     private function resolveCalendarMode(array $validated): array
     {
+        if (isset($validated['from']) && isset($validated['to'])) {
+            $from = Carbon::parse($validated['from'], 'Africa/Accra')->startOfDay();
+            $to = Carbon::parse($validated['to'], 'Africa/Accra')->endOfDay();
+
+            if ($from->gt($to)) {
+                [$from, $to] = [$to->clone()->startOfDay(), $from->clone()->endOfDay()];
+            }
+
+            return [$from, $to, $from->clone(), null];
+        }
+
         $date = Carbon::parse($validated['date'], 'Africa/Accra');
 
         return [$date->clone()->startOfDay(), $date->clone()->endOfDay(), $date, null];

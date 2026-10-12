@@ -43,6 +43,14 @@ class OrderHistoryController extends Controller
             'orders' => $this->orders($channel, $filters, $from, $to),
             'channel' => $channel,
             'filters' => $filters,
+            // The *resolved* window, not the raw from/to query params —
+            // a named preset (range=7) never populates $filters['from']/
+            // ['to'] at all, but the date-range picker's hidden fields
+            // still need real dates so re-submitting the form for an
+            // unrelated filter (e.g. just changing Status) carries the
+            // active date window forward instead of silently dropping it.
+            'dateFrom' => $from?->toDateString(),
+            'dateTo' => $to?->toDateString(),
             'statuses' => Order::STATUSES,
             'locations' => DeliveryArea::orderBy('name')->pluck('name'),
             'isStaff' => $isStaff,
@@ -107,14 +115,28 @@ class OrderHistoryController extends Controller
     /**
      * Days/weeks/months quick presets, all in Africa/Accra local time since
      * that's the timezone staff actually think in — placed_at is compared
-     * against the UTC-converted boundary at query time. 'custom' defers to
-     * whatever the from/to inputs carry; any other value (or none) means
-     * no date filtering at all.
+     * against the UTC-converted boundary at query time. An explicit
+     * from/to (the date-range picker's calendar, or a hand-typed query
+     * string) always wins outright over any 'range' preset, rather than
+     * needing 'range=custom' set alongside it — the picker never submits
+     * that field at all, only from/to. Neither present (and no named
+     * preset either) means no date filtering at all.
      *
      * @return array{0: ?Carbon, 1: ?Carbon}
      */
     private function dateRange(array $filters): array
     {
+        if (filled($filters['from'] ?? null) || filled($filters['to'] ?? null)) {
+            $from = filled($filters['from'] ?? null) ? Carbon::parse($filters['from'], 'Africa/Accra')->startOfDay() : null;
+            $to = filled($filters['to'] ?? null) ? Carbon::parse($filters['to'], 'Africa/Accra')->endOfDay() : null;
+
+            if ($from && $to && $from->gt($to)) {
+                [$from, $to] = [$to->clone()->startOfDay(), $from->clone()->endOfDay()];
+            }
+
+            return [$from, $to];
+        }
+
         $now = Carbon::now('Africa/Accra');
 
         return match ($filters['range'] ?? null) {
@@ -125,10 +147,6 @@ class OrderHistoryController extends Controller
             'week' => [$now->clone()->startOfWeek(), $now->clone()->endOfWeek()],
             'month' => [$now->clone()->startOfMonth(), $now->clone()->endOfMonth()],
             'last_month' => [$now->clone()->subMonthNoOverflow()->startOfMonth(), $now->clone()->subMonthNoOverflow()->endOfMonth()],
-            'custom' => [
-                filled($filters['from'] ?? null) ? Carbon::parse($filters['from'], 'Africa/Accra') : null,
-                filled($filters['to'] ?? null) ? Carbon::parse($filters['to'], 'Africa/Accra') : null,
-            ],
             default => [null, null],
         };
     }

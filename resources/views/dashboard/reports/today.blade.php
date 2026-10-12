@@ -25,8 +25,26 @@
         @endif
 
         @php
-            $todayDate = \Illuminate\Support\Carbon::now('Africa/Accra')->toDateString();
-            $yesterdayDate = \Illuminate\Support\Carbon::now('Africa/Accra')->subDay()->toDateString();
+            $now = \Illuminate\Support\Carbon::now('Africa/Accra');
+            $todayDate = $now->toDateString();
+            $yesterdayDate = $now->clone()->subDay()->toDateString();
+
+            $rangePresetWindows = [
+                'last_7' => [__('Last 7 days'), $now->clone()->subDays(6)->toDateString(), $todayDate],
+                'last_30' => [__('Last 30 days'), $now->clone()->subDays(29)->toDateString(), $todayDate],
+                'this_week' => [__('This week'), $now->clone()->startOfWeek()->toDateString(), $todayDate],
+                'this_month' => [__('This month'), $now->clone()->startOfMonth()->toDateString(), $todayDate],
+                'last_month' => [
+                    __('Last month'),
+                    $now->clone()->subMonthNoOverflow()->startOfMonth()->toDateString(),
+                    $now->clone()->subMonthNoOverflow()->endOfMonth()->toDateString(),
+                ],
+            ];
+            $rangePresetLinks = collect($rangePresetWindows)->map(fn ($window) => [
+                'label' => $window[0],
+                'url' => route('dashboard.reports.today.index', [...$branchParam, 'channel' => $channel, 'from' => $window[1], 'to' => $window[2]]),
+                'active' => $isRangeMode && $today->toDateString() === $window[1] && $rangeEnd->toDateString() === $window[2],
+            ])->values()->all();
         @endphp
         {{--
             Always visible — previously only appeared once already in
@@ -74,12 +92,32 @@
                             <label class="block text-xs font-medium text-gray-500 mb-1" for="date">{{ __('Or pick a date') }}</label>
                             <input
                                 type="date" id="date" name="date"
-                                value="{{ $isCalendarMode ? $today->toDateString() : '' }}"
+                                value="{{ $isCalendarMode && ! $isRangeMode ? $today->toDateString() : '' }}"
                                 max="{{ $todayDate }}"
                                 class="rounded-md border-gray-300 text-sm"
                             >
                         </div>
                         <button type="submit" class="px-4 py-2 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-900">{{ __('Search') }}</button>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Or a range') }}</label>
+                            {{--
+                                Lives inside this same <form> (not a sibling)
+                                purely so the calendar's own 'selected'
+                                callback has a real <form> to submit —
+                                see date-range-picker-script.blade.php. A
+                                stray empty 'date' field submitted alongside
+                                it is harmless: TodayReportController checks
+                                from/to before date.
+                            --}}
+                            <x-date-range-picker
+                                :from="$isRangeMode ? $today->toDateString() : null"
+                                :to="$isRangeMode ? $rangeEnd->toDateString() : null"
+                                :label="$isRangeMode ? null : __('Pick a range')"
+                                :max-date="$todayDate"
+                                :preset-links="$rangePresetLinks"
+                            />
+                        </div>
                     </form>
                 </div>
 
@@ -93,17 +131,26 @@
 
         @if ($isCalendarMode)
 
+            @php
+                // A range (from+to) must carry both ends through the
+                // channel toggle, not just $today — using 'date' alone
+                // here would silently collapse a multi-day range back to
+                // its first day the moment the channel changes.
+                $calendarDateParams = $isRangeMode
+                    ? ['from' => $today->toDateString(), 'to' => $rangeEnd->toDateString()]
+                    : ['date' => $today->toDateString()];
+            @endphp
             <div class="flex items-center justify-end gap-2">
                 <a
-                    href="{{ route('dashboard.reports.today.index', [...$branchParam, 'date' => $today->toDateString(), 'channel' => 'pos']) }}"
+                    href="{{ route('dashboard.reports.today.index', [...$branchParam, ...$calendarDateParams, 'channel' => 'pos']) }}"
                     class="px-4 py-2 text-sm font-semibold rounded-full {{ $channel === 'pos' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}"
                 >{{ __('POS') }}</a>
                 <a
-                    href="{{ route('dashboard.reports.today.index', [...$branchParam, 'date' => $today->toDateString(), 'channel' => 'web']) }}"
+                    href="{{ route('dashboard.reports.today.index', [...$branchParam, ...$calendarDateParams, 'channel' => 'web']) }}"
                     class="px-4 py-2 text-sm font-semibold rounded-full {{ $channel === 'web' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}"
                 >{{ __('Web') }}</a>
                 <a
-                    href="{{ route('dashboard.reports.today.index', [...$branchParam, 'date' => $today->toDateString(), 'channel' => 'bolt_food']) }}"
+                    href="{{ route('dashboard.reports.today.index', [...$branchParam, ...$calendarDateParams, 'channel' => 'bolt_food']) }}"
                     class="px-4 py-2 text-sm font-semibold rounded-full {{ $channel === 'bolt_food' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}"
                 >{{ __('Bolt Food') }}</a>
             </div>
@@ -212,7 +259,7 @@
              worth seeing, not hiding. --}}
         @if ($shifts->isNotEmpty())
             <section class="space-y-2">
-                <h3 class="font-semibold text-gray-800 uppercase text-sm tracking-wide">{{ __('Shifts that day') }}</h3>
+                <h3 class="font-semibold text-gray-800 uppercase text-sm tracking-wide">{{ $isRangeMode ? __('Shifts in range') : __('Shifts that day') }}</h3>
                 <div class="bg-white shadow rounded-lg overflow-hidden overflow-x-auto">
                     <table class="w-full text-sm">
                         <thead class="bg-gray-50 text-left text-gray-500">

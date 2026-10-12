@@ -31,6 +31,19 @@ L.Icon.Default.mergeOptions({
 window.L = L;
 
 /**
+ * Backs the shared <x-date-range-picker> component (resources/views/
+ * components/date-range-picker.blade.php) — a calendar + preset-buttons
+ * popover for every date-range filter in the dashboard (Order History,
+ * Detailed reports, Sales tab). Exposed on window for the same reason as
+ * Leaflet above: every view-specific Alpine component here is a plain
+ * global function in an inline <script>, not its own JS module.
+ */
+import Litepicker from 'litepicker';
+import 'litepicker/dist/css/litepicker.css';
+
+window.Litepicker = Litepicker;
+
+/**
  * Echo exposes an expressive API for subscribing to channels and listening
  * for events that are broadcast by Laravel. Echo and event broadcasting
  * allow your team to quickly build robust real-time web applications.
