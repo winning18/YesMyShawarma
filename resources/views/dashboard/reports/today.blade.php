@@ -24,6 +24,10 @@
             </div>
         @endif
 
+        @php
+            $todayDate = \Illuminate\Support\Carbon::now('Africa/Accra')->toDateString();
+            $yesterdayDate = \Illuminate\Support\Carbon::now('Africa/Accra')->subDay()->toDateString();
+        @endphp
         {{--
             Always visible — previously only appeared once already in
             calendar mode (reached via the shift-mode "View by calendar
@@ -34,41 +38,50 @@
             shift's own report (a shift crossing midnight has no single
             calendar day that correctly represents it) — but the search
             itself shouldn't be hidden behind reaching that lens first.
-            Channel links carry `date` forward so switching POS/Web/Bolt
-            Food stays on the same date.
+
+            Today/Yesterday are plain links with the date baked in
+            server-side, not a dropdown + hidden inputs driven by Alpine
+            — that earlier version depended on a change handler clearing
+            a same-named field at exactly the right moment relative to
+            x-model's own update, which isn't reliably verifiable without
+            a real browser and risked submitting the wrong (or an empty)
+            date silently. A link can't get this wrong. Only the Custom
+            date case is still a real form, since it needs the input.
         --}}
-        <div x-data="{ preset: '{{ $isCalendarMode && $today->isToday() ? 'today' : ($isCalendarMode && $today->isYesterday() ? 'yesterday' : 'custom') }}' }" class="bg-white shadow rounded-lg p-4 space-y-3">
+        <div class="bg-white shadow rounded-lg p-4 space-y-3">
             <div class="flex items-center justify-between flex-wrap gap-3">
-                <form method="GET" action="{{ route('dashboard.reports.today.index') }}" class="flex flex-wrap items-end gap-3">
-                    <input type="hidden" name="channel" value="{{ $channel }}">
-                    @if ($viewingBranch)
-                        <input type="hidden" name="branch" value="{{ $viewingBranch->id }}">
-                    @endif
+                <div class="flex flex-wrap items-end gap-3">
                     <div>
-                        <label class="block text-xs font-medium text-gray-500 mb-1" for="preset">{{ __('Search by date') }}</label>
-                        <select id="preset" x-model="preset" class="rounded-md border-gray-300 text-sm" @change="if (preset !== 'custom') $refs.dateField.value = ''">
-                            <option value="today">{{ __('Today') }}</option>
-                            <option value="yesterday">{{ __('Yesterday') }}</option>
-                            <option value="custom">{{ __('Custom date…') }}</option>
-                        </select>
+                        <p class="block text-xs font-medium text-gray-500 mb-1">{{ __('Search by date') }}</p>
+                        <div class="flex gap-2">
+                            <a
+                                href="{{ route('dashboard.reports.today.index', [...$branchParam, 'date' => $todayDate, 'channel' => $channel]) }}"
+                                class="px-3 py-1.5 text-sm font-semibold rounded-md {{ $isCalendarMode && $today->isToday() ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}"
+                            >{{ __('Today') }}</a>
+                            <a
+                                href="{{ route('dashboard.reports.today.index', [...$branchParam, 'date' => $yesterdayDate, 'channel' => $channel]) }}"
+                                class="px-3 py-1.5 text-sm font-semibold rounded-md {{ $isCalendarMode && $today->isYesterday() ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}"
+                            >{{ __('Yesterday') }}</a>
+                        </div>
                     </div>
-                    <div x-show="preset === 'custom'" x-cloak>
-                        <label class="block text-xs font-medium text-gray-500 mb-1" for="date">{{ __('Pick a date') }}</label>
-                        <input
-                            x-ref="dateField" type="date" id="date" name="date"
-                            value="{{ $isCalendarMode ? $today->toDateString() : '' }}"
-                            max="{{ \Illuminate\Support\Carbon::now('Africa/Accra')->toDateString() }}"
-                            class="rounded-md border-gray-300 text-sm"
-                        >
-                    </div>
-                    <template x-if="preset === 'today'">
-                        <input type="hidden" name="date" value="{{ \Illuminate\Support\Carbon::now('Africa/Accra')->toDateString() }}">
-                    </template>
-                    <template x-if="preset === 'yesterday'">
-                        <input type="hidden" name="date" value="{{ \Illuminate\Support\Carbon::now('Africa/Accra')->subDay()->toDateString() }}">
-                    </template>
-                    <button type="submit" class="px-4 py-2 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-900">{{ __('Search') }}</button>
-                </form>
+
+                    <form method="GET" action="{{ route('dashboard.reports.today.index') }}" class="flex flex-wrap items-end gap-3">
+                        <input type="hidden" name="channel" value="{{ $channel }}">
+                        @if ($viewingBranch)
+                            <input type="hidden" name="branch" value="{{ $viewingBranch->id }}">
+                        @endif
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1" for="date">{{ __('Or pick a date') }}</label>
+                            <input
+                                type="date" id="date" name="date"
+                                value="{{ $isCalendarMode ? $today->toDateString() : '' }}"
+                                max="{{ $todayDate }}"
+                                class="rounded-md border-gray-300 text-sm"
+                            >
+                        </div>
+                        <button type="submit" class="px-4 py-2 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-900">{{ __('Search') }}</button>
+                    </form>
+                </div>
 
                 @if ($isCalendarMode)
                     <a href="{{ route('dashboard.reports.today.index', [...$branchParam, 'channel' => $channel]) }}" class="text-sm font-semibold text-indigo-600 hover:underline shrink-0">
