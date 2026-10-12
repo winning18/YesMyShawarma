@@ -541,11 +541,13 @@ class TodayReportTest extends TestCase
         $this->assertSame($shift->id, $response->viewData('shift')->id);
     }
 
-    public function test_a_single_shifts_own_report_does_not_show_the_shifts_table_itself(): void
+    public function test_a_single_shifts_own_report_shows_the_shifts_table_with_just_that_one_row(): void
     {
-        // Reached via a shift row's "View full report" link — showing that
-        // same table again underneath the report it was picked from was
-        // redundant, not useful context (this used to render it anyway).
+        // Reached via a shift row's "View full report" link — this used to
+        // hide the table entirely as redundant with the report already
+        // shown, but that left expenses with nowhere to appear in shift
+        // mode at all (only the calendar-mode table ever showed them). It
+        // now always shows, scoped to just this one shift.
         $staff = $this->makeStaff();
         $shift = Shift::create([
             'user_id' => $staff->id, 'branch_id' => $this->branch->id,
@@ -555,8 +557,9 @@ class TodayReportTest extends TestCase
 
         $response = $this->actingAs($staff)->get(route('dashboard.reports.today.index', ['shift' => $shift->id]));
 
-        $this->assertTrue($response->viewData('shifts')->isEmpty());
-        $response->assertDontSee(__('Shifts that day'));
+        $this->assertCount(1, $response->viewData('shifts'));
+        $this->assertSame($shift->id, $response->viewData('shifts')->first()->id);
+        $response->assertSee(__('Shifts that day'));
     }
 
     public function test_shifts_table_shows_a_date_and_flags_a_shift_that_ended_the_next_day(): void

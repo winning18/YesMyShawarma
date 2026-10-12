@@ -100,15 +100,17 @@ class TodayReportController extends Controller
             // here gets for free — null branch id (owner's cross-branch
             // aggregate view) means show every branch's shifts, mirroring
             // BranchScope's own no-op behaviour rather than silently
-            // returning none. Only queried in calendar mode — shift mode
-            // is reached by picking a shift from this very list (or by
-            // landing on the default), so showing the list again
-            // underneath it was redundant, not useful context.
+            // returning none.
+            //
+            // Shift mode shows this same table too now, just as a single
+            // row for $shift itself — expenses need to be visible
+            // regardless of which lens is active, not only once someone
+            // thinks to switch to calendar mode.
             'shifts' => $isCalendarMode ? Shift::with(['user', 'endedBy', 'expenses'])
                 ->when($branchId, fn ($query, $id) => $query->where('branch_id', $id))
                 ->whereBetween('started_at', [$date->clone()->startOfDay()->utc(), $date->clone()->endOfDay()->utc()])
                 ->orderByDesc('started_at')
-                ->get() : collect(),
+                ->get() : collect([$shift])->filter()->values(),
         ]);
     }
 

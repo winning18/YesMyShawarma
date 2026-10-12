@@ -24,55 +24,61 @@
             </div>
         @endif
 
-        @if ($isCalendarMode)
-            {{--
-                The explicit secondary lens — "what did this branch sell on
-                this specific calendar date" — never the default and never
-                to be confused with a shift's own report (a shift crossing
-                midnight has no single calendar day that correctly
-                represents it; this view only exists for someone who wants
-                the calendar-date reading anyway). Channel links carry
-                `date` forward so switching POS/Web/Bolt Food stays on the
-                same date.
-            --}}
-            <div x-data="{ preset: '{{ $today->isToday() ? 'today' : ($today->isYesterday() ? 'yesterday' : 'custom') }}' }" class="bg-white shadow rounded-lg p-4 space-y-3">
-                <div class="flex items-center justify-between flex-wrap gap-3">
-                    <form method="GET" action="{{ route('dashboard.reports.today.index') }}" class="flex flex-wrap items-end gap-3">
-                        <input type="hidden" name="channel" value="{{ $channel }}">
-                        @if ($viewingBranch)
-                            <input type="hidden" name="branch" value="{{ $viewingBranch->id }}">
-                        @endif
-                        <div>
-                            <label class="block text-xs font-medium text-gray-500 mb-1" for="preset">{{ __('Date') }}</label>
-                            <select id="preset" x-model="preset" class="rounded-md border-gray-300 text-sm" @change="if (preset !== 'custom') $refs.dateField.value = ''">
-                                <option value="today">{{ __('Today') }}</option>
-                                <option value="yesterday">{{ __('Yesterday') }}</option>
-                                <option value="custom">{{ __('Custom date…') }}</option>
-                            </select>
-                        </div>
-                        <div x-show="preset === 'custom'" x-cloak>
-                            <label class="block text-xs font-medium text-gray-500 mb-1" for="date">{{ __('Pick a date') }}</label>
-                            <input
-                                x-ref="dateField" type="date" id="date" name="date"
-                                value="{{ $today->toDateString() }}"
-                                max="{{ \Illuminate\Support\Carbon::now('Africa/Accra')->toDateString() }}"
-                                class="rounded-md border-gray-300 text-sm"
-                            >
-                        </div>
-                        <template x-if="preset === 'today'">
-                            <input type="hidden" name="date" value="{{ \Illuminate\Support\Carbon::now('Africa/Accra')->toDateString() }}">
-                        </template>
-                        <template x-if="preset === 'yesterday'">
-                            <input type="hidden" name="date" value="{{ \Illuminate\Support\Carbon::now('Africa/Accra')->subDay()->toDateString() }}">
-                        </template>
-                        <button type="submit" class="px-4 py-2 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-900">{{ __('Apply') }}</button>
-                    </form>
+        {{--
+            Always visible — previously only appeared once already in
+            calendar mode (reached via the shift-mode "View by calendar
+            date" link below), so there was no visible way to search a
+            date at all until you knew that link existed. "What did this
+            branch sell on this specific calendar date" is the explicit
+            secondary lens — never the default and never confused with a
+            shift's own report (a shift crossing midnight has no single
+            calendar day that correctly represents it) — but the search
+            itself shouldn't be hidden behind reaching that lens first.
+            Channel links carry `date` forward so switching POS/Web/Bolt
+            Food stays on the same date.
+        --}}
+        <div x-data="{ preset: '{{ $isCalendarMode && $today->isToday() ? 'today' : ($isCalendarMode && $today->isYesterday() ? 'yesterday' : 'custom') }}' }" class="bg-white shadow rounded-lg p-4 space-y-3">
+            <div class="flex items-center justify-between flex-wrap gap-3">
+                <form method="GET" action="{{ route('dashboard.reports.today.index') }}" class="flex flex-wrap items-end gap-3">
+                    <input type="hidden" name="channel" value="{{ $channel }}">
+                    @if ($viewingBranch)
+                        <input type="hidden" name="branch" value="{{ $viewingBranch->id }}">
+                    @endif
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1" for="preset">{{ __('Search by date') }}</label>
+                        <select id="preset" x-model="preset" class="rounded-md border-gray-300 text-sm" @change="if (preset !== 'custom') $refs.dateField.value = ''">
+                            <option value="today">{{ __('Today') }}</option>
+                            <option value="yesterday">{{ __('Yesterday') }}</option>
+                            <option value="custom">{{ __('Custom date…') }}</option>
+                        </select>
+                    </div>
+                    <div x-show="preset === 'custom'" x-cloak>
+                        <label class="block text-xs font-medium text-gray-500 mb-1" for="date">{{ __('Pick a date') }}</label>
+                        <input
+                            x-ref="dateField" type="date" id="date" name="date"
+                            value="{{ $isCalendarMode ? $today->toDateString() : '' }}"
+                            max="{{ \Illuminate\Support\Carbon::now('Africa/Accra')->toDateString() }}"
+                            class="rounded-md border-gray-300 text-sm"
+                        >
+                    </div>
+                    <template x-if="preset === 'today'">
+                        <input type="hidden" name="date" value="{{ \Illuminate\Support\Carbon::now('Africa/Accra')->toDateString() }}">
+                    </template>
+                    <template x-if="preset === 'yesterday'">
+                        <input type="hidden" name="date" value="{{ \Illuminate\Support\Carbon::now('Africa/Accra')->subDay()->toDateString() }}">
+                    </template>
+                    <button type="submit" class="px-4 py-2 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-900">{{ __('Search') }}</button>
+                </form>
 
+                @if ($isCalendarMode)
                     <a href="{{ route('dashboard.reports.today.index', [...$branchParam, 'channel' => $channel]) }}" class="text-sm font-semibold text-indigo-600 hover:underline shrink-0">
                         {{ __('Back to current shift') }}
                     </a>
-                </div>
+                @endif
             </div>
+        </div>
+
+        @if ($isCalendarMode)
 
             <div class="flex items-center justify-end gap-2">
                 <a
@@ -119,10 +125,6 @@
                             aria-label="{{ __('Next shift') }}" @if (! $nextShift) aria-disabled="true" @endif
                         >&rarr;</a>
                     </div>
-
-                    <a href="{{ route('dashboard.reports.today.index', [...$branchParam, 'date' => $today->toDateString(), 'channel' => $channel]) }}" class="text-sm font-semibold text-indigo-600 hover:underline shrink-0">
-                        {{ __('View by calendar date') }}
-                    </a>
                 </div>
             @else
                 <div class="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
