@@ -31,7 +31,9 @@ use Illuminate\View\View;
  * comparing one date across branches later), but never the default and
  * never confused with a shift's own report. Owner's cross-branch aggregate
  * view (no branch resolved at all) has no single branch's shift to default
- * to, so it falls back to calendar "today" until a branch is picked.
+ * to, so it falls back to calendar "today" until a branch is picked — the
+ * shifts/expenses table falls back the same way, across every branch, not
+ * just the summary figures.
  *
  * See DailySalesReportService for the actual decomposition logic, which is
  * range-agnostic regardless of which mode produced the range.
@@ -105,12 +107,27 @@ class TodayReportController extends Controller
             // Shift mode shows this same table too now, just as a single
             // row for $shift itself — expenses need to be visible
             // regardless of which lens is active, not only once someone
-            // thinks to switch to calendar mode.
-            'shifts' => $isCalendarMode ? Shift::with(['user', 'endedBy', 'expenses'])
-                ->when($branchId, fn ($query, $id) => $query->where('branch_id', $id))
-                ->whereBetween('started_at', [$date->clone()->startOfDay()->utc(), $date->clone()->endOfDay()->utc()])
-                ->orderByDesc('started_at')
-                ->get() : collect([$shift])->filter()->values(),
+            // thinks to switch to calendar mode. The business-wide
+            // fallback (no branch resolved at all, so no single "most
+            // recent shift" concept applies — resolveShiftMode() already
+            // falls back to today's calendar window for the summary
+            // figures above) gets the equivalent of calendar mode's own
+            // query instead of an empty table, for the exact same reason:
+            // real shifts/expenses existing that day shouldn't disappear
+            // just because nobody switched to one specific branch.
+            'shifts' => match (true) {
+                $isCalendarMode => Shift::with(['user', 'endedBy', 'expenses'])
+                    ->when($branchId, fn ($query, $id) => $query->where('branch_id', $id))
+                    ->whereBetween('started_at', [$date->clone()->startOfDay()->utc(), $date->clone()->endOfDay()->utc()])
+                    ->orderByDesc('started_at')
+                    ->get(),
+                $shift !== null => collect([$shift]),
+                $branchId === null => Shift::with(['user', 'endedBy', 'expenses'])
+                    ->whereBetween('started_at', [$date->clone()->startOfDay()->utc(), $date->clone()->endOfDay()->utc()])
+                    ->orderByDesc('started_at')
+                    ->get(),
+                default => collect(),
+            },
         ]);
     }
 

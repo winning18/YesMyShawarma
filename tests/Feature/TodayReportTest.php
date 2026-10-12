@@ -220,6 +220,50 @@ class TodayReportTest extends TestCase
         $response->assertSee('Labone');
     }
 
+    /**
+     * Regression: the business-wide view (owner, no branch param at all)
+     * has no single "most recent shift" concept to default to — unlike a
+     * single branch, resolveShiftMode() correctly falls back to today's
+     * calendar window for the summary figures, but the shifts/expenses
+     * table used to stay empty regardless, since it was only ever built
+     * from the one $shift this mode couldn't resolve. Real shifts across
+     * branches today must still show here, the same way they already did
+     * in calendar mode.
+     */
+    public function test_business_wide_view_shows_todays_shifts_across_every_branch(): void
+    {
+        $owner = User::factory()->create();
+        $this->assignRoleAt($owner, 'owner', $this->branch);
+
+        $otherBranch = Branch::create([
+            'name' => 'Labone', 'slug' => 'labone', 'phone' => '+233200000006', 'address' => 'F',
+            'lat' => 5.6, 'lng' => -0.2, 'opens_at' => '10:00', 'closes_at' => '22:00',
+        ]);
+        $staffHere = User::factory()->create();
+        $this->assignRoleAt($staffHere, 'staff', $this->branch);
+        $staffThere = User::factory()->create();
+        $this->assignRoleAt($staffThere, 'staff', $otherBranch);
+
+        $shiftHere = Shift::create([
+            'user_id' => $staffHere->id, 'branch_id' => $this->branch->id,
+            'started_at' => now()->subHours(2), 'ended_at' => null,
+        ]);
+        $shiftThere = Shift::create([
+            'user_id' => $staffThere->id, 'branch_id' => $otherBranch->id,
+            'started_at' => now()->subHour(), 'ended_at' => null,
+        ]);
+
+        $response = $this->actingAs($owner)->get(route('dashboard.reports.today.index'));
+
+        $response->assertOk();
+        $this->assertFalse($response->viewData('isCalendarMode'));
+        $this->assertNull($response->viewData('shift'));
+        $ids = $response->viewData('shifts')->pluck('id');
+        $this->assertTrue($ids->contains($shiftHere->id));
+        $this->assertTrue($ids->contains($shiftThere->id));
+        $response->assertSee(__("Showing today's totals across every branch."));
+    }
+
     public function test_a_manager_submitting_a_branch_param_is_ignored_since_they_only_have_their_own(): void
     {
         $manager = User::factory()->create();

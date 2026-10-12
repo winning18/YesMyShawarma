@@ -139,6 +139,17 @@
                         >&rarr;</a>
                     </div>
                 </div>
+            @elseif ($shifts->isNotEmpty())
+                {{--
+                    Business-wide (no branch resolved at all) has no single
+                    "most recent shift" to navigate, but real shifts can
+                    still exist across branches today — shown below in the
+                    "Shifts that day" table, so this says so rather than
+                    falsely claiming there's nothing recorded.
+                --}}
+                <div class="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-3">
+                    <p class="text-sm text-indigo-800">{{ __("Showing today's totals across every branch.") }}</p>
+                </div>
             @else
                 <div class="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
                     <p class="text-sm text-amber-800">{{ __('No shifts recorded yet — showing today\'s calendar totals instead.') }}</p>
