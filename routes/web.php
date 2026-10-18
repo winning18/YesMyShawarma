@@ -46,6 +46,8 @@ use App\Http\Controllers\RobotsController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\ShiftController;
 use App\Http\Controllers\SitemapController;
+use App\Http\Controllers\SmsBroadcastController;
+use App\Http\Controllers\SmsOptOutController;
 use App\Http\Controllers\StaffMemberManagementController;
 use App\Http\Controllers\StockItemController;
 use App\Http\Controllers\StockMovementController;
@@ -120,6 +122,9 @@ Route::middleware('track.visit')->group(function () {
     Route::get('/privacy-policy', [PolicyController::class, 'privacy'])->name('policy.privacy');
     Route::get('/cookie-policy', [PolicyController::class, 'cookies'])->name('policy.cookies');
     Route::post('/cookie-consent', [PolicyController::class, 'updateCookieConsent'])->name('cookie-consent.update');
+
+    Route::get('/stop/{code}', [SmsOptOutController::class, 'show'])->where('code', '[A-Za-z0-9]{8}')->name('sms.opt-out.show');
+    Route::post('/stop/{code}', [SmsOptOutController::class, 'store'])->where('code', '[A-Za-z0-9]{8}')->middleware('throttle:10,1')->name('sms.opt-out.store');
 
     Route::post('/page-views/{pageView}/duration', [PageViewController::class, 'recordDuration'])->name('page-views.duration');
 });
@@ -244,6 +249,9 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
 
     Route::get('/dashboard/customers', [CustomerManagementController::class, 'index'])->name('dashboard.customers.index');
     Route::get('/dashboard/customers/export', [CustomerManagementController::class, 'export'])->name('dashboard.customers.export');
+    Route::get('/dashboard/customers/broadcasts', [SmsBroadcastController::class, 'index'])->name('dashboard.customers.broadcasts.index');
+    Route::post('/dashboard/customers/broadcasts', [SmsBroadcastController::class, 'store'])->name('dashboard.customers.broadcasts.store');
+    Route::post('/dashboard/customers/broadcasts/{broadcast}/cancel', [SmsBroadcastController::class, 'cancel'])->name('dashboard.customers.broadcasts.cancel');
 
     Route::get('/dashboard/reports', [ReportsController::class, 'index'])->name('dashboard.reports.index');
 

@@ -10,7 +10,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['phone', 'name', 'email', 'password', 'phone_verified_at', 'marketing_opt_in'])]
+#[Fillable(['phone', 'name', 'email', 'password', 'phone_verified_at', 'marketing_opt_in', 'marketing_opted_out_at'])]
 #[Hidden(['password'])]
 class Customer extends Authenticatable
 {
@@ -21,6 +21,7 @@ class Customer extends Authenticatable
         return [
             'phone_verified_at' => 'datetime',
             'marketing_opt_in' => 'boolean',
+            'marketing_opted_out_at' => 'datetime',
             'password' => 'hashed',
         ];
     }

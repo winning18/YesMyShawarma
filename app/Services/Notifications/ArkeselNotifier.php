@@ -21,6 +21,11 @@ class ArkeselNotifier implements Notifier
 {
     public function notify(string $phone, string $message, array $context = []): void
     {
+        $this->send($phone, $message, $context);
+    }
+
+    public function send(string $phone, string $message, array $context = []): bool
+    {
         try {
             // Sent inline from order transitions — a slow Arkesel must not
             // hold the staff member's request for Laravel's 30s default.
@@ -42,9 +47,15 @@ class ArkeselNotifier implements Notifier
                     'body' => $response->body(),
                     ...$context,
                 ]);
+
+                return false;
             }
+
+            return true;
         } catch (Throwable $e) {
             report($e);
+
+            return false;
         }
     }
 }

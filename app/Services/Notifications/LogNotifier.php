@@ -15,6 +15,13 @@ class LogNotifier implements Notifier
 {
     public function notify(string $phone, string $message, array $context = []): void
     {
+        $this->send($phone, $message, $context);
+    }
+
+    public function send(string $phone, string $message, array $context = []): bool
+    {
         Log::info("[Notifier stub] {$phone}: {$message}", $context);
+
+        return true;
     }
 }

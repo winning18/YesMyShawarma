@@ -1,11 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">{{ __('Customers') }}</h2>
-            <a href="{{ route('dashboard.customers.export', request()->query()) }}" class="px-3 py-1.5 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-900">
-                {{ __('Export CSV') }}
-            </a>
-        </div>
+        @include('dashboard.customers._tabs', ['active' => 'customers'])
     </x-slot>
 
     <div class="max-w-5xl mx-auto py-8 px-4 space-y-6">

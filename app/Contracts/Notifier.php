@@ -19,4 +19,13 @@ interface Notifier
      * @param  array<string, mixed>  $context
      */
     public function notify(string $phone, string $message, array $context = []): void;
+
+    /**
+     * Same send as notify(), but says whether the provider accepted it —
+     * for callers that record per-recipient delivery (SMS broadcasts).
+     * Never throws, for the same reason notify() doesn't.
+     *
+     * @param  array<string, mixed>  $context
+     */
+    public function send(string $phone, string $message, array $context = []): bool;
 }

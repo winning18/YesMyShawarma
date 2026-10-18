@@ -37,6 +37,7 @@ Roles: `staff`, `rider`, `manager`, `general_manager`, `owner`, `stock_manager`.
 | `reports.view_financial` | — | — | ✓ | ✓ | ✓ | — |
 | `promotions.manage` | — | — | ✓ | ✓ | ✓ | — |
 | `customers.view` | — | — | ✓ | ✓ | ✓ | — |
+| `customers.broadcast` | — | — | — | ✓ | ✓ | — |
 | `reviews.moderate` | — | — | ✓ | ✓ | ✓ | — |
 | `users.manage` | — | — | — | — | ✓ | — |
 | `users.create_operational` | — | — | — | ✓ | — | — |

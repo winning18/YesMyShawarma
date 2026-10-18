@@ -86,7 +86,7 @@ Price is always `menu_items.base_price` — no per-branch override.
 
 ```
 customers           id, phone (unique, nullable), name, email, password,
-                    phone_verified_at, marketing_opt_in
+                    phone_verified_at, marketing_opt_in, marketing_opted_out_at
 customer_addresses  id, customer_id, label, ghanapost_code,
                     landmark, lat, lng, is_default
 ```
@@ -347,6 +347,30 @@ restricted automatic promotion only ever shows once a branch is actually selecte
 slider on a day an automatic promotion is active (`HomeController::index()`) — kept on the same
 row as the discount itself so the banner and the live discount can never disagree about whether
 today counts.
+
+## SMS broadcasts
+
+```
+sms_broadcasts            id, message, branch_id (nullable = all customers), status,
+                          scheduled_at, recipient_count, sent_count, failed_count,
+                          created_by, started_at, completed_at
+sms_broadcast_recipients  id, sms_broadcast_id, customer_id, phone, opt_out_code (unique),
+                          status, error, sent_at
+```
+
+Customers → SMS broadcasts (`customers.broadcast`: general_manager, owner). Owner decision
+(2026-10-18): broadcasts go to **every customer with a valid phone who hasn't opted out** —
+`marketing_opted_out_at` is null — not to `marketing_opt_in`, which nothing collects. Each SMS
+ends with a personal `/stop/{opt_out_code}` link; the GET only asks, the POST opts out (link
+previews fetch GETs). Order SMS ignore the opt-out.
+
+No stored contact list: `SmsBroadcastService::audience()` reads `customers` live when a broadcast
+starts, normalising and de-duplicating numbers then. `branch_id` narrows it to customers with an
+order at that branch. Status: `scheduled -> sending -> sent`, or `scheduled -> cancelled`. "Send
+now" is just `scheduled_at = now`. `sms:send-due-broadcasts` (every minute) claims due rows,
+snapshots recipients, and queues `SendSmsBroadcastBatch` for every broadcast still sending; each
+job sends for up to 40s, so only `pending` recipients are ever texted and a dead job resumes.
+At most one non-cancelled broadcast per 7 days (`MIN_DAYS_BETWEEN`), agreed with the owner.
 
 ## Visitor tracking
 
