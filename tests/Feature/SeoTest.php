@@ -134,6 +134,8 @@ class SeoTest extends TestCase
 
         $this->assertSame('Product', $json['@type']);
         $this->assertSame('Chicken Shawarma', $json['name']);
+        $this->assertStringContainsString('Chicken Shawarma', $json['description']);
+        $this->assertSame(config('app.name'), $json['brand']['name']);
         $this->assertSame('35.00', $json['offers']['price']);
         $this->assertSame('GHS', $json['offers']['priceCurrency']);
         $this->assertSame('https://schema.org/InStock', $json['offers']['availability']);

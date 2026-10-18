@@ -107,6 +107,15 @@ class MenuController extends Controller
             '@context' => 'https://schema.org',
             '@type' => 'Product',
             'name' => $item->name,
+            // Google's merchant-listing check warns without a description
+            // or brand — no item has a description yet, so fall back to
+            // the same sentence the page's meta description uses.
+            'description' => $item->description
+                ?: __('Order :item from :name, for delivery or pickup in Accra.', ['item' => $item->name, 'name' => config('app.name')]),
+            'brand' => [
+                '@type' => 'Brand',
+                'name' => config('app.name'),
+            ],
             'offers' => [
                 '@type' => 'Offer',
                 'priceCurrency' => 'GHS',
@@ -114,10 +123,6 @@ class MenuController extends Controller
                 'availability' => $isAvailable ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
             ],
         ];
-
-        if ($item->description) {
-            $schema['description'] = $item->description;
-        }
 
         if ($item->imageUrl()) {
             $schema['image'] = $item->imageUrl();
