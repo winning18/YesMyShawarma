@@ -7,6 +7,7 @@ use App\Exceptions\OrderPlacementException;
 use App\Models\Branch;
 use App\Models\DeliveryArea;
 use App\Models\Order;
+use App\Models\Payment;
 use App\Services\Customers\CustomerService;
 use App\Services\Delivery\DeliveryFeeCalculator;
 use App\Services\Menu\MenuPricingService;
@@ -97,6 +98,14 @@ class OrderCreationService
 
         if (! $branch->is_active || ! $branch->is_accepting_orders) {
             throw OrderPlacementException::branchNotAccepting();
+        }
+
+        // provider_reference is unique across payments — catch a reused or
+        // mistyped MoMo ID here (same as PaymentConfirmationService does
+        // for IDs entered later) instead of a constraint violation 500.
+        if ($data->paymentMethod === 'momo' && filled($data->paymentReference)
+            && Payment::where('provider_reference', $data->paymentReference)->exists()) {
+            throw OrderPlacementException::duplicateMomoReference($data->paymentReference);
         }
 
         return DB::transaction(function () use ($data, $branch) {

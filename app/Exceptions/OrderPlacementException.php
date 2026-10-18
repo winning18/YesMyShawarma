@@ -52,4 +52,9 @@ class OrderPlacementException extends Exception
     {
         return new self($reason);
     }
+
+    public static function duplicateMomoReference(string $reference): self
+    {
+        return new self("MoMo transaction ID \"{$reference}\" is already recorded against another order. Check the ID, or leave it blank and add it later.");
+    }
 }

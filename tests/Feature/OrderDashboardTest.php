@@ -357,6 +357,24 @@ class OrderDashboardTest extends TestCase
             ->assertJsonPath('data.status', 'preparing');
     }
 
+    public function test_a_double_tapped_advance_is_a_no_op_not_an_error(): void
+    {
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branchA);
+
+        $order = $this->makeOrder($this->branchA, 'accepted');
+
+        $this->actingAs($staff)->postJson(route('orders.advance', $order), ['to' => 'preparing'])->assertOk();
+        $eventsAfterFirst = $order->events()->count();
+
+        $this->actingAs($staff)
+            ->postJson(route('orders.advance', $order), ['to' => 'preparing'])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'preparing');
+
+        $this->assertSame($eventsAfterFirst, $order->events()->count());
+    }
+
     public function test_advance_status_rejects_an_invalid_target(): void
     {
         $staff = User::factory()->create();

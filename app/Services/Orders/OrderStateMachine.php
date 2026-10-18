@@ -108,6 +108,14 @@ class OrderStateMachine
 
             $from = $order->status;
 
+            // Already where the caller wants it — a double-tapped button,
+            // or two staff pressing the same action at once. The second
+            // request has nothing to do: return the order unchanged (no
+            // write, so no order_events row) instead of a 500.
+            if ($from === $to) {
+                return $order;
+            }
+
             if (! $this->canTransition($from, $to)) {
                 throw InvalidOrderTransitionException::forTransition($from, $to);
             }

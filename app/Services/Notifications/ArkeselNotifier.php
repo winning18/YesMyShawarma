@@ -22,7 +22,9 @@ class ArkeselNotifier implements Notifier
     public function notify(string $phone, string $message, array $context = []): void
     {
         try {
-            $response = Http::withHeaders([
+            // Sent inline from order transitions — a slow Arkesel must not
+            // hold the staff member's request for Laravel's 30s default.
+            $response = Http::connectTimeout(5)->timeout(10)->withHeaders([
                 'api-key' => config('services.arkesel.api_key'),
             ])->post(config('services.arkesel.base_url'), [
                 'sender' => config('services.arkesel.sender_id'),

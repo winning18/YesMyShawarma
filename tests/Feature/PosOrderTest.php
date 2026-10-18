@@ -319,6 +319,26 @@ class PosOrderTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_a_momo_transaction_id_already_used_is_rejected_with_a_message_not_a_500(): void
+    {
+        Http::fake();
+        $staff = $this->makeStaff();
+
+        $this->addToPosCart($staff, 1);
+        $this->actingAs($staff)->postJson(route('dashboard.pos.orders.store'), [
+            'phone' => '0241111111', 'fulfilment_type' => 'pickup', 'payment_method' => 'momo', 'payment_reference' => '91632376882',
+        ])->assertOk();
+
+        $this->addToPosCart($staff, 1);
+        $this->actingAs($staff)->postJson(route('dashboard.pos.orders.store'), [
+            'phone' => '0241111111', 'fulfilment_type' => 'pickup', 'payment_method' => 'momo', 'payment_reference' => '91632376882',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonPath('message', 'MoMo transaction ID "91632376882" is already recorded against another order. Check the ID, or leave it blank and add it later.');
+
+        $this->assertSame(1, Order::count());
+    }
+
     public function test_pos_no_longer_accepts_the_old_paystack_payment_method_value(): void
     {
         $staff = $this->makeStaff();

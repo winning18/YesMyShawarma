@@ -77,7 +77,10 @@ class AppServiceProvider extends ServiceProvider
         });
 
         View::composer('layouts.customer', function ($view) {
-            $view->with('cartItemCount', app(CartService::class)->count());
+            // Error pages can render on routes without the web middleware
+            // (no session at all, e.g. a 404 from /storage/{path}) — no
+            // session simply means no cart.
+            $view->with('cartItemCount', request()->hasSession() ? app(CartService::class)->count() : 0);
             $view->with('cookieConsentGiven', request()->cookie('cookie_consent') !== null);
         });
 

@@ -21,6 +21,9 @@
         <!-- The full suite sits near PHP's default 128M; XLSX/PDF export tests need headroom. -->
         <ini name="memory_limit" value="512M"/>
         <env name="APP_ENV" value="testing"/>
+        <!-- Never report test-run exceptions (many are deliberate) to the real Sentry project. -->
+        <env name="SENTRY_LARAVEL_DSN" value="null"/>
+        <env name="SENTRY_DSN" value="null"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
