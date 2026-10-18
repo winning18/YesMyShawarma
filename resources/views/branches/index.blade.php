@@ -1,4 +1,8 @@
-<x-customer-layout title="Branches · {{ config('app.name') }}" main-class="max-w-7xl">
+<x-customer-layout
+    :title="__('Our Branches in Accra · :name', ['name' => config('app.name')])"
+    :og-description="__('Find :name near you: :branches. Opening hours, directions and online ordering for delivery or pickup.', ['name' => config('app.name'), 'branches' => $branches->pluck('name')->join(', ', ' and ')])"
+    main-class="max-w-7xl"
+>
     <x-slot name="pageHeader">{{ __('Our branches') }}</x-slot>
 
     <div x-data="branchSearch(@js($branches->map(fn ($b) => ['id' => $b->id, 'name' => $b->name, 'address' => $b->address])->values()))">

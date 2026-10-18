@@ -73,6 +73,11 @@ Route::middleware('track.visit')->group(function () {
 
     Route::get('/branches', [BranchesController::class, 'index'])->name('branches.index');
     Route::get('/branches/{branch}/select', [BranchesController::class, 'select'])->name('branches.pick');
+    // Branch landing pages by slug. 'select' is excluded so this never
+    // swallows the staff /branches/select picker registered further down.
+    Route::get('/branches/{branch:slug}', [BranchesController::class, 'show'])
+        ->where('branch', '(?!select$)[a-z0-9-]+')
+        ->name('branches.show');
 
     Route::get('/contact', [ContactController::class, 'index'])->name('contact');
     // 5/minute per IP — generous for a real visitor (nobody submits a

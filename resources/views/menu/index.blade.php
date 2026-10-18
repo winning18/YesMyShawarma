@@ -1,4 +1,9 @@
-<x-customer-layout title="Menu · {{ config('app.name') }}" body-class="menu-hero-bg" main-class="max-w-7xl">
+<x-customer-layout
+    :title="__('Menu: Shawarma, Burgers & Fresh Juices · :name', ['name' => config('app.name')])"
+    :og-description="__('The full :name menu: chicken and beef shawarma, burgers, hot dogs, loaded fries, sandwiches and fresh juices. Order online for delivery or pickup in Accra.', ['name' => config('app.name')])"
+    body-class="menu-hero-bg"
+    main-class="max-w-7xl"
+>
     {{-- JSON_HEX_TAG/JSON_HEX_AMP: $menuSchema embeds every item's
          staff-editable name/description verbatim (aeo.md) — without these,
          a literal </script> in any of them would close this tag early and

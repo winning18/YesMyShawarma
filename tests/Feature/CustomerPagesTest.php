@@ -489,7 +489,7 @@ class CustomerPagesTest extends TestCase
     {
         $response = $this->get(route('home'))->assertOk();
 
-        $response->assertSee('<meta name="description" content="Shawarma, burgers and more', false);
+        $response->assertSee('<meta name="description" content="Order shawarma, burgers, loaded fries and fresh juices online', false);
         $response->assertSee('<link rel="canonical" href="'.route('home').'"', false);
     }
 
@@ -507,7 +507,7 @@ class CustomerPagesTest extends TestCase
 
         $response->assertSee('property="og:image" content="'.$item->imageUrl().'"', false);
         $response->assertSee('name="twitter:image" content="'.$item->imageUrl().'"', false);
-        $response->assertSee('property="og:description" content="Grilled chicken, fresh veg, garlic sauce."', false);
+        $response->assertSee('property="og:description" content="Grilled chicken, fresh veg, garlic sauce. GH₵50.00, for delivery or pickup in Accra."', false);
     }
 
     public function test_product_page_falls_back_to_the_default_preview_image_when_it_has_no_photo(): void
@@ -549,13 +549,29 @@ class CustomerPagesTest extends TestCase
         $this->get(route('menu.show', $item))->assertRedirect(route('branches.index'));
     }
 
-    public function test_product_page_404s_when_unavailable_at_the_selected_branch(): void
+    public function test_product_page_shows_sold_out_when_unavailable_at_the_selected_branch(): void
     {
         $category = Category::create(['name' => 'Shawarma', 'slug' => 'shawarma']);
         $item = MenuItem::create([
             'category_id' => $category->id, 'name' => 'Chicken Shawarma', 'slug' => 'chicken-shawarma', 'base_price' => 5000,
         ]);
         $this->branch->menuItems()->attach($item->id, ['is_available' => false]);
+
+        $this->get(route('branches.pick', $this->branch));
+
+        $this->get(route('menu.show', $item))
+            ->assertOk()
+            ->assertSee('Sold out at '.$this->branch->name)
+            ->assertDontSee('Add to cart')
+            ->assertSee('"availability":"https://schema.org/OutOfStock"', false);
+    }
+
+    public function test_product_page_404s_when_not_on_the_selected_branchs_menu_at_all(): void
+    {
+        $category = Category::create(['name' => 'Shawarma', 'slug' => 'shawarma']);
+        $item = MenuItem::create([
+            'category_id' => $category->id, 'name' => 'Chicken Shawarma', 'slug' => 'chicken-shawarma', 'base_price' => 5000,
+        ]);
 
         $this->get(route('branches.pick', $this->branch));
 

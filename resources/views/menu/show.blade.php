@@ -1,7 +1,7 @@
 <x-customer-layout
-    title="{{ $item->name }} · {{ config('app.name') }}"
+    :title="__(':item: Order Online in Accra · :name', ['item' => $item->name, 'name' => config('app.name')])"
     :og-image="$item->imageUrl()"
-    :og-description="$item->description ? Str::limit($item->description, 160) : null"
+    :og-description="Str::limit(($item->description ? rtrim($item->description, '. ').'. ' : __('Order :item from :name. ', ['item' => $item->name, 'name' => config('app.name')])).__('GH₵:price, for delivery or pickup in Accra.', ['price' => number_format($item->base_price / 100, 2)]), 160)"
 >
     {{-- JSON_HEX_TAG/JSON_HEX_AMP: $productSchema embeds staff-editable
          item name/description verbatim (aeo.md) — without these, a name or
@@ -33,6 +33,13 @@
                 GH₵{{ number_format($item->base_price / 100, 2) }}
             </p>
 
+            @if (! $isAvailable)
+                <div class="mb-6 rounded-lg bg-brand-gray-100 px-4 py-3">
+                    <p class="font-semibold">{{ __('Sold out at :branch right now', ['branch' => $branch->name]) }}</p>
+                    <p class="text-sm text-brand-gray-500">{{ __('Check back soon, or see what else is on the menu.') }}</p>
+                    <a href="{{ route('menu.index') }}" class="inline-block mt-3 px-6 py-2.5 bg-brand-black text-brand-yellow font-bold rounded-md hover:bg-brand-gray-700">{{ __('Browse the menu') }}</a>
+                </div>
+            @else
             <div x-data="menuItemForm()">
                 <form method="POST" action="{{ route('cart.add') }}" @submit="submit($event)">
                     @csrf
@@ -115,6 +122,7 @@
 
                 <x-menu-item-error-modal />
             </div>
+            @endif
         </div>
     </div>
 

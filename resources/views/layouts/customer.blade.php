@@ -22,7 +22,7 @@
         --}}
         @php
             $ogImageUrl = $ogImage ?? asset('images/logo-web.png');
-            $ogDescriptionText = $ogDescription ?? __('Shawarma, burgers and more. Order online for pickup from our Accra branches.');
+            $ogDescriptionText = $ogDescription ?? __('Shawarma, burgers and fresh juices in Accra. Order online for delivery or pickup.');
         @endphp
         <meta name="description" content="{{ $ogDescriptionText }}">
         <link rel="canonical" href="{{ url()->current() }}">

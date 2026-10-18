@@ -1,4 +1,4 @@
-<x-customer-layout title="Refund Policy · {{ config('app.name') }}">
+<x-customer-layout title="Refund Policy · {{ config('app.name') }}" :og-description="__('How refunds work at :name: when you qualify, how to ask, and how long it takes.', ['name' => config('app.name')])">
     <x-slot name="pageHeader">{{ __('Refund Policy') }}</x-slot>
 
     <div class="max-w-3xl mx-auto text-brand-black">

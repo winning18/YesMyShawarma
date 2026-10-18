@@ -1,4 +1,4 @@
-<x-customer-layout title="Terms & Conditions · {{ config('app.name') }}">
+<x-customer-layout title="Terms & Conditions · {{ config('app.name') }}" :og-description="__('The terms that apply when you order from :name online, for delivery or pickup.', ['name' => config('app.name')])">
     <x-slot name="pageHeader">{{ __('Terms & Conditions') }}</x-slot>
 
     <div class="max-w-3xl mx-auto text-brand-black">

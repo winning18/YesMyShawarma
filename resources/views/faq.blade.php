@@ -1,4 +1,4 @@
-<x-customer-layout title="FAQ · {{ config('app.name') }}">
+<x-customer-layout title="FAQ · {{ config('app.name') }}" :og-description="__('Answers to common questions about ordering from :name: delivery, pickup, payment by mobile money, card or cash, opening hours and refunds.', ['name' => config('app.name')])">
     <x-slot name="pageHeader">{{ __('Frequently asked questions') }}</x-slot>
 
     {{-- JSON_HEX_TAG/JSON_HEX_AMP: FaqController::ITEMS is hardcoded today

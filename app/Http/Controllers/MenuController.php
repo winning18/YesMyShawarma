@@ -56,16 +56,22 @@ class MenuController extends Controller
             return $branch;
         }
 
+        // A sold-out item (is_available off at this branch) still gets its
+        // page — shown as sold out with no add-to-cart — rather than a 404:
+        // the sitemap lists it, and a temporarily out-of-stock item
+        // flickering in and out of Google's index helps nobody. Ordering it
+        // is still refused server-side (MenuPricingService).
         $item = $branch->menuItems()
             ->where('menu_items.id', $menuItem->id)
             ->where('menu_items.is_active', true)
-            ->wherePivot('is_available', true)
             ->with(['optionGroups.options' => fn ($query) => $query->where('is_active', true)])
             ->first();
 
         if (! $item) {
             abort(404);
         }
+
+        $isAvailable = (bool) $item->pivot->is_available;
 
         $drinksCategory = Category::where('slug', 'drinks')->first();
 
@@ -83,7 +89,8 @@ class MenuController extends Controller
             'branch' => $branch,
             'item' => $item,
             'drinks' => $drinks,
-            'productSchema' => $this->productSchema($item),
+            'isAvailable' => $isAvailable,
+            'productSchema' => $this->productSchema($item, $isAvailable),
         ]);
     }
 
@@ -94,7 +101,7 @@ class MenuController extends Controller
      * time this runs (a 404 happens otherwise), so availability here is
      * always InStock — there's no other state this method ever sees.
      */
-    private function productSchema(MenuItem $item): array
+    private function productSchema(MenuItem $item, bool $isAvailable = true): array
     {
         $schema = [
             '@context' => 'https://schema.org',
@@ -104,7 +111,7 @@ class MenuController extends Controller
                 '@type' => 'Offer',
                 'priceCurrency' => 'GHS',
                 'price' => number_format($item->base_price / 100, 2, '.', ''),
-                'availability' => 'https://schema.org/InStock',
+                'availability' => $isAvailable ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
             ],
         ];
 

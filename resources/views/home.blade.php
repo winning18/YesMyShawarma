@@ -8,6 +8,7 @@
     :title="__(':name: Shawarma, Burgers & More in Accra', ['name' => config('app.name')])"
     body-class="bg-brand-black"
     :og-image="data_get($heroSlides->first(), 'imageUrl')"
+    :og-description="__('Order shawarma, burgers, loaded fries and fresh juices online from :name in :branches, Accra. Delivery or pickup, paid by mobile money, card or cash.', ['name' => config('app.name'), 'branches' => collect($restaurantSchema)->map(fn ($b) => \Illuminate\Support\Str::after($b['name'], ': '))->join(', ', ' and ')])"
 >
     {{-- JSON_HEX_TAG/JSON_HEX_AMP: $branchSchema embeds staff-editable
          branch name/address verbatim (aeo.md) — without these, a literal

@@ -207,4 +207,100 @@ class SeoTest extends TestCase
 
         return json_decode($matches[1], true);
     }
+
+    private function makeBranch(string $name, string $slug, array $extra = []): Branch
+    {
+        return Branch::create([
+            'name' => $name, 'slug' => $slug, 'phone' => '+233243635265', 'address' => $name.' Junction',
+            'lat' => 5.67, 'lng' => -0.30, 'opens_at' => '14:00', 'closes_at' => '00:00', ...$extra,
+        ]);
+    }
+
+    public function test_each_branch_has_its_own_page_with_restaurant_data_and_weekly_hours(): void
+    {
+        $branch = $this->makeBranch('Pokuase Y-Junction', 'pokuase-y-junction', ['ghanapost_code' => 'GE-123-4567']);
+        $this->makeBranch('Ga Odumase', 'ga-odumase');
+        BranchWorkingHour::create(['branch_id' => $branch->id, 'day_of_week' => 1, 'opens_at' => '18:00', 'closes_at' => '23:59']);
+
+        $response = $this->get('/branches/pokuase-y-junction')->assertOk();
+
+        $response->assertSee('<title>Shawarma &amp; Burgers in Pokuase Y-Junction, Accra · '.config('app.name').'</title>', false);
+        $response->assertSee('Opening hours');
+        $response->assertSee('6:00pm – 11:59pm');
+        $response->assertSee(route('branches.show', 'ga-odumase'), false);
+
+        $json = $this->extractLdJson($response->getContent());
+        $this->assertSame('Restaurant', $json['@type']);
+        $this->assertSame(route('branches.show', $branch), $json['url']);
+        $this->assertSame(route('menu.index'), $json['hasMenu']);
+        $this->assertSame('GE-123-4567', $json['address']['postalCode']);
+    }
+
+    public function test_a_branch_name_ending_in_branch_reads_naturally_in_the_title(): void
+    {
+        $this->makeBranch('GIMPA Branch', 'gimpa-branch');
+
+        $this->get('/branches/gimpa-branch')
+            ->assertOk()
+            ->assertSee('<title>Shawarma &amp; Burgers in GIMPA, Accra', false);
+    }
+
+    public function test_an_inactive_branch_page_is_not_found(): void
+    {
+        $this->makeBranch('Closed Place', 'closed-place', ['is_active' => false]);
+
+        $this->get('/branches/closed-place')->assertNotFound();
+    }
+
+    public function test_the_branch_page_route_never_swallows_the_staff_branch_picker(): void
+    {
+        // Guest hitting the staff picker is sent to log in — not a 404 from
+        // the public branch page treating "select" as a slug.
+        $this->get('/branches/select')->assertRedirect();
+    }
+
+    public function test_restaurant_phone_is_given_to_google_in_international_format(): void
+    {
+        $this->makeBranch('GIMPA Branch', 'gimpa-branch', ['phone' => '026-370-2929']);
+
+        $json = $this->extractLdJson($this->get(route('home'))->getContent());
+
+        $this->assertSame('+233263702929', $json['telephone']);
+    }
+
+    public function test_sitemap_lists_branch_pages_and_sold_out_items_but_not_items_off_the_default_menu(): void
+    {
+        $main = $this->makeBranch('Ga Odumase', 'ga-odumase');
+        $other = $this->makeBranch('Pokuase Y-Junction', 'pokuase-y-junction');
+        $category = Category::create(['name' => 'Sandwiches', 'slug' => 'sandwiches']);
+        $soldOut = MenuItem::create(['category_id' => $category->id, 'name' => 'Egg Sandwich', 'slug' => 'egg-sandwich', 'base_price' => 2000]);
+        $main->menuItems()->attach($soldOut->id, ['is_available' => false]);
+        $elsewhere = MenuItem::create(['category_id' => $category->id, 'name' => 'Pokuase Special', 'slug' => 'pokuase-special', 'base_price' => 2000]);
+        $other->menuItems()->attach($elsewhere->id, ['is_available' => true]);
+
+        $response = $this->get(route('sitemap'))->assertOk();
+
+        $response->assertSee('<loc>'.route('branches.show', $main).'</loc>', false);
+        $response->assertSee('<loc>'.route('branches.show', $other).'</loc>', false);
+        $response->assertSee('<loc>'.route('menu.show', $soldOut).'</loc>', false);
+        $response->assertDontSee(route('menu.show', $elsewhere), false);
+
+        // Every item URL the sitemap lists must actually load for a crawler.
+        $this->get(route('menu.show', $soldOut))->assertOk();
+    }
+
+    public function test_public_pages_each_have_their_own_description(): void
+    {
+        $this->makeBranch('Ga Odumase', 'ga-odumase');
+
+        $descriptions = collect(['home', 'menu.index', 'branches.index', 'about', 'contact', 'faq', 'reviews.index', 'policy.terms', 'policy.refunds', 'policy.privacy', 'policy.cookies'])
+            ->mapWithKeys(function (string $route) {
+                preg_match('/<meta name="description" content="([^"]*)"/', $this->get(route($route))->getContent(), $m);
+
+                return [$route => $m[1] ?? null];
+            });
+
+        $this->assertNotContains(null, $descriptions->all());
+        $this->assertSame($descriptions->count(), $descriptions->unique()->count(), 'Two pages share a meta description.');
+    }
 }

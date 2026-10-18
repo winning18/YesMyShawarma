@@ -1,4 +1,4 @@
-<x-customer-layout title="Reviews · {{ config('app.name') }}">
+<x-customer-layout title="Reviews · {{ config('app.name') }}" :og-description="__('Customer reviews and ratings for :name\'s shawarma, burgers and service across our Accra branches.', ['name' => config('app.name')])">
     <x-slot name="pageHeader">{{ __('Reviews') }}</x-slot>
 
     @if ($reviews->isEmpty())

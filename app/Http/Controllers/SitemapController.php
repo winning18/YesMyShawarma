@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
 use App\Models\MenuItem;
 use Illuminate\Http\Response;
 
@@ -13,10 +14,11 @@ use Illuminate\Http\Response;
 class SitemapController extends Controller
 {
     /**
-     * Static pages plus every active menu item's own product page —
-     * these are exactly the pages MenuController's crawlability fix
-     * (resolveBranch defaulting instead of redirecting) makes indexable
-     * at all, so a crawler has no way to discover them without this.
+     * Static pages, each active branch's own page, and every product page
+     * a crawler can actually load — these are exactly the pages
+     * MenuController's crawlability fix (resolveBranch defaulting instead
+     * of redirecting) makes indexable at all, so a crawler has no way to
+     * discover them without this.
      */
     public function index(): Response
     {
@@ -34,13 +36,29 @@ class SitemapController extends Controller
             ['url' => route('policy.cookies'), 'priority' => '0.2'],
         ]);
 
-        MenuItem::where('is_active', true)->get()->each(
-            fn (MenuItem $item) => $urls->push([
-                'url' => route('menu.show', $item),
-                'priority' => '0.7',
-                'lastmod' => $item->updated_at?->toAtomString(),
+        Branch::where('is_active', true)->orderBy('id')->get()->each(
+            fn (Branch $branch) => $urls->push([
+                'url' => route('branches.show', $branch),
+                'priority' => '0.8',
+                'lastmod' => $branch->updated_at?->toAtomString(),
             ])
         );
+
+        // A crawler has no branch selected, so MenuController shows it the
+        // default branch (the first active one) — only items on that
+        // branch's menu have a page it can load. Sold-out items still do
+        // (shown as sold out), so availability doesn't matter here.
+        $defaultBranch = Branch::where('is_active', true)->orderBy('id')->first();
+
+        if ($defaultBranch) {
+            $defaultBranch->menuItems()->where('menu_items.is_active', true)->get()->each(
+                fn (MenuItem $item) => $urls->push([
+                    'url' => route('menu.show', $item),
+                    'priority' => '0.7',
+                    'lastmod' => $item->updated_at?->toAtomString(),
+                ])
+            );
+        }
 
         return response()
             ->view('sitemap', ['urls' => $urls])

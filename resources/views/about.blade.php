@@ -1,4 +1,4 @@
-<x-customer-layout title="About us · {{ config('app.name') }}">
+<x-customer-layout title="About us · {{ config('app.name') }}" :og-description="__('The story behind :name, serving shawarma, burgers and fresh juices from our branches across Accra.', ['name' => config('app.name')])">
     <x-slot name="pageHeader">{{ __('About us') }}</x-slot>
 
     {{-- Mission and vision --}}

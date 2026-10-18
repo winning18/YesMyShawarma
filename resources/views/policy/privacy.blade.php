@@ -1,4 +1,4 @@
-<x-customer-layout title="Privacy Policy · {{ config('app.name') }}">
+<x-customer-layout title="Privacy Policy · {{ config('app.name') }}" :og-description="__('How :name collects, uses and protects your personal information when you order online.', ['name' => config('app.name')])">
     <x-slot name="pageHeader">{{ __('Privacy Policy') }}</x-slot>
 
     <div class="max-w-3xl mx-auto text-brand-black">

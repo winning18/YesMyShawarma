@@ -1,4 +1,4 @@
-@props(['branch', 'selected' => false])
+@props(['branch', 'selected' => false, 'linkToPage' => true])
 
 {{--
     Shared by branches/index.blade.php and contact.blade.php — a change
@@ -15,7 +15,13 @@
 
     <div class="p-5 flex flex-col flex-1">
         <div class="flex items-center gap-2 mb-1">
-            <h2 class="text-lg font-bold">{{ $branch->name }}</h2>
+            <h2 class="text-lg font-bold">
+                @if ($linkToPage)
+                    <a href="{{ route('branches.show', $branch) }}" class="hover:underline">{{ $branch->name }}</a>
+                @else
+                    {{ $branch->name }}
+                @endif
+            </h2>
             @if ($selected)
                 <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-black bg-brand-yellow px-2.5 py-1 rounded-full">
                     {{ __('Currently selected') }}
@@ -82,6 +88,11 @@
             >
                 {{ __('Order from here') }}
             </a>
+            @if ($linkToPage)
+                <a href="{{ route('branches.show', $branch) }}" class="block text-center text-sm underline text-brand-gray-500 hover:text-brand-black">
+                    {{ __('Branch details & opening hours') }}
+                </a>
+            @endif
             <div class="grid grid-cols-2 gap-2">
                 <a
                     href="tel:{{ $branch->phone }}"

@@ -1,4 +1,4 @@
-<x-customer-layout title="Cookie Policy · {{ config('app.name') }}">
+<x-customer-layout title="Cookie Policy · {{ config('app.name') }}" :og-description="__('Which cookies :name uses on this website, why, and how to control them.', ['name' => config('app.name')])">
     <x-slot name="pageHeader">{{ __('Cookie Policy') }}</x-slot>
 
     <div class="max-w-3xl mx-auto text-brand-black">

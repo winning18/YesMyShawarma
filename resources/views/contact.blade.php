@@ -1,4 +1,4 @@
-<x-customer-layout title="Contact us · {{ config('app.name') }}">
+<x-customer-layout title="Contact us · {{ config('app.name') }}" :og-description="__('Contact :name: branch phone numbers, addresses, opening hours and directions in Accra.', ['name' => config('app.name')])">
     <x-slot name="pageHeader">{{ __('Contact us') }}</x-slot>
 
     {{-- Branch locations — same card component as the Branches page
