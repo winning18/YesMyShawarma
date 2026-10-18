@@ -12,9 +12,9 @@ use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * "Weekly report" tab — the transaction-level counterpart to "Invoices
- * and sales": one row per order in the chosen week, not one aggregated
- * row per week. Defaults to the overall (cross-branch) picture for
+ * "Order export" tab (formerly "Weekly report") — the transaction-level
+ * audit counterpart to "Invoices and sales": one row per order in the
+ * chosen week, every status included, not one aggregated row per week. Defaults to the overall (cross-branch) picture for
  * owner/general_manager, same as the other Reports and invoices pages —
  * see ReportsInvoicesController's resolveBranchFilter() for the shared
  * reasoning.
@@ -44,7 +44,7 @@ class WeeklyReportController extends Controller
         [$weekStart, $weekEnd] = $this->resolveWeek($request);
         [$branchArgs] = $this->resolveBranchFilter($request, $context);
         $orders = $this->weeklySales->detailedOrders($weekStart, $weekEnd, ...$branchArgs);
-        $filename = 'weekly-report-'.$weekStart->format('Y-m-d').'-to-'.$weekEnd->format('Y-m-d').'.csv';
+        $filename = 'order-export-'.$weekStart->format('Y-m-d').'-to-'.$weekEnd->format('Y-m-d').'.csv';
 
         return response()->streamDownload(function () use ($orders) {
             $out = fopen('php://output', 'w');

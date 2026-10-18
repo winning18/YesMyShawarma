@@ -8,7 +8,10 @@
             $branchParam = $branchFilterId ? ['branch' => $branchFilterId] : [];
         @endphp
 
-        <h3 class="font-semibold text-lg text-gray-800">{{ __('Weekly report') }}</h3>
+        <div>
+            <h3 class="font-semibold text-lg text-gray-800">{{ __('Order export') }}</h3>
+            <p class="text-sm text-gray-500">{{ __('Every order placed in the chosen week, for checking and auditing. This is not a sales report: it includes cancelled, failed and Bolt Food orders. For sales figures, use Invoices and sales.') }}</p>
+        </div>
 
         <form method="GET" action="{{ route('dashboard.reports.weekly.index') }}" class="flex flex-wrap items-end gap-3">
             <div>
@@ -36,7 +39,7 @@
         <a
             href="{{ route('dashboard.reports.weekly.download', [...$branchParam, 'week' => $weekStart->toDateString()]) }}"
             class="inline-block px-5 py-2.5 bg-green-700 text-white text-sm font-semibold rounded-full hover:bg-green-800"
-        >{{ __('Download CSV') }}</a>
+        >{{ __('Download order export (CSV)') }}</a>
 
         <p class="text-xs text-gray-400">
             {{ __('A row per order placed that week: reference, timestamp, customer, status, channel, fulfilment, and total.') }}

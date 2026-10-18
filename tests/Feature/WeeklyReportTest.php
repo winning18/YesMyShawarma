@@ -79,8 +79,8 @@ class WeeklyReportTest extends TestCase
 
         $this->actingAs($manager)->get(route('dashboard.reports.weekly.index'))
             ->assertOk()
-            ->assertSee('Weekly report')
-            ->assertSee('Download CSV');
+            ->assertSee('Order export')
+            ->assertSee('Download order export (CSV)');
     }
 
     public function test_staff_cannot_view_the_weekly_report_page(): void
