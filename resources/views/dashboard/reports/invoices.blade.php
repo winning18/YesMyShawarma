@@ -7,86 +7,103 @@
         <section class="space-y-4">
             <div>
                 <h3 class="font-semibold text-gray-800">{{ __('Sales report') }}</h3>
-                <p class="text-sm text-gray-500">{{ __('Download a report of all your sales for the selected week.') }}</p>
+                <p class="text-sm text-gray-500">{{ __('Download a statement of every order in the selected dates, grouped by day, with refunds and expenses deducted. Bolt Food orders have their own report.') }}</p>
             </div>
 
             @php
                 $branchParam = $branchFilterId ? ['branch' => $branchFilterId] : [];
+                $now = now('Africa/Accra');
+                $rangePresets = [
+                    [__('This week'), $now->clone()->startOfWeek(), $now->clone()->endOfWeek()],
+                    [__('Last week'), $now->clone()->subWeek()->startOfWeek(), $now->clone()->subWeek()->endOfWeek()],
+                    [__('This month'), $now->clone()->startOfMonth(), $now->clone()->endOfMonth()],
+                    [__('Last month'), $now->clone()->subMonthNoOverflow()->startOfMonth(), $now->clone()->subMonthNoOverflow()->endOfMonth()],
+                ];
+                $dateRangePresetLinks = collect($rangePresets)->map(fn ($preset) => [
+                    'label' => $preset[0],
+                    'url' => route('dashboard.reports.invoices.index', [...$branchParam, 'type' => $type, 'from' => $preset[1]->toDateString(), 'to' => $preset[2]->toDateString()]),
+                    'active' => $from->isSameDay($preset[1]) && $to->isSameDay($preset[2]),
+                ])->all();
+                $downloadParams = [...$branchParam, 'type' => $type, 'from' => $from->toDateString(), 'to' => $to->toDateString()];
+                $isSalesReport = $type === \App\Services\Reports\SalesStatementService::TYPE_SALES;
             @endphp
 
             <div class="flex items-center gap-3">
                 <a
-                    href="{{ route('dashboard.reports.invoices.index', $branchParam) }}"
+                    href="{{ route('dashboard.reports.invoices.index', [...$branchParam, 'type' => $type]) }}"
                     class="px-4 py-2 text-sm font-semibold rounded-full {{ $isThisWeek ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}"
                 >{{ __('This week') }}</a>
                 <a
-                    href="{{ route('dashboard.reports.invoices.index', [...$branchParam, 'week' => now('Africa/Accra')->subWeek()->toDateString()]) }}"
+                    href="{{ route('dashboard.reports.invoices.index', [...$branchParam, 'type' => $type, 'week' => $now->clone()->subWeek()->toDateString()]) }}"
                     class="px-4 py-2 text-sm font-semibold rounded-full {{ $isLastWeek ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}"
                 >{{ __('Last week') }}</a>
             </div>
 
-            <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Chosen dates') }}</label>
-                <div class="flex flex-wrap items-center gap-3">
-                    <form method="GET" action="{{ route('dashboard.reports.invoices.index') }}" class="flex items-center gap-2">
-                        @if ($branchFilterId)
-                            <input type="hidden" name="branch" value="{{ $branchFilterId }}">
-                        @endif
+            <div class="flex flex-wrap items-end gap-3">
+                <form method="GET" action="{{ route('dashboard.reports.invoices.index') }}" class="flex flex-wrap items-end gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Chosen dates') }}</label>
                         <x-date-range-picker
-                            single
-                            field-name="week"
-                            :from="$weekStart->toDateString()"
-                            :label="$weekStart->format('d/m').' - '.$weekEnd->format('d/m')"
+                            :from="$from->toDateString()"
+                            :to="$to->toDateString()"
+                            :label="$from->format('d/m/Y').' - '.$to->format('d/m/Y')"
+                            :preset-links="$dateRangePresetLinks"
                         />
-                        <span class="text-sm text-gray-500">
-                            ({{ __('Week :week of :year', ['week' => $weekStart->isoWeek(), 'year' => $weekStart->isoWeekYear()]) }})
-                        </span>
-                    </form>
-
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1" for="type">{{ __('Report') }}</label>
+                        <select id="type" name="type" onchange="this.form.submit()" class="rounded-md border-gray-300 text-sm">
+                            <option value="sales" @selected($isSalesReport)>{{ __('Sales') }}</option>
+                            <option value="bolt_food" @selected(! $isSalesReport)>{{ __('Bolt Food') }}</option>
+                        </select>
+                    </div>
                     @if ($crossBranch)
-                        <form method="GET" action="{{ route('dashboard.reports.invoices.index') }}" class="flex items-center gap-2">
-                            <input type="hidden" name="week" value="{{ $weekStart->toDateString() }}">
-                            <label for="branch" class="sr-only">{{ __('Branch') }}</label>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1" for="branch">{{ __('Branch') }}</label>
                             <select id="branch" name="branch" onchange="this.form.submit()" class="rounded-md border-gray-300 text-sm">
                                 <option value="">{{ __('All branches') }}</option>
                                 @foreach ($branchOptions as $branch)
                                     <option value="{{ $branch->id }}" @selected($branchFilterId === $branch->id)>{{ $branch->name }}</option>
                                 @endforeach
                             </select>
-                        </form>
+                        </div>
                     @endif
+                </form>
 
-                    <div class="flex items-center gap-2 ml-auto">
+                <div class="flex flex-wrap items-center gap-2 ml-auto">
+                    @foreach (['xlsx' => __('Download XLSX'), 'csv' => __('Download CSV'), 'pdf' => __('Download PDF')] as $format => $downloadLabel)
                         <a
-                            href="{{ route('dashboard.reports.invoices.download', [...$branchParam, 'format' => 'xlsx', 'week' => $weekStart->toDateString()]) }}"
+                            href="{{ route('dashboard.reports.invoices.download', [...$downloadParams, 'format' => $format]) }}"
                             class="px-4 py-2 bg-green-700 text-white text-sm font-semibold rounded-full hover:bg-green-800"
-                        >{{ __('Download XLSX') }}</a>
-                        <a
-                            href="{{ route('dashboard.reports.invoices.download', [...$branchParam, 'format' => 'csv', 'week' => $weekStart->toDateString()]) }}"
-                            class="px-4 py-2 bg-green-700 text-white text-sm font-semibold rounded-full hover:bg-green-800"
-                        >{{ __('Download CSV') }}</a>
-                        <a
-                            href="{{ route('dashboard.reports.invoices.download', [...$branchParam, 'format' => 'pdf', 'week' => $weekStart->toDateString()]) }}"
-                            class="px-4 py-2 bg-green-700 text-white text-sm font-semibold rounded-full hover:bg-green-800"
-                        >{{ __('Download PDF') }}</a>
-                    </div>
+                        >{{ $downloadLabel }}</a>
+                    @endforeach
                 </div>
             </div>
 
-            <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div class="grid grid-cols-2 {{ $isSalesReport ? 'sm:grid-cols-4' : 'sm:grid-cols-2' }} gap-4">
                 <div class="bg-white shadow rounded-lg p-4">
                     <p class="text-xs text-gray-500">{{ __('Orders') }}</p>
-                    <p class="text-xl font-semibold text-gray-800">{{ $summary['orders_count'] }}</p>
+                    <p class="text-xl font-semibold text-gray-800">{{ $report['orders_count'] }}</p>
                 </div>
                 <div class="bg-white shadow rounded-lg p-4">
-                    <p class="text-xs text-gray-500">{{ __('Total sales') }}</p>
-                    <p class="text-xl font-semibold text-gray-800">GH₵{{ number_format($summary['total'] / 100, 2) }}</p>
+                    <p class="text-xs text-gray-500">{{ $isSalesReport ? __('Total sales') : __('Bolt Food sales') }}</p>
+                    <p class="text-xl font-semibold text-gray-800">GH₵{{ number_format($report['sales_total'] / 100, 2) }}</p>
                 </div>
-                <div class="bg-white shadow rounded-lg p-4">
-                    <p class="text-xs text-gray-500">{{ __('City') }}</p>
-                    <p class="text-xl font-semibold text-gray-800">{{ $summary['city'] }}</p>
-                </div>
+                @if ($isSalesReport)
+                    <div class="bg-white shadow rounded-lg p-4">
+                        <p class="text-xs text-gray-500">{{ __('Refunds + expenses') }}</p>
+                        <p class="text-xl font-semibold text-gray-800">−GH₵{{ number_format(($report['refunds_total'] + $report['expenses_total']) / 100, 2) }}</p>
+                    </div>
+                    <div class="bg-white shadow rounded-lg p-4">
+                        <p class="text-xs text-gray-500">{{ __('Net sales') }}</p>
+                        <p class="text-xl font-semibold {{ $report['net_total'] < 0 ? 'text-brand-red' : 'text-gray-800' }}">GH₵{{ number_format($report['net_total'] / 100, 2) }}</p>
+                    </div>
+                @endif
             </div>
+            <p class="text-xs text-gray-500">
+                {{ __('Not counted in sales') }}:
+                {{ collect($report['excluded_counts'])->map(fn ($count, $status) => __($status).': '.$count)->implode(' · ') }}
+            </p>
         </section>
 
         <section class="space-y-4">

@@ -4,41 +4,53 @@ namespace App\Http\Controllers;
 
 use App\Models\Branch;
 use App\Services\Branches\BranchContext;
+use App\Services\Reports\SalesStatementExporter;
+use App\Services\Reports\SalesStatementService;
 use App\Services\Reports\WeeklySalesReportService;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\HeaderUtils;
 
 /**
- * "Invoices and sales" tab — one aggregated row per calendar week
- * (WeeklySalesReportService), downloadable in the format the reference
- * design shows (XLSX/CSV/PDF) for the currently chosen week, plus a
- * per-row quick CSV download in the historical table. VAT is
- * deliberately not shown: nothing in this app tracks a VAT registration
- * or rate today, and fabricating one would misrepresent a real tax
- * figure to whoever downloads it.
+ * "Invoices and sales" tab — the downloadable sales statement for any
+ * date range (SalesStatementService, rendered by SalesStatementExporter
+ * as XLSX/CSV/PDF), with a Sales / Bolt Food report switch, plus the
+ * historical one-row-per-week table whose quick CSV link downloads that
+ * week's statement. VAT is deliberately not shown: nothing in this app
+ * tracks a VAT registration or rate today, and fabricating one would
+ * misrepresent a real tax figure to whoever downloads it.
  *
  * Defaults to the overall (cross-branch) picture for owner/
  * general_manager, same as Detailed reports/Performance, rather than
  * being silently pinned to whatever branch happens to be ambient in
- * session — see resolveBranchArgs().
+ * session — see resolveBranchFilter().
  */
 class ReportsInvoicesController extends Controller
 {
-    public function __construct(private readonly WeeklySalesReportService $weeklySales) {}
+    /**
+     * Longest range one statement covers — a year of daily rows is
+     * already a long PDF.
+     */
+    private const MAX_RANGE_DAYS = 366;
+
+    public function __construct(
+        private readonly WeeklySalesReportService $weeklySales,
+        private readonly SalesStatementService $statements,
+        private readonly SalesStatementExporter $exporter,
+    ) {}
 
     public function index(Request $request, BranchContext $context): View
     {
         Gate::authorize('reports.view_financial');
 
-        [$weekStart, $weekEnd] = $this->resolveWeek($request);
+        [$from, $to] = $this->resolveRange($request);
+        $type = $this->resolveType($request);
         [$branchArgs, $branchViewData] = $this->resolveBranchFilter($request, $context);
 
         $history = $this->weeklySales->weeklyHistory(...$branchArgs);
@@ -53,33 +65,44 @@ class ReportsInvoicesController extends Controller
             ['path' => $request->url(), 'query' => $request->query()],
         );
 
+        $now = Carbon::now('Africa/Accra');
+
         return view('dashboard.reports.invoices', [
-            'weekStart' => $weekStart,
-            'weekEnd' => $weekEnd,
-            'summary' => $this->weeklySales->summary($weekStart, $weekEnd, ...$branchArgs),
+            'from' => $from,
+            'to' => $to,
+            'type' => $type,
+            'report' => $this->statements->build($type, $from, $to, ...$branchArgs),
             'history' => $paginatedHistory,
-            'isThisWeek' => $weekStart->isSameDay(Carbon::now('Africa/Accra')->startOfWeek()),
-            'isLastWeek' => $weekStart->isSameDay(Carbon::now('Africa/Accra')->subWeek()->startOfWeek()),
+            'isThisWeek' => $from->isSameDay($now->clone()->startOfWeek()) && $to->isSameDay($now->clone()->endOfWeek()),
+            'isLastWeek' => $from->isSameDay($now->clone()->subWeek()->startOfWeek()) && $to->isSameDay($now->clone()->subWeek()->endOfWeek()),
             ...$branchViewData,
         ]);
     }
 
-    public function download(Request $request, string $format, BranchContext $context): StreamedResponse|Response
+    public function download(Request $request, string $format, BranchContext $context): Response
     {
         Gate::authorize('reports.view_financial');
 
         abort_unless(in_array($format, ['csv', 'xlsx', 'pdf'], true), 404);
 
-        [$weekStart, $weekEnd] = $this->resolveWeek($request);
+        [$from, $to] = $this->resolveRange($request);
         [$branchArgs] = $this->resolveBranchFilter($request, $context);
-        $summary = $this->weeklySales->summary($weekStart, $weekEnd, ...$branchArgs);
-        $filename = 'sales-'.$weekStart->format('Y-m-d').'-to-'.$weekEnd->format('Y-m-d');
+        $report = $this->statements->build($this->resolveType($request), $from, $to, ...$branchArgs);
 
-        return match ($format) {
-            'csv' => $this->downloadCsv($summary, $filename),
-            'xlsx' => $this->downloadXlsx($summary, $filename),
-            'pdf' => $this->downloadPdf($summary, $filename),
+        [$contents, $contentType] = match ($format) {
+            'csv' => [$this->exporter->csv($report), 'text/csv; charset=UTF-8'],
+            'xlsx' => [$this->exporter->xlsx($report), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+            'pdf' => [$this->exporter->pdf($report), 'application/pdf'],
         };
+
+        return response($contents, 200, [
+            'Content-Type' => $contentType,
+            'Content-Disposition' => HeaderUtils::makeDisposition(
+                HeaderUtils::DISPOSITION_ATTACHMENT,
+                $this->exporter->filename($report, $format),
+                Str::ascii($this->exporter->filename($report, $format)),
+            ),
+        ]);
     }
 
     /**
@@ -123,68 +146,47 @@ class ReportsInvoicesController extends Controller
     }
 
     /**
+     * from/to from the date-range picker; a lone ?week= (the history
+     * table's per-row links, old bookmarks) means that whole Mon–Sun
+     * week; nothing at all means the current week. A reversed range is
+     * swapped, an over-long one clamped to MAX_RANGE_DAYS.
+     *
      * @return array{0: Carbon, 1: Carbon}
      */
-    private function resolveWeek(Request $request): array
+    private function resolveRange(Request $request): array
     {
-        $validated = $request->validate(['week' => ['nullable', 'date']]);
-
-        $reference = isset($validated['week'])
-            ? Carbon::parse($validated['week'], 'Africa/Accra')
-            : Carbon::now('Africa/Accra');
-
-        $weekStart = $reference->startOfWeek();
-
-        return [$weekStart, $weekStart->clone()->endOfWeek()];
-    }
-
-    /**
-     * @return array<int, string|int>
-     */
-    private function summaryRow(array $summary): array
-    {
-        return [
-            $summary['start']->format('d/m/Y'),
-            $summary['end']->format('d/m/Y'),
-            $summary['city'],
-            $summary['orders_count'],
-            number_format($summary['total'] / 100, 2, '.', ''),
-            $summary['currency'],
-        ];
-    }
-
-    private function downloadCsv(array $summary, string $filename): StreamedResponse
-    {
-        return response()->streamDownload(function () use ($summary) {
-            $out = fopen('php://output', 'w');
-            fputcsv($out, ['Start', 'End', 'City', 'Orders', 'Total', 'Currency']);
-            fputcsv($out, $this->summaryRow($summary));
-            fclose($out);
-        }, $filename.'.csv');
-    }
-
-    private function downloadXlsx(array $summary, string $filename): Response
-    {
-        $spreadsheet = new Spreadsheet;
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheet->fromArray(['Start', 'End', 'City', 'Orders', 'Total', 'Currency'], null, 'A1');
-        $sheet->fromArray($this->summaryRow($summary), null, 'A2');
-
-        $tempPath = tempnam(sys_get_temp_dir(), 'xlsx');
-        (new Xlsx($spreadsheet))->save($tempPath);
-
-        $contents = file_get_contents($tempPath);
-        unlink($tempPath);
-
-        return response($contents, 200, [
-            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'Content-Disposition' => 'attachment; filename="'.$filename.'.xlsx"',
+        $validated = $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+            'week' => ['nullable', 'date'],
         ]);
+
+        if (! isset($validated['from']) && ! isset($validated['to'])) {
+            $reference = isset($validated['week'])
+                ? Carbon::parse($validated['week'], 'Africa/Accra')
+                : Carbon::now('Africa/Accra');
+
+            return [$reference->clone()->startOfWeek(), $reference->clone()->endOfWeek()];
+        }
+
+        $from = Carbon::parse($validated['from'] ?? $validated['to'], 'Africa/Accra')->startOfDay();
+        $to = Carbon::parse($validated['to'] ?? $validated['from'], 'Africa/Accra')->endOfDay();
+
+        if ($from->gt($to)) {
+            [$from, $to] = [$to->clone()->startOfDay(), $from->clone()->endOfDay()];
+        }
+
+        if ($from->diffInDays($to) > self::MAX_RANGE_DAYS) {
+            $from = $to->clone()->subDays(self::MAX_RANGE_DAYS)->startOfDay();
+        }
+
+        return [$from, $to];
     }
 
-    private function downloadPdf(array $summary, string $filename): Response
+    private function resolveType(Request $request): string
     {
-        return Pdf::loadView('dashboard.reports.pdf.weekly-sales', ['summary' => $summary])
-            ->download($filename.'.pdf');
+        $validated = $request->validate(['type' => ['nullable', Rule::in(SalesStatementService::TYPES)]]);
+
+        return $validated['type'] ?? SalesStatementService::TYPE_SALES;
     }
 }

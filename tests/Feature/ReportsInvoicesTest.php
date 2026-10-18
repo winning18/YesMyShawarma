@@ -102,10 +102,9 @@ class ReportsInvoicesTest extends TestCase
 
         $response = $this->actingAs($manager)->get(route('dashboard.reports.invoices.index'));
 
-        $summary = $response->viewData('summary');
-        $this->assertSame(8000, $summary['total']);
+        $summary = $response->viewData('report');
+        $this->assertSame(8000, $summary['sales_total']);
         $this->assertSame(2, $summary['orders_count']);
-        $this->assertSame('Accra', $summary['city']);
     }
 
     public function test_current_week_summary_excludes_bolt_food_orders(): void
@@ -118,8 +117,8 @@ class ReportsInvoicesTest extends TestCase
 
         $response = $this->actingAs($manager)->get(route('dashboard.reports.invoices.index'));
 
-        $summary = $response->viewData('summary');
-        $this->assertSame(5000, $summary['total']);
+        $summary = $response->viewData('report');
+        $this->assertSame(5000, $summary['sales_total']);
         $this->assertSame(1, $summary['orders_count']);
     }
 
@@ -148,7 +147,7 @@ class ReportsInvoicesTest extends TestCase
             'week' => $lastMonday->toDateString(),
         ]));
 
-        $this->assertSame(7000, $response->viewData('summary')['total']);
+        $this->assertSame(7000, $response->viewData('report')['sales_total']);
         $this->assertTrue($response->viewData('isLastWeek'));
         $this->assertFalse($response->viewData('isThisWeek'));
     }
@@ -190,7 +189,7 @@ class ReportsInvoicesTest extends TestCase
         $this->assertSame($sorted->all(), $starts->all());
     }
 
-    public function test_csv_download_contains_the_week_summary(): void
+    public function test_csv_download_contains_the_weeks_statement(): void
     {
         $manager = $this->makeManager();
         $monday = now('Africa/Accra')->startOfWeek();
@@ -202,11 +201,11 @@ class ReportsInvoicesTest extends TestCase
 
         $response->assertOk();
         $response->assertHeader('content-disposition');
-        $content = $response->streamedContent();
+        $content = $response->getContent();
 
-        $this->assertStringContainsString('Accra', $content);
+        $this->assertStringContainsString('Sales (ghs)', $content);
         $this->assertStringContainsString('50.00', $content);
-        $this->assertStringContainsString('GHS', $content);
+        $this->assertStringContainsString('Net sales', $content);
     }
 
     public function test_xlsx_download_returns_a_spreadsheet_file(): void
@@ -270,7 +269,7 @@ class ReportsInvoicesTest extends TestCase
 
         $response = $this->actingAs($manager)->get(route('dashboard.reports.invoices.index'));
 
-        $this->assertSame(5000, $response->viewData('summary')['total']);
+        $this->assertSame(5000, $response->viewData('report')['sales_total']);
     }
 
     public function test_owner_sees_all_branches_combined_by_default(): void
@@ -283,7 +282,7 @@ class ReportsInvoicesTest extends TestCase
 
         $response = $this->actingAs($owner)->get(route('dashboard.reports.invoices.index'));
 
-        $this->assertSame(14000, $response->viewData('summary')['total']);
+        $this->assertSame(14000, $response->viewData('report')['sales_total']);
     }
 
     public function test_owner_can_filter_invoices_to_one_specific_branch(): void
@@ -297,7 +296,7 @@ class ReportsInvoicesTest extends TestCase
         $response = $this->actingAs($owner)
             ->get(route('dashboard.reports.invoices.index', ['branch' => $this->otherBranch->id]));
 
-        $this->assertSame(9000, $response->viewData('summary')['total']);
+        $this->assertSame(9000, $response->viewData('report')['sales_total']);
     }
 
     public function test_download_respects_the_branch_filter(): void
@@ -313,7 +312,7 @@ class ReportsInvoicesTest extends TestCase
         ]));
 
         $response->assertOk();
-        $content = $response->streamedContent();
+        $content = $response->getContent();
         $this->assertStringContainsString('90.00', $content);
         $this->assertStringNotContainsString('50.00', $content);
     }

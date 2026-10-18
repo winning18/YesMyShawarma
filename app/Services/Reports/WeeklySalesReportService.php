@@ -9,8 +9,9 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
- * Weekly sales aggregation for the Invoices and sales / Weekly report
- * tabs.
+ * Weekly sales aggregation for the Invoices and sales tab's history
+ * table and the Weekly report tab's CSV. The downloadable statement
+ * itself is SalesStatementService.
  *
  * $branchId/$branchIds/$ignoreBranchScope follow the exact same
  * convention as OrderReportService — null branchId/branchIds and
@@ -22,27 +23,6 @@ use Illuminate\Support\Collection;
  */
 class WeeklySalesReportService
 {
-    /**
-     * @param  ?list<int>  $branchIds
-     * @return array{start: Carbon, end: Carbon, city: string, currency: string, orders_count: int, total: int}
-     */
-    public function summary(Carbon $weekStart, Carbon $weekEnd, bool $ignoreBranchScope = false, ?int $branchId = null, ?array $branchIds = null): array
-    {
-        $orders = $this->ordersInRange($weekStart, $weekEnd, $ignoreBranchScope, $branchId, $branchIds)
-            ->whereNotIn('status', Order::NON_REVENUE_STATUSES)
-            ->whereNotIn('payment_method', Order::EXCLUDED_FROM_SALES_PAYMENT_METHODS)
-            ->get(['id', 'total']);
-
-        return [
-            'start' => $weekStart,
-            'end' => $weekEnd,
-            'city' => 'Accra',
-            'currency' => 'GHS',
-            'orders_count' => $orders->count(),
-            'total' => (int) $orders->sum('total'),
-        ];
-    }
-
     /**
      * One row per ISO week that has at least one revenue-contributing
      * order, most recent first. A week with zero qualifying orders is
