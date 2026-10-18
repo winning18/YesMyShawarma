@@ -37,6 +37,7 @@ class BranchesController extends Controller
         return view('branches.show', [
             'branch' => $branch,
             'weeklyHours' => $workingHours->forBranch($branch->id),
+            'deliveryAreas' => config('delivery_areas.'.$branch->slug, []),
             'otherBranches' => Branch::where('is_active', true)->whereKeyNot($branch->id)->orderBy('name')->get(['id', 'name', 'slug']),
             'selected' => $selection->id() === $branch->id,
             'restaurantSchema' => $restaurantSchema->forBranch($branch),

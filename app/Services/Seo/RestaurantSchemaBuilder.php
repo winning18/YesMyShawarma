@@ -95,6 +95,11 @@ class RestaurantSchemaBuilder
             $schema['openingHoursSpecification'] = $hours->all();
         }
 
+        // Same list the branch page shows (config/delivery_areas.php).
+        if ($areas = config('delivery_areas.'.$branch->slug, [])) {
+            $schema['areaServed'] = array_map(fn (string $area) => ['@type' => 'Place', 'name' => $area], $areas);
+        }
+
         return $schema;
     }
 

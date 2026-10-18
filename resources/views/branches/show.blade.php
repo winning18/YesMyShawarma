@@ -31,6 +31,15 @@
                 </p>
             </section>
 
+            @if ($deliveryAreas)
+                <section>
+                    <h2 class="text-lg font-bold mb-2">{{ __('Delivery areas') }}</h2>
+                    <p class="text-brand-gray-500">
+                        {{ __('We deliver from :branch to :areas and nearby areas.', ['branch' => $branch->name, 'areas' => implode(', ', $deliveryAreas)]) }}
+                    </p>
+                </section>
+            @endif
+
             <section>
                 <h2 class="text-lg font-bold mb-2">{{ __('Opening hours') }}</h2>
                 <table class="w-full text-sm">

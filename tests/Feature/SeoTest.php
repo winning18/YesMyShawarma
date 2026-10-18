@@ -238,6 +238,31 @@ class SeoTest extends TestCase
         $this->assertSame('GE-123-4567', $json['address']['postalCode']);
     }
 
+    public function test_branch_page_lists_its_delivery_areas_in_text_and_structured_data(): void
+    {
+        config(['delivery_areas.pokuase-y-junction' => ['Pokuase', 'Ofankor']]);
+        $this->makeBranch('Pokuase Y-Junction', 'pokuase-y-junction');
+
+        $response = $this->get('/branches/pokuase-y-junction')->assertOk();
+
+        $response->assertSee('Delivery areas');
+        $response->assertSee('We deliver from Pokuase Y-Junction to Pokuase, Ofankor and nearby areas.');
+
+        $json = $this->extractLdJson($response->getContent());
+        $this->assertSame(['Pokuase', 'Ofankor'], array_column($json['areaServed'], 'name'));
+    }
+
+    public function test_branch_page_without_configured_areas_shows_no_delivery_areas_section(): void
+    {
+        config(['delivery_areas' => []]);
+        $this->makeBranch('Pokuase Y-Junction', 'pokuase-y-junction');
+
+        $response = $this->get('/branches/pokuase-y-junction')->assertOk();
+
+        $response->assertDontSee('Delivery areas');
+        $this->assertArrayNotHasKey('areaServed', $this->extractLdJson($response->getContent()));
+    }
+
     public function test_a_branch_name_ending_in_branch_reads_naturally_in_the_title(): void
     {
         $this->makeBranch('GIMPA Branch', 'gimpa-branch');
