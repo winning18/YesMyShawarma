@@ -10,6 +10,7 @@ use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
@@ -84,6 +85,22 @@ class MenuItemManagementTest extends TestCase
         $this->actingAs($staff)->get(route('dashboard.menu-items.index'))
             ->assertOk()
             ->assertSee('Chicken Shawarma');
+    }
+
+    public function test_a_dashboard_page_asks_whether_the_user_is_an_owner_only_once(): void
+    {
+        $manager = $this->makeManager();
+        $this->makeItem();
+        $ownerChecks = 0;
+        DB::listen(function ($query) use (&$ownerChecks) {
+            if (str_contains($query->sql, 'model_has_roles') && in_array('owner', $query->bindings, true)) {
+                $ownerChecks++;
+            }
+        });
+
+        $this->actingAs($manager)->get(route('dashboard.menu-items.index'))->assertOk();
+
+        $this->assertSame(1, $ownerChecks);
     }
 
     public function test_owner_with_no_branch_selected_is_sent_to_pick_one_and_returns_here(): void

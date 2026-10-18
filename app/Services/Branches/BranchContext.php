@@ -141,13 +141,31 @@ class BranchContext
      */
     public function hasRoleAtAnyBranch(User $user, string $role): bool
     {
-        return DB::table(config('permission.table_names.model_has_roles').' as mhr')
+        // Gate::before asks "is this user an owner?" on every single
+        // ability check — a dozen-plus identical queries per dashboard
+        // page. Remember the answer for the rest of this HTTP request only
+        // (stored on the request itself, so it's gone with it). Only for a
+        // routed request: console commands and queue workers share one
+        // long-lived request object, where a cached answer could outlive
+        // a role change.
+        $key = "branch_context.has_role.{$user->id}.{$role}";
+        if ($this->request->route() !== null && $this->request->attributes->has($key)) {
+            return $this->request->attributes->get($key);
+        }
+
+        $hasRole = DB::table(config('permission.table_names.model_has_roles').' as mhr')
             ->join(config('permission.table_names.roles').' as roles', 'roles.id', '=', 'mhr.role_id')
             ->where('mhr.model_id', $user->id)
             ->where('mhr.model_type', $user->getMorphClass())
             ->where('roles.name', $role)
             ->where('roles.guard_name', 'web')
             ->exists();
+
+        if ($this->request->route() !== null) {
+            $this->request->attributes->set($key, $hasRole);
+        }
+
+        return $hasRole;
     }
 
     /**

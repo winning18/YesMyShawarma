@@ -7,7 +7,7 @@
     // Only works for a plain field name ("email"), not a bracketed array
     // one ("expenses[0][amount]") — $errors keys those with dots instead.
     $name = $attributes->get('name');
-    $hasError = $name && $errors->has($name);
+    $hasError = $name && isset($errors) && $errors->has($name);
 @endphp
 
 <input

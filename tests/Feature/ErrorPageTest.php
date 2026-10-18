@@ -36,6 +36,14 @@ class ErrorPageTest extends TestCase
         $this->assertContains($status, [403, 404]);
     }
 
+    public function test_the_text_input_component_renders_without_shared_form_errors(): void
+    {
+        // Outside a web request (console, queued mail) nothing shares $errors.
+        $html = \Illuminate\Support\Facades\Blade::render('<x-text-input name="email" />');
+
+        $this->assertStringContainsString('name="email"', $html);
+    }
+
     public function test_the_test_suite_never_reports_to_sentry(): void
     {
         $this->assertNull(config('sentry.dsn'));
