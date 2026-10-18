@@ -117,7 +117,7 @@
                             <th class="px-4 py-2">{{ __('End') }}</th>
                             <th class="px-4 py-2">{{ __('City') }}</th>
                             <th class="px-4 py-2 text-right">{{ __('Orders') }}</th>
-                            <th class="px-4 py-2 text-right">{{ __('Total') }}</th>
+                            <th class="px-4 py-2 text-right">{{ __('Sales') }}</th>
                             <th class="px-4 py-2">{{ __('Currency') }}</th>
                             <th class="px-4 py-2"></th>
                         </tr>

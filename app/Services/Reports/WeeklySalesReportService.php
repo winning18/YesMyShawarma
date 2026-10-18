@@ -24,8 +24,11 @@ use Illuminate\Support\Collection;
 class WeeklySalesReportService
 {
     /**
-     * One row per ISO week that has at least one revenue-contributing
-     * order, most recent first. A week with zero qualifying orders is
+     * One row per ISO week that has at least one sale, most recent
+     * first. Counted exactly as SalesStatementService counts sales —
+     * same statuses left out, and 'total' is subtotal − discount with
+     * the delivery fee (the rider's) excluded — so a week's row always
+     * matches that week's downloaded statement. A week with zero qualifying orders is
      * left out rather than synthesised as an empty row — for an
      * operating restaurant that's expected to be a rare gap.
      *
@@ -43,9 +46,9 @@ class WeeklySalesReportService
     public function weeklyHistory(bool $ignoreBranchScope = false, ?int $branchId = null, ?array $branchIds = null): Collection
     {
         return $this->scopedQuery($ignoreBranchScope, $branchId, $branchIds)
-            ->whereNotIn('status', Order::NON_REVENUE_STATUSES)
+            ->whereNotIn('status', SalesStatementService::NON_SALES_STATUSES)
             ->whereNotIn('payment_method', Order::EXCLUDED_FROM_SALES_PAYMENT_METHODS)
-            ->get(['id', 'placed_at', 'total'])
+            ->get(['id', 'placed_at', 'subtotal', 'discount_total'])
             ->groupBy(fn (Order $order) => $order->placed_at->clone()->timezone('Africa/Accra')->startOfWeek()->toDateString())
             ->map(function (Collection $orders, string $weekStartDate) {
                 $weekStart = Carbon::parse($weekStartDate, 'Africa/Accra')->startOfWeek();
@@ -56,7 +59,7 @@ class WeeklySalesReportService
                     'city' => 'Accra',
                     'currency' => 'GHS',
                     'orders_count' => $orders->count(),
-                    'total' => (int) $orders->sum('total'),
+                    'total' => (int) $orders->sum(fn (Order $order) => $order->subtotal - $order->discount_total),
                 ];
             })
             ->sortByDesc(fn (array $week) => $week['start'])
@@ -65,8 +68,7 @@ class WeeklySalesReportService
 
     /**
      * Individual orders in the week, for the Weekly report tab's raw
-     * transaction-level CSV export — distinct from summary()'s single
-     * aggregated row.
+     * transaction-level CSV export.
      *
      * @param  ?list<int>  $branchIds
      * @return Collection<int, Order>

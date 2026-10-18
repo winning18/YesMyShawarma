@@ -63,12 +63,15 @@ class SalesStatementService
     public const EXCLUDED_STATUSES = ['cancelled', 'rejected', 'abandoned', 'refunded', 'failed'];
 
     /**
-     * Never sales and not in EXCLUDED_STATUSES' count list either — an
-     * order still waiting on Paystack hasn't failed, it just isn't paid.
+     * Every status that is never a sale: EXCLUDED_STATUSES plus
+     * 'pending_payment' — an order still waiting on Paystack hasn't
+     * failed, it just isn't paid, so it's left out of the counts too.
+     * Shared with WeeklySalesReportService so the history table and this
+     * statement agree.
      *
      * @var list<string>
      */
-    private const NOT_YET_PAID_STATUSES = ['pending_payment'];
+    public const NON_SALES_STATUSES = ['cancelled', 'rejected', 'abandoned', 'refunded', 'failed', 'pending_payment'];
 
     private const PAYMENT_LABELS = [
         'cash' => 'Cash',
@@ -94,7 +97,7 @@ class SalesStatementService
         $moneyKeys = collect($columns)->where('money', true)->pluck('key')->all();
 
         $orders = $this->ordersQuery($type, $from, $to, $scopeIds)
-            ->whereNotIn('status', [...Order::NON_REVENUE_STATUSES, ...self::EXCLUDED_STATUSES, ...self::NOT_YET_PAID_STATUSES])
+            ->whereNotIn('status', self::NON_SALES_STATUSES)
             ->with('branch:id,name')
             ->orderBy('placed_at')
             ->orderBy('id')

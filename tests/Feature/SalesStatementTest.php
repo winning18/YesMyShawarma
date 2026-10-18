@@ -444,6 +444,25 @@ class SalesStatementTest extends TestCase
         $this->assertStringNotContainsString('EXPENSES', $csv);
     }
 
+    public function test_weekly_history_row_matches_that_weeks_statement(): void
+    {
+        $this->order($this->monday->clone()->setTime(18, 0), ['subtotal' => 10000, 'discount_total' => 1000, 'delivery_fee' => 1500]);
+        $this->order($this->monday->clone()->addDay()->setTime(18, 0), ['subtotal' => 5000]);
+        $this->order($this->monday->clone()->addDay()->setTime(19, 0), ['status' => 'failed', 'payment_method' => 'paystack']);
+        $this->order($this->monday->clone()->addDay()->setTime(20, 0), ['status' => 'pending_payment', 'payment_method' => 'paystack']);
+
+        $response = $this->actingAs($this->owner())->get(route('dashboard.reports.invoices.index', [
+            'from' => '2026-10-05', 'to' => '2026-10-11',
+        ]));
+
+        $week = collect($response->viewData('history')->items())
+            ->first(fn (array $row) => $row['start']->toDateString() === '2026-10-05');
+
+        $this->assertSame(14000, $week['total']);
+        $this->assertSame(2, $week['orders_count']);
+        $this->assertSame($response->viewData('report')['sales_total'], $week['total']);
+    }
+
     public function test_staff_cannot_download_the_statement(): void
     {
         $staff = User::factory()->create();
