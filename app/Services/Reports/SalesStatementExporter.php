@@ -2,7 +2,7 @@
 
 namespace App\Services\Reports;
 
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Models\Branch;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -24,6 +24,8 @@ class SalesStatementExporter
      * Column the totals-block labels sit in — Bolt's "Order ID" column.
      */
     private const LABEL_COLUMN = 3;
+
+    public function __construct(private readonly ReportPdfRenderer $pdfRenderer) {}
 
     public function filename(array $report, string $extension): string
     {
@@ -119,29 +121,7 @@ class SalesStatementExporter
 
     public function pdf(array $report): string
     {
-        $dompdf = Pdf::loadView('dashboard.reports.pdf.sales-statement', [
-            'report' => $report,
-            'address' => $report['branch'] ? $this->address($report['branch']) : '',
-            'logoPath' => public_path('images/logo-web.png'),
-            'fontDir' => resource_path('fonts/figtree'),
-        ])
-            ->setPaper('a4', 'landscape')
-            ->getDomPDF();
-
-        // "Page X of Y" needs the final page count, which CSS counters
-        // can't give DomPDF — stamped onto the canvas after layout.
-        $dompdf->render();
-        $canvas = $dompdf->getCanvas();
-        $canvas->page_text(
-            $canvas->get_width() - 92,
-            $canvas->get_height() - 22,
-            'Page {PAGE_NUM} of {PAGE_COUNT}',
-            $dompdf->getFontMetrics()->getFont('Figtree'),
-            7,
-            [0.53, 0.53, 0.53],
-        );
-
-        return $dompdf->output();
+        return $this->pdfRenderer->render('dashboard.reports.pdf.sales-statement', ['report' => $report]);
     }
 
     /**
@@ -219,9 +199,9 @@ class SalesStatementExporter
         return $rows;
     }
 
-    public function address($branch): string
+    public function address(Branch $branch): string
     {
-        return collect([$branch->address, $branch->ghanapost_code])->filter()->implode(' · ');
+        return $this->pdfRenderer->address($branch);
     }
 
     /**

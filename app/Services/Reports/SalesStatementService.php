@@ -2,12 +2,10 @@
 
 namespace App\Services\Reports;
 
-use App\Models\Branch;
 use App\Models\Order;
 use App\Models\Refund;
 use App\Models\Scopes\BranchScope;
 use App\Models\ShiftExpense;
-use App\Services\Branches\BranchContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -41,9 +39,8 @@ use Illuminate\Support\Str;
  * The excluded statuses the business asked to see are counted, not
  * listed, in 'excluded_counts'.
  *
- * Branch arguments follow WeeklySalesReportService's convention. The
- * header shows the one branch being reported on, or Ga Odumase (the main
- * branch) for a general all-branches report.
+ * Branch arguments follow WeeklySalesReportService's convention, resolved
+ * by ReportBranchResolver (which also picks the header branch).
  */
 class SalesStatementService
 {
@@ -52,8 +49,6 @@ class SalesStatementService
     public const TYPE_BOLT_FOOD = 'bolt_food';
 
     public const TYPES = [self::TYPE_SALES, self::TYPE_BOLT_FOOD];
-
-    public const MAIN_BRANCH_SLUG = 'ga-odumase';
 
     /**
      * Shown as counts under the totals, in this order.
@@ -80,7 +75,7 @@ class SalesStatementService
         'bolt_food' => 'Bolt Food',
     ];
 
-    public function __construct(private readonly BranchContext $context) {}
+    public function __construct(private readonly ReportBranchResolver $branches) {}
 
     /**
      * @param  ?list<int>  $branchIds
@@ -88,8 +83,8 @@ class SalesStatementService
      */
     public function build(string $type, Carbon $from, Carbon $to, bool $ignoreBranchScope = false, ?int $branchId = null, ?array $branchIds = null): array
     {
-        $scopeIds = $this->resolveBranchIds($ignoreBranchScope, $branchId, $branchIds);
-        $singleBranchId = $branchId ?? ($scopeIds !== null && count($scopeIds) === 1 && ! $ignoreBranchScope && $branchIds === null ? $scopeIds[0] : null);
+        $scopeIds = $this->branches->branchIds($ignoreBranchScope, $branchId, $branchIds);
+        $singleBranchId = $this->branches->singleBranchId($ignoreBranchScope, $branchId, $branchIds);
         $general = $singleBranchId === null;
         $isSales = $type === self::TYPE_SALES;
 
@@ -159,7 +154,7 @@ class SalesStatementService
             'title' => $isSales ? 'Sales report' : 'Bolt Food report',
             'from' => $from,
             'to' => $to,
-            'branch' => $this->headerBranch($singleBranchId),
+            'branch' => $this->branches->headerBranch($singleBranchId),
             'general' => $general,
             'columns' => $columns,
             'days' => $days,
@@ -335,43 +330,6 @@ class SalesStatementService
             'total' => (int) (clone $query)->sum('amount'),
             'count' => (clone $query)->count(),
         ];
-    }
-
-    /**
-     * Null means every branch. The ambient case (no explicit filter and
-     * not ignoring scope) pins to BranchContext's current branch, the
-     * same branch BranchScope would have applied — resolved here once
-     * because shift expenses have no BranchScope of their own.
-     *
-     * @param  ?list<int>  $branchIds
-     * @return ?list<int>
-     */
-    private function resolveBranchIds(bool $ignoreBranchScope, ?int $branchId, ?array $branchIds): ?array
-    {
-        if ($branchId !== null) {
-            return [$branchId];
-        }
-
-        if ($branchIds !== null) {
-            return array_values($branchIds);
-        }
-
-        if ($ignoreBranchScope) {
-            return null;
-        }
-
-        $current = $this->context->id();
-
-        return $current !== null ? [$current] : null;
-    }
-
-    private function headerBranch(?int $singleBranchId): ?Branch
-    {
-        if ($singleBranchId !== null) {
-            return Branch::find($singleBranchId);
-        }
-
-        return Branch::where('slug', self::MAIN_BRANCH_SLUG)->first() ?? Branch::orderBy('id')->first();
     }
 
     private function money(int $pesewas): string
