@@ -189,6 +189,28 @@
                         @endif
                     </dl>
 
+                    @if ($order->payment_method === 'momo' && $order->fulfilment_type === 'delivery')
+                        @php $feePaidBy = $order->delivery_fee_paid_by ?? 'momo'; @endphp
+                        <div class="mt-4 pt-4 border-t border-gray-100 space-y-2">
+                            <p class="text-xs font-medium text-gray-500">{{ __('Delivery fee paid') }}</p>
+                            @can('changeDeliveryFeePayer', $order)
+                                <form method="POST" action="{{ route('orders.delivery_fee_paid_by', $order) }}" class="flex flex-wrap items-center gap-3 text-sm">
+                                    @csrf
+                                    <label class="flex items-center gap-1.5">
+                                        <input type="radio" name="delivery_fee_paid_by" value="momo" @checked($feePaidBy === 'momo')> {{ __('By MoMo') }}
+                                    </label>
+                                    <label class="flex items-center gap-1.5">
+                                        <input type="radio" name="delivery_fee_paid_by" value="rider_cash" @checked($feePaidBy === 'rider_cash')> {{ __('Cash to rider') }}
+                                    </label>
+                                    <button type="submit" class="px-3 py-1.5 bg-gray-800 text-white text-xs font-semibold rounded-md hover:bg-gray-900">{{ __('Save') }}</button>
+                                </form>
+                                <x-input-error :messages="$errors->get('delivery_fee_paid_by')" class="mt-1" />
+                            @else
+                                <p class="text-sm text-gray-800">{{ $feePaidBy === 'momo' ? __('By MoMo') : __('Cash to rider') }}</p>
+                            @endcan
+                        </div>
+                    @endif
+
                     @can('confirmMomoPayment', $order)
                         @if ($order->payment_method === 'momo' && $order->payment_status === 'pending')
                             <form

@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'reference', 'track_token', 'customer_id', 'branch_id',
     'fulfilment_type',
     'subtotal', 'discount_total', 'delivery_fee', 'total',
-    'promotion_id', 'payment_method', 'payment_status', 'channel', 'delivery_address_snapshot',
+    'promotion_id', 'payment_method', 'delivery_fee_paid_by', 'payment_status', 'channel', 'delivery_address_snapshot',
     'instructions', 'scheduled_for',
 ])]
 #[ScopedBy([BranchScope::class])]
@@ -54,6 +54,9 @@ class Order extends Model
      * @var list<string>
      */
     public const MANUALLY_SETTLED_PAYMENT_METHODS = ['cash', 'momo', 'bolt_food'];
+
+    /** delivery_fee_paid_by values — POS MoMo delivery orders only (see the migration). */
+    public const DELIVERY_FEE_PAID_BY = ['momo', 'rider_cash'];
 
     /**
      * Excluded from every revenue figure (Today report, Performance,

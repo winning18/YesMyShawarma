@@ -111,6 +111,19 @@ class OrderPolicy
      * the service itself re-checks both, this just keeps the button from
      * appearing at all once neither applies.
      */
+    /**
+     * Same people who take MoMo payments at the POS (orders.create), and
+     * only while the order is still out — DeliveryFeePayerService
+     * re-checks the status itself.
+     */
+    public function changeDeliveryFeePayer(User $user, Order $order): bool
+    {
+        return $order->payment_method === 'momo'
+            && $order->fulfilment_type === 'delivery'
+            && ! in_array($order->status, ['delivered', 'failed', 'cancelled', 'rejected', 'refunded', 'abandoned'], true)
+            && $this->checkAtOrderBranch($user, $order, 'orders.create');
+    }
+
     public function adjustDeliveryFee(User $user, Order $order): bool
     {
         if ($order->fulfilment_type !== 'delivery') {

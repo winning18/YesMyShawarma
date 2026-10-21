@@ -198,6 +198,9 @@ class OrderCreationService
                 'promotion_id' => $promotion?->id,
                 'total' => $total,
                 'payment_method' => $data->paymentMethod,
+                'delivery_fee_paid_by' => $data->paymentMethod === 'momo' && $data->fulfilmentType === 'delivery'
+                    ? ($data->deliveryFeePaidBy ?? 'momo')
+                    : null,
                 'payment_status' => $initialPaymentStatus,
                 'channel' => $data->channel,
                 'delivery_address_snapshot' => $addressSnapshot,

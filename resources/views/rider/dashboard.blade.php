@@ -106,6 +106,13 @@
                                     <p class="text-sm font-semibold text-gray-900 mt-2" x-show="order.cash_to_collect > 0" x-text="@js(__('Collect')) + ' ' + formatMoney(order.cash_to_collect) + ' ' + @js(__('cash'))"></p>
                                     <p class="text-sm text-green-700 mt-2" x-show="order.cash_to_collect === 0 && !feePending(order)">{{ __('Fully paid — nothing to collect') }}</p>
                                     {{--
+                                        The customer already paid this fee to the business
+                                        (Paystack, or MoMo with the food) — delivery fees
+                                        aren't sales, so the rider gets it from the staff
+                                        on shift instead (payments.md's "Delivery fee audit").
+                                    --}}
+                                    <p class="text-sm font-semibold text-gray-900 mt-1" x-show="order.fee_from_staff > 0" x-text="@js(__('Get your')) + ' ' + formatMoney(order.fee_from_staff) + ' ' + @js(__('delivery fee from staff'))"></p>
+                                    {{--
                                         Customer didn't share a location at checkout, so
                                         delivery_fee is deliberately still 0 — it's only
                                         calculated once this rider taps "Arrived", from their

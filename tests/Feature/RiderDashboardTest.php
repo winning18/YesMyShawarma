@@ -339,4 +339,53 @@ class RiderDashboardTest extends TestCase
         $this->assertSame((float) $this->branchA->lat, $data['branch']['lat']);
         $this->assertSame((float) $this->branchA->lng, $data['branch']['lng']);
     }
+
+    public function test_a_momo_order_collects_nothing_at_the_door_and_the_fee_comes_from_staff(): void
+    {
+        $rider = User::factory()->create();
+        $this->assignRoleAt($rider, 'rider', $this->branchA);
+
+        $order = $this->makeOrder($this->branchA, [
+            'payment_method' => 'momo', 'delivery_fee_paid_by' => 'momo', 'delivery_fee' => 1500, 'subtotal' => 3500, 'total' => 5000,
+        ]);
+        $order->rider_id = $rider->id;
+        $order->save();
+
+        $data = collect($this->actingAs($rider, 'rider')->getJson(route('rider.orders.data'))->json('data'))->firstWhere('id', $order->id);
+
+        $this->assertSame(0, $data['cash_to_collect']);
+        $this->assertSame(1500, $data['fee_from_staff']);
+    }
+
+    public function test_a_momo_order_with_the_fee_paid_in_cash_collects_just_the_fee(): void
+    {
+        $rider = User::factory()->create();
+        $this->assignRoleAt($rider, 'rider', $this->branchA);
+
+        $order = $this->makeOrder($this->branchA, [
+            'payment_method' => 'momo', 'delivery_fee_paid_by' => 'rider_cash', 'delivery_fee' => 1500, 'subtotal' => 3500, 'total' => 5000,
+        ]);
+        $order->rider_id = $rider->id;
+        $order->save();
+
+        $data = collect($this->actingAs($rider, 'rider')->getJson(route('rider.orders.data'))->json('data'))->firstWhere('id', $order->id);
+
+        $this->assertSame(1500, $data['cash_to_collect']);
+        $this->assertSame(0, $data['fee_from_staff']);
+    }
+
+    public function test_a_cash_order_has_no_fee_from_staff(): void
+    {
+        $rider = User::factory()->create();
+        $this->assignRoleAt($rider, 'rider', $this->branchA);
+
+        $order = $this->makeOrder($this->branchA, ['payment_method' => 'cash', 'delivery_fee' => 1000, 'total' => 4500]);
+        $order->rider_id = $rider->id;
+        $order->save();
+
+        $data = collect($this->actingAs($rider, 'rider')->getJson(route('rider.orders.data'))->json('data'))->firstWhere('id', $order->id);
+
+        $this->assertSame(0, $data['fee_from_staff']);
+        $this->assertSame(4500, $data['cash_to_collect']);
+    }
 }

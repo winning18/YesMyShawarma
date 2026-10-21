@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Services\Branches\BranchContext;
+use App\Services\Reports\DeliveryFeeReportService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -42,6 +43,13 @@ class OrderResource extends JsonResource
             // subtotal online, never the delivery fee, when the location
             // wasn't captured (see OrderCreationService's docblock).
             'cash_to_collect' => $this->cashToCollectPesewas(),
+            // The delivery fee the business already holds (Paystack, or a
+            // MoMo order whose fee came with the food) — the rider gets
+            // this from the staff on shift instead, since delivery fees
+            // aren't sales. Same split as Reports → Delivery fees.
+            'fee_from_staff' => $this->fulfilment_type === 'delivery'
+                ? app(DeliveryFeeReportService::class)->split($this->resource)['prepaid']
+                : 0,
             // Whether delivery_fee is still open to a manual staff
             // correction (DeliveryFeeAdjustmentService) rather than
             // precisely priced from the customer's own checkout location —
@@ -135,6 +143,13 @@ class OrderResource extends JsonResource
     {
         if ($this->fulfilment_type !== 'delivery') {
             return 0;
+        }
+
+        // A POS MoMo order was paid to the business, never at the door —
+        // the rider collects only a delivery fee the customer chose to
+        // pay them in cash (orders.delivery_fee_paid_by).
+        if ($this->payment_method === 'momo') {
+            return $this->delivery_fee_paid_by === 'rider_cash' ? (int) $this->delivery_fee : 0;
         }
 
         $paidViaPaystack = $this->relationLoaded('payments')

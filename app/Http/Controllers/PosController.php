@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exceptions\OrderPlacementException;
 use App\Models\Category;
 use App\Models\DeliveryArea;
+use App\Models\Order;
 use App\Services\Branches\BranchContext;
 use App\Services\Cart\PosCartService;
 use App\Services\Customers\CustomerService;
@@ -21,6 +22,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
@@ -239,6 +241,13 @@ class PosController extends Controller
             // doesn't need to enforce that: OrderCreationService ignores it
             // for any other payment_method (see PlaceOrderData docblock).
             'payment_reference' => ['nullable', 'string', 'max:255'],
+            // Varies per order (owner): did the customer send the delivery
+            // fee by MoMo with the food, or will they pay the rider cash?
+            // Decides what the rider collects at the door.
+            'delivery_fee_paid_by' => [
+                Rule::requiredIf(fn () => $request->input('payment_method') === 'momo' && $request->input('fulfilment_type') === 'delivery'),
+                'nullable', Rule::in(Order::DELIVERY_FEE_PAID_BY),
+            ],
             'instructions' => ['nullable', 'string', 'max:1000'],
         ];
 
@@ -290,6 +299,7 @@ class PosController extends Controller
                 actorType: $context->primaryRoleFor($user, $branch->id),
                 actorId: $user->id,
                 paymentReference: $validated['payment_reference'] ?? null,
+                deliveryFeePaidBy: $validated['delivery_fee_paid_by'] ?? null,
             ));
         } catch (OrderPlacementException $e) {
             return response()->json(['message' => $e->getMessage()], 422);

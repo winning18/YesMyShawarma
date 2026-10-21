@@ -25,7 +25,7 @@
 
         <div>
             <h3 class="font-semibold text-lg text-gray-800">{{ __('Delivery fees') }}</h3>
-            <p class="text-sm text-gray-500">{{ __('Delivery fees on every delivered order, by rider. Each rider sees the same totals in their app under Past deliveries.') }}</p>
+            <p class="text-sm text-gray-500">{{ __('Every delivery fee goes to the rider: in cash from the customer, or from staff on shift when the customer already paid it by Paystack or MoMo. Each rider sees the same totals in their app under Past deliveries.') }}</p>
         </div>
 
         <div class="bg-white shadow rounded-lg p-4">
@@ -79,13 +79,13 @@
                 <p class="text-xl font-semibold text-gray-800">{{ $summary['count'] }}</p>
             </div>
             <div class="bg-white shadow rounded-lg p-4">
-                <p class="text-xs text-gray-500">{{ __('Cash collected by riders') }}</p>
+                <p class="text-xs text-gray-500">{{ __('From customers (cash)') }}</p>
                 <p class="text-xl font-semibold text-gray-800">{{ $money($summary['cash']) }}</p>
             </div>
             <div class="bg-white shadow rounded-lg p-4">
-                <p class="text-xs text-gray-500">{{ __('Paid before delivery') }}</p>
+                <p class="text-xs text-gray-500">{{ __('From staff') }}</p>
                 <p class="text-xl font-semibold text-gray-800">{{ $money($summary['prepaid']) }}</p>
-                <p class="text-xs text-gray-400">{{ __('Paystack or MoMo, not via the rider') }}</p>
+                <p class="text-xs text-gray-400">{{ __('Customer paid by Paystack or MoMo') }}</p>
             </div>
         </div>
 
@@ -95,8 +95,8 @@
                     <tr>
                         <th class="px-4 py-2">{{ __('Rider') }}</th>
                         <th class="px-4 py-2 text-right">{{ __('Deliveries') }}</th>
-                        <th class="px-4 py-2 text-right">{{ __('Cash collected') }}</th>
-                        <th class="px-4 py-2 text-right">{{ __('Paid before delivery') }}</th>
+                        <th class="px-4 py-2 text-right">{{ __('From customers') }}</th>
+                        <th class="px-4 py-2 text-right">{{ __('From staff') }}</th>
                         <th class="px-4 py-2 text-right">{{ __('Total fees') }}</th>
                     </tr>
                 </thead>
@@ -146,7 +146,7 @@
                                 <th class="px-4 py-2">{{ __('Branch') }}</th>
                             @endif
                             <th class="px-4 py-2">{{ __('Area') }}</th>
-                            <th class="px-4 py-2">{{ __('Paid by') }}</th>
+                            <th class="px-4 py-2">{{ __('Rider gets it from') }}</th>
                             <th class="px-4 py-2 text-right">{{ __('Fee') }}</th>
                         </tr>
                     </thead>
@@ -163,7 +163,7 @@
                                 @endif
                                 <td class="px-4 py-2 text-gray-500">{{ $order['area'] ?? '—' }}</td>
                                 <td class="px-4 py-2 text-gray-500">
-                                    {{ $order['prepaid'] === 0 ? __('Cash to rider') : ($order['cash'] === 0 ? __('Paid before delivery') : __('Part cash')) }}
+                                    {{ $order['prepaid'] === 0 ? __('Customer') : ($order['cash'] === 0 ? __('Staff') : __('Customer and staff')) }}
                                 </td>
                                 <td class="px-4 py-2 text-right whitespace-nowrap">
                                     <span class="text-gray-800">{{ $money($order['fee']) }}</span>

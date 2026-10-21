@@ -223,10 +223,17 @@ raise it.
 
 ## Delivery fee audit
 
+Every delivery fee goes to the rider — delivery fees are not sales (owner, 2026-10-21).
 Reports → Delivery fees (`reports.view_financial`) and the rider app's Past deliveries totals are
 both built by `DeliveryFeeReportService`, so a rider's figures always equal their row in the
 report. Delivered delivery orders only, dated by `delivered_at`, using the order's final
-`delivery_fee`. Each fee is split by who got the money: **cash** (rider collected it — `cash`
-orders, or a `paystack` order whose fee was added at arrival, after Paystack had charged) vs
-**paid before delivery** (`paystack` covering the fee, or POS `momo`). Viewing only for now — no
-hand-in/reconciliation records (owner decision, 2026-10-21).
+`delivery_fee`. `split()` says where the rider gets each fee: **from the customer** in cash (`cash`
+orders, a `paystack` order whose fee was added at arrival, or a POS `momo` order with
+`delivery_fee_paid_by = 'rider_cash'`) or **from staff on shift** (the business already holds it:
+`paystack` covering the fee, or `momo` with `delivery_fee_paid_by` `'momo'`/null). The rider
+dashboard's `cash_to_collect` / `fee_from_staff` (OrderResource) follow the same rule. Viewing
+only — no hand-in records yet.
+
+`orders.delivery_fee_paid_by` is chosen per order at the POS for MoMo delivery orders (it varies),
+and can be changed from the order page until delivered (`DeliveryFeePayerService`, writes an
+`order_events` row `delivery_fee_paid_by_changed`).

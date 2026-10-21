@@ -19,19 +19,21 @@ use Illuminate\Support\Collection;
  * which already includes a fee calculated at "Arrived", a manager
  * adjustment or a branch-transfer reprice.
  *
- * Each fee is split by who received the money:
- * - cash: the rider collected it at the door — what they owe at hand-in.
- * - prepaid: paid to the business before delivery (Paystack, or POS momo,
- *   which is reconciled by transaction ID, never through the rider). A
- *   Paystack order whose fee was only added at arrival is cash: Paystack
- *   was charged the total before the fee existed.
+ * Every delivery fee goes to the rider — fees aren't sales (owner,
+ * 2026-10-21). Each one is split by where the rider gets it:
+ * - cash: from the customer at the door.
+ * - prepaid: the business already holds it, so the staff on shift pay the
+ *   rider — Paystack covering the fee, or a POS MoMo order whose fee came
+ *   with the food (delivery_fee_paid_by 'momo', or unset). A Paystack
+ *   order whose fee was only added at arrival is cash: Paystack was
+ *   charged before the fee existed.
  *
  * Branch arguments follow WeeklySalesReportService's convention, resolved
  * by ReportBranchResolver.
  */
 class DeliveryFeeReportService
 {
-    private const FEE_CHANGE_ACTIONS = ['delivery_fee_adjusted', 'arrived', 'branch_transfer'];
+    private const FEE_CHANGE_ACTIONS = ['delivery_fee_adjusted', 'arrived', 'branch_transfer', 'delivery_fee_paid_by_changed'];
 
     public function __construct(private readonly ReportBranchResolver $branches) {}
 
@@ -139,8 +141,8 @@ class DeliveryFeeReportService
     }
 
     /**
-     * One delivered order's fee, split into what the rider collected in
-     * cash and what was paid before delivery (see the class docblock).
+     * One delivered order's fee, split into what the rider got from the
+     * customer in cash and what staff pay them (see the class docblock).
      *
      * @return array{fee: int, cash: int, prepaid: int}
      */
@@ -157,6 +159,7 @@ class DeliveryFeeReportService
         $cash = match ($order->payment_method) {
             'cash' => $fee,
             'paystack' => min($fee, max(0, (int) $order->total - (int) $paystackPaid)),
+            'momo' => $order->delivery_fee_paid_by === 'rider_cash' ? $fee : 0,
             default => 0,
         };
 
@@ -173,6 +176,7 @@ class DeliveryFeeReportService
             'delivery_fee_adjusted' => __('Adjusted by manager'),
             'arrived' => ($event->meta['delivery_fee_calculated'] ?? false) ? __('Set on arrival') : null,
             'branch_transfer' => ($event->meta['delivery_fee_old'] ?? null) !== ($event->meta['delivery_fee_new'] ?? null) ? __('Changed on transfer') : null,
+            'delivery_fee_paid_by_changed' => __('Payment method changed'),
             default => null,
         })->filter()->unique()->values();
 

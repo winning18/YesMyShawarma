@@ -107,13 +107,15 @@ class DeliveryFeesReportTest extends TestCase
         $feeOnArrival->payments()->create(['provider' => 'paystack', 'amount' => 5000, 'currency' => 'GHS', 'status' => 'paid']);
 
         $momo = $this->delivery($rider, 800, ['payment_method' => 'momo']);
+        $momoFeeInCash = $this->delivery($rider, 900, ['payment_method' => 'momo', 'delivery_fee_paid_by' => 'rider_cash']);
 
-        $splits = collect([$cash, $prepaid, $feeOnArrival, $momo])->map(fn (Order $o) => $this->fees()->split($o->fresh()));
+        $splits = collect([$cash, $prepaid, $feeOnArrival, $momo, $momoFeeInCash])->map(fn (Order $o) => $this->fees()->split($o->fresh()));
 
         $this->assertSame(['fee' => 1000, 'cash' => 1000, 'prepaid' => 0], $splits[0]);
         $this->assertSame(['fee' => 1200, 'cash' => 0, 'prepaid' => 1200], $splits[1]);
         $this->assertSame(['fee' => 1400, 'cash' => 1400, 'prepaid' => 0], $splits[2]);
         $this->assertSame(['fee' => 800, 'cash' => 0, 'prepaid' => 800], $splits[3]);
+        $this->assertSame(['fee' => 900, 'cash' => 900, 'prepaid' => 0], $splits[4]);
     }
 
     public function test_a_riders_app_totals_match_their_row_in_the_report(): void
@@ -175,7 +177,7 @@ class DeliveryFeesReportTest extends TestCase
             ->assertOk()
             ->streamedContent();
 
-        $this->assertStringContainsString('Cash collected by rider (GHS)', $csv);
+        $this->assertStringContainsString('From customer in cash (GHS)', $csv);
         $this->assertStringContainsString($order->reference.',Osu,Kofi,,cash,15.00,15.00,0.00,', $csv);
     }
 
@@ -198,8 +200,35 @@ class DeliveryFeesReportTest extends TestCase
         $this->actingAs($rider, 'rider')->get(route('rider.history'))
             ->assertOk()
             ->assertSee('GH₵15.00')
-            ->assertSee('collected in cash')
+            ->assertSee('from customer')
             ->assertSee($failed->reference)
             ->assertDontSee('GH₵9.00');
+    }
+
+    public function test_staff_can_change_how_a_momo_delivery_fee_is_paid_until_delivered(): void
+    {
+        $rider = $this->userWithRole('rider');
+        $staff = $this->userWithRole('staff');
+        $order = $this->delivery($rider, 1500, ['payment_method' => 'momo', 'status' => 'dispatched']);
+
+        $this->actingAs($staff)->post(route('orders.delivery_fee_paid_by', $order), ['delivery_fee_paid_by' => 'rider_cash'])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('rider_cash', $order->fresh()->delivery_fee_paid_by);
+        $event = $order->events()->where('meta->action', 'delivery_fee_paid_by_changed')->sole();
+        $this->assertSame(['action' => 'delivery_fee_paid_by_changed', 'from' => 'momo', 'to' => 'rider_cash'], $event->meta);
+
+        $order->forceFill(['status' => 'delivered'])->save();
+        $this->actingAs($staff)->post(route('orders.delivery_fee_paid_by', $order), ['delivery_fee_paid_by' => 'momo'])
+            ->assertForbidden();
+    }
+
+    public function test_only_momo_delivery_orders_can_change_how_the_fee_is_paid(): void
+    {
+        $order = $this->delivery($this->userWithRole('rider'), 1500, ['status' => 'dispatched']);
+
+        $this->actingAs($this->userWithRole('staff'))
+            ->post(route('orders.delivery_fee_paid_by', $order), ['delivery_fee_paid_by' => 'rider_cash'])
+            ->assertForbidden();
     }
 }

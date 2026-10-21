@@ -211,6 +211,19 @@
                         <p class="text-xs text-gray-500 mt-1">{{ __("Busy? Leave this blank and enter it later from the order. It won't be marked paid until you do.") }}</p>
                     </div>
 
+                    <div x-show="paymentMethod === 'momo' && fulfilmentType === 'delivery'" x-cloak>
+                        <label class="block text-xs font-medium text-gray-500 mb-2">{{ __('Delivery fee paid') }} <span class="text-red-600">*</span></label>
+                        <div class="flex flex-wrap gap-4 text-sm">
+                            <label class="flex items-center gap-1.5">
+                                <input type="radio" x-model="deliveryFeePaidBy" value="momo"> {{ __('By MoMo, with the food') }}
+                            </label>
+                            <label class="flex items-center gap-1.5">
+                                <input type="radio" x-model="deliveryFeePaidBy" value="rider_cash"> {{ __('Cash to the rider') }}
+                            </label>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">{{ __('If paid by MoMo, the rider collects nothing at the door and gets the delivery fee from staff.') }}</p>
+                    </div>
+
                     <div>
                         <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Instructions (optional)') }}</label>
                         <textarea x-model="instructions" rows="2" class="w-full rounded-md border-gray-300 text-sm"></textarea>
@@ -320,6 +333,7 @@
                 ghanapostCode: '',
                 paymentMethod: 'cash',
                 paymentReference: '',
+                deliveryFeePaidBy: '',
                 instructions: '',
                 error: null,
                 submitting: false,
@@ -498,6 +512,7 @@
                                 ghanapost_code: this.ghanapostCode,
                                 payment_method: this.paymentMethod,
                                 payment_reference: this.paymentMethod === 'momo' ? this.paymentReference : null,
+                                delivery_fee_paid_by: this.paymentMethod === 'momo' && this.fulfilmentType === 'delivery' ? this.deliveryFeePaidBy : null,
                                 instructions: this.instructions,
                             }),
                         });
@@ -535,6 +550,7 @@
                         if (!this.areaId) return '{{ __('Delivery area is required.') }}';
                         if (this.areaId === 'other' && !this.areaOther.trim()) return '{{ __('Area name is required.') }}';
                         if (!this.landmark.trim()) return '{{ __('Landmark is required.') }}';
+                        if (this.paymentMethod === 'momo' && !this.deliveryFeePaidBy) return '{{ __('Choose how the customer pays the delivery fee.') }}';
                     }
 
                     return null;
@@ -552,6 +568,7 @@
                     this.ghanapostCode = '';
                     this.paymentMethod = 'cash';
                     this.paymentReference = '';
+                    this.deliveryFeePaidBy = '';
                     this.instructions = '';
                 },
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\DeliveryFeeAdjustmentException;
+use App\Exceptions\DeliveryFeePayerException;
 use App\Exceptions\OrderArrivalException;
 use App\Exceptions\OrderTransferException;
 use App\Exceptions\PaymentException;
@@ -14,6 +15,7 @@ use App\Models\Order;
 use App\Models\User;
 use App\Services\Branches\BranchContext;
 use App\Services\Orders\DeliveryFeeAdjustmentService;
+use App\Services\Orders\DeliveryFeePayerService;
 use App\Services\Orders\OrderArrivalService;
 use App\Services\Orders\OrderStateMachine;
 use App\Services\Orders\OrderTransferService;
@@ -144,6 +146,27 @@ class OrderActionController extends Controller
         }
 
         return back()->with('status', __('Momo payment confirmed.'));
+    }
+
+    public function changeDeliveryFeePayer(Request $request, Order $order, DeliveryFeePayerService $payers, BranchContext $context, ShiftService $shifts): RedirectResponse
+    {
+        Gate::authorize('changeDeliveryFeePayer', $order);
+
+        $validated = $request->validate([
+            'delivery_fee_paid_by' => ['required', Rule::in(Order::DELIVERY_FEE_PAID_BY)],
+        ]);
+
+        try {
+            $payers->set(
+                $order, $validated['delivery_fee_paid_by'],
+                $context->primaryRoleFor($request->user(), $order->branch_id), $request->user()->id,
+                $shifts->activeForBranch($order->branch_id)?->id,
+            );
+        } catch (DeliveryFeePayerException $e) {
+            return back()->withErrors(['delivery_fee_paid_by' => $e->getMessage()]);
+        }
+
+        return back()->with('status', __('Delivery fee payment updated.'));
     }
 
     /**

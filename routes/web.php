@@ -168,6 +168,7 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::post('/dashboard/orders/{order}/cancel', [OrderActionController::class, 'cancel'])->name('orders.cancel');
     Route::post('/dashboard/orders/{order}/assign-rider', [OrderActionController::class, 'assignRider'])->name('orders.assign_rider');
     Route::post('/dashboard/orders/{order}/confirm-momo-payment', [OrderActionController::class, 'confirmMomoPayment'])->name('orders.confirm_momo_payment');
+    Route::post('/dashboard/orders/{order}/delivery-fee-paid-by', [OrderActionController::class, 'changeDeliveryFeePayer'])->name('orders.delivery_fee_paid_by');
     Route::post('/dashboard/orders/{order}/transfer-branch', [OrderActionController::class, 'transferBranch'])->name('orders.transfer_branch');
     Route::post('/dashboard/orders/{order}/delivery-fee', [OrderActionController::class, 'adjustDeliveryFee'])->name('orders.adjust_delivery_fee');
     Route::post('/dashboard/orders/{order}/refunds', [RefundController::class, 'store'])->name('orders.refunds.store');

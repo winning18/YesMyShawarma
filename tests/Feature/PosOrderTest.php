@@ -539,4 +539,35 @@ class PosOrderTest extends TestCase
         $this->assertSame('manager', $placedEvent->actor_type);
         $this->assertSame($manager->id, $placedEvent->actor_id);
     }
+
+    public function test_a_momo_delivery_order_must_say_how_the_delivery_fee_is_paid(): void
+    {
+        $area = DeliveryArea::create(['name' => 'Osu Oxford Street', 'is_active' => true]);
+        $staff = $this->makeStaff();
+        $this->addToPosCart($staff, 1);
+        $payload = [
+            'phone' => '0241111111', 'fulfilment_type' => 'delivery', 'area_id' => $area->id,
+            'landmark' => 'Blue gate', 'payment_method' => 'momo',
+        ];
+
+        $this->actingAs($staff)->postJson(route('dashboard.pos.orders.store'), $payload)
+            ->assertStatus(422)->assertJsonValidationErrors('delivery_fee_paid_by');
+
+        $this->actingAs($staff)->postJson(route('dashboard.pos.orders.store'), [...$payload, 'delivery_fee_paid_by' => 'rider_cash'])
+            ->assertOk();
+
+        $this->assertSame('rider_cash', Order::sole()->delivery_fee_paid_by);
+    }
+
+    public function test_delivery_fee_paid_by_is_only_stored_for_momo_delivery_orders(): void
+    {
+        $staff = $this->makeStaff();
+        $this->addToPosCart($staff, 1);
+
+        $this->actingAs($staff)->postJson(route('dashboard.pos.orders.store'), [
+            'fulfilment_type' => 'pickup', 'payment_method' => 'momo', 'delivery_fee_paid_by' => 'rider_cash',
+        ])->assertOk();
+
+        $this->assertNull(Order::sole()->delivery_fee_paid_by);
+    }
 }

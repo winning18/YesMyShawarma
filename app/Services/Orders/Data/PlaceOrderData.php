@@ -29,6 +29,9 @@ final class PlaceOrderData
      *                                     in which case the order stays payment_status
      *                                     'pending' until then. Never set for cash or
      *                                     paystack — see payments.md.
+     * @param  ?string  $deliveryFeePaidBy  POS MoMo delivery orders only — 'momo' or
+     *                                      'rider_cash' (Order::DELIVERY_FEE_PAID_BY).
+     *                                      Ignored for every other order.
      */
     public function __construct(
         public readonly ?string $customerPhone,
@@ -45,5 +48,6 @@ final class PlaceOrderData
         public readonly ?string $actorType = null,
         public readonly ?int $actorId = null,
         public readonly ?string $paymentReference = null,
+        public readonly ?string $deliveryFeePaidBy = null,
     ) {}
 }

@@ -19,7 +19,7 @@
                             <p class="text-xl font-semibold text-gray-900">{{ $money($totals['total']) }}</p>
                             <p class="text-xs text-gray-500">
                                 {{ trans_choice(':count delivery|:count deliveries', $totals['count'], ['count' => $totals['count']]) }} ·
-                                {{ __(':amount cash', ['amount' => $money($totals['cash'])]) }}
+                                {{ __(':amount from staff', ['amount' => $money($totals['prepaid'])]) }}
                             </p>
                         </div>
                     @endforeach
@@ -41,7 +41,7 @@
                         {{ $from->format('d M') }} – {{ $to->format('d M Y') }}:
                         <span class="font-semibold">{{ $money($range['total']) }}</span>
                         {{ __('from :count deliveries', ['count' => $range['count']]) }} ·
-                        {{ __(':cash collected in cash, :prepaid paid before delivery', ['cash' => $money($range['cash']), 'prepaid' => $money($range['prepaid'])]) }}
+                        {{ __(':cash from customers, :prepaid from staff', ['cash' => $money($range['cash']), 'prepaid' => $money($range['prepaid'])]) }}
                     </p>
                 </form>
             </div>
@@ -62,7 +62,7 @@
                     @if ($split = $order->fee_split)
                         <p class="text-sm text-gray-700 mt-2">
                             {{ __('Delivery fee') }} <span class="font-semibold">{{ $money($split['fee']) }}</span>
-                            <span class="text-gray-500">· {{ $split['prepaid'] === 0 ? __('collected in cash') : ($split['cash'] === 0 ? __('paid before delivery') : __(':amount in cash', ['amount' => $money($split['cash'])])) }}</span>
+                            <span class="text-gray-500">· {{ $split['prepaid'] === 0 ? __('from customer') : ($split['cash'] === 0 ? __('from staff') : __(':amount from staff', ['amount' => $money($split['prepaid'])])) }}</span>
                         </p>
                     @endif
                     <p class="text-xs text-gray-400 mt-2">{{ ($order->delivered_at ?? $order->updated_at)->timezone('Africa/Accra')->format('d M Y, H:i') }}</p>

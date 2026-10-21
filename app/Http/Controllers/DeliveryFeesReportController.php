@@ -61,7 +61,7 @@ class DeliveryFeesReportController extends Controller
 
         return response()->streamDownload(function () use ($rows) {
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['Delivered', 'Order', 'Branch', 'Rider', 'Area', 'Payment', 'Delivery fee (GHS)', 'Cash collected by rider (GHS)', 'Paid before delivery (GHS)', 'Fee note']);
+            fputcsv($out, ['Delivered', 'Order', 'Branch', 'Rider', 'Area', 'Payment', 'Delivery fee (GHS)', 'From customer in cash (GHS)', 'From staff (GHS)', 'Fee note']);
 
             foreach ($rows as $row) {
                 fputcsv($out, [
