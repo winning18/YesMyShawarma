@@ -12,6 +12,7 @@ use App\Http\Controllers\Customer\Auth\AuthenticatedSessionController as Custome
 use App\Http\Controllers\Customer\Auth\RegisteredUserController as CustomerRegisteredUserController;
 use App\Http\Controllers\CustomerManagementController;
 use App\Http\Controllers\DamageReportController;
+use App\Http\Controllers\DeliveryFeesReportController;
 use App\Http\Controllers\ExpensesReportController;
 use App\Http\Controllers\FaqController;
 use App\Http\Controllers\HeroSliderController;
@@ -263,6 +264,9 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
 
     Route::get('/dashboard/reports/expenses', [ExpensesReportController::class, 'index'])->name('dashboard.reports.expenses.index');
     Route::get('/dashboard/reports/expenses/download/{format}', [ExpensesReportController::class, 'download'])->name('dashboard.reports.expenses.download');
+
+    Route::get('/dashboard/reports/delivery-fees', [DeliveryFeesReportController::class, 'index'])->name('dashboard.reports.delivery-fees.index');
+    Route::get('/dashboard/reports/delivery-fees/download', [DeliveryFeesReportController::class, 'download'])->name('dashboard.reports.delivery-fees.download');
 
     Route::get('/dashboard/reports/today', [TodayReportController::class, 'index'])->name('dashboard.reports.today.index');
 

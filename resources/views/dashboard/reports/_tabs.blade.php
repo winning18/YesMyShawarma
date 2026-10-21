@@ -1,6 +1,6 @@
 {{--
-    Shared by all five Reports and invoices pages — $active is one of
-    'detailed' | 'invoices' | 'weekly' | 'expenses' | 'today'. Each tab is a full
+    Shared by all six Reports and invoices pages — $active is one of
+    'detailed' | 'invoices' | 'weekly' | 'expenses' | 'delivery-fees' | 'today'. Each tab is a full
     navigation (own route, own query params), not a client-side switch —
     same server-rendered tab convention as the Performance page. $active
     stays 'today' (matches TodayReportController/the route name) even
@@ -10,14 +10,14 @@
     Sales sits outside the reports.view_financial guard, same as Detailed
     reports — reaching this partial at all already required
     reports.view_operational (every page including it authorizes that),
-    and Sales is deliberately staff-visible, unlike Invoices/Order export/Expenses. It's
+    and Sales is deliberately staff-visible, unlike Invoices/Order export/Expenses/Delivery fees. It's
     first because it's the one staff reach for day-to-day use (per-shift
     sales, not the historical/financial views the other three cover).
 --}}
 <div>
     <h2 class="font-semibold text-xl text-gray-800 leading-tight mb-4">{{ __('Reports and invoices') }}</h2>
 
-    <div class="border-b border-gray-200 flex items-center gap-6">
+    <div class="border-b border-gray-200 flex items-center gap-6 overflow-x-auto whitespace-nowrap">
         <a
             href="{{ route('dashboard.reports.today.index') }}"
             class="pb-3 text-sm font-semibold border-b-2 -mb-px {{ $active === 'today' ? 'border-green-600 text-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700' }}"
@@ -39,6 +39,10 @@
                 href="{{ route('dashboard.reports.expenses.index') }}"
                 class="pb-3 text-sm font-semibold border-b-2 -mb-px {{ $active === 'expenses' ? 'border-green-600 text-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700' }}"
             >{{ __('Expenses') }}</a>
+            <a
+                href="{{ route('dashboard.reports.delivery-fees.index') }}"
+                class="pb-3 text-sm font-semibold border-b-2 -mb-px {{ $active === 'delivery-fees' ? 'border-green-600 text-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700' }}"
+            >{{ __('Delivery fees') }}</a>
         @endcan
     </div>
 </div>

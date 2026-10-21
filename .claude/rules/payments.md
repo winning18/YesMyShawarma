@@ -220,3 +220,13 @@ momo-transaction confirmation above).
 Keys live in `.env`, referenced through `config/services.php`. **Never inline a key, never
 commit one, never log a full payload containing one.** If a key appears in a diff, stop and
 raise it.
+
+## Delivery fee audit
+
+Reports → Delivery fees (`reports.view_financial`) and the rider app's Past deliveries totals are
+both built by `DeliveryFeeReportService`, so a rider's figures always equal their row in the
+report. Delivered delivery orders only, dated by `delivered_at`, using the order's final
+`delivery_fee`. Each fee is split by who got the money: **cash** (rider collected it — `cash`
+orders, or a `paystack` order whose fee was added at arrival, after Paystack had charged) vs
+**paid before delivery** (`paystack` covering the fee, or POS `momo`). Viewing only for now — no
+hand-in/reconciliation records (owner decision, 2026-10-21).
