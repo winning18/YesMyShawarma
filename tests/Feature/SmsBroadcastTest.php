@@ -199,23 +199,19 @@ class SmsBroadcastTest extends TestCase
         $this->assertSame(0, SmsBroadcast::count());
     }
 
-    public function test_only_one_broadcast_is_allowed_per_seven_days(): void
+    public function test_broadcasts_can_be_sent_back_to_back_with_no_frequency_limit(): void
     {
         Customer::create(['phone' => '+233241111111']);
         $owner = $this->userWithRole('owner');
-        $this->broadcasts()->schedule('First', null, now()->addDays(3), $owner);
+        $this->broadcasts()->schedule('First', null, null, $owner);
 
         $this->actingAs($owner)->post(route('dashboard.customers.broadcasts.store'), ['message' => 'Second', 'send_mode' => 'now'])
-            ->assertSessionHasErrors('message');
-
-        $this->actingAs($owner)->post(route('dashboard.customers.broadcasts.store'), [
-            'message' => 'Next week', 'send_mode' => 'later', 'scheduled_at' => now('Africa/Accra')->addDays(11)->format('Y-m-d\TH:i'),
-        ])->assertSessionHasNoErrors();
+            ->assertSessionHasNoErrors();
 
         $this->assertSame(2, SmsBroadcast::count());
     }
 
-    public function test_a_cancelled_broadcast_never_sends_and_frees_its_week(): void
+    public function test_a_cancelled_broadcast_never_sends(): void
     {
         $this->fakeSms();
         Customer::create(['phone' => '+233241111111']);
@@ -229,8 +225,6 @@ class SmsBroadcastTest extends TestCase
 
         $this->assertSame('cancelled', $broadcast->fresh()->status);
         $this->assertSame([], $this->sent);
-        $this->broadcasts()->schedule('Fixed', null, null, $owner);
-        $this->assertSame(2, SmsBroadcast::count());
     }
 
     public function test_a_broadcast_with_nobody_to_send_to_is_rejected(): void

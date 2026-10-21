@@ -6,9 +6,16 @@
     <div class="flex justify-between items-center mb-4">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">{{ __('Customers') }}</h2>
         @if ($active === 'customers')
-            <a href="{{ route('dashboard.customers.export', request()->query()) }}" class="px-3 py-1.5 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-900">
-                {{ __('Export CSV') }}
-            </a>
+            <div class="flex flex-wrap gap-2">
+                @can('customers.broadcast')
+                    <a href="{{ route('dashboard.customers.import.create') }}" class="px-3 py-1.5 border border-gray-300 text-gray-800 text-sm font-semibold rounded-md hover:bg-gray-50">
+                        {{ __('Import contacts') }}
+                    </a>
+                @endcan
+                <a href="{{ route('dashboard.customers.export', request()->query()) }}" class="px-3 py-1.5 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-900">
+                    {{ __('Export CSV') }}
+                </a>
+            </div>
         @endif
     </div>
 

@@ -10,6 +10,7 @@ use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\Customer\Auth\AuthenticatedSessionController as CustomerAuthenticatedSessionController;
 use App\Http\Controllers\Customer\Auth\RegisteredUserController as CustomerRegisteredUserController;
+use App\Http\Controllers\CustomerImportController;
 use App\Http\Controllers\CustomerManagementController;
 use App\Http\Controllers\DamageReportController;
 use App\Http\Controllers\DeliveryFeesReportController;
@@ -251,6 +252,8 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
 
     Route::get('/dashboard/customers', [CustomerManagementController::class, 'index'])->name('dashboard.customers.index');
     Route::get('/dashboard/customers/export', [CustomerManagementController::class, 'export'])->name('dashboard.customers.export');
+    Route::get('/dashboard/customers/import', [CustomerImportController::class, 'create'])->name('dashboard.customers.import.create');
+    Route::post('/dashboard/customers/import', [CustomerImportController::class, 'store'])->name('dashboard.customers.import.store');
     Route::get('/dashboard/customers/broadcasts', [SmsBroadcastController::class, 'index'])->name('dashboard.customers.broadcasts.index');
     Route::post('/dashboard/customers/broadcasts', [SmsBroadcastController::class, 'store'])->name('dashboard.customers.broadcasts.store');
     Route::post('/dashboard/customers/broadcasts/{broadcast}/cancel', [SmsBroadcastController::class, 'cancel'])->name('dashboard.customers.broadcasts.cancel');

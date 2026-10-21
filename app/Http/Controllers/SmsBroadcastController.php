@@ -40,7 +40,6 @@ class SmsBroadcastController extends Controller
             'audiences' => $audiences,
             'broadcasts' => SmsBroadcast::with(['branch:id,name', 'creator:id,name'])->latest('scheduled_at')->paginate(20),
             'sampleSuffix' => $this->broadcasts->composeFor('', 'XXXXXXXX'),
-            'minDaysBetween' => SmsBroadcastService::MIN_DAYS_BETWEEN,
         ]);
     }
 

@@ -99,6 +99,11 @@ phone-less walk-in gets its own fresh, un-findable-again `Customer` row, never m
 another's order history. MySQL's unique index already permits multiple NULLs, so this needed no
 index change alongside the nullable column.
 
+**Imported leads** (Customers → Import contacts, `CustomerImportService`, `customers.broadcast`):
+outside contacts from a CSV become ordinary `customers` rows with no orders — no separate leads
+table (owner, 2026-10-21). If one orders later, `findOrCreateByPhone()` finds the same row, so
+their history joins up. An import never changes an existing row except to fill a missing name.
+
 Both `ghanapost_code` and free-text `landmark` are required on delivery orders. Riders use both.
 
 **`lat`/`lng` (here and in `orders.delivery_address_snapshot`) are rider-only.** Staff and
@@ -370,7 +375,8 @@ order at that branch. Status: `scheduled -> sending -> sent`, or `scheduled -> c
 now" is just `scheduled_at = now`. `sms:send-due-broadcasts` (every minute) claims due rows,
 snapshots recipients, and queues `SendSmsBroadcastBatch` for every broadcast still sending; each
 job sends for up to 40s, so only `pending` recipients are ever texted and a dead job resumes.
-At most one non-cancelled broadcast per 7 days (`MIN_DAYS_BETWEEN`), agreed with the owner.
+No frequency limit: the original one-per-7-days rule was removed at the owner's request
+(2026-10-21) — broadcasts can go any day, any time.
 
 ## Visitor tracking
 

@@ -73,7 +73,6 @@
             <div class="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4">
                 <p class="text-sm text-gray-700">
                     {{ __('Total:') }} <span class="font-semibold" x-text="(audience.recipients * parts).toLocaleString()"></span> {{ __('SMS charged') }}
-                    <span class="text-xs text-gray-500">· {{ __('max one broadcast every :days days', ['days' => $minDaysBetween]) }}</span>
                 </p>
                 <x-primary-button
                     x-bind:disabled="message.trim() === '' || audience.recipients === 0"

@@ -32,9 +32,6 @@ use Illuminate\Support\Str;
  */
 class SmsBroadcastService
 {
-    /** Agreed with the owner: at most one broadcast a week. */
-    public const MIN_DAYS_BETWEEN = 7;
-
     /** Pending recipients read per query while sending. */
     public const BATCH_SIZE = 50;
 
@@ -147,20 +144,6 @@ class SmsBroadcastService
     public function schedule(string $message, ?int $branchId, ?Carbon $scheduledAt, User $createdBy): SmsBroadcast
     {
         $scheduledAt = ($scheduledAt ?? now())->clone()->utc();
-
-        $nearest = SmsBroadcast::query()
-            ->where('status', '!=', SmsBroadcast::STATUS_CANCELLED)
-            ->whereBetween('scheduled_at', [
-                $scheduledAt->clone()->subDays(self::MIN_DAYS_BETWEEN)->addSecond(),
-                $scheduledAt->clone()->addDays(self::MIN_DAYS_BETWEEN)->subSecond(),
-            ])
-            ->get()
-            ->sortBy(fn (SmsBroadcast $b) => abs($b->scheduled_at->diffInSeconds($scheduledAt)))
-            ->first();
-
-        if ($nearest) {
-            throw SmsBroadcastException::tooSoon(self::MIN_DAYS_BETWEEN, $nearest->scheduled_at);
-        }
 
         if ($this->audience($branchId)['recipients'] === []) {
             throw SmsBroadcastException::noRecipients();
