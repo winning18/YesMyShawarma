@@ -37,13 +37,21 @@ class VisitorSessionService
     {
         $session = VisitorSession::firstOrCreate(['token' => $token], [
             'ip_address' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-            'referrer' => $request->headers->get('referer'),
+            // Both are VARCHAR(255) and both are whatever the client sends —
+            // bingbot sends a doubled-up user agent well past 255, which
+            // MySQL rejects outright rather than truncating.
+            'user_agent' => $this->fit($request->userAgent()),
+            'referrer' => $this->fit($request->headers->get('referer')),
         ]);
 
         $session->touch();
 
         return $session;
+    }
+
+    private function fit(?string $value): ?string
+    {
+        return $value === null ? null : mb_substr($value, 0, 255);
     }
 
     /**

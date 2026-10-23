@@ -2,7 +2,7 @@
 
 namespace App\Services\Notifications;
 
-use App\Contracts\Notifier;
+use App\Jobs\SendSms;
 use App\Models\StockItem;
 use App\Services\Branches\BranchContext;
 
@@ -17,7 +17,6 @@ use App\Services\Branches\BranchContext;
 class StockAlertNotifier
 {
     public function __construct(
-        private readonly Notifier $notifier,
         private readonly BranchContext $branches,
     ) {}
 
@@ -29,7 +28,8 @@ class StockAlertNotifier
         // same reasoning as ArkeselNotifier swallowing delivery failures.
         foreach ($this->branches->usersWithRole('owner', null) as $owner) {
             if ($owner->phone) {
-                $this->notifier->notify($owner->phone, $message, ['stock_item_id' => $item->id]);
+                // Queued: this runs inside the staff member's "accept order" request.
+                SendSms::dispatch($owner->phone, $message, ['stock_item_id' => $item->id]);
             }
         }
     }

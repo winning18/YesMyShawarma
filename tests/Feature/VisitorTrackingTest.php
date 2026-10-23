@@ -158,4 +158,27 @@ class VisitorTrackingTest extends TestCase
         $this->assertDatabaseCount('orders', 1);
         $this->assertSame(0, VisitorSession::whereNotNull('order_id')->count());
     }
+
+    public function test_an_overlong_user_agent_and_referrer_are_cut_to_fit_their_columns(): void
+    {
+        // Sentry PHP-LARAVEL-R: bingbot's doubled-up user agent is ~300 characters.
+        $this->withHeader('User-Agent', str_repeat('A', 300))
+            ->withHeader('Referer', 'https://example.com/'.str_repeat('b', 300))
+            ->get(route('home'))
+            ->assertOk();
+
+        $session = VisitorSession::sole();
+        $this->assertSame(255, mb_strlen($session->user_agent));
+        $this->assertSame(255, mb_strlen($session->referrer));
+    }
+
+    public function test_a_tracking_failure_never_breaks_the_page(): void
+    {
+        $this->mock(\App\Services\Visitors\VisitorSessionService::class, function ($mock) {
+            $mock->shouldReceive('resolveToken')->andReturn(str_repeat('x', 40));
+            $mock->shouldReceive('recordVisit')->andThrow(new \RuntimeException('database hiccup'));
+        });
+
+        $this->get(route('home'))->assertOk();
+    }
 }

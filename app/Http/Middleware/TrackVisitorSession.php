@@ -7,6 +7,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 /**
  * Attached only to the public customer route group (routes/web.php) —
@@ -39,11 +40,17 @@ class TrackVisitorSession
         $isNewToken = ! $token;
         $token ??= $this->visitors->resolveToken($request);
 
-        $session = $this->visitors->recordVisit($token, $request);
+        // Analytics must never cost a visitor the page itself — a failed
+        // write is reported and the request carries on untracked.
+        try {
+            $session = $this->visitors->recordVisit($token, $request);
 
-        if ($request->isMethod('get')) {
-            $pageView = $this->visitors->recordPageView($session, $request);
-            $request->attributes->set('page_view_id', $pageView->id);
+            if ($request->isMethod('get')) {
+                $pageView = $this->visitors->recordPageView($session, $request);
+                $request->attributes->set('page_view_id', $pageView->id);
+            }
+        } catch (Throwable $e) {
+            report($e);
         }
 
         $response = $next($request);

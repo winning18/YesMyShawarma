@@ -2,7 +2,7 @@
 
 namespace App\Services\Notifications;
 
-use App\Contracts\Notifier;
+use App\Jobs\SendSms;
 use App\Models\Order;
 use App\Models\Refund;
 
@@ -14,11 +14,12 @@ use App\Models\Refund;
  * Paystack "placed" case). Kept as one small service, separate from the
  * transition/creation logic itself, so the message copy lives in exactly
  * one place — CLAUDE.md's "business logic lives in service classes" rule.
+ *
+ * Every message goes out through the queue (SendSms), never inline
+ * in the request that changed the order.
  */
 class CustomerOrderNotifier
 {
-    public function __construct(private readonly Notifier $notifier) {}
-
     public function placed(Order $order): void
     {
         $this->send($order, "Thanks! We've received your order {$order->reference}.");
@@ -54,7 +55,7 @@ class CustomerOrderNotifier
 
         $amount = number_format($refund->amount / 100, 2);
 
-        $this->notifier->notify(
+        SendSms::dispatch(
             $order->customer->phone,
             "Your refund of GHS {$amount} for order {$order->reference} has been processed.",
             ['order_id' => $order->id, 'refund_id' => $refund->id],
@@ -74,7 +75,7 @@ class CustomerOrderNotifier
 
         $link = route('tracking.show', $order);
 
-        $this->notifier->notify(
+        SendSms::dispatch(
             $order->customer->phone,
             "{$message} Track it here: {$link}",
             ['order_id' => $order->id],
