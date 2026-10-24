@@ -37,9 +37,20 @@ class TodayReportTest extends TestCase
 
     private Option $sausage;
 
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
+
+        // Midday today (Accra = UTC): these tests open shifts "an hour
+        // ago" and expect them to count as today, which isn't true in the
+        // first hour or two after midnight — it failed a deploy at 00:48.
+        Carbon::setTestNow(Carbon::now('Africa/Accra')->setTime(12, 0));
 
         $this->seed(RolesAndPermissionsSeeder::class);
 
