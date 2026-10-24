@@ -7,7 +7,9 @@ use App\Models\Order;
 use App\Models\Refund;
 
 /**
- * The four customer-facing order-status SMS points — see orders.md's state
+ * The customer-facing order-status SMS points — delivery gets placed,
+ * on its way and delivered; pickup gets placed and ready; Bolt Food gets
+ * placed only — see orders.md's state
  * machine for exactly which transitions each of these fires from
  * (OrderCreationService for "placed" when an order is created already-paid,
  * OrderStateMachine::transition() for everything else, including the
@@ -23,11 +25,6 @@ class CustomerOrderNotifier
     public function placed(Order $order): void
     {
         $this->send($order, "Thanks! We've received your order {$order->reference}.");
-    }
-
-    public function received(Order $order): void
-    {
-        $this->send($order, "Your order {$order->reference} has been accepted and is being prepared.");
     }
 
     public function readyForPickup(Order $order): void

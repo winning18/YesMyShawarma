@@ -247,11 +247,14 @@ class OrderStateMachine
             // 'ready' isn't customer-meaningful yet — the rider doesn't
             // have it), 'dispatched' only for delivery (for pickup it means
             // "already collected" per orders.md, not "on its way").
+            // No SMS on 'accepted' (owner, 2026-10-24: delivery gets 3 SMS,
+            // pickup 2 — the tracking link in "placed" covers the wait), and
+            // a Bolt Food order gets "placed" only: Bolt keeps its own
+            // customer updated through pickup.
             DB::afterCommit(function () use ($order, $to, $from) {
                 match (true) {
                     $to === 'paid' && $from === 'pending_payment' => $this->notifier->placed($order),
-                    $to === 'accepted' => $this->notifier->received($order),
-                    $to === 'ready' && $order->fulfilment_type === 'pickup' => $this->notifier->readyForPickup($order),
+                    $to === 'ready' && $order->fulfilment_type === 'pickup' && $order->payment_method !== 'bolt_food' => $this->notifier->readyForPickup($order),
                     $to === 'dispatched' && $order->fulfilment_type === 'delivery' => $this->notifier->dispatched($order),
                     $to === 'delivered' => $this->notifier->delivered($order),
                     default => null,

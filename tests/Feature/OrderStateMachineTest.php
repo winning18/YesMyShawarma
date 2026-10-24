@@ -295,16 +295,28 @@ class OrderStateMachineTest extends TestCase
         app(OrderStateMachine::class)->transition($order, 'paid', 'system');
     }
 
-    public function test_accepted_transition_sends_the_customer_a_received_sms(): void
+    public function test_accepted_transition_does_not_send_the_customer_an_sms(): void
     {
+        // Owner, 2026-10-24: "placed" (with its tracking link) covers the wait.
         $order = $this->makeOrder('paid');
 
         $this->mock(Notifier::class, function ($mock) {
-            $mock->shouldReceive('notify')->once()
-                ->with('+233241111111', \Mockery::type('string'), \Mockery::type('array'));
+            $mock->shouldNotReceive('notify');
         });
 
         app(OrderStateMachine::class)->transition($order, 'accepted', 'staff', actorId: 1);
+    }
+
+    public function test_a_bolt_food_order_gets_no_ready_for_pickup_sms(): void
+    {
+        $order = $this->makeOrder('preparing');
+        $order->update(['fulfilment_type' => 'pickup', 'payment_method' => 'bolt_food']);
+
+        $this->mock(Notifier::class, function ($mock) {
+            $mock->shouldNotReceive('notify');
+        });
+
+        app(OrderStateMachine::class)->transition($order, 'ready', 'staff', actorId: 1);
     }
 
     public function test_ready_transition_sends_a_ready_for_pickup_sms_for_pickup_orders(): void
