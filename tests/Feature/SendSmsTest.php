@@ -44,8 +44,34 @@ class SendSmsTest extends TestCase
 
     public function test_the_queued_job_sends_through_the_notifier(): void
     {
-        $this->mock(Notifier::class)->shouldReceive('notify')->once()->with('+233241234567', 'Hello', ['order_id' => 1]);
+        $this->mock(Notifier::class)->shouldReceive('send')->once()->with('+233241234567', 'Hello', ['order_id' => 1])->andReturn(true);
 
-        (new SendSms('+233241234567', 'Hello', ['order_id' => 1]))->handle(app(Notifier::class));
+        $job = new SendSms('+233241234567', 'Hello', ['order_id' => 1]);
+        $job->withFakeQueueInteractions()->handle(app(Notifier::class));
+
+        $job->assertNotReleased();
+    }
+
+    public function test_a_failed_send_is_retried_after_a_minute_then_five(): void
+    {
+        // Sentry PHP-LARAVEL-N (31 Oct): one Arkesel timeout lost a customer's SMS.
+        $this->mock(Notifier::class)->shouldReceive('send')->andReturn(false);
+
+        $first = (new SendSms('+233241234567', 'Hello'))->withFakeQueueInteractions();
+        $first->handle(app(Notifier::class));
+        $first->assertReleased(60);
+    }
+
+    public function test_it_gives_up_quietly_after_the_last_attempt(): void
+    {
+        $this->mock(Notifier::class)->shouldReceive('send')->andReturn(false);
+
+        $job = new SendSms('+233241234567', 'Hello');
+        $job->withFakeQueueInteractions();
+        $job->job->attempts = 3;
+        $job->handle(app(Notifier::class));
+
+        $job->assertNotReleased();
+        $job->assertNotFailed();
     }
 }

@@ -178,7 +178,7 @@ class RefundTest extends TestCase
         $order = $this->makePaidOrder(5000, 'cash');
 
         $this->mock(Notifier::class, function ($mock) use ($order) {
-            $mock->shouldReceive('notify')->once()
+            $mock->shouldReceive('send')->andReturn(true)->once()
                 ->with($order->customer->phone, \Mockery::type('string'), ['order_id' => $order->id, 'refund_id' => 1]);
         });
 

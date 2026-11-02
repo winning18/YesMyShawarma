@@ -160,7 +160,7 @@ class StockTest extends TestCase
         $staff = $this->makeStaff();
 
         $this->mock(Notifier::class, function ($mock) {
-            $mock->shouldReceive('notify')->once();
+            $mock->shouldReceive('send')->andReturn(true)->once();
         });
 
         // 10 -> 6: still at/above threshold, no alert yet.
@@ -181,7 +181,7 @@ class StockTest extends TestCase
         $staff = $this->makeStaff();
 
         $this->mock(Notifier::class, function ($mock) {
-            $mock->shouldReceive('notify')->twice();
+            $mock->shouldReceive('send')->andReturn(true)->twice();
         });
 
         app(StockService::class)->recordAutomaticConsumption($item, $staff, 6); // 10 -> 4, crosses below, alerts

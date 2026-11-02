@@ -288,7 +288,7 @@ class OrderStateMachineTest extends TestCase
         $order = $this->makeOrder('pending_payment');
 
         $this->mock(Notifier::class, function ($mock) {
-            $mock->shouldReceive('notify')->once()
+            $mock->shouldReceive('send')->andReturn(true)->once()
                 ->with('+233241111111', \Mockery::type('string'), \Mockery::type('array'));
         });
 
@@ -301,7 +301,7 @@ class OrderStateMachineTest extends TestCase
         $order = $this->makeOrder('paid');
 
         $this->mock(Notifier::class, function ($mock) {
-            $mock->shouldNotReceive('notify');
+            $mock->shouldNotReceive('send');
         });
 
         app(OrderStateMachine::class)->transition($order, 'accepted', 'staff', actorId: 1);
@@ -313,7 +313,7 @@ class OrderStateMachineTest extends TestCase
         $order->update(['fulfilment_type' => 'pickup', 'payment_method' => 'bolt_food']);
 
         $this->mock(Notifier::class, function ($mock) {
-            $mock->shouldNotReceive('notify');
+            $mock->shouldNotReceive('send');
         });
 
         app(OrderStateMachine::class)->transition($order, 'ready', 'staff', actorId: 1);
@@ -325,7 +325,7 @@ class OrderStateMachineTest extends TestCase
         $order->update(['fulfilment_type' => 'pickup']);
 
         $this->mock(Notifier::class, function ($mock) {
-            $mock->shouldReceive('notify')->once()
+            $mock->shouldReceive('send')->andReturn(true)->once()
                 ->with('+233241111111', \Mockery::on(fn (string $m) => str_contains($m, 'ready for pickup')), \Mockery::type('array'));
         });
 
@@ -339,7 +339,7 @@ class OrderStateMachineTest extends TestCase
         $order = $this->makeOrder('preparing');
 
         $this->mock(Notifier::class, function ($mock) {
-            $mock->shouldNotReceive('notify');
+            $mock->shouldNotReceive('send');
         });
 
         app(OrderStateMachine::class)->transition($order, 'ready', 'staff', actorId: 1);
@@ -350,7 +350,7 @@ class OrderStateMachineTest extends TestCase
         $order = $this->makeOrder('ready');
 
         $this->mock(Notifier::class, function ($mock) {
-            $mock->shouldReceive('notify')->once()
+            $mock->shouldReceive('send')->andReturn(true)->once()
                 ->with('+233241111111', \Mockery::on(fn (string $m) => str_contains($m, 'on its way')), \Mockery::type('array'));
         });
 
@@ -366,7 +366,7 @@ class OrderStateMachineTest extends TestCase
         $order->update(['fulfilment_type' => 'pickup']);
 
         $this->mock(Notifier::class, function ($mock) {
-            $mock->shouldNotReceive('notify');
+            $mock->shouldNotReceive('send');
         });
 
         app(OrderStateMachine::class)->transition($order, 'dispatched', 'staff', actorId: 1);
@@ -377,7 +377,7 @@ class OrderStateMachineTest extends TestCase
         $order = $this->makeOrder('dispatched');
 
         $this->mock(Notifier::class, function ($mock) {
-            $mock->shouldReceive('notify')->once()
+            $mock->shouldReceive('send')->andReturn(true)->once()
                 ->with('+233241111111', \Mockery::type('string'), \Mockery::type('array'));
         });
 

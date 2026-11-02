@@ -212,7 +212,7 @@ class OrderCreationServiceTest extends TestCase
         // path, see OrderStateMachineTest). Deferred to the transaction's
         // commit, same as the OrderPlaced broadcast just above it.
         $this->mock(Notifier::class, function ($mock) {
-            $mock->shouldReceive('notify')->once()
+            $mock->shouldReceive('send')->andReturn(true)->once()
                 ->with('+233241111111', \Mockery::type('string'), \Mockery::type('array'));
         });
 
@@ -232,7 +232,7 @@ class OrderCreationServiceTest extends TestCase
         // SMS — Notifier::notify() requires a real string, so this must be
         // skipped outright rather than crash on a null phone.
         $this->mock(Notifier::class, function ($mock) {
-            $mock->shouldNotReceive('notify');
+            $mock->shouldNotReceive('send');
         });
 
         $order = app(OrderCreationService::class)->create(new PlaceOrderData(
@@ -253,7 +253,7 @@ class OrderCreationServiceTest extends TestCase
         // Still pending_payment at creation — the "placed" SMS only fires
         // once the webhook actually confirms payment (OrderStateMachine).
         $this->mock(Notifier::class, function ($mock) {
-            $mock->shouldNotReceive('notify');
+            $mock->shouldNotReceive('send');
         });
 
         app(OrderCreationService::class)->create(new PlaceOrderData(
