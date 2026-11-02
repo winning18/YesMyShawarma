@@ -35,10 +35,10 @@ use Illuminate\View\View;
  * own param rather than folded into from/to so every existing deep link
  * (Performance's "shifts that day" card, the Today/Yesterday links below)
  * keeps working unchanged. Owner's cross-branch aggregate view (no branch
- * resolved at all) has no single branch's shift to default to, so it falls
- * back to calendar "today" until a branch is picked — the shifts/expenses
- * table falls back the same way, across every branch, not just the
- * summary figures.
+ * resolved at all) has no single branch's shift to default to, so it shows
+ * the calendar day of the latest shift at any branch — today once any
+ * shift has started, otherwise the last day that had one — and the
+ * shifts/expenses table follows the same day, across every branch.
  *
  * See DailySalesReportService for the actual decomposition logic, which is
  * range-agnostic regardless of which mode produced the range.
@@ -119,8 +119,8 @@ class TodayReportController extends Controller
             // thinks to switch to calendar mode. The business-wide
             // fallback (no branch resolved at all, so no single "most
             // recent shift" concept applies — resolveShiftMode() already
-            // falls back to today's calendar window for the summary
-            // figures above) gets the equivalent of calendar mode's own
+            // falls back to the latest shift's calendar day for the
+            // summary figures above) gets the equivalent of calendar mode's own
             // query instead of an empty table, for the exact same reason:
             // real shifts/expenses existing that day shouldn't disappear
             // just because nobody switched to one specific branch.
@@ -175,7 +175,10 @@ class TodayReportController extends Controller
      * outside their own oversight set. A branch with no shift at all yet
      * (brand new, or simply never opened today) falls back to today's
      * calendar window so the page still renders something coherent
-     * instead of an empty state with nothing to show.
+     * instead of an empty state with nothing to show. With no branch
+     * resolved (owner only — every other role always has one), the window
+     * is the calendar day of the latest shift anywhere, so the default
+     * view has something to show even before today's first shift opens.
      *
      * @return array{0: Carbon, 1: Carbon, 2: Carbon, 3: ?Shift}
      */
@@ -195,9 +198,10 @@ class TodayReportController extends Controller
         $shift ??= $branchId ? $shifts->mostRecentForBranch($branchId) : null;
 
         if (! $shift) {
-            $now = Carbon::now('Africa/Accra');
+            $latestAnywhere = $branchId === null ? $shifts->mostRecentAcrossBranches() : null;
+            $day = $latestAnywhere?->started_at->clone()->timezone('Africa/Accra') ?? Carbon::now('Africa/Accra');
 
-            return [$now->clone()->startOfDay(), $now->clone()->endOfDay(), $now, null];
+            return [$day->clone()->startOfDay(), $day->clone()->endOfDay(), $day, null];
         }
 
         $rangeStart = $shift->started_at->clone()->timezone('Africa/Accra');

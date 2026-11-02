@@ -110,6 +110,16 @@ class ShiftService
     }
 
     /**
+     * The latest shift to start at any branch — what the owner's
+     * business-wide Sales view anchors on, the same way a single branch
+     * anchors on mostRecentForBranch().
+     */
+    public function mostRecentAcrossBranches(): ?Shift
+    {
+        return Shift::latest('started_at')->first();
+    }
+
+    /**
      * The shift that started immediately before $shift at the same branch
      * — "Previous shift" navigation on the Sales report. Ties on
      * started_at (shouldn't happen — one open shift per branch — but the

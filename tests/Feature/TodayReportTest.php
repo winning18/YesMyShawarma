@@ -275,6 +275,44 @@ class TodayReportTest extends TestCase
         $response->assertSee(__("Showing today's totals across every branch."));
     }
 
+    public function test_business_wide_view_falls_back_to_the_last_day_with_shifts_when_none_started_today(): void
+    {
+        $owner = User::factory()->create();
+        $this->assignRoleAt($owner, 'owner', $this->branch);
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branch);
+
+        $older = Shift::create([
+            'user_id' => $staff->id, 'branch_id' => $this->branch->id,
+            'started_at' => now()->subDays(9), 'ended_at' => now()->subDays(9)->addHours(4),
+        ]);
+        $latest = Shift::create([
+            'user_id' => $staff->id, 'branch_id' => $this->branch->id,
+            'started_at' => now()->subDays(3), 'ended_at' => now()->subDays(3)->addHours(4),
+        ]);
+
+        $response = $this->actingAs($owner)->get(route('dashboard.reports.today.index'));
+
+        $response->assertOk();
+        $this->assertSame(now('Africa/Accra')->subDays(3)->toDateString(), $response->viewData('today')->toDateString());
+        $this->assertSame([$latest->id], $response->viewData('shifts')->pluck('id')->all());
+        $this->assertNotContains($older->id, $response->viewData('shifts')->pluck('id')->all());
+        $response->assertSee('No shifts yet today. Showing '.now('Africa/Accra')->subDays(3)->format('D j M Y'));
+        $response->assertDontSee('No shifts recorded yet');
+    }
+
+    public function test_business_wide_view_says_no_shifts_only_when_there_are_none_at_all(): void
+    {
+        $owner = User::factory()->create();
+        $this->assignRoleAt($owner, 'owner', $this->branch);
+
+        $response = $this->actingAs($owner)->get(route('dashboard.reports.today.index'));
+
+        $response->assertOk();
+        $this->assertTrue($response->viewData('today')->isToday());
+        $response->assertSee('No shifts recorded yet', false);
+    }
+
     public function test_a_manager_submitting_a_branch_param_is_ignored_since_they_only_have_their_own(): void
     {
         $manager = User::factory()->create();
