@@ -121,22 +121,32 @@ class OrderReportService
                 fn ($query) => $query,
                 fn ($query) => $query->whereNotIn('payment_method', Order::EXCLUDED_FROM_SALES_PAYMENT_METHODS),
             );
-        $grossRevenueTotal = (int) $revenueOrders->sum('total');
+        // Delivery fees are the rider's, never sales (payments.md's
+        // "Delivery fee audit") — every figure here is food after
+        // discounts. A refund only takes back sales up to that same food
+        // value, so refunding a whole order can't push sales below zero.
+        $salesValue = fn (Order $order) => (int) $order->total - (int) $order->delivery_fee;
+        $salesRefunded = fn (Refund $refund) => $refund->order
+            ? min((int) $refund->amount, max(0, $salesValue($refund->order)))
+            : (int) $refund->amount;
+
+        $grossRevenueTotal = (int) $revenueOrders->sum($salesValue);
 
         $refunds = $this->refundsInRange($from, $to, $ignoreBranchScope, $branchId, $branchIds, $channel, $paymentMethod);
         $refundTotal = (int) $refunds->sum('amount');
-        $refundsByDay = $this->groupByAccraDay($refunds, 'completed_at')->map->sum('amount');
+        $salesRefundedTotal = (int) $refunds->sum($salesRefunded);
+        $refundsByDay = $this->groupByAccraDay($refunds, 'completed_at')->map(fn (Collection $day) => $day->sum($salesRefunded));
 
         $discountTotal = PromotionRedemption::whereIn('order_id', $orders->pluck('id'))->sum('amount_discounted');
 
-        $grossByDay = $this->fillDays($from, $to, $this->groupByAccraDay($revenueOrders)->map->sum('total'));
+        $grossByDay = $this->fillDays($from, $to, $this->groupByAccraDay($revenueOrders)->map(fn (Collection $day) => $day->sum($salesValue)));
         $revenueByDay = $grossByDay->map(fn (int $gross, string $day) => $gross - (int) $refundsByDay->get($day, 0));
 
         return [
-            'revenue_total' => $grossRevenueTotal - $refundTotal,
+            'revenue_total' => $grossRevenueTotal - $salesRefundedTotal,
             'revenue_by_day' => $revenueByDay,
-            'revenue_by_payment_method' => $revenueOrders->groupBy('payment_method')->map->sum('total'),
-            'revenue_by_channel' => $revenueOrders->groupBy('channel')->map->sum('total'),
+            'revenue_by_payment_method' => $revenueOrders->groupBy('payment_method')->map(fn (Collection $orders) => $orders->sum($salesValue)),
+            'revenue_by_channel' => $revenueOrders->groupBy('channel')->map(fn (Collection $orders) => $orders->sum($salesValue)),
             'discount_total' => $discountTotal,
             'refund_total' => $refundTotal,
             'average_order_value' => $revenueOrders->isNotEmpty() ? (int) round($grossRevenueTotal / $revenueOrders->count()) : 0,
@@ -158,6 +168,7 @@ class OrderReportService
     private function refundsInRange(Carbon $from, Carbon $to, bool $ignoreBranchScope = false, ?int $branchId = null, ?array $branchIds = null, ?string $channel = null, ?string $paymentMethod = null): Collection
     {
         $query = Refund::where('status', Refund::STATUS_COMPLETED)
+            ->with(['order' => fn ($q) => $q->withoutGlobalScope(BranchScope::class)->select('id', 'total', 'delivery_fee')])
             ->whereBetween('completed_at', [$from, $to])
             ->when(
                 $channel || $paymentMethod,
@@ -182,7 +193,7 @@ class OrderReportService
             $query->withoutGlobalScope(BranchScope::class)->where('branch_id', $branchId);
         }
 
-        return $query->get(['id', 'amount', 'completed_at']);
+        return $query->get(['id', 'order_id', 'amount', 'completed_at']);
     }
 
     /**
@@ -212,7 +223,7 @@ class OrderReportService
             $query->withoutGlobalScope(BranchScope::class)->where('branch_id', $branchId);
         }
 
-        return $query->get(['id', 'status', 'fulfilment_type', 'payment_method', 'channel', 'total', 'placed_at', 'accepted_at', 'ready_at', 'dispatched_at', 'delivered_at']);
+        return $query->get(['id', 'status', 'fulfilment_type', 'payment_method', 'channel', 'total', 'delivery_fee', 'placed_at', 'accepted_at', 'ready_at', 'dispatched_at', 'delivered_at']);
     }
 
     /**

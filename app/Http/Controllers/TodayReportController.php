@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\Shift;
 use App\Services\Branches\BranchContext;
 use App\Services\Reports\DailySalesReportService;
+use App\Services\Reports\DeliveryFeeReportService;
 use App\Services\Shifts\ShiftService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -45,7 +46,7 @@ use Illuminate\View\View;
  */
 class TodayReportController extends Controller
 {
-    public function index(Request $request, DailySalesReportService $sales, ShiftService $shifts, BranchContext $context): View
+    public function index(Request $request, DailySalesReportService $sales, ShiftService $shifts, BranchContext $context, DeliveryFeeReportService $deliveryFees): View
     {
         Gate::authorize('reports.view_operational');
 
@@ -104,6 +105,15 @@ class TodayReportController extends Controller
             'nextShift' => $shift ? $shifts->after($shift) : null,
             'viewingBranch' => $requestedBranchId ? Branch::find($requestedBranchId) : null,
             'summary' => $sales->summary($rangeStart, $rangeEnd, $channel, $paymentMethod, $requestedBranchId),
+            // Shown apart from sales, and never to staff — delivery fee
+            // figures are for the owner, managers and the rider themselves
+            // (same access as the Delivery fees tab). Dated by delivery,
+            // like that tab. Bolt Food's courier isn't ours, so no line there.
+            'deliveryFees' => $user->can('reports.view_financial') && $selected !== 'bolt_food'
+                ? $deliveryFees->summary(
+                    $deliveryFees->rows($rangeStart, $rangeEnd, ignoreBranchScope: $branchId === null, branchId: $branchId)->where('channel', $channel)
+                )
+                : null,
             // Shift model carries no BranchScope (ShiftService::
             // activeForBranch() takes an explicit branch id rather than
             // relying on it), so this filters explicitly rather than

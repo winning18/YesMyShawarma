@@ -6,8 +6,10 @@ use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Models\OrderEvent;
+use App\Models\Refund;
 use App\Models\User;
 use App\Services\Reports\DeliveryFeeReportService;
+use App\Services\Reports\OrderReportService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -230,5 +232,67 @@ class DeliveryFeesReportTest extends TestCase
         $this->actingAs($this->userWithRole('staff'))
             ->post(route('orders.delivery_fee_paid_by', $order), ['delivery_fee_paid_by' => 'rider_cash'])
             ->assertForbidden();
+    }
+
+    public function test_delivery_fees_are_never_counted_as_sales(): void
+    {
+        $rider = $this->userWithRole('rider');
+        $this->delivery($rider, 1500)->forceFill(['placed_at' => now()])->save();
+        $paystack = $this->delivery($rider, 1000, ['payment_method' => 'paystack']);
+        $paystack->forceFill(['placed_at' => now()])->save();
+
+        $financial = app(OrderReportService::class)->financialSummary(now()->startOfDay(), now()->endOfDay(), ignoreBranchScope: true);
+
+        $this->assertSame(10000, $financial['revenue_total']); // 2 orders of 5000 food
+        $this->assertSame(5000, $financial['revenue_by_payment_method']['cash']);
+        $this->assertSame(5000, $financial['revenue_by_payment_method']['paystack']);
+        $this->assertSame(5000, $financial['average_order_value']);
+    }
+
+    public function test_a_full_refund_takes_back_only_the_food_from_sales(): void
+    {
+        $rider = $this->userWithRole('rider');
+        $manager = $this->userWithRole('manager');
+        $order = $this->delivery($rider, 1500);
+        $order->forceFill(['placed_at' => now()])->save();
+        Refund::create([
+            'order_id' => $order->id, 'branch_id' => $this->branch->id,
+            'amount' => 6500, 'reason' => 'Wrong order', 'status' => 'completed',
+            'requested_by' => $manager->id, 'completed_by' => $manager->id, 'completed_at' => now(),
+        ]);
+
+        $financial = app(OrderReportService::class)->financialSummary(now()->startOfDay(), now()->endOfDay(), ignoreBranchScope: true);
+
+        $this->assertSame(0, $financial['revenue_total']);
+        $this->assertSame(6500, $financial['refund_total']);
+    }
+
+    public function test_today_report_shows_delivery_fees_apart_from_sales_to_managers_but_not_staff(): void
+    {
+        $rider = $this->userWithRole('rider');
+        $order = $this->delivery($rider, 1500, ['channel' => 'pos']);
+        $order->forceFill(['placed_at' => now()])->save();
+        $params = ['date' => now('Africa/Accra')->toDateString(), 'channel' => 'pos'];
+
+        $manager = $this->actingAs($this->userWithRole('manager'))->get(route('dashboard.reports.today.index', $params))->assertOk();
+        $this->assertSame(1500, $manager->viewData('deliveryFees')['total']);
+        $this->assertSame(5000, $manager->viewData('summary')['total_sales']);
+        $manager->assertSee('Delivery fees, not included in sales');
+
+        $staff = $this->actingAs($this->userWithRole('staff'))->get(route('dashboard.reports.today.index', $params))->assertOk();
+        $this->assertNull($staff->viewData('deliveryFees'));
+        $staff->assertDontSee('Delivery fees, not included in sales');
+    }
+
+    public function test_rider_dashboard_data_gives_todays_cash_delivery_fees(): void
+    {
+        $rider = $this->userWithRole('rider');
+        $this->delivery($rider, 1500);
+        $this->delivery($rider, 1000, ['payment_method' => 'momo']); // staff pay this one
+        $this->delivery($rider, 700, ['delivered_at' => now()->subDays(2)]);
+
+        $this->actingAs($rider, 'rider')->getJson(route('rider.orders.data'))
+            ->assertOk()
+            ->assertJsonPath('meta.delivery_fee_cash_today', 1500);
     }
 }

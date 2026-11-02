@@ -32,6 +32,11 @@
                 <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-4" x-text="error"></div>
             </template>
 
+            <div class="bg-white shadow-sm rounded-lg p-4 flex items-center justify-between gap-3">
+                <p class="text-sm text-gray-600">{{ __('Delivery fees collected in cash today') }}</p>
+                <p class="text-lg font-semibold text-gray-900" x-text="formatMoney(deliveryFeeCashToday)"></p>
+            </div>
+
             <section>
                 <h3 class="text-lg font-semibold text-gray-800 mb-3">{{ __('My deliveries') }}</h3>
 
@@ -208,6 +213,7 @@
         function riderDashboard(branchId, riderId) {
             return {
                 mine: [],
+                deliveryFeeCashToday: 0,
                 error: null,
                 actionError: null,
                 arriving: null,
@@ -241,9 +247,10 @@
 
                         if (!response.ok) throw new Error('Failed to load orders');
 
-                        const { data } = await response.json();
+                        const { data, meta } = await response.json();
 
                         this.mine = data;
+                        this.deliveryFeeCashToday = meta.delivery_fee_cash_today;
                         this.error = null;
                     } catch (e) {
                         this.error = e.message;

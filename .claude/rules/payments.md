@@ -224,6 +224,10 @@ raise it.
 ## Delivery fee audit
 
 Every delivery fee goes to the rider — delivery fees are not sales (owner, 2026-10-21).
+`OrderReportService::financialSummary()` counts `total - delivery_fee`, so Sales, Detailed
+reports, Performance and shift-close `system_sales` are all food after discounts, and a refund
+only reduces sales up to that value. Fee figures are shown apart, and only to
+`reports.view_financial` holders and the rider — never staff.
 Reports → Delivery fees (`reports.view_financial`) and the rider app's Past deliveries totals are
 both built by `DeliveryFeeReportService`, so a rider's figures always equal their row in the
 report. Delivered delivery orders only, dated by `delivered_at`, using the order's final

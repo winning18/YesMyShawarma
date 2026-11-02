@@ -133,6 +133,7 @@ class DeliveryFeeReportService
             'rider' => $order->rider?->name ?? __('(removed rider)'),
             'area' => $order->delivery_address_snapshot['area_name'] ?? null,
             'payment_method' => $order->payment_method,
+            'channel' => $order->channel,
             'fee' => $fee,
             'cash' => $cash,
             'prepaid' => $prepaid,

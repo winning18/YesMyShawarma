@@ -19,7 +19,7 @@
                             <p class="text-xl font-semibold text-gray-900">{{ $money($totals['total']) }}</p>
                             <p class="text-xs text-gray-500">
                                 {{ trans_choice(':count delivery|:count deliveries', $totals['count'], ['count' => $totals['count']]) }} ·
-                                {{ __(':amount from staff', ['amount' => $money($totals['prepaid'])]) }}
+                                {{ __(':cash cash from customers · :staff from staff', ['cash' => $money($totals['cash']), 'staff' => $money($totals['prepaid'])]) }}
                             </p>
                         </div>
                     @endforeach
