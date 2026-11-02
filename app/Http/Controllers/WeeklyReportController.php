@@ -2,8 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Branch;
-use App\Services\Branches\BranchContext;
+use App\Services\Reports\ReportBranchFilter;
 use App\Services\Reports\WeeklySalesReportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -16,19 +15,18 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * audit counterpart to "Invoices and sales": one row per order in the
  * chosen week, every status included, not one aggregated row per week. Defaults to the overall (cross-branch) picture for
  * owner/general_manager, same as the other Reports and invoices pages —
- * see ReportsInvoicesController's resolveBranchFilter() for the shared
- * reasoning.
+ * see ReportBranchFilter for the shared rule.
  */
 class WeeklyReportController extends Controller
 {
     public function __construct(private readonly WeeklySalesReportService $weeklySales) {}
 
-    public function index(Request $request, BranchContext $context): View
+    public function index(Request $request, ReportBranchFilter $branches): View
     {
         Gate::authorize('reports.view_financial');
 
         [$weekStart, $weekEnd] = $this->resolveWeek($request);
-        [, $branchViewData] = $this->resolveBranchFilter($request, $context);
+        [, $branchViewData] = $branches->resolve($request);
 
         return view('dashboard.reports.weekly', [
             'weekStart' => $weekStart,
@@ -37,12 +35,12 @@ class WeeklyReportController extends Controller
         ]);
     }
 
-    public function download(Request $request, BranchContext $context): StreamedResponse
+    public function download(Request $request, ReportBranchFilter $branches): StreamedResponse
     {
         Gate::authorize('reports.view_financial');
 
         [$weekStart, $weekEnd] = $this->resolveWeek($request);
-        [$branchArgs] = $this->resolveBranchFilter($request, $context);
+        [$branchArgs] = $branches->resolve($request);
         $orders = $this->weeklySales->detailedOrders($weekStart, $weekEnd, ...$branchArgs);
         $filename = 'order-export-'.$weekStart->format('Y-m-d').'-to-'.$weekEnd->format('Y-m-d').'.csv';
 
@@ -66,42 +64,6 @@ class WeeklyReportController extends Controller
 
             fclose($out);
         }, $filename);
-    }
-
-    /**
-     * Same "tampered input dropped, never trusted" branch-filter
-     * resolution as ReportsController/ReportsInvoicesController.
-     *
-     * @return array{0: array<string, mixed>, 1: array<string, mixed>}
-     */
-    private function resolveBranchFilter(Request $request, BranchContext $context): array
-    {
-        $user = $request->user();
-        $isOwner = $context->hasRoleAtAnyBranch($user, 'owner');
-        $isGeneralManager = ! $isOwner && $context->hasRoleAtAnyBranch($user, 'general_manager');
-        $crossBranch = $isOwner || $isGeneralManager;
-        $scopeBranchIds = $isGeneralManager ? $context->branchIdsForRole($user, 'general_manager')->all() : null;
-
-        $validated = $request->validate(['branch' => ['nullable', 'integer', 'exists:branches,id']]);
-        $filterBranchId = isset($validated['branch']) ? (int) $validated['branch'] : null;
-        if (! $crossBranch || ($isGeneralManager && ! in_array($filterBranchId, $scopeBranchIds, true))) {
-            $filterBranchId = null;
-        }
-
-        $branchArgs = $filterBranchId !== null
-            ? ['branchId' => $filterBranchId]
-            : ($crossBranch ? ['ignoreBranchScope' => $isOwner, 'branchIds' => $scopeBranchIds] : []);
-
-        $branchOptionsQuery = Branch::orderBy('name');
-        if ($isGeneralManager) {
-            $branchOptionsQuery->whereIn('id', $scopeBranchIds);
-        }
-
-        return [$branchArgs, [
-            'crossBranch' => $crossBranch,
-            'branchFilterId' => $filterBranchId,
-            'branchOptions' => $crossBranch ? $branchOptionsQuery->get(['id', 'name']) : null,
-        ]];
     }
 
     /**

@@ -51,7 +51,7 @@ class DailySalesReportService
      *   by_payment_method: Collection<string, int>,
      * }
      */
-    public function summary(Carbon $dayStart, Carbon $dayEnd, string $channel, ?string $paymentMethod = null, ?int $branchId = null): array
+    public function summary(Carbon $dayStart, Carbon $dayEnd, string $channel, ?string $paymentMethod = null, ?int $branchId = null, bool $ignoreBranchScope = false, ?array $branchIds = null): array
     {
         $orders = Order::with([
             'items.menuItem' => fn ($query) => $query->withTrashed(),
@@ -67,6 +67,10 @@ class DailySalesReportService
             // ambient-session filtering in place, unchanged from before
             // this existed.
             ->when($branchId, fn ($query, $id) => $query->withoutGlobalScope(BranchScope::class)->where('branch_id', $id))
+            // "All branches" from the Sales filter: an owner's every branch
+            // ($ignoreBranchScope) or a manager/GM's own set ($branchIds).
+            ->when($ignoreBranchScope, fn ($query) => $query->withoutGlobalScope(BranchScope::class))
+            ->when($branchIds !== null, fn ($query) => $query->withoutGlobalScope(BranchScope::class)->whereIn('branch_id', $branchIds))
             ->whereBetween('placed_at', [$dayStart->clone()->utc(), $dayEnd->clone()->utc()])
             ->where('channel', $channel)
             ->whereNotIn('status', Order::NON_REVENUE_STATUSES)
@@ -107,7 +111,7 @@ class DailySalesReportService
 
         $modifierLines = collect($modifierBucket)->sortByDesc('total')->values();
 
-        $financial = $this->reports->financialSummary($dayStart->clone()->utc(), $dayEnd->clone()->utc(), branchId: $branchId, channel: $channel, paymentMethod: $paymentMethod);
+        $financial = $this->reports->financialSummary($dayStart->clone()->utc(), $dayEnd->clone()->utc(), ignoreBranchScope: $ignoreBranchScope, branchId: $branchId, branchIds: $branchIds, channel: $channel, paymentMethod: $paymentMethod);
 
         return [
             'categories' => $categories,

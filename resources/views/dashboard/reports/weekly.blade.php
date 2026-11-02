@@ -27,7 +27,7 @@
                 <div>
                     <label class="block text-xs font-medium text-gray-500 mb-1" for="branch">{{ __('Branch') }}</label>
                     <select id="branch" name="branch" onchange="this.form.submit()" class="rounded-md border-gray-300 text-sm">
-                        <option value="">{{ __('All branches') }}</option>
+                        <option value="">{{ $allBranchesLabel }}</option>
                         @foreach ($branchOptions as $branch)
                             <option value="{{ $branch->id }}" @selected($branchFilterId === $branch->id)>{{ $branch->name }}</option>
                         @endforeach

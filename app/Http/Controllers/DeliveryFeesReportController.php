@@ -2,9 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Branch;
-use App\Services\Branches\BranchContext;
 use App\Services\Reports\DeliveryFeeReportService;
+use App\Services\Reports\ReportBranchFilter;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
@@ -25,12 +24,12 @@ class DeliveryFeesReportController extends Controller
 
     public function __construct(private readonly DeliveryFeeReportService $fees) {}
 
-    public function index(Request $request, BranchContext $context): View
+    public function index(Request $request, ReportBranchFilter $branches): View
     {
         Gate::authorize('reports.view_financial');
 
         [$from, $to] = $this->resolveRange($request);
-        [$branchArgs, $branchViewData] = $this->resolveBranchFilter($request, $context);
+        [$branchArgs, $branchViewData] = $branches->resolve($request);
         $riderId = $this->resolveRider($request);
 
         $allRows = $this->fees->rows($from, $to, null, ...$branchArgs);
@@ -51,12 +50,12 @@ class DeliveryFeesReportController extends Controller
         ]);
     }
 
-    public function download(Request $request, BranchContext $context): StreamedResponse
+    public function download(Request $request, ReportBranchFilter $branches): StreamedResponse
     {
         Gate::authorize('reports.view_financial');
 
         [$from, $to] = $this->resolveRange($request);
-        [$branchArgs] = $this->resolveBranchFilter($request, $context);
+        [$branchArgs] = $branches->resolve($request);
         $rows = $this->fees->rows($from, $to, $this->resolveRider($request), ...$branchArgs);
 
         return response()->streamDownload(function () use ($rows) {
@@ -87,42 +86,6 @@ class DeliveryFeesReportController extends Controller
         $validated = $request->validate(['rider' => ['nullable', 'integer']]);
 
         return isset($validated['rider']) ? (int) $validated['rider'] : null;
-    }
-
-    /**
-     * Same "tampered input dropped, never trusted" branch-filter
-     * resolution as ReportsInvoicesController.
-     *
-     * @return array{0: array<string, mixed>, 1: array<string, mixed>}
-     */
-    private function resolveBranchFilter(Request $request, BranchContext $context): array
-    {
-        $user = $request->user();
-        $isOwner = $context->hasRoleAtAnyBranch($user, 'owner');
-        $isGeneralManager = ! $isOwner && $context->hasRoleAtAnyBranch($user, 'general_manager');
-        $crossBranch = $isOwner || $isGeneralManager;
-        $scopeBranchIds = $isGeneralManager ? $context->branchIdsForRole($user, 'general_manager')->all() : null;
-
-        $validated = $request->validate(['branch' => ['nullable', 'integer', 'exists:branches,id']]);
-        $filterBranchId = isset($validated['branch']) ? (int) $validated['branch'] : null;
-        if (! $crossBranch || ($isGeneralManager && ! in_array($filterBranchId, $scopeBranchIds, true))) {
-            $filterBranchId = null;
-        }
-
-        $branchArgs = $filterBranchId !== null
-            ? ['branchId' => $filterBranchId]
-            : ($crossBranch ? ['ignoreBranchScope' => $isOwner, 'branchIds' => $scopeBranchIds] : []);
-
-        $branchOptionsQuery = Branch::orderBy('name');
-        if ($isGeneralManager) {
-            $branchOptionsQuery->whereIn('id', $scopeBranchIds);
-        }
-
-        return [$branchArgs, [
-            'crossBranch' => $crossBranch,
-            'branchFilterId' => $filterBranchId,
-            'branchOptions' => $crossBranch ? $branchOptionsQuery->get(['id', 'name']) : null,
-        ]];
     }
 
     /**

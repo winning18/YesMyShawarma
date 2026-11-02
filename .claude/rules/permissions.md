@@ -310,3 +310,12 @@ check reached by a customer-guard request is a bug.
 
 New permissions go in a seeder, not a migration, so they can be re-run. Update the matrix
 above in the same commit — a permission that exists in code but not in this table will drift.
+
+## Report branch filter
+
+Every Reports and invoices tab shares `ReportBranchFilter`: owner picks any branch or all;
+`general_manager` and `manager` pick only branches they hold that role at, or all of their own;
+staff get no filter and stay pinned by BranchScope. A branch outside someone's set is dropped,
+never trusted, on pages and downloads alike. With no choice made, tabs show that person's whole
+set, except Sales, which stays on the current branch because it's built around that branch's
+open shift (`branch=all` is its explicit overall view).

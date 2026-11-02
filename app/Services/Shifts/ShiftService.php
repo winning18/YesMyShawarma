@@ -110,13 +110,17 @@ class ShiftService
     }
 
     /**
-     * The latest shift to start at any branch — what the owner's
-     * business-wide Sales view anchors on, the same way a single branch
-     * anchors on mostRecentForBranch().
+     * The latest shift to start at any branch (or any of $branchIds) —
+     * what the all-branches Sales view anchors on, the same way a single
+     * branch anchors on mostRecentForBranch().
+     *
+     * @param  ?list<int>  $branchIds
      */
-    public function mostRecentAcrossBranches(): ?Shift
+    public function mostRecentAcrossBranches(?array $branchIds = null): ?Shift
     {
-        return Shift::latest('started_at')->first();
+        return Shift::when($branchIds !== null, fn ($query) => $query->whereIn('branch_id', $branchIds))
+            ->latest('started_at')
+            ->first();
     }
 
     /**

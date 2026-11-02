@@ -10,7 +10,7 @@
             // Performance stays locked to it while navigating shifts,
             // dates and channels — never silently drops back to their own
             // ambient session branch mid-browse.
-            $branchParam = $viewingBranch ? ['branch' => $viewingBranch->id] : [];
+            $branchParam = $viewingBranch ? ['branch' => $viewingBranch->id] : ($allBranches ? ['branch' => 'all'] : []);
         @endphp
 
         @if ($viewingBranch)
@@ -67,6 +67,24 @@
             date case is still a real form, since it needs the input.
         --}}
         <div class="bg-white shadow rounded-lg p-4 space-y-3">
+            @if ($crossBranch)
+                <form method="GET" action="{{ route('dashboard.reports.today.index') }}">
+                    <input type="hidden" name="channel" value="{{ $channel }}">
+                    @foreach (['date', 'from', 'to'] as $dateParam)
+                        @if (request()->filled($dateParam))
+                            <input type="hidden" name="{{ $dateParam }}" value="{{ request($dateParam) }}">
+                        @endif
+                    @endforeach
+                    <label for="branch" class="block text-xs font-medium text-gray-500 mb-1">{{ __('Branch') }}</label>
+                    <select id="branch" name="branch" onchange="this.form.submit()" class="rounded-md border-gray-300 text-sm">
+                        <option value="all" @selected($allBranches || $selectedBranchId === null)>{{ $allBranchesLabel }}</option>
+                        @foreach ($branchOptions as $branchOption)
+                            <option value="{{ $branchOption->id }}" @selected($selectedBranchId === $branchOption->id)>{{ $branchOption->name }}</option>
+                        @endforeach
+                    </select>
+                </form>
+            @endif
+
             <div class="flex items-center justify-between flex-wrap gap-3">
                 <div class="flex flex-wrap items-end gap-3">
                     <div>
@@ -85,8 +103,8 @@
 
                     <form method="GET" action="{{ route('dashboard.reports.today.index') }}" class="flex flex-wrap items-end gap-3">
                         <input type="hidden" name="channel" value="{{ $channel }}">
-                        @if ($viewingBranch)
-                            <input type="hidden" name="branch" value="{{ $viewingBranch->id }}">
+                        @if ($branchParam)
+                            <input type="hidden" name="branch" value="{{ $branchParam['branch'] }}">
                         @endif
                         <div>
                             <label class="block text-xs font-medium text-gray-500 mb-1" for="date">{{ __('Or pick a date') }}</label>

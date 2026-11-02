@@ -2,9 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Branch;
-use App\Services\Branches\BranchContext;
 use App\Services\Reports\OrderReportService;
+use App\Services\Reports\ReportBranchFilter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
@@ -27,61 +26,30 @@ class ReportsController extends Controller
      */
     private const RANGE_PRESETS = ['today', 'yesterday', '7', '30', 'week', 'month', 'last_month', 'custom'];
 
-    public function index(Request $request, OrderReportService $reports, BranchContext $context): View
+    public function index(Request $request, OrderReportService $reports, ReportBranchFilter $branches): View
     {
         Gate::authorize('reports.view_operational');
-
-        $user = $request->user();
-        $isOwner = $context->hasRoleAtAnyBranch($user, 'owner');
-        $isGeneralManager = ! $isOwner && $context->hasRoleAtAnyBranch($user, 'general_manager');
-        $crossBranch = $isOwner || $isGeneralManager;
-        $scopeBranchIds = $isGeneralManager ? $context->branchIdsForRole($user, 'general_manager')->all() : null;
 
         $validated = $request->validate([
             'range' => ['nullable', Rule::in(self::RANGE_PRESETS)],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
-            'branch' => ['nullable', 'integer', 'exists:branches,id'],
         ]);
 
         [$from, $to] = $this->resolveRange($validated);
 
-        // Same "tampered input dropped, never trusted" treatment as
-        // PerformanceController — a manager/staff submitting a branch is
-        // meaningless (already pinned to their own), and a
-        // general_manager is further limited to branches they oversee.
-        $filterBranchId = isset($validated['branch']) ? (int) $validated['branch'] : null;
-        if (! $crossBranch || ($isGeneralManager && ! in_array($filterBranchId, $scopeBranchIds, true))) {
-            $filterBranchId = null;
-        }
+        [$branchArgs, $branchViewData] = $branches->resolve($request);
 
         $canViewFinancial = Gate::allows('reports.view_financial');
 
         $utcFrom = $from->clone()->utc();
         $utcTo = $to->clone()->utc();
 
-        // $filterBranchId set wins outright (one specific branch,
-        // regardless of role); otherwise owner sees literally everything
-        // and general_manager their oversight set — "overall" by default,
-        // never silently narrowed by whatever's ambient in session. A
-        // plain manager/staff falls through to BranchScope's own ambient
-        // filtering, unchanged from before this existed.
-        $branchArgs = $filterBranchId !== null
-            ? ['branchId' => $filterBranchId]
-            : ($crossBranch ? ['ignoreBranchScope' => $isOwner, 'branchIds' => $scopeBranchIds] : []);
-
-        $branchOptionsQuery = Branch::orderBy('name');
-        if ($isGeneralManager) {
-            $branchOptionsQuery->whereIn('id', $scopeBranchIds);
-        }
-
         return view('dashboard.reports.index', [
             'from' => $from,
             'to' => $to,
             'range' => $validated['range'] ?? null,
-            'crossBranch' => $crossBranch,
-            'branchFilterId' => $filterBranchId,
-            'branchOptions' => $crossBranch ? $branchOptionsQuery->get(['id', 'name']) : null,
+            ...$branchViewData,
             'operational' => $reports->operationalSummary($utcFrom, $utcTo, ...$branchArgs),
             'financial' => $canViewFinancial ? $reports->financialSummary($utcFrom, $utcTo, ...$branchArgs) : null,
             'canViewFinancial' => $canViewFinancial,

@@ -2,8 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Branch;
-use App\Services\Branches\BranchContext;
+use App\Services\Reports\ReportBranchFilter;
 use App\Services\Reports\SalesStatementExporter;
 use App\Services\Reports\SalesStatementService;
 use App\Services\Reports\WeeklySalesReportService;
@@ -29,7 +28,7 @@ use Symfony\Component\HttpFoundation\HeaderUtils;
  * Defaults to the overall (cross-branch) picture for owner/
  * general_manager, same as Detailed reports/Performance, rather than
  * being silently pinned to whatever branch happens to be ambient in
- * session — see resolveBranchFilter().
+ * session — see ReportBranchFilter.
  */
 class ReportsInvoicesController extends Controller
 {
@@ -45,13 +44,13 @@ class ReportsInvoicesController extends Controller
         private readonly SalesStatementExporter $exporter,
     ) {}
 
-    public function index(Request $request, BranchContext $context): View
+    public function index(Request $request, ReportBranchFilter $branches): View
     {
         Gate::authorize('reports.view_financial');
 
         [$from, $to] = $this->resolveRange($request);
         $type = $this->resolveType($request);
-        [$branchArgs, $branchViewData] = $this->resolveBranchFilter($request, $context);
+        [$branchArgs, $branchViewData] = $branches->resolve($request);
 
         $history = $this->weeklySales->weeklyHistory(...$branchArgs);
         $perPage = 20;
@@ -79,14 +78,14 @@ class ReportsInvoicesController extends Controller
         ]);
     }
 
-    public function download(Request $request, string $format, BranchContext $context): Response
+    public function download(Request $request, string $format, ReportBranchFilter $branches): Response
     {
         Gate::authorize('reports.view_financial');
 
         abort_unless(in_array($format, ['csv', 'xlsx', 'pdf'], true), 404);
 
         [$from, $to] = $this->resolveRange($request);
-        [$branchArgs] = $this->resolveBranchFilter($request, $context);
+        [$branchArgs] = $branches->resolve($request);
         $report = $this->statements->build($this->resolveType($request), $from, $to, ...$branchArgs);
 
         [$contents, $contentType] = match ($format) {
@@ -103,46 +102,6 @@ class ReportsInvoicesController extends Controller
                 Str::ascii($this->exporter->filename($report, $format)),
             ),
         ]);
-    }
-
-    /**
-     * Same "tampered input dropped, never trusted" branch-filter
-     * resolution as ReportsController/PerformanceController — a manager/
-     * staff submitting a branch is ignored (already pinned to their own),
-     * a general_manager is limited to branches they oversee, and no
-     * filter at all means "overall" for owner/general_manager rather than
-     * whatever's ambient in session.
-     *
-     * @return array{0: array<string, mixed>, 1: array<string, mixed>}
-     */
-    private function resolveBranchFilter(Request $request, BranchContext $context): array
-    {
-        $user = $request->user();
-        $isOwner = $context->hasRoleAtAnyBranch($user, 'owner');
-        $isGeneralManager = ! $isOwner && $context->hasRoleAtAnyBranch($user, 'general_manager');
-        $crossBranch = $isOwner || $isGeneralManager;
-        $scopeBranchIds = $isGeneralManager ? $context->branchIdsForRole($user, 'general_manager')->all() : null;
-
-        $validated = $request->validate(['branch' => ['nullable', 'integer', 'exists:branches,id']]);
-        $filterBranchId = isset($validated['branch']) ? (int) $validated['branch'] : null;
-        if (! $crossBranch || ($isGeneralManager && ! in_array($filterBranchId, $scopeBranchIds, true))) {
-            $filterBranchId = null;
-        }
-
-        $branchArgs = $filterBranchId !== null
-            ? ['branchId' => $filterBranchId]
-            : ($crossBranch ? ['ignoreBranchScope' => $isOwner, 'branchIds' => $scopeBranchIds] : []);
-
-        $branchOptionsQuery = Branch::orderBy('name');
-        if ($isGeneralManager) {
-            $branchOptionsQuery->whereIn('id', $scopeBranchIds);
-        }
-
-        return [$branchArgs, [
-            'crossBranch' => $crossBranch,
-            'branchFilterId' => $filterBranchId,
-            'branchOptions' => $crossBranch ? $branchOptionsQuery->get(['id', 'name']) : null,
-        ]];
     }
 
     /**
