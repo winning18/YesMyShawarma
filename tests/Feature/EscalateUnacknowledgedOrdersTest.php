@@ -260,4 +260,21 @@ class EscalateUnacknowledgedOrdersTest extends TestCase
             'order_id' => $order->id, 'meta->escalation_level' => 5,
         ]);
     }
+
+    public function test_the_escalation_sms_names_the_branch(): void
+    {
+        $owner = User::factory()->create(['phone' => '+233244000000']);
+        $this->assignRoleAt($owner, 'owner', $this->branch);
+
+        $order = $this->makeOrderPaidMinutesAgo(11);
+
+        $this->mock(Notifier::class, function ($mock) use ($order) {
+            $mock->shouldReceive('notify')
+                ->with('+233244000000', "Order {$order->reference} at Osu has been unacknowledged for 10+ minutes.", \Mockery::type('array'))
+                ->once();
+            $mock->shouldReceive('notify')->with(\Mockery::any(), \Mockery::any(), \Mockery::any());
+        });
+
+        $this->artisan('orders:escalate-unacknowledged')->assertSuccessful();
+    }
 }

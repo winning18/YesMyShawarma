@@ -97,10 +97,14 @@ class EscalateUnacknowledgedOrders extends Command
                 ->unique('id')
                 ->filter(fn (User $user) => filled($user->phone));
 
+            // Names the branch: a GM or the owner gets these for several
+            // branches, and the reference alone doesn't say where to call.
+            $branchName = $order->branch?->name ?? __('an unknown branch');
+
             foreach ($recipients as $user) {
                 $notifier->notify(
                     $user->phone,
-                    "Order {$order->reference} has been unacknowledged for {$thresholdMinutes}+ minutes.",
+                    "Order {$order->reference} at {$branchName} has been unacknowledged for {$thresholdMinutes}+ minutes.",
                     ['order_id' => $order->id, 'branch_id' => $order->branch_id],
                 );
             }
