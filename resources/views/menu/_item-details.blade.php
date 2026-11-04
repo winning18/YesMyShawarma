@@ -1,5 +1,10 @@
 <div class="flex justify-between items-start mb-3">
-    <a href="{{ route('menu.show', $item) }}" class="font-semibold text-brand-white hover:underline">{{ $item->name }}</a>
+    <div>
+        <a href="{{ route('menu.show', $item) }}" class="font-semibold text-brand-white hover:underline">{{ $item->name }}</a>
+        @if ($isPopular ?? false)
+            <span class="ml-1 inline-block align-middle bg-brand-yellow text-brand-black text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded">{{ __('Popular') }}</span>
+        @endif
+    </div>
     <p class="font-semibold whitespace-nowrap ml-2 text-brand-white">
         GH₵{{ number_format($item->base_price / 100, 2) }}
     </p>

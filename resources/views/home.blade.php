@@ -186,6 +186,29 @@
             MenuController@show 404s on an item that isn't available at
             the customer's selected branch.
         --}}
+        @if ($popularItems->isNotEmpty())
+            <section class="mb-12">
+                <h2 class="text-xl font-bold text-brand-white mb-4">{{ __('Most ordered this month') }}</h2>
+                <div class="overflow-x-auto scrollbar-hide snap-x snap-mandatory">
+                    <div class="flex gap-4 w-max">
+                        @foreach ($popularItems as $item)
+                            <a href="{{ route('menu.show', $item) }}" class="block w-40 shrink-0 snap-start group {{ $item->isAvailable ? '' : 'opacity-50' }}">
+                                <div class="relative">
+                                    <x-product-image :item="$item" class="w-40 h-40 mb-2 rounded-lg group-hover:opacity-90 transition {{ $item->isAvailable ? '' : 'grayscale' }}" />
+                                    <span class="absolute top-2 left-2 bg-brand-yellow text-brand-black text-[11px] font-bold px-2 py-0.5 rounded">#{{ $item->popularRank }}</span>
+                                    @unless ($item->isAvailable)
+                                        <span class="absolute top-2 right-2 bg-brand-black/80 text-brand-white text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded">{{ __('Sold out') }}</span>
+                                    @endunless
+                                </div>
+                                <p class="text-sm font-semibold truncate text-brand-white">{{ $item->name }}</p>
+                                <p class="text-sm text-brand-gray-300">GH₵{{ number_format($item->base_price / 100, 2) }}</p>
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+            </section>
+        @endif
+
         @foreach ($menuSliders as $slider)
             <section class="mb-12">
                 <div class="flex items-center justify-between mb-4">

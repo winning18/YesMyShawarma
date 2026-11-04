@@ -106,7 +106,7 @@
                                     </a>
 
                                     <div class="flex-1 min-w-0">
-                                        @include('menu._item-details', ['item' => $item, 'branch' => $branch])
+                                        @include('menu._item-details', ['item' => $item, 'branch' => $branch, 'isPopular' => in_array($item->id, $popularIds, true)])
                                     </div>
                                 </div>
                             @else
@@ -115,7 +115,7 @@
                                         <x-product-image :item="$item" class="w-full max-w-56 mx-auto aspect-square mb-4" />
                                     </a>
 
-                                    @include('menu._item-details', ['item' => $item, 'branch' => $branch])
+                                    @include('menu._item-details', ['item' => $item, 'branch' => $branch, 'isPopular' => in_array($item->id, $popularIds, true)])
                                 </div>
                             @endif
                         </div>

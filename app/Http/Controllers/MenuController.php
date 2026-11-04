@@ -6,13 +6,14 @@ use App\Models\Branch;
 use App\Models\Category;
 use App\Models\MenuItem;
 use App\Services\Customers\CustomerBranchSelection;
+use App\Services\Menu\PopularItemsService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class MenuController extends Controller
 {
-    public function index(CustomerBranchSelection $selection): View|RedirectResponse
+    public function index(CustomerBranchSelection $selection, PopularItemsService $popular): View|RedirectResponse
     {
         $branch = $this->resolveBranch($selection);
 
@@ -44,11 +45,12 @@ class MenuController extends Controller
         return view('menu.index', [
             'branch' => $branch,
             'categories' => $categories,
+            'popularIds' => $popular->badged(),
             'menuSchema' => $this->menuSchema($branch, $categories),
         ]);
     }
 
-    public function show(MenuItem $menuItem, CustomerBranchSelection $selection): View|RedirectResponse
+    public function show(MenuItem $menuItem, CustomerBranchSelection $selection, PopularItemsService $popular): View|RedirectResponse
     {
         $branch = $this->resolveBranch($selection);
 
@@ -90,6 +92,7 @@ class MenuController extends Controller
             'item' => $item,
             'drinks' => $drinks,
             'isAvailable' => $isAvailable,
+            'popularRank' => $popular->rank($item->id),
             'productSchema' => $this->productSchema($item, $isAvailable),
         ]);
     }

@@ -25,6 +25,12 @@
         <div>
             <h1 class="text-2xl font-bold mb-2">{{ $item->name }}</h1>
 
+            @if ($popularRank)
+                <p class="inline-block mb-3 bg-brand-yellow text-brand-black text-xs font-bold uppercase tracking-wide px-2 py-1 rounded">
+                    {{ $popularRank === 1 ? __('Most ordered this month') : __('#:rank most ordered this month', ['rank' => $popularRank]) }}
+                </p>
+            @endif
+
             @if ($item->description)
                 <p class="text-brand-gray-500 mb-4">{{ $item->description }}</p>
             @endif

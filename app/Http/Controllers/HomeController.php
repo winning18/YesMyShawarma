@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\Category;
 use App\Models\MenuItem;
 use App\Services\Customers\CustomerBranchSelection;
+use App\Services\Menu\PopularItemsService;
 use App\Services\Promotions\PromotionService;
 use App\Services\Seo\RestaurantSchemaBuilder;
 use Illuminate\Support\Collection;
@@ -27,7 +28,7 @@ class HomeController extends Controller
         ['title' => 'Drinks', 'slugs' => ['drinks']],
     ];
 
-    public function index(CustomerBranchSelection $selection, RestaurantSchemaBuilder $restaurantSchema, PromotionService $promotions): View
+    public function index(CustomerBranchSelection $selection, RestaurantSchemaBuilder $restaurantSchema, PromotionService $promotions, PopularItemsService $popular): View
     {
         // Every category is hero-slide-eligible (Hero Slider dashboard
         // page), but only ones staff actually gave a photo appear on the
@@ -56,6 +57,7 @@ class HomeController extends Controller
                 'headline' => $promotion->banner_headline,
                 'imageUrl' => $promotion->bannerImageUrl(),
             ] : null,
+            'popularItems' => $this->popularItems($popular, $selection->current()),
             'menuSliders' => $this->menuSliders($selection->current()),
             'restaurantSchema' => $restaurantSchema->forActiveBranches(),
         ]);
@@ -101,6 +103,36 @@ class HomeController extends Controller
             ->orderBy('sort_order')
             ->get();
 
+        return $this->withAvailability($items, $branch);
+    }
+
+    /**
+     * The "Most ordered this month" strip, most ordered first, each with
+     * its rank. Sold-out items stay in with the same gray-out as the
+     * category strips.
+     */
+    private function popularItems(PopularItemsService $popular, ?Branch $branch): Collection
+    {
+        $ranks = $popular->ranks();
+
+        if ($ranks === []) {
+            return collect();
+        }
+
+        $items = MenuItem::whereIn('id', array_keys($ranks))->where('is_active', true)->get()
+            ->sortBy(fn (MenuItem $item) => $ranks[$item->id])
+            ->values()
+            ->map(function (MenuItem $item) use ($ranks) {
+                $item->popularRank = $ranks[$item->id];
+
+                return $item;
+            });
+
+        return $this->withAvailability($items, $branch);
+    }
+
+    private function withAvailability(Collection $items, ?Branch $branch): Collection
+    {
         $availableIds = $branch
             ? $branch->menuItems()
                 ->whereIn('menu_items.id', $items->pluck('id'))
