@@ -280,30 +280,38 @@
             {{ $slot }}
         </main>
 
+        {{--
+            A small floating card rather than a full-width bar: the page
+            stays usable underneath (browsing and ordering never wait on a
+            choice), and on a phone it covers far less of the screen.
+            Bottom-centre on phones, bottom-right from sm up.
+        --}}
         <div
             x-data="{ show: {{ $cookieConsentGiven ? 'false' : 'true' }} }"
             x-on:open-cookie-banner.window="show = true"
             x-show="show"
             x-cloak
-            class="fixed inset-x-0 bottom-0 z-50 bg-brand-black border-t border-brand-yellow px-4 py-4"
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0 translate-y-2"
+            x-transition:enter-end="opacity-100 translate-y-0"
+            role="dialog" aria-live="polite" aria-label="{{ __('Cookie preferences') }}"
+            class="fixed bottom-4 inset-x-4 sm:inset-x-auto sm:right-4 sm:w-80 z-50 bg-brand-black border border-brand-yellow rounded-xl shadow-lg p-4 text-sm text-brand-gray-300"
         >
-            <div class="max-w-5xl mx-auto flex flex-col sm:flex-row items-center gap-4 text-sm text-brand-gray-300">
-                <p class="flex-1 min-w-0 w-full">
-                    {{ __('We use a first-party cookie to see how visitors use our site. You can accept or decline it. The site works either way.') }}
-                    <a href="{{ route('policy.cookies') }}" class="underline hover:text-brand-yellow">{{ __('Learn more') }}</a>
-                </p>
-                <div class="flex gap-2 shrink-0">
-                    <form method="POST" action="{{ route('cookie-consent.update') }}">
-                        @csrf
-                        <input type="hidden" name="choice" value="decline">
-                        <button type="submit" class="px-4 py-2 border border-brand-gray-500 text-brand-white text-sm font-semibold rounded-md hover:bg-brand-gray-800">{{ __('Decline') }}</button>
-                    </form>
-                    <form method="POST" action="{{ route('cookie-consent.update') }}">
-                        @csrf
-                        <input type="hidden" name="choice" value="accept">
-                        <button type="submit" class="px-4 py-2 bg-brand-yellow text-brand-black text-sm font-semibold rounded-md hover:bg-brand-yellow-dark">{{ __('Accept') }}</button>
-                    </form>
-                </div>
+            <p>
+                {{ __('We use one first-party cookie to see how our site is used. The site works either way.') }}
+                <a href="{{ route('policy.cookies') }}" class="underline hover:text-brand-yellow">{{ __('Learn more') }}</a>
+            </p>
+            <div class="flex gap-2 mt-3">
+                <form method="POST" action="{{ route('cookie-consent.update') }}" class="flex-1">
+                    @csrf
+                    <input type="hidden" name="choice" value="decline">
+                    <button type="submit" class="w-full px-3 py-1.5 border border-brand-gray-500 text-brand-white text-sm font-semibold rounded-md hover:bg-brand-gray-800">{{ __('Decline') }}</button>
+                </form>
+                <form method="POST" action="{{ route('cookie-consent.update') }}" class="flex-1">
+                    @csrf
+                    <input type="hidden" name="choice" value="accept">
+                    <button type="submit" class="w-full px-3 py-1.5 bg-brand-yellow text-brand-black text-sm font-semibold rounded-md hover:bg-brand-yellow-dark">{{ __('Accept') }}</button>
+                </form>
             </div>
         </div>
 
