@@ -49,14 +49,17 @@
                 slides: @json($heroSlides),
                 active: 0,
                 timer: null,
-                start() { this.timer = setInterval(() => this.next(), 5000) },
-                stop() { clearInterval(this.timer) },
+                start() { this.stop(); if (! document.hidden) this.timer = setInterval(() => this.next(), 5000) },
+                stop() { clearInterval(this.timer); this.timer = null },
                 next() { this.active = (this.active + 1) % this.slides.length },
                 prev() { this.active = (this.active - 1 + this.slides.length) % this.slides.length },
             }'
             x-init="start()"
             @mouseenter="stop()"
             @mouseleave="start()"
+            @customer-drawer-opened.window="stop()"
+            @customer-drawer-closed.window="start()"
+            @visibilitychange.document="document.hidden ? stop() : start()"
             class="relative overflow-hidden"
             role="region"
             aria-label="{{ __('Featured menu categories') }}"
@@ -65,14 +68,23 @@
 
             <div class="relative h-[26rem] sm:h-[32rem]">
                 <template x-for="(slide, index) in slides" :key="index">
+                    {{--
+                        Every slide stays rendered and only its opacity
+                        changes — showing/hiding them (x-show) made iOS
+                        Safari decode and repaint a full-width photo on
+                        every change, keeping the page busy right when
+                        people tapped the menu button. start() also clears
+                        any running timer first: on iPhone each tap fires
+                        mouseenter/mouseleave, and the old start() stacked
+                        a new 5s timer per tap, so slides raced in bursts.
+                    --}}
                     <div
-                        x-show="active === index"
-                        x-transition:enter="transition ease-out duration-700" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-                        x-transition:leave="transition ease-in duration-300" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-                        class="absolute inset-0"
+                        class="absolute inset-0 transition-opacity duration-700 ease-out will-change-[opacity]"
+                        :class="active === index ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+                        :aria-hidden="active !== index"
                     >
                         <div class="absolute inset-0 hero-slider-bg" x-show="!slide.imageUrl"></div>
-                        <img :src="slide.imageUrl" :alt="slide.name" x-show="slide.imageUrl" class="absolute inset-0 w-full h-full object-cover">
+                        <img :src="slide.imageUrl" :alt="slide.name" x-show="slide.imageUrl" decoding="async" class="absolute inset-0 w-full h-full object-cover">
 
                         {{--
                             On narrow screens object-cover fills the whole

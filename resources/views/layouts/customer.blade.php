@@ -141,7 +141,7 @@
                     same as the staff/rider dashboards' hamburger button.
                 --}}
                 <button
-                    type="button" class="md:hidden text-brand-white p-2 -me-2" @click="open = true"
+                    type="button" class="md:hidden text-brand-white p-2 -me-2 touch-manipulation" @click="open = true; $dispatch('customer-drawer-opened')"
                     aria-label="{{ __('Open menu') }}"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
@@ -162,6 +162,13 @@
                 interaction from every other nav in the product.
             --}}
             {{--
+                Slides in over 120ms (was 200ms), with will-change so iOS
+                Safari composites the panel and backdrop up front instead of
+                painting them over the photo-heavy page on the first frame.
+                Opening/closing also tells the homepage hero to pause its
+                slideshow (customer-drawer-opened/-closed).
+            --}}
+            {{--
                 z-[60], not z-40 — the cookie-consent banner and the
                 added-to-cart modal both sit at z-50 (below), and a
                 first-time visitor who hasn't dismissed the cookie banner
@@ -170,26 +177,26 @@
                 open navigation menu is a deliberate user action; it
                 should always be the topmost thing on screen.
             --}}
-            <div x-show="open" x-cloak class="md:hidden fixed inset-0 z-[60]" role="dialog" aria-modal="true">
+            <div x-show="open" x-cloak x-effect="if (! open) $dispatch('customer-drawer-closed')" class="md:hidden fixed inset-0 z-[60]" role="dialog" aria-modal="true">
                 <div
-                    class="fixed inset-0 bg-black/50"
+                    class="fixed inset-0 bg-black/50 will-change-[opacity]"
                     x-show="open"
-                    x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter="transition ease-out duration-[120ms]"
                     x-transition:enter-start="opacity-0"
                     x-transition:enter-end="opacity-100"
-                    x-transition:leave="transition ease-in duration-150"
+                    x-transition:leave="transition ease-in duration-100"
                     x-transition:leave-start="opacity-100"
                     x-transition:leave-end="opacity-0"
                     @click="open = false"
                 ></div>
 
                 <div
-                    class="relative w-64 h-full bg-brand-black flex flex-col"
+                    class="relative w-64 h-full bg-brand-black flex flex-col will-change-transform"
                     x-show="open"
-                    x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter="transition ease-out duration-[120ms]"
                     x-transition:enter-start="-translate-x-full"
                     x-transition:enter-end="translate-x-0"
-                    x-transition:leave="transition ease-in duration-150"
+                    x-transition:leave="transition ease-in duration-100"
                     x-transition:leave-start="translate-x-0"
                     x-transition:leave-end="-translate-x-full"
                 >
