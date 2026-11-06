@@ -5,12 +5,19 @@ namespace App\Services\Promotions;
 use App\Exceptions\OrderPlacementException;
 use App\Models\Branch;
 use App\Models\Customer;
+use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\Promotion;
 use App\Models\PromotionRedemption;
 
 class PromotionService
 {
+    /** What a buy_x_get_y_free promotion always gives away (see appendFreeLines()). */
+    public const FREE_ITEM_SLUG = 'chicken-shawarma';
+
+    /** Categories that never count toward a buy_x_get_y_free promotion. */
+    public const NON_QUALIFYING_CATEGORY_SLUGS = ['drinks'];
+
     /**
      * The automatic, no-code equivalent of validate() — finds the one
      * recurring promotion (if any) that applies to this branch today, e.g.
@@ -154,58 +161,66 @@ class PromotionService
 
     /**
      * Returns $rows (MenuPricingService::priceItems()'s own row shape)
-     * with one synthetic row appended per menu item that has earned a
-     * free unit — never mutates an existing row. Grouped by menu_item_id,
-     * not by cart line, since the same item can be split across several
-     * lines with different options/notes and they all count toward the
-     * same free-unit tally. The synthetic row is priced at 0 (not the
-     * item's real unit_price_snapshot) and carries no options — a free
-     * unit's own chosen options are still billed in full on whichever
-     * paid line earned it, exactly as confirmed for this promo; the free
-     * row itself is always the plain base item. Used identically by
-     * CartService::summary() (so the free line shows up the moment it's
-     * earned, before any order exists) and OrderCreationService::create()
-     * (so the same row becomes a real, separate order_items row, not
-     * folded into the paid one — see is_free on that table).
+     * with the promotion's free row appended — never mutates an existing
+     * row. Owner's rule (2026-11-06): every buy_quantity qualifying items
+     * in the order, mixed freely across items and cart lines, earn
+     * free_quantity plain Chicken Shawarma (FREE_ITEM_SLUG). Drinks
+     * (NON_QUALIFYING_CATEGORY_SLUGS) never count, and add-on options are
+     * never free — the free row is always the plain base item, priced at
+     * 0 with no options. So 2x Signature (chicken, cheese & sausage)
+     * earns one plain Chicken Shawarma, not a third Signature.
+     *
+     * Used identically by CartService::summary() (so the free line shows
+     * up the moment it's earned, before any order exists) and
+     * OrderCreationService::create() (so the same row becomes a real,
+     * separate order_items row — see is_free on that table).
      *
      * @param  list<array{menu_item_id: int, name_snapshot: string, unit_price_snapshot: int, quantity: int}>  $rows
      * @return list<array<string, mixed>>
      */
     public function appendFreeLines(?Promotion $promotion, array $rows): array
     {
-        if (! $promotion || $promotion->type !== 'buy_x_get_y_free') {
+        if (! $promotion || $promotion->type !== 'buy_x_get_y_free' || $rows === []) {
             return $rows;
         }
 
-        $freeRows = collect($rows)
-            ->groupBy('menu_item_id')
-            ->map(function ($group) use ($promotion) {
-                $freeUnits = $this->freeUnitsForQuantity($promotion, $group->sum('quantity'));
-
-                if ($freeUnits < 1) {
-                    return null;
-                }
-
-                $first = $group->first();
-
-                return [
-                    'menu_item_id' => $first['menu_item_id'],
-                    'name_snapshot' => $first['name_snapshot'],
-                    'unit_price_snapshot' => 0,
-                    'quantity' => $freeUnits,
-                    'line_total' => 0,
-                    'notes' => null,
-                    'options' => [],
-                    'is_free' => true,
-                    'line_id' => 'free-'.$first['menu_item_id'],
-                    'image_url' => $first['image_url'] ?? null,
-                ];
-            })
-            ->filter()
-            ->values()
+        $qualifyingIds = MenuItem::whereIn('id', collect($rows)->pluck('menu_item_id')->unique())
+            ->whereDoesntHave('category', fn ($query) => $query->whereIn('slug', self::NON_QUALIFYING_CATEGORY_SLUGS))
+            ->pluck('id')
             ->all();
 
-        return [...$rows, ...$freeRows];
+        $qualifyingQuantity = (int) collect($rows)
+            ->whereIn('menu_item_id', $qualifyingIds)
+            ->sum('quantity');
+
+        $freeUnits = $this->freeUnitsForQuantity($promotion, $qualifyingQuantity);
+
+        if ($freeUnits < 1) {
+            return $rows;
+        }
+
+        $freeItem = MenuItem::where('slug', self::FREE_ITEM_SLUG)->where('is_active', true)->first();
+
+        if (! $freeItem) {
+            // Renamed or removed from the menu — no giveaway is better
+            // than guessing at a substitute.
+            report(new \RuntimeException('Buy-X-get-Y free item "'.self::FREE_ITEM_SLUG.'" is missing or inactive.'));
+
+            return $rows;
+        }
+
+        return [...$rows, [
+            'menu_item_id' => $freeItem->id,
+            'name_snapshot' => $freeItem->name,
+            'unit_price_snapshot' => 0,
+            'quantity' => $freeUnits,
+            'line_total' => 0,
+            'notes' => null,
+            'options' => [],
+            'is_free' => true,
+            'line_id' => 'free-'.$freeItem->id,
+            'image_url' => $freeItem->imageUrl(),
+        ]];
     }
 
     /**

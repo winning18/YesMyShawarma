@@ -304,9 +304,12 @@ itself flagged and approved mid-project (CLAUDE.md's "Resolved, no longer open" 
 assumed.
 
 `buy_quantity`/`free_quantity` are only meaningful for `type === 'buy_x_get_y_free'` — `value`
-stays `0` (the column is `NOT NULL`) and unused for that type. **`buy_quantity` is how many of
-the same item the customer pays for per grant, not a total group size** — "buy 2 get 1 free" is
-`buy_quantity=2, free_quantity=1`, not 3. `PromotionService::freeUnitsForQuantity()` computes
+stays `0` (the column is `NOT NULL`) and unused for that type. **`buy_quantity` is how many
+qualifying items the customer pays for per grant, not a total group size** — "buy 2 get 1 free"
+is `buy_quantity=2, free_quantity=1`, not 3. Owner's rule (2026-11-06): qualifying items are
+everything except drinks (`PromotionService::NON_QUALIFYING_CATEGORY_SLUGS`), mixed freely
+across items, and the giveaway is always plain Chicken Shawarma (`FREE_ITEM_SLUG`) — 2x
+Signature earns a Chicken Shawarma, not a third Signature. Add-on options are never free. `PromotionService::freeUnitsForQuantity()` computes
 `floor(paidQuantity / buy_quantity) * free_quantity`, repeating per group rather than capping at
 one freebie per order (paying for 4 grants 2, not 1). A `buy_x_get_y_free` promotion is always
 `is_automatic` — enforced in `Store`/`UpdatePromotionRequest` — since it has no code-entry path

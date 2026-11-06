@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Exceptions\OrderPlacementException;
 use App\Models\Branch;
+use App\Models\Category;
 use App\Models\Customer;
+use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\Promotion;
 use App\Services\Promotions\PromotionService;
@@ -215,14 +217,45 @@ class PromotionServiceTest extends TestCase
         $this->assertSame(2, $this->service->freeUnitsForQuantity($promotion, 5));
     }
 
-    public function test_append_free_lines_adds_a_separate_zero_priced_row(): void
+    /**
+     * @return array{chicken: MenuItem, signature: MenuItem, burger: MenuItem, coke: MenuItem}
+     */
+    private function menu(): array
     {
-        $promotion = $this->makePromotion(['type' => 'buy_x_get_y_free', 'value' => 0, 'buy_quantity' => 2, 'free_quantity' => 1]);
-        $rows = [['menu_item_id' => 1, 'name_snapshot' => 'Shawarma', 'unit_price_snapshot' => 1000, 'quantity' => 2, 'line_total' => 2000]];
+        $shawarma = Category::create(['name' => 'Shawarma', 'slug' => 'shawarma']);
+        $burgers = Category::create(['name' => 'Burgers', 'slug' => 'burgers']);
+        $drinks = Category::create(['name' => 'Drinks', 'slug' => 'drinks']);
+        $item = fn (Category $category, string $name, string $slug, int $price) => MenuItem::create([
+            'category_id' => $category->id, 'name' => $name, 'slug' => $slug, 'base_price' => $price,
+        ]);
 
-        $result = $this->service->appendFreeLines($promotion, $rows);
+        return [
+            'chicken' => $item($shawarma, 'Chicken Shawarma', 'chicken-shawarma', 3500),
+            'signature' => $item($shawarma, 'Signature (Chicken, Cheese & Sausage)', 'signature', 6000),
+            'burger' => $item($burgers, 'Beef Burger', 'beef-burger', 6000),
+            'coke' => $item($drinks, 'Coke', 'coke', 1000),
+        ];
+    }
+
+    private function row(MenuItem $item, int $quantity): array
+    {
+        return ['menu_item_id' => $item->id, 'name_snapshot' => $item->name, 'unit_price_snapshot' => $item->base_price, 'quantity' => $quantity, 'line_total' => $item->base_price * $quantity];
+    }
+
+    private function buyTwoGetOne(): Promotion
+    {
+        return $this->makePromotion(['type' => 'buy_x_get_y_free', 'value' => 0, 'buy_quantity' => 2, 'free_quantity' => 1]);
+    }
+
+    public function test_two_signatures_earn_a_plain_chicken_shawarma_not_a_third_signature(): void
+    {
+        $menu = $this->menu();
+
+        $result = $this->service->appendFreeLines($this->buyTwoGetOne(), [$this->row($menu['signature'], 2)]);
 
         $this->assertCount(2, $result);
+        $this->assertSame($menu['chicken']->id, $result[1]['menu_item_id']);
+        $this->assertSame('Chicken Shawarma', $result[1]['name_snapshot']);
         $this->assertSame(0, $result[1]['unit_price_snapshot']);
         $this->assertSame(1, $result[1]['quantity']);
         $this->assertSame(0, $result[1]['line_total']);
@@ -230,32 +263,43 @@ class PromotionServiceTest extends TestCase
         $this->assertSame([], $result[1]['options']);
     }
 
-    public function test_append_free_lines_requires_the_same_menu_item_not_any_two(): void
+    public function test_any_two_qualifying_items_can_be_mixed(): void
     {
-        $promotion = $this->makePromotion(['type' => 'buy_x_get_y_free', 'value' => 0, 'buy_quantity' => 2, 'free_quantity' => 1]);
-        // 1 of item A + 1 of item B — neither reaches 2 units of the SAME item.
-        $rows = [
-            ['menu_item_id' => 1, 'name_snapshot' => 'Shawarma', 'unit_price_snapshot' => 1000, 'quantity' => 1, 'line_total' => 1000],
-            ['menu_item_id' => 2, 'name_snapshot' => 'Burger', 'unit_price_snapshot' => 1500, 'quantity' => 1, 'line_total' => 1500],
-        ];
+        $menu = $this->menu();
 
-        $this->assertCount(2, $this->service->appendFreeLines($promotion, $rows));
-    }
-
-    public function test_append_free_lines_sums_quantity_across_separate_lines_of_the_same_item(): void
-    {
-        $promotion = $this->makePromotion(['type' => 'buy_x_get_y_free', 'value' => 0, 'buy_quantity' => 2, 'free_quantity' => 1]);
-        // Same menu item split across two cart lines (e.g. different notes/options) — 1 + 1 = 2 units.
-        $rows = [
-            ['menu_item_id' => 1, 'name_snapshot' => 'Shawarma', 'unit_price_snapshot' => 1000, 'quantity' => 1, 'line_total' => 1000],
-            ['menu_item_id' => 1, 'name_snapshot' => 'Shawarma', 'unit_price_snapshot' => 1000, 'quantity' => 1, 'line_total' => 1000],
-        ];
-
-        $result = $this->service->appendFreeLines($promotion, $rows);
+        $result = $this->service->appendFreeLines($this->buyTwoGetOne(), [$this->row($menu['signature'], 1), $this->row($menu['burger'], 1)]);
 
         $this->assertCount(3, $result);
-        $this->assertSame(1, $result[2]['quantity']);
-        $this->assertTrue($result[2]['is_free']);
+        $this->assertSame($menu['chicken']->id, $result[2]['menu_item_id']);
+    }
+
+    public function test_drinks_never_count_toward_the_promotion(): void
+    {
+        $menu = $this->menu();
+
+        $promotion = $this->buyTwoGetOne();
+
+        $this->assertCount(1, $this->service->appendFreeLines($promotion, [$this->row($menu['coke'], 4)]));
+        $this->assertCount(2, $this->service->appendFreeLines($promotion, [$this->row($menu['signature'], 1), $this->row($menu['coke'], 1)]));
+    }
+
+    public function test_every_two_qualifying_items_earn_another_free_one(): void
+    {
+        $menu = $this->menu();
+
+        $result = $this->service->appendFreeLines($this->buyTwoGetOne(), [
+            $this->row($menu['signature'], 3), $this->row($menu['burger'], 2), $this->row($menu['coke'], 3),
+        ]);
+
+        $this->assertSame(2, end($result)['quantity']); // 5 qualifying = 2 free, drinks ignored
+    }
+
+    public function test_no_free_line_when_the_free_item_is_off_the_menu(): void
+    {
+        $menu = $this->menu();
+        $menu['chicken']->update(['is_active' => false]);
+
+        $this->assertCount(1, $this->service->appendFreeLines($this->buyTwoGetOne(), [$this->row($menu['signature'], 2)]));
     }
 
     public function test_append_free_lines_ignores_other_promo_types(): void
