@@ -3,6 +3,7 @@
         <div>
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">{{ __('Item availability') }}</h2>
             <p class="text-sm text-gray-500">{{ $branch->name }}</p>
+                <div class="mt-2"><x-branch-switcher /></div>
         </div>
     </x-slot>
 

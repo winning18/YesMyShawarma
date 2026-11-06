@@ -50,7 +50,7 @@ class BranchSelectionController extends Controller
     }
 
     /**
-     * Anyone whose current branch has an open shift is locked to it —
+     * Staff whose current branch has an open shift are locked to it —
      * switching would leave the shift's own branch_id out of sync with
      * users.current_branch_id/session, corrupting which branch's orders,
      * stock and reports the rest of the app attributes to them while the
@@ -61,12 +61,18 @@ class BranchSelectionController extends Controller
      * never hold shifts (availability is login-driven, not shift-driven —
      * see rider-navigation-links.blade.php), so this is a no-op on their
      * path. Ends the moment the shift itself ends, same session or not.
+     *
+     * Owner, general managers and managers are never locked (owner,
+     * 2026-11-06): they oversee branches rather than run a till, and the
+     * shift isn't theirs — locking them made an owner checking one
+     * branch's menu unable to move on to the next (BranchContext::
+     * runsATill()).
      */
     private function blockWhileOnShift(Request $request, BranchContext $context, ShiftService $shifts): ?RedirectResponse
     {
         $branchId = $context->id();
 
-        if (! $branchId || ! $shifts->activeForBranch($branchId)) {
+        if (! $context->runsATill($request->user()) || ! $branchId || ! $shifts->activeForBranch($branchId)) {
             return null;
         }
 
@@ -117,6 +123,9 @@ class BranchSelectionController extends Controller
 
         $validated = $request->validate([
             'branch_id' => ['required', 'integer', Rule::in($availableIds)],
+            // The inline switcher (x-branch-switcher) sends the page it
+            // was on, so switching keeps you there. Same-site paths only.
+            'return_to' => ['nullable', 'string', 'max:2000', 'regex:#^/(?![/\\\\])#'],
         ]);
 
         $branch = Branch::findOrFail($validated['branch_id']);
@@ -136,6 +145,10 @@ class BranchSelectionController extends Controller
         // any other, later visit to /dashboard has no flash flag left and
         // re-triggers the choice exactly as intended.
         $request->session()->flash('branch_just_confirmed', true);
+
+        if (isset($validated['return_to'])) {
+            return redirect($validated['return_to']);
+        }
 
         // intended() sends the user back to whatever page redirected them
         // here via redirect()->guest() — Order History, Damage Reports, any

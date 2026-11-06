@@ -115,6 +115,9 @@ class AppServiceProvider extends ServiceProvider
                 // currently selected. Owner never gets this item at all
                 // (see OrderDashboardController/PosController's redirects).
                 'navIsManager' => in_array($role, ['manager', 'general_manager'], true),
+                // Owner/GM/manager with more than one branch. Staff pick
+                // theirs when starting a shift instead (navigation-links).
+                'navCanSwitchBranch' => $user && ! $context->runsATill($user) && $context->selectableBranchIdsFor($user)->count() > 1,
             ]);
         });
     }

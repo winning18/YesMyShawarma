@@ -4,6 +4,7 @@
             <div>
                 <h2 class="font-semibold text-xl text-gray-800 leading-tight">{{ __('Menu') }}</h2>
                 <p class="text-sm text-gray-500">{{ $branch->name }}</p>
+                <div class="mt-2"><x-branch-switcher /></div>
             </div>
             @can('menu.edit_content')
                 <a href="{{ route('dashboard.menu-items.create') }}" class="px-3 py-1.5 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-900">

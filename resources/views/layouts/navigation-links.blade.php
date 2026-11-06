@@ -35,8 +35,15 @@
     one is prompted to pick fresh every time they reach the Dashboard with
     no active shift (OrderDashboardController's own redirect), which is
     the only moment "switching branches" is ever actually relevant for
-    them — starting a new shift at a possibly-different branch.
+    them — starting a new shift at a possibly-different branch. Owner, GMs
+    and managers with more than one branch do get one: they move between
+    branches freely, even while a branch's shift is open.
 --}}
+@if ($canSwitchBranch ?? false)
+    <x-sidebar-link :href="route('branches.select')" :active="request()->routeIs('branches.select')">
+        {{ __('Switch branch') }}
+    </x-sidebar-link>
+@endif
 
 {{--
     Manager only — the live acknowledgement/in-progress board + POS,

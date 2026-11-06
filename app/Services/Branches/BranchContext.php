@@ -182,6 +182,20 @@ class BranchContext
      * same as a hybrid rider account would for
      * hasRoleAtAnyBranch($user, 'rider') elsewhere.
      */
+    /**
+     * Someone who works a till — staff, without a manager/GM/owner role
+     * anywhere. While their branch has an open shift they're locked to it
+     * (BranchSelectionController); people who oversee branches never are.
+     * Owner's rule (2026-11-06): staff only, not managers.
+     */
+    public function runsATill(User $user): bool
+    {
+        return $this->hasRoleAtAnyBranch($user, 'staff')
+            && ! $this->hasRoleAtAnyBranch($user, 'manager')
+            && ! $this->hasRoleAtAnyBranch($user, 'general_manager')
+            && ! $this->hasRoleAtAnyBranch($user, 'owner');
+    }
+
     public function isStaffOnly(User $user): bool
     {
         return $this->hasRoleAtAnyBranch($user, 'staff')
