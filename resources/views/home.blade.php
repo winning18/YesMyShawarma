@@ -49,6 +49,7 @@
                 slides: @json($heroSlides),
                 active: 0,
                 timer: null,
+                menuOpen: false,
                 start() { this.stop(); if (! document.hidden) this.timer = setInterval(() => this.next(), 5000) },
                 stop() { clearInterval(this.timer); this.timer = null },
                 next() { this.active = (this.active + 1) % this.slides.length },
@@ -57,8 +58,8 @@
             x-init="start()"
             @mouseenter="stop()"
             @mouseleave="start()"
-            @customer-drawer-opened.window="stop()"
-            @customer-drawer-closed.window="start()"
+            @customer-drawer-opened.window="menuOpen = true; stop()"
+            @customer-drawer-closed.window="menuOpen = false; start()"
             @visibilitychange.document="document.hidden ? stop() : start()"
             class="relative overflow-hidden"
             role="region"
@@ -78,9 +79,21 @@
                         mouseenter/mouseleave, and the old start() stacked
                         a new 5s timer per tap, so slides raced in bursts.
                     --}}
+                    {{--
+                        Only the showing slide and the next one are kept
+                        ready to fade (will-change) — holding all four
+                        full-width photos as separate layers made iOS
+                        Safari blend the menu's backdrop over every one
+                        of them. While the menu is open the off-screen
+                        slides are hidden outright, so it blends over one.
+                    --}}
                     <div
-                        class="absolute inset-0 transition-opacity duration-700 ease-out will-change-[opacity]"
-                        :class="active === index ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+                        class="absolute inset-0 transition-opacity duration-700 ease-out"
+                        :class="[
+                            active === index ? 'opacity-100' : 'opacity-0 pointer-events-none',
+                            active !== index && menuOpen ? 'invisible' : '',
+                            ! menuOpen && (active === index || (active + 1) % slides.length === index) ? 'will-change-[opacity]' : '',
+                        ]"
                         :aria-hidden="active !== index"
                     >
                         <div class="absolute inset-0 hero-slider-bg" x-show="!slide.imageUrl"></div>
