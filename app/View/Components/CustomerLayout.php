@@ -19,6 +19,10 @@ class CustomerLayout extends Component
         // itself (see layouts/customer.blade.php).
         public ?string $ogImage = null,
         public ?string $ogDescription = null,
+        // Loads the realtime client (resources/js/echo.js) — only the
+        // pages that listen for live updates, so every other customer
+        // page skips the download and the websocket connection.
+        public bool $realtime = false,
     ) {}
 
     public function render(): View

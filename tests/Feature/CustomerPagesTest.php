@@ -606,4 +606,15 @@ class CustomerPagesTest extends TestCase
             'Expected the Sauce group (sort_order 1) to render before Extras (sort_order 2).'
         );
     }
+
+    public function test_customer_pages_load_the_small_customer_bundle_not_the_dashboard_one(): void
+    {
+        // The dashboard bundle (maps, date picker, realtime) delayed every
+        // Alpine control on slow mobile data — the menu button included.
+        $html = $this->get(route('home'))->assertOk()->getContent();
+
+        $this->assertStringContainsString(\Illuminate\Support\Facades\Vite::asset('resources/js/customer.js'), $html);
+        $this->assertStringNotContainsString(\Illuminate\Support\Facades\Vite::asset('resources/js/app.js'), $html);
+        $this->assertStringNotContainsString(\Illuminate\Support\Facades\Vite::asset('resources/js/echo.js'), $html);
+    }
 }

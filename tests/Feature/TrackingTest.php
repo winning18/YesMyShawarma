@@ -48,7 +48,14 @@ class TrackingTest extends TestCase
     {
         $order = $this->makeOrder();
 
-        $this->get(route('tracking.show', $order))->assertOk();
+        $html = $this->get(route('tracking.show', $order))->assertOk()->getContent();
+
+        // Live status updates need the realtime client, loaded before Alpine starts.
+        $echo = strpos($html, \Illuminate\Support\Facades\Vite::asset('resources/js/echo.js'));
+        $customer = strpos($html, \Illuminate\Support\Facades\Vite::asset('resources/js/customer.js'));
+        $this->assertNotFalse($echo);
+        $this->assertNotFalse($customer);
+        $this->assertLessThan($customer, $echo);
     }
 
     public function test_tracking_data_endpoint_returns_order_shape(): void

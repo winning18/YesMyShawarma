@@ -55,7 +55,8 @@
             crossorigin="anonymous"
         />
 
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
+        {{-- echo.js before customer.js: modules run in order, and Alpine components using window.Echo initialise as soon as customer.js starts Alpine. --}}
+        @vite(['resources/css/app.css', ...($realtime ? ['resources/js/echo.js'] : []), 'resources/js/customer.js'])
     </head>
     <body class="font-customer antialiased {{ $bodyClass }} text-brand-black min-h-screen flex flex-col">
         {{--
