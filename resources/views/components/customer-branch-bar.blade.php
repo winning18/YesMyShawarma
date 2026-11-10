@@ -1,4 +1,5 @@
-<div {{ $attributes->merge(['class' => 'rounded-lg border text-sm px-4 py-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-center '.($automatic ? 'bg-brand-yellow-light border-brand-yellow' : 'border-brand-gray-100')]) }}>
+{{-- White, not tinted: the menu page sits on the yellow pattern background, where a yellow highlight disappears. --}}
+<div {{ $attributes->merge(['class' => 'rounded-lg bg-brand-white text-sm px-4 py-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-center '.($automatic ? 'border-2 border-brand-red' : 'border border-brand-gray-100')]) }}>
     <span>
         @if ($automatic)
             {{ __('We picked') }} <strong>{{ $branch->name }}</strong> {{ __('for you.') }}
