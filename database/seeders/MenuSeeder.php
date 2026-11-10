@@ -16,6 +16,7 @@ class MenuSeeder extends Seeder
     {
         $extrasData = require database_path('seeders/data/extras.php');
         $categoriesData = require database_path('seeders/data/menu.php');
+        $descriptions = require database_path('seeders/data/menu_item_descriptions.php');
 
         $extrasGroup = OptionGroup::firstOrCreate(
             ['name' => $extrasData['name']],
@@ -59,6 +60,12 @@ class MenuSeeder extends Seeder
                         'sort_order' => $itemSortOrder,
                     ]
                 );
+
+                // Fills a missing description only — never overwrites one
+                // written in the dashboard.
+                if (blank($menuItem->description) && isset($descriptions[$menuItem->slug])) {
+                    $menuItem->update(['description' => $descriptions[$menuItem->slug]]);
+                }
 
                 if ($attachExtras) {
                     $menuItem->optionGroups()->syncWithoutDetaching([$extrasGroup->id => ['sort_order' => 1]]);
