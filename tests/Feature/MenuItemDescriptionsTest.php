@@ -41,4 +41,19 @@ class MenuItemDescriptionsTest extends TestCase
         $this->assertSame('A sausage hot dog in a soft bun. Quick, tasty, budget-friendly and easy to eat on the go.', MenuItem::where('slug', 'hot-dog')->value('description'));
         $this->assertSame(0, MenuItem::whereNull('description')->count());
     }
+
+    public function test_the_search_snippet_ends_on_a_whole_phrase_never_mid_word(): void
+    {
+        $branch = Branch::create([
+            'name' => 'Osu', 'slug' => 'osu', 'phone' => '+233200000001', 'address' => 'A',
+            'lat' => 5.5, 'lng' => -0.1, 'opens_at' => '10:00', 'closes_at' => '22:00',
+        ]);
+        $this->seed(MenuSeeder::class);
+        $long = MenuItem::where('slug', 'chicken-shawarma')->first();
+        $short = MenuItem::where('slug', 'beef-burger')->first();
+        $this->get(route('branches.pick', $branch));
+
+        $this->get(route('menu.show', $long))->assertSee('<meta name="description" content="'.e($long->description).' GH₵50.00.">', false);
+        $this->get(route('menu.show', $short))->assertSee('<meta name="description" content="'.e($short->description).' GH₵60.00, for delivery or pickup in Accra.">', false);
+    }
 }

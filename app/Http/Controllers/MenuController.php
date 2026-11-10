@@ -9,6 +9,7 @@ use App\Services\Customers\CustomerBranchSelection;
 use App\Services\Menu\PopularItemsService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class MenuController extends Controller
@@ -93,8 +94,35 @@ class MenuController extends Controller
             'drinks' => $drinks,
             'isAvailable' => $isAvailable,
             'popularRank' => $popular->rank($item->id),
+            'metaDescription' => $this->metaDescription($item),
             'productSchema' => $this->productSchema($item, $isAvailable),
         ]);
+    }
+
+    /**
+     * The item's search snippet: its own description, then as much of the
+     * price/delivery line as fits in 160 characters — whole phrases only,
+     * never cut mid-word. Without a description it falls back to "Order X
+     * from Yes My Shawarma."
+     */
+    private function metaDescription(MenuItem $item): string
+    {
+        $base = $item->description
+            ? rtrim($item->description, '. ').'.'
+            : __('Order :item from :name.', ['item' => $item->name, 'name' => config('app.name')]);
+        $price = number_format($item->base_price / 100, 2);
+
+        foreach ([
+            __(' GH₵:price, for delivery or pickup in Accra.', ['price' => $price]),
+            __(' GH₵:price.', ['price' => $price]),
+            '',
+        ] as $suffix) {
+            if (mb_strlen($base.$suffix) <= 160) {
+                return $base.$suffix;
+            }
+        }
+
+        return Str::limit($base, 157);
     }
 
     /**

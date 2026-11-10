@@ -1,7 +1,7 @@
 <x-customer-layout
     :title="__(':item: Order Online in Accra · :name', ['item' => $item->name, 'name' => config('app.name')])"
     :og-image="$item->imageUrl()"
-    :og-description="Str::limit(($item->description ? rtrim($item->description, '. ').'. ' : __('Order :item from :name. ', ['item' => $item->name, 'name' => config('app.name')])).__('GH₵:price, for delivery or pickup in Accra.', ['price' => number_format($item->base_price / 100, 2)]), 160)"
+    :og-description="$metaDescription"
 >
     {{-- JSON_HEX_TAG/JSON_HEX_AMP: $productSchema embeds staff-editable
          item name/description verbatim (aeo.md) — without these, a name or
