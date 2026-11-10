@@ -22,6 +22,7 @@ class Customer extends Authenticatable
             'phone_verified_at' => 'datetime',
             'marketing_opt_in' => 'boolean',
             'marketing_opted_out_at' => 'datetime',
+            'suspended_at' => 'datetime',
             'password' => 'hashed',
         ];
     }

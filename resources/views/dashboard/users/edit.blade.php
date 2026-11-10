@@ -30,6 +30,31 @@
             <p class="text-sm text-gray-500">{{ $targetUser->phone ?? __('No phone on file') }}</p>
         </div>
 
+        @if ($targetUser->suspended_at)
+            <div class="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-800 space-y-1">
+                <p class="font-semibold">{{ __('Suspended') }}</p>
+                <p>{{ __('Since :date by :who: ":reason"', ['date' => $targetUser->suspended_at->timezone('Africa/Accra')->format('d M Y, g:ia'), 'who' => $suspendedBy ?? __('unknown'), 'reason' => $targetUser->suspension_reason]) }}</p>
+                @if ($canSuspend)
+                    <form method="POST" action="{{ route('dashboard.users.unsuspend', $targetUser) }}" class="pt-2">
+                        @csrf
+                        <button type="submit" class="px-3 py-1.5 bg-gray-800 text-white text-xs font-semibold rounded-md">{{ __('Lift suspension') }}</button>
+                    </form>
+                @endif
+            </div>
+        @elseif ($canSuspend)
+            <details class="bg-white shadow rounded-lg p-6">
+                <summary class="font-semibold text-red-700 cursor-pointer">{{ __('Suspend account') }}</summary>
+                <form method="POST" action="{{ route('dashboard.users.suspend', $targetUser) }}" class="mt-3 space-y-2"
+                    onsubmit="return confirm(@js(__('Suspend :name? They will be signed out and unable to log in.', ['name' => $targetUser->name])))">
+                    @csrf
+                    <p class="text-sm text-gray-500">{{ __('They are signed out straight away and cannot log in until the suspension is lifted.') }}</p>
+                    <input type="text" name="reason" required maxlength="255" placeholder="{{ __('Reason (required)') }}" class="w-full rounded-md border-gray-300 text-sm">
+                    <x-input-error :messages="$errors->get('reason')" />
+                    <button type="submit" class="px-3 py-1.5 bg-red-700 text-white text-xs font-semibold rounded-md">{{ __('Suspend') }}</button>
+                </form>
+            </details>
+        @endif
+
         <div class="bg-white shadow rounded-lg p-6">
             <h3 class="font-semibold text-gray-800 mb-4">{{ __('Roles') }}</h3>
 

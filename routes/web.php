@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AboutController;
+use App\Http\Controllers\AccountSuspensionController;
 use App\Http\Controllers\BranchesController;
 use App\Http\Controllers\BranchManagementController;
 use App\Http\Controllers\BranchSelectionController;
@@ -208,6 +209,8 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::delete('/dashboard/users/{user}/roles', [UserManagementController::class, 'removeRole'])->name('dashboard.users.roles.remove');
     Route::post('/dashboard/users/{user}/change-branch', [UserManagementController::class, 'changeBranch'])->name('dashboard.users.change_branch');
     Route::delete('/dashboard/users/{user}', [UserManagementController::class, 'destroy'])->name('dashboard.users.destroy');
+    Route::post('/dashboard/users/{user}/suspend', [AccountSuspensionController::class, 'suspendUser'])->name('dashboard.users.suspend');
+    Route::post('/dashboard/users/{user}/unsuspend', [AccountSuspensionController::class, 'liftUser'])->name('dashboard.users.unsuspend');
 
     Route::get('/dashboard/branches', [BranchManagementController::class, 'index'])->name('dashboard.branches.index');
     Route::get('/dashboard/branches/create', [BranchManagementController::class, 'create'])->name('dashboard.branches.create');
@@ -253,6 +256,8 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
 
     Route::get('/dashboard/customers', [CustomerManagementController::class, 'index'])->name('dashboard.customers.index');
     Route::get('/dashboard/customers/export', [CustomerManagementController::class, 'export'])->name('dashboard.customers.export');
+    Route::post('/dashboard/customers/{customer}/suspend', [AccountSuspensionController::class, 'suspendCustomer'])->name('dashboard.customers.suspend');
+    Route::post('/dashboard/customers/{customer}/unsuspend', [AccountSuspensionController::class, 'liftCustomer'])->name('dashboard.customers.unsuspend');
     Route::get('/dashboard/customers/import', [CustomerImportController::class, 'create'])->name('dashboard.customers.import.create');
     Route::post('/dashboard/customers/import', [CustomerImportController::class, 'store'])->name('dashboard.customers.import.store');
     Route::get('/dashboard/customers/broadcasts', [SmsBroadcastController::class, 'index'])->name('dashboard.customers.broadcasts.index');

@@ -86,7 +86,8 @@ Price is always `menu_items.base_price` — no per-branch override.
 
 ```
 customers           id, phone (unique, nullable), name, email, password,
-                    phone_verified_at, marketing_opt_in, marketing_opted_out_at
+                    phone_verified_at, marketing_opt_in, marketing_opted_out_at,
+                    suspended_at, suspended_by, suspension_reason
 customer_addresses  id, customer_id, label, ghanapost_code,
                     landmark, lat, lng, is_default
 ```

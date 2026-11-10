@@ -226,7 +226,9 @@ class BranchContext
 
         $userIds = $query->pluck('mhr.model_id')->unique();
 
-        return User::whereIn('id', $userIds)->get();
+        // Suspended accounts get no escalation or stock SMS
+        // (AccountSuspensionService).
+        return User::whereIn('id', $userIds)->whereNull('suspended_at')->get();
     }
 
     /**

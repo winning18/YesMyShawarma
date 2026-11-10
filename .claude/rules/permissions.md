@@ -320,3 +320,16 @@ staff get no filter and stay pinned by BranchScope. A branch outside someone's s
 never trusted, on pages and downloads alike. With no choice made, tabs show that person's whole
 set, except Sales, which stays on the current branch because it's built around that branch's
 open shift (`branch=all` is its explicit overall view).
+
+## Account suspension
+
+`AccountSuspensionService` (owner decision 2026-11-10) — `users` and `customers` both carry
+`suspended_at`/`suspended_by`/`suspension_reason`. Owner may suspend anyone except another owner;
+a general_manager only staff/riders whose every role is at a branch they hold general_manager at,
+plus any customer; nobody suspends themselves, and nobody can suspend an owner. Not a role
+permission — the rule lives in the service, which the controllers just call. A suspended account is
+refused at all three logins, signed out on its next request (`EnsureAccountNotSuspended`, web
+middleware group), loses its Sanctum tokens and stored sessions, is skipped by
+`BranchContext::usersWithRole()` (escalation/stock SMS, push) and rider auto-assignment, and — for
+a customer — can't place `web`-channel orders or re-register by phone (the POS still can).
+

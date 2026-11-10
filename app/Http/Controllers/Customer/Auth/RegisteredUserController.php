@@ -44,6 +44,10 @@ class RegisteredUserController extends Controller
 
         $existing = Customer::where('phone', $phone)->first();
 
+        if ($existing && $existing->suspended_at !== null) {
+            return back()->withErrors(['phone' => __('This account is suspended. Please call the branch.')]);
+        }
+
         if ($existing && $existing->password) {
             return back()->withErrors(['phone' => 'This phone number is already registered. Please log in instead.']);
         }

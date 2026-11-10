@@ -6,6 +6,11 @@ use Exception;
 
 class OrderPlacementException extends Exception
 {
+    public static function customerSuspended(): self
+    {
+        return new self("This number can't place orders online. Please call the branch.");
+    }
+
     public static function emptyCart(): self
     {
         return new self('An order must contain at least one item.');

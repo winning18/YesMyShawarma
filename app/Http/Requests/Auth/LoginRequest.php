@@ -50,6 +50,14 @@ class LoginRequest extends FormRequest
             ]);
         }
 
+        // Right password, suspended account (AccountSuspensionService):
+        // sign straight back out and say so, rather than "wrong password".
+        if (Auth::user()->suspended_at !== null) {
+            Auth::guard('web')->logout();
+
+            throw ValidationException::withMessages(['email' => __('Your account is suspended. Please contact the branch manager.')]);
+        }
+
         RateLimiter::clear($this->throttleKey());
     }
 

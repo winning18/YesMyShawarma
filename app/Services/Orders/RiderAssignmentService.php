@@ -126,6 +126,7 @@ class RiderAssignmentService
 
         return User::whereIn('id', $riderIds)
             ->where('current_branch_id', $branchId)
+            ->whereNull('suspended_at')
             ->whereIn('id', function ($query) use ($activeSince) {
                 $query->select('user_id')->from('sessions')->where('last_activity', '>=', $activeSince);
             })

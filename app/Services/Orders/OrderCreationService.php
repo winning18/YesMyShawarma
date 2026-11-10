@@ -111,6 +111,13 @@ class OrderCreationService
         return DB::transaction(function () use ($data, $branch) {
             $customer = $this->customers->findOrCreateByPhone($data->customerPhone, $data->customerName);
 
+            // A suspended customer can't order online by phone either, or
+            // guest checkout would get round the suspension (owner,
+            // 2026-11-10). The branch can still take their order at the POS.
+            if ($data->channel === 'web' && $customer->suspended_at !== null) {
+                throw OrderPlacementException::customerSuspended();
+            }
+
             [$itemRows, $subtotal] = $this->pricing->priceItems($branch, $data->items);
 
             // An automatic promotion (e.g. "every Wednesday") always wins

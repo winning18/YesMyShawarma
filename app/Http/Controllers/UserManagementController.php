@@ -6,6 +6,7 @@ use App\Exceptions\UserManagementException;
 use App\Http\Requests\CreateUserRequest;
 use App\Models\Branch;
 use App\Models\User;
+use App\Services\Accounts\AccountSuspensionService;
 use App\Services\Branches\BranchContext;
 use App\Services\Users\UserManagementService;
 use Illuminate\Http\RedirectResponse;
@@ -118,12 +119,14 @@ class UserManagementController extends Controller
             ->with('temporary_password', $temporaryPassword);
     }
 
-    public function edit(Request $request, User $user, UserManagementService $users, BranchContext $context): View
+    public function edit(Request $request, User $user, UserManagementService $users, BranchContext $context, AccountSuspensionService $suspensions): View
     {
         $canManage = $this->authorizeView($request, $context);
 
         return view('dashboard.users.edit', [
             'canManage' => $canManage,
+            'canSuspend' => $suspensions->canSuspendUser($request->user(), $user),
+            'suspendedBy' => $user->suspended_by ? User::withTrashed()->find($user->suspended_by)?->name : null,
             'targetUser' => $user,
             'roles' => $users->rolesFor($user),
             'availableRoles' => self::ROLES,

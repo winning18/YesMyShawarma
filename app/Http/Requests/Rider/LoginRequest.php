@@ -53,6 +53,12 @@ class LoginRequest extends FormRequest
             ]);
         }
 
+        if (Auth::guard('rider')->user()->suspended_at !== null) {
+            Auth::guard('rider')->logout();
+
+            throw ValidationException::withMessages(['login' => __('Your account is suspended. Please contact the branch manager.')]);
+        }
+
         RateLimiter::clear($this->throttleKey());
     }
 

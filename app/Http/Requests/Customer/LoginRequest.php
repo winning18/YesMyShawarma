@@ -42,6 +42,12 @@ class LoginRequest extends FormRequest
             ]);
         }
 
+        if (Auth::guard('customer')->user()->suspended_at !== null) {
+            Auth::guard('customer')->logout();
+
+            throw ValidationException::withMessages(['phone' => __('This account is suspended. Please call the branch.')]);
+        }
+
         RateLimiter::clear($this->throttleKey());
     }
 

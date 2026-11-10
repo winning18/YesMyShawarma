@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use App\Models\Order;
+use App\Services\Accounts\AccountSuspensionService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -13,7 +14,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CustomerManagementController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request, AccountSuspensionService $suspensions): View
     {
         Gate::authorize('customers.view');
 
@@ -22,6 +23,7 @@ class CustomerManagementController extends Controller
         return view('dashboard.customers.index', [
             'customers' => $this->baseQuery($search)->paginate(20)->withQueryString(),
             'search' => $search,
+            'canSuspend' => $suspensions->canSuspendCustomers($request->user()),
         ]);
     }
 

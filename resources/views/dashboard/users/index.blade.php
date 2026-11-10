@@ -19,7 +19,12 @@
             @foreach ($users as $row)
                 <div class="p-4 flex items-center justify-between gap-4">
                     <div class="min-w-0">
-                        <p class="font-semibold text-gray-800">{{ $row['user']->name }}</p>
+                        <p class="font-semibold text-gray-800">
+                            {{ $row['user']->name }}
+                            @if ($row['user']->suspended_at)
+                                <span class="ml-1 text-xs px-2 py-0.5 rounded-md bg-red-50 text-red-700 font-semibold">{{ __('Suspended') }}</span>
+                            @endif
+                        </p>
                         <p class="text-sm text-gray-500">{{ $row['user']->email }}</p>
 
                         <div class="mt-2 flex flex-wrap gap-2">

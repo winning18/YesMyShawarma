@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureAccountNotSuspended;
 use App\Http\Middleware\EnsurePasswordIsChanged;
 use App\Http\Middleware\RedirectStaffToUnacceptedWebOrders;
 use App\Http\Middleware\ResolveCurrentBranch;
@@ -22,6 +23,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(SecurityHeaders::class);
+        // After StartSession (web group), so every guard's session user is readable.
+        $middleware->web(append: [EnsureAccountNotSuspended::class]);
 
         $middleware->alias([
             'branch' => ResolveCurrentBranch::class,
