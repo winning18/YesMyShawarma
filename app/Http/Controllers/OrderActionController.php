@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\DeliveryFeeAdjustmentException;
 use App\Exceptions\DeliveryFeePayerException;
+use App\Exceptions\InvalidOrderTransitionException;
 use App\Exceptions\OrderArrivalException;
 use App\Exceptions\OrderTransferException;
 use App\Exceptions\PaymentException;
@@ -28,6 +29,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class OrderActionController extends Controller
@@ -73,7 +75,7 @@ class OrderActionController extends Controller
         return new OrderResource($order->fresh(['items.options', 'customer']));
     }
 
-    public function advance(Request $request, Order $order, OrderStateMachine $stateMachine, BranchContext $context, ShiftService $shifts): OrderResource
+    public function advance(Request $request, Order $order, OrderStateMachine $stateMachine, BranchContext $context, ShiftService $shifts): OrderResource|JsonResponse
     {
         Gate::authorize('advanceStatus', $order);
 
@@ -81,15 +83,19 @@ class OrderActionController extends Controller
             'to' => ['required', 'string', Rule::in(['preparing', 'ready', 'dispatched', 'delivered', 'failed'])],
         ]);
 
-        $stateMachine->transition(
-            $order, $validated['to'], $context->primaryRoleFor($request->user(), $order->branch_id), $request->user()->id,
-            shiftId: $shifts->activeForBranch($order->branch_id)?->id,
-        );
+        try {
+            $stateMachine->transition(
+                $order, $validated['to'], $context->primaryRoleFor($request->user(), $order->branch_id), $request->user()->id,
+                shiftId: $shifts->activeForBranch($order->branch_id)?->id,
+            );
+        } catch (InvalidOrderTransitionException $e) {
+            return $this->staleAction($order, $validated['to'], $e);
+        }
 
         return new OrderResource($order->fresh(['items.options', 'customer']));
     }
 
-    public function cancel(Request $request, Order $order, OrderStateMachine $stateMachine, BranchContext $context, ShiftService $shifts): OrderResource
+    public function cancel(Request $request, Order $order, OrderStateMachine $stateMachine, BranchContext $context, ShiftService $shifts): OrderResource|JsonResponse
     {
         Gate::authorize('cancel', $order);
 
@@ -97,13 +103,42 @@ class OrderActionController extends Controller
             'reason' => ['required', 'string', 'max:255'],
         ]);
 
-        $stateMachine->transition(
-            $order, 'cancelled', $context->primaryRoleFor($request->user(), $order->branch_id), $request->user()->id,
-            cancellationReason: $validated['reason'],
-            shiftId: $shifts->activeForBranch($order->branch_id)?->id,
-        );
+        try {
+            $stateMachine->transition(
+                $order, 'cancelled', $context->primaryRoleFor($request->user(), $order->branch_id), $request->user()->id,
+                cancellationReason: $validated['reason'],
+                shiftId: $shifts->activeForBranch($order->branch_id)?->id,
+            );
+        } catch (InvalidOrderTransitionException $e) {
+            return $this->staleAction($order, 'cancelled', $e);
+        }
 
         return new OrderResource($order->fresh(['items.options', 'customer']));
+    }
+
+    /**
+     * The order moved on before this tap landed — most often a rider marked
+     * it delivered while the staff board still showed it as ready, and
+     * staff then tapped "Dispatched" (Sentry PHP-LARAVEL-9, 150+ times).
+     * That used to be an unhandled 500. It's an expected race, not a bug:
+     * answer 409 with what the order is now, so the board shows a plain
+     * message and refreshes (both dashboards already display `message`).
+     * Logged, not reported to Sentry.
+     */
+    private function staleAction(Order $order, string $to, InvalidOrderTransitionException $e): JsonResponse
+    {
+        $current = $order->fresh(['items.options', 'customer']);
+
+        Log::info('Stale order action refused', ['order_id' => $order->id, 'from' => $current->status, 'to' => $to]);
+
+        return response()->json([
+            'message' => __('Order :reference is already :status, so it can\'t be marked :to. The screen has been refreshed.', [
+                'reference' => $current->reference,
+                'status' => str_replace('_', ' ', $current->status),
+                'to' => str_replace('_', ' ', $to),
+            ]),
+            'data' => (new OrderResource($current))->resolve(),
+        ], 409);
     }
 
     /**

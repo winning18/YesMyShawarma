@@ -375,6 +375,37 @@ class OrderDashboardTest extends TestCase
         $this->assertSame($eventsAfterFirst, $order->events()->count());
     }
 
+    public function test_tapping_dispatched_on_an_order_the_rider_already_delivered_is_a_clear_409_not_a_500(): void
+    {
+        // Sentry PHP-LARAVEL-9: the board still showed "ready" after the
+        // rider delivered it, and the stale tap was an unhandled 500.
+        $staff = User::factory()->create();
+        $this->assignRoleAt($staff, 'staff', $this->branchA);
+        $order = $this->makeOrder($this->branchA, 'delivered');
+        $events = $order->events()->count();
+
+        $this->actingAs($staff)
+            ->postJson(route('orders.advance', $order), ['to' => 'dispatched'])
+            ->assertStatus(409)
+            ->assertJsonPath('message', "Order {$order->reference} is already delivered, so it can't be marked dispatched. The screen has been refreshed.")
+            ->assertJsonPath('data.status', 'delivered');
+
+        $this->assertSame('delivered', $order->fresh()->status);
+        $this->assertSame($events, $order->events()->count());
+    }
+
+    public function test_cancelling_an_order_that_already_finished_is_a_409_too(): void
+    {
+        $manager = User::factory()->create();
+        $this->assignRoleAt($manager, 'manager', $this->branchA);
+        $order = $this->makeOrder($this->branchA, 'delivered');
+
+        $this->actingAs($manager)
+            ->postJson(route('orders.cancel', $order), ['reason' => 'Customer called'])
+            ->assertStatus(409)
+            ->assertJsonPath('data.status', 'delivered');
+    }
+
     public function test_advance_status_rejects_an_invalid_target(): void
     {
         $staff = User::factory()->create();
