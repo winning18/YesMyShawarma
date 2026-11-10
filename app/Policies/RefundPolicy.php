@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\Refund;
+use App\Models\Scopes\BranchScope;
 use App\Models\User;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -47,6 +48,22 @@ class RefundPolicy
     public function complete(User $user, Refund $refund): bool
     {
         return $this->checkAtRefundBranch($user, $refund, ['orders.refund_request', 'orders.refund']);
+    }
+
+    /**
+     * A rider hands the cash back themselves, so they complete an approved
+     * refund only on a cash order they delivered — they never held the
+     * money of a Paystack or MoMo order; the approver completes those
+     * (Paystack refunds through the gateway).
+     */
+    public function completeAsRider(User $user, Refund $refund): bool
+    {
+        $order = $refund->order()->withoutGlobalScope(BranchScope::class)->first();
+
+        return $order !== null
+            && $order->rider_id === $user->id
+            && $order->payment_method === 'cash'
+            && $this->checkAtRefundBranch($user, $refund, 'orders.refund_request_own');
     }
 
     /**

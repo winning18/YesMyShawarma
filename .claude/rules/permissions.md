@@ -27,6 +27,7 @@ Roles: `staff`, `rider`, `manager`, `general_manager`, `owner`, `stock_manager`.
 | `orders.void` | — | — | ✓ | ✓ | ✓ | — |
 | `orders.refund` | — | — | ✓ | ✓ | ✓ | — |
 | `orders.refund_request` | ✓ | — | — | — | — | — |
+| `orders.refund_request_own` | — | own only | — | — | — | — |
 | `orders.discount` | — | — | ✓ | ✓ | ✓ | — |
 | `orders.transfer_branch` | ✓ | — | ✓ | ✓ | ✓ | — |
 | `orders.adjust_delivery_fee` | — | — | ✓ | ✓ | ✓ | — |

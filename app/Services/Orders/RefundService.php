@@ -52,6 +52,36 @@ class RefundService
         return $order->total - $completed;
     }
 
+    /**
+     * A rider's refund request (rider app → Past deliveries): always the
+     * full remaining amount — food and delivery fee (owner, 2026-11-10) —
+     * which the approver can lower. One open request per order at a time,
+     * so a double tap or a second rider can't queue two refunds of the
+     * same money.
+     *
+     * @throws RefundException
+     */
+    public function requestForRider(Order $order, User $rider, string $reason): Refund
+    {
+        if ($this->openRequestFor($order)) {
+            throw RefundException::alreadyRequested();
+        }
+
+        return $this->request($order, $rider, $this->remainingBalance($order), $reason, 'rider');
+    }
+
+    /**
+     * The order's refund that's still pending or approved-but-not-given.
+     */
+    public function openRequestFor(Order $order): ?Refund
+    {
+        return Refund::withoutGlobalScope(BranchScope::class)
+            ->where('order_id', $order->id)
+            ->whereIn('status', [Refund::STATUS_PENDING, Refund::STATUS_APPROVED])
+            ->latest('id')
+            ->first();
+    }
+
     public function request(Order $order, User $requester, int $amount, string $reason, string $actorType, ?int $shiftId = null): Refund
     {
         return DB::transaction(function () use ($order, $requester, $amount, $reason, $actorType, $shiftId) {

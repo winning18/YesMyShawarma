@@ -189,6 +189,15 @@ minus every already-*completed* refund; pending/denied requests never reserve bu
   needs an `orders.refund` holder to approve before it can be completed. Once approved,
   completing it (actually processing the refund) needs `orders.refund_request` or `orders.refund`
   — either is enough, since the person completing it doesn't have to be the one who approved it.
+- **`orders.refund_request_own`** (rider, owner decision 2026-11-10) lets a rider ask to refund
+  an order **they delivered themselves within the last 48 hours** (`OrderPolicy::
+  requestRiderRefund()`), from the rider app's Past deliveries. Always the full remaining amount,
+  food and delivery fee (`RefundService::requestForRider()`); one open request per order. Owner,
+  GM or manager approves on the Refunds page and can lower it. A **cash** order's approved refund
+  is completed by the rider ("Refund given", `RefundPolicy::completeAsRider()`) since they hand
+  the cash back; Paystack/MoMo ones are completed by the approver. Whatever a completed refund
+  returns beyond the food value comes off that order's delivery fee in the rider's totals
+  (`DeliveryFeeReportService::split()`).
 - A refund is **never** for an unpaid order (`payment_status !== 'paid'` is rejected outright),
   and the amount is capped at the order's remaining refundable balance, re-checked with a row
   lock at completion time (`RefundService::complete()`) so two completions racing each other can

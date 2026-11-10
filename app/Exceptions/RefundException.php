@@ -18,6 +18,11 @@ class RefundException extends Exception
         return new self("Refund amount exceeds the GH₵{$remaining} still refundable on this order.");
     }
 
+    public static function alreadyRequested(): self
+    {
+        return new self('A refund for this order is already waiting for approval or to be given.');
+    }
+
     public static function wrongStatus(string $expected, string $actual): self
     {
         return new self("This refund is \"{$actual}\", not \"{$expected}\". It can no longer be actioned this way.");

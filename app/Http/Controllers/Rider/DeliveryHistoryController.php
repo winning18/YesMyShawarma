@@ -4,16 +4,22 @@ namespace App\Http\Controllers\Rider;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\Refund;
 use App\Models\Scopes\BranchScope;
+use App\Services\Orders\RefundService;
 use App\Services\Reports\DeliveryFeeReportService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 class DeliveryHistoryController extends Controller
 {
-    public function __construct(private readonly DeliveryFeeReportService $fees) {}
+    public function __construct(
+        private readonly DeliveryFeeReportService $fees,
+        private readonly RefundService $refunds,
+    ) {}
 
     /**
      * Past deliveries only — "delivered" or "failed" (see orders.md; no
@@ -49,8 +55,9 @@ class DeliveryHistoryController extends Controller
     private function history(Request $request): LengthAwarePaginator
     {
         return Order::withoutGlobalScope(BranchScope::class)
-            ->with(['items'])
+            ->with(['items', 'refunds' => fn ($q) => $q->withoutGlobalScope(BranchScope::class)->latest('id')])
             ->withSum(['payments as paystack_paid' => fn ($q) => $q->where('provider', 'paystack')->where('status', 'paid')], 'amount')
+            ->withSum(['refunds as refunded_total' => fn ($q) => $q->withoutGlobalScope(BranchScope::class)->where('status', Refund::STATUS_COMPLETED)], 'amount')
             ->where('rider_id', $request->user()->id)
             ->whereIn('status', ['delivered', 'failed'])
             ->orderByDesc('updated_at')
@@ -62,6 +69,18 @@ class DeliveryHistoryController extends Controller
                 $order->setAttribute('fee_split', $order->status === 'delivered' && $order->fulfilment_type === 'delivery'
                     ? $this->fees->split($order)
                     : null);
+
+                // The refund this rider sees on the card: the latest one,
+                // whether they can ask for one, and whether an approved one
+                // is theirs to hand back (cash) — OrderPolicy/RefundPolicy.
+                $refund = $order->refunds->first();
+                $open = $refund && in_array($refund->status, [Refund::STATUS_PENDING, Refund::STATUS_APPROVED], true);
+                $order->setAttribute('refund_card', [
+                    'refund' => $refund,
+                    'can_request' => ! $open && Gate::allows('requestRiderRefund', $order),
+                    'can_give' => $refund?->status === Refund::STATUS_APPROVED && Gate::allows('completeAsRider', $refund),
+                    'remaining' => $this->refunds->remainingBalance($order),
+                ]);
 
                 return $order;
             });

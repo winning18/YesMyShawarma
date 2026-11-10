@@ -9,6 +9,9 @@ use Spatie\Permission\PermissionRegistrar;
 
 class OrderPolicy
 {
+    /** How long after delivering an order a rider can still ask to refund it. */
+    public const RIDER_REFUND_HOURS = 48;
+
     public function viewAny(User $user): bool
     {
         return $user->can('orders.view');
@@ -149,6 +152,21 @@ class OrderPolicy
      * turns out ineligible fails loudly there instead of the button
      * silently not appearing.
      */
+    /**
+     * A rider asking to refund one of their own deliveries (owner,
+     * 2026-11-10): only an order they delivered themselves, in the last
+     * RIDER_REFUND_HOURS hours. Owner, GM or manager approves, as for staff
+     * requests.
+     */
+    public function requestRiderRefund(User $user, Order $order): bool
+    {
+        return $order->rider_id === $user->id
+            && $order->status === 'delivered'
+            && $order->delivered_at !== null
+            && $order->delivered_at->gte(now()->subHours(self::RIDER_REFUND_HOURS))
+            && $this->checkAtOrderBranch($user, $order, 'orders.refund_request_own');
+    }
+
     public function requestRefund(User $user, Order $order): bool
     {
         return $this->checkAtOrderBranch($user, $order, ['orders.refund_request', 'orders.refund']);

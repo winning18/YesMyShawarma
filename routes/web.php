@@ -42,6 +42,7 @@ use App\Http\Controllers\ReviewsController;
 use App\Http\Controllers\Rider\AuthenticatedSessionController as RiderAuthenticatedSessionController;
 use App\Http\Controllers\Rider\DashboardController as RiderDashboardController;
 use App\Http\Controllers\Rider\DeliveryHistoryController as RiderDeliveryHistoryController;
+use App\Http\Controllers\Rider\RefundController as RiderRefundController;
 use App\Http\Controllers\Rider\ProfileController as RiderProfileController;
 use App\Http\Controllers\RiderAvailabilityController;
 use App\Http\Controllers\RobotsController;
@@ -335,6 +336,8 @@ Route::middleware(['auth:rider', 'verified', 'branch', 'password.change_required
     Route::get('/history', [RiderDeliveryHistoryController::class, 'index'])->name('history');
     Route::get('/profile', [RiderProfileController::class, 'edit'])->name('profile.edit');
     Route::post('/logout', [RiderAuthenticatedSessionController::class, 'destroy'])->name('logout');
+    Route::post('/orders/{order}/refund', [RiderRefundController::class, 'store'])->whereNumber('order')->middleware('throttle:10,1')->name('refunds.store');
+    Route::post('/refunds/{refund}/complete', [RiderRefundController::class, 'complete'])->whereNumber('refund')->name('refunds.complete');
 });
 
 // auth:web,rider, not the bare 'auth' (default 'web' only) — /branches/select

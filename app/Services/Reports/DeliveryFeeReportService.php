@@ -3,6 +3,7 @@
 namespace App\Services\Reports;
 
 use App\Models\Order;
+use App\Models\Refund;
 use App\Models\Scopes\BranchScope;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -114,7 +115,8 @@ class DeliveryFeeReportService
                 'branch:id,name',
                 'events' => fn ($q) => $q->whereIn('meta->action', self::FEE_CHANGE_ACTIONS),
             ])
-            ->withSum(['payments as paystack_paid' => fn ($q) => $q->where('provider', 'paystack')->where('status', 'paid')], 'amount');
+            ->withSum(['payments as paystack_paid' => fn ($q) => $q->where('provider', 'paystack')->where('status', 'paid')], 'amount')
+            ->withSum(['refunds as refunded_total' => fn ($q) => $q->withoutGlobalScope(BranchScope::class)->where('status', Refund::STATUS_COMPLETED)], 'amount');
     }
 
     /**
@@ -163,8 +165,19 @@ class DeliveryFeeReportService
             'momo' => $order->delivery_fee_paid_by === 'rider_cash' ? $fee : 0,
             default => 0,
         };
+        $prepaid = $fee - $cash;
 
-        return ['fee' => $fee, 'cash' => $cash, 'prepaid' => $fee - $cash];
+        // A refund gives back the food first; whatever it returns beyond
+        // that is the delivery fee, which comes off the rider's figures
+        // (owner, 2026-11-10: a full refund includes the fee) — cash first,
+        // since a cash refund is the rider handing that money back.
+        $refunded = array_key_exists('refunded_total', $order->getAttributes())
+            ? (int) $order->refunded_total
+            : (int) $order->refunds()->withoutGlobalScope(BranchScope::class)->where('status', Refund::STATUS_COMPLETED)->sum('amount');
+        $feeRefunded = min($fee, max(0, $refunded - ((int) $order->total - $fee)));
+        $fromCash = min($cash, $feeRefunded);
+
+        return ['fee' => $fee - $feeRefunded, 'cash' => $cash - $fromCash, 'prepaid' => $prepaid - ($feeRefunded - $fromCash)];
     }
 
     /**

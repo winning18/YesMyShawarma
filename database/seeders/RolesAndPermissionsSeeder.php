@@ -33,6 +33,8 @@ class RolesAndPermissionsSeeder extends Seeder
         'rider' => [
             'orders.view',
             'orders.advance_status',
+            // Own deliveries only, last 48h — OrderPolicy::requestRiderRefund().
+            'orders.refund_request_own',
         ],
         // orders.refund (not the weaker orders.refund_request) — manager
         // has the exact same refund rights as owner: approve/deny a

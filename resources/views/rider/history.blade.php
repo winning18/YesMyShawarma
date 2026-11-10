@@ -9,6 +9,9 @@
 
     <div class="py-12">
         <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+            @if (session('status'))
+                <div class="rounded-md bg-green-50 text-green-700 text-sm px-4 py-2">{{ session('status') }}</div>
+            @endif
             <div class="bg-white shadow-sm rounded-lg p-6 space-y-4">
                 <h3 class="font-semibold text-gray-900">{{ __('Delivery fees') }}</h3>
 
@@ -66,6 +69,48 @@
                         </p>
                     @endif
                     <p class="text-xs text-gray-400 mt-2">{{ ($order->delivered_at ?? $order->updated_at)->timezone('Africa/Accra')->format('d M Y, H:i') }}</p>
+
+                    @php $card = $order->refund_card; $refund = $card['refund']; @endphp
+                    <x-input-error class="mt-2" :messages="$errors->get('refund_'.$order->id)" />
+                    @if ($refund)
+                        <div class="mt-3 rounded-md px-3 py-2 text-sm {{ $refund->status === 'denied' ? 'bg-red-50 text-red-700' : ($refund->status === 'completed' ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-800') }}">
+                            @switch($refund->status)
+                                @case('pending')
+                                    {{ __('Refund of :amount requested, waiting for a manager to approve.', ['amount' => $money($refund->amount)]) }}
+                                    @break
+                                @case('approved')
+                                    @if ($card['can_give'])
+                                        <p class="font-semibold">{{ __('Refund approved: give :amount back to the customer.', ['amount' => $money($refund->amount)]) }}</p>
+                                        <form method="POST" action="{{ route('rider.refunds.complete', $refund->id) }}" class="mt-2"
+                                            onsubmit="return confirm(@js(__('Confirm you have given the customer :amount?', ['amount' => $money($refund->amount)])))">
+                                            @csrf
+                                            <button type="submit" class="px-3 py-1.5 bg-gray-800 text-white text-xs font-semibold rounded-md">{{ __('Refund given') }}</button>
+                                        </form>
+                                    @else
+                                        {{ __('Refund of :amount approved. The branch will refund the customer.', ['amount' => $money($refund->amount)]) }}
+                                    @endif
+                                    @break
+                                @case('completed')
+                                    {{ __('Refunded :amount.', ['amount' => $money($refund->amount)]) }}
+                                    @break
+                                @case('denied')
+                                    {{ __('Refund not approved.') }}@if ($refund->review_note) {{ $refund->review_note }}@endif
+                                    @break
+                            @endswitch
+                        </div>
+                    @endif
+
+                    @if ($card['can_request'] && $card['remaining'] > 0)
+                        <details class="mt-3">
+                            <summary class="text-sm text-red-700 font-semibold cursor-pointer">{{ __('Request refund') }}</summary>
+                            <form method="POST" action="{{ route('rider.refunds.store', $order->id) }}" class="mt-2 space-y-2">
+                                @csrf
+                                <p class="text-xs text-gray-500">{{ __('Full refund of :amount (food and delivery fee). A manager approves it first; they can lower the amount.', ['amount' => $money($card['remaining'])]) }}</p>
+                                <textarea name="reason" rows="2" required maxlength="255" class="w-full rounded-md border-gray-300 text-sm" placeholder="{{ __('What went wrong? e.g. wrong order, missing items') }}"></textarea>
+                                <button type="submit" class="px-3 py-1.5 bg-red-700 text-white text-xs font-semibold rounded-md">{{ __('Send refund request') }}</button>
+                            </form>
+                        </details>
+                    @endif
                 </div>
             @empty
                 <p class="text-sm text-gray-500">{{ __("You haven't completed any deliveries yet.") }}</p>
