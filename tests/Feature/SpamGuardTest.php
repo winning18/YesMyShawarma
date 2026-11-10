@@ -21,7 +21,7 @@ class SpamGuardTest extends TestCase
 
         $this->assertTrue($guard->isSpam($this->request([
             'website' => 'http://spam.example',
-            'form_rendered_at' => now()->subSeconds(5)->timestamp,
+            'form_rendered_at' => \App\Services\Spam\HoneypotGuard::stamp(now()->subSeconds(5)->timestamp),
         ])));
     }
 
@@ -30,7 +30,7 @@ class SpamGuardTest extends TestCase
         $guard = app(HoneypotGuard::class);
 
         $this->assertTrue($guard->isSpam($this->request([
-            'form_rendered_at' => now()->timestamp,
+            'form_rendered_at' => \App\Services\Spam\HoneypotGuard::stamp(now()->timestamp),
         ])));
     }
 
@@ -47,7 +47,7 @@ class SpamGuardTest extends TestCase
         $guard = app(HoneypotGuard::class);
 
         $this->assertFalse($guard->isSpam($this->request([
-            'form_rendered_at' => now()->subSeconds(5)->timestamp,
+            'form_rendered_at' => \App\Services\Spam\HoneypotGuard::stamp(now()->subSeconds(5)->timestamp),
         ])));
     }
 

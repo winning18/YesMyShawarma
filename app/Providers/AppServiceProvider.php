@@ -13,8 +13,11 @@ use App\Services\Notifications\LogPushNotifier;
 use App\Services\Notifications\WebPushNotifier;
 use App\Services\Payments\PaystackClient;
 use App\Services\Shifts\ShiftService;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
@@ -52,6 +55,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Public forms a bot can reach (contact, newsletter): per IP, three
+        // windows at once — a per-minute limit alone still allowed 7,200
+        // messages a day from one address. Each limit needs its own key.
+        RateLimiter::for('public-form', fn (Request $request) => [
+            Limit::perMinute(3)->by('m:'.$request->ip()),
+            Limit::perHour(10)->by('h:'.$request->ip()),
+            Limit::perDay(20)->by('d:'.$request->ip()),
+        ]);
+
         // Password::defaults() was the bare framework fallback (min 8,
         // nothing else) until now — every password-setting form (register,
         // reset, change, force-change) already calls Password::defaults(),

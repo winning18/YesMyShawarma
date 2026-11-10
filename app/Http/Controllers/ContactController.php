@@ -44,7 +44,7 @@ class ContactController extends Controller
         // A caught submission looks identical to a real one to the caller —
         // see HoneypotGuard's docblock for why silently pretending success
         // is deliberate rather than a validation error.
-        if ($honeypot->isSpam($request)) {
+        if ($honeypot->isSpam($request) || $honeypot->tooManyLinks($request->input('message'))) {
             return back()->with('status', __("Thanks! We've received your message and will get back to you soon."));
         }
 

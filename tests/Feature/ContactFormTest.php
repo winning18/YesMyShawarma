@@ -18,7 +18,7 @@ class ContactFormTest extends TestCase
      */
     private function honeypotPassing(array $data = []): array
     {
-        return array_merge(['form_rendered_at' => now()->subSeconds(5)->timestamp], $data);
+        return array_merge(['form_rendered_at' => \App\Services\Spam\HoneypotGuard::stamp(now()->subSeconds(5)->timestamp)], $data);
     }
 
     public function test_a_visitor_can_submit_the_contact_form_with_an_email(): void
@@ -89,7 +89,7 @@ class ContactFormTest extends TestCase
 
         $this->post(route('contact.submit'), [
             'name' => 'Bot', 'email' => 'bot@example.com', 'message' => 'spam',
-            'form_rendered_at' => now()->timestamp,
+            'form_rendered_at' => \App\Services\Spam\HoneypotGuard::stamp(now()->timestamp),
         ])->assertRedirect()->assertSessionHas('status');
 
         Mail::assertNothingSent();
@@ -104,5 +104,46 @@ class ContactFormTest extends TestCase
         ])->assertRedirect()->assertSessionHas('status');
 
         Mail::assertNothingSent();
+    }
+
+    public function test_a_forged_plain_timestamp_no_longer_passes_the_timing_check(): void
+    {
+        // Nov 2026 audit: the load time used to be a plain number a bot
+        // could set to anything to skip the 2-second wait.
+        Mail::fake();
+
+        $this->post(route('contact.submit'), [
+            'name' => 'Bot', 'email' => 'bot@example.com', 'message' => 'Hello',
+            'form_rendered_at' => now()->subMinutes(5)->timestamp,
+        ])->assertSessionHasNoErrors();
+
+        Mail::assertNothingQueued();
+        Mail::assertNothingSent();
+    }
+
+    public function test_a_message_stuffed_with_links_is_quietly_dropped_but_one_link_is_fine(): void
+    {
+        Mail::fake();
+
+        $this->post(route('contact.submit'), $this->honeypotPassing(['name' => 'Ama', 'email' => 'ama@example.com', 'message' => 'Cheap pills at https://a.example and www.b.example']))
+            ->assertSessionHas('status');
+        Mail::assertNothingQueued();
+
+        $this->post(route('contact.submit'), $this->honeypotPassing(['name' => 'Ama', 'email' => 'ama@example.com', 'message' => 'My order on yesmyshawarma.com was late']))
+            ->assertSessionHas('status');
+        Mail::assertQueued(\App\Mail\ContactMessageSubmitted::class, 1);
+    }
+
+    public function test_an_address_is_capped_at_ten_messages_an_hour(): void
+    {
+        Mail::fake();
+
+        foreach (range(1, 10) as $i) {
+            $this->travel(25)->seconds();
+            $this->post(route('contact.submit'), $this->honeypotPassing(['name' => 'Ama', 'email' => 'ama@example.com', 'message' => "Message {$i}"]))->assertRedirect();
+        }
+
+        $this->travel(25)->seconds();
+        $this->post(route('contact.submit'), $this->honeypotPassing(['name' => 'Ama', 'email' => 'ama@example.com', 'message' => 'One too many']))->assertStatus(429);
     }
 }

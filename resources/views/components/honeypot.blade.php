@@ -11,4 +11,4 @@
     <label for="website">Website</label>
     <input type="text" name="website" id="website" tabindex="-1" autocomplete="off">
 </div>
-<input type="hidden" name="form_rendered_at" value="{{ time() }}">
+<input type="hidden" name="form_rendered_at" value="{{ \App\Services\Spam\HoneypotGuard::stamp() }}">

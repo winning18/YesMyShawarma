@@ -13,7 +13,7 @@ class NewsletterTest extends TestCase
     /** @see ContactFormTest::honeypotPassing() */
     private function honeypotPassing(array $data = []): array
     {
-        return array_merge(['form_rendered_at' => now()->subSeconds(5)->timestamp], $data);
+        return array_merge(['form_rendered_at' => \App\Services\Spam\HoneypotGuard::stamp(now()->subSeconds(5)->timestamp)], $data);
     }
 
     public function test_a_visitor_can_subscribe(): void
