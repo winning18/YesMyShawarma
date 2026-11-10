@@ -209,7 +209,9 @@ class MenuController extends Controller
      * — including every search-engine crawler, which never carries a
      * session — used to be redirected to /branches with no menu content
      * at all, making /menu and every /menu/{item} page unindexable. Now
-     * silently defaults to (and persists) the first active branch instead,
+     * defaults to the first active branch instead (session only, flagged
+     * SOURCE_DEFAULT so the branch bar tells the customer it was picked
+     * for them),
      * exactly like HomeController's marquee already treats "no branch
      * selected" as "show it anyway" rather than hiding content. Real
      * visitors still see the branch switcher and can pick their actual
@@ -236,7 +238,7 @@ class MenuController extends Controller
                 return redirect()->route('branches.index')->with('status', 'Choose a branch to see its menu.');
             }
 
-            $selection->set($branch->id);
+            $selection->set($branch->id, CustomerBranchSelection::SOURCE_DEFAULT);
         }
 
         return $branch;

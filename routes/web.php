@@ -43,8 +43,8 @@ use App\Http\Controllers\ReviewsController;
 use App\Http\Controllers\Rider\AuthenticatedSessionController as RiderAuthenticatedSessionController;
 use App\Http\Controllers\Rider\DashboardController as RiderDashboardController;
 use App\Http\Controllers\Rider\DeliveryHistoryController as RiderDeliveryHistoryController;
-use App\Http\Controllers\Rider\RefundController as RiderRefundController;
 use App\Http\Controllers\Rider\ProfileController as RiderProfileController;
+use App\Http\Controllers\Rider\RefundController as RiderRefundController;
 use App\Http\Controllers\RiderAvailabilityController;
 use App\Http\Controllers\RobotsController;
 use App\Http\Controllers\SettingsController;
@@ -79,6 +79,7 @@ Route::middleware('track.visit')->group(function () {
 
     Route::get('/branches', [BranchesController::class, 'index'])->name('branches.index');
     Route::get('/branches/{branch}/select', [BranchesController::class, 'select'])->name('branches.pick');
+    Route::post('/branches/nearest', [BranchesController::class, 'nearest'])->middleware('throttle:30,1')->name('branches.nearest');
     // Branch landing pages by slug. 'select' is excluded so this never
     // swallows the staff /branches/select picker registered further down.
     Route::get('/branches/{branch:slug}', [BranchesController::class, 'show'])

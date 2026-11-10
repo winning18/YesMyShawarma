@@ -35,11 +35,20 @@ class DeliveryFeeCalculator
      */
     public function calculate(Branch $branch, float $lat, float $lng): int
     {
-        $distanceKm = $this->distanceMetres((float) $branch->lat, (float) $branch->lng, $lat, $lng) / 1000;
+        $distanceKm = $this->distanceKm($branch, $lat, $lng);
 
         $fee = (int) round($distanceKm * self::RATE_PER_KM_PESEWAS / 100) * 100;
 
         return max($fee, self::MINIMUM_DELIVERY_FEE_PESEWAS);
+    }
+
+    /**
+     * Also NearestBranchFinder's measure, so "your nearest branch" and the
+     * delivery fee it then quotes always agree on what "near" means.
+     */
+    public function distanceKm(Branch $branch, float $lat, float $lng): float
+    {
+        return $this->distanceMetres((float) $branch->lat, (float) $branch->lng, $lat, $lng) / 1000;
     }
 
     private function distanceMetres(float $lat1, float $lng1, float $lat2, float $lng2): float

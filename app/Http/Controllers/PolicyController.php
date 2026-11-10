@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Customers\CustomerBranchSelection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cookie;
@@ -38,7 +39,8 @@ class PolicyController extends Controller
     /**
      * The Cookie Policy promises visitors can accept, decline, or adjust
      * non-essential cookie use at any time — this is that control.
-     * "Decline" also forgets any visitor-analytics cookie already set, so
+     * "Decline" also forgets any visitor-analytics cookie and remembered
+     * branch (CustomerBranchSelection) already set, so
      * the choice takes effect immediately rather than only for future
      * visits. Nothing here needs a service class: it's a single named
      * cookie, no business logic to extract.
@@ -50,7 +52,7 @@ class PolicyController extends Controller
         $redirect = back()->withCookie(Cookie::forever('cookie_consent', $choice));
 
         return $choice === 'decline'
-            ? $redirect->withCookie(Cookie::forget('visitor_token'))
+            ? $redirect->withCookie(Cookie::forget('visitor_token'))->withCookie(Cookie::forget(CustomerBranchSelection::COOKIE))
             : $redirect;
     }
 }

@@ -40,6 +40,7 @@
             locationFailed: false,
             locationOptOut: false,
             estimatedFee: null,
+            closerBranch: null,
             branchLat: {{ $branch->lat }},
             branchLng: {{ $branch->lng }},
             ratePerKmPesewas: {{ $ratePerKmPesewas }},
@@ -128,6 +129,7 @@
                         this.locationStatus = '{{ __('Location captured. Estimated fee added below.') }}';
                         this.locationFailed = false;
                         this.locationOptOut = false;
+                        this.suggestCloserBranch();
                     },
                     () => {
                         this.estimatedFee = null;
@@ -135,6 +137,20 @@
                         this.locationFailed = true;
                     }
                 );
+            },
+            // A pin clearly closer to another open branch (NearestBranchFinder::
+            // SUGGEST_SWITCH_KM) gets an offer to move the order there —
+            // only ever a suggestion, the server decides whether it's worth
+            // one. A failed lookup just means no suggestion.
+            async suggestCloserBranch() {
+                try {
+                    const data = await window.nearestBranchFor('{{ route('branches.nearest') }}', this.lat, this.lng, false);
+                    this.closerBranch = data.suggest_switch
+                        ? { name: data.branch.name, km: (data.current.distance_km - data.distance_km).toFixed(1), url: data.select_url + '?return=checkout' }
+                        : null;
+                } catch (error) {
+                    this.closerBranch = null;
+                }
             },
             calculateFee() {
                 const toRad = (deg) => deg * Math.PI / 180;
@@ -187,7 +203,7 @@
                 return Math.max(0, this.subtotalPesewas - this.discountAmount + fee);
             },
         }"
-        x-effect="if (fulfilmentType !== 'delivery') { estimatedFee = null; locationStatus = ''; locationFailed = false; locationOptOut = false; }"
+        x-effect="if (fulfilmentType !== 'delivery') { estimatedFee = null; locationStatus = ''; locationFailed = false; locationOptOut = false; closerBranch = null; }"
     >
         <div class="md:col-span-2">
             <form id="checkout-form" method="POST" action="{{ route('checkout.store') }}" class="space-y-6" x-ref="form">
@@ -292,6 +308,14 @@
                                 {{ __('Share my live location') }}
                             </button>
                             <span x-show="locationStatus" x-text="locationStatus" class="block text-sm text-brand-gray-500 mt-1"></span>
+                            <div x-show="closerBranch" x-cloak class="mt-3 rounded-lg bg-brand-yellow-light border border-brand-yellow text-sm px-4 py-3">
+                                <p>
+                                    <strong x-text="closerBranch?.name"></strong>
+                                    <span x-text="@js(__('is :km km closer to you.')).replace(':km', closerBranch?.km)"></span>
+                                    {{ __('Delivery from there costs less.') }}
+                                </p>
+                                <a :href="closerBranch?.url" class="inline-block mt-2 font-semibold text-brand-red hover:text-brand-red-dark underline" x-text="@js(__('Move my order to :branch')).replace(':branch', closerBranch?.name)"></a>
+                            </div>
                             <input type="hidden" name="lat" x-model="lat" value="{{ old('lat') }}">
                             <input type="hidden" name="lng" x-model="lng" value="{{ old('lng') }}">
 

@@ -3,10 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Branch;
+use App\Services\Branches\NearestBranchFinder;
 use App\Services\Branches\WorkingHoursService;
+use App\Services\Cart\CartService;
 use App\Services\Customers\CustomerBranchSelection;
 use App\Services\Seo\RestaurantSchemaBuilder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class BranchesController extends Controller
@@ -64,7 +68,7 @@ class BranchesController extends Controller
         return $branch;
     }
 
-    public function select(Branch $branch, CustomerBranchSelection $selection): RedirectResponse
+    public function select(Request $request, Branch $branch, CustomerBranchSelection $selection, CartService $cart): RedirectResponse
     {
         // The index listing only shows active branches, but that's just a
         // UI filter — nothing stopped this route being hit directly for an
@@ -74,7 +78,89 @@ class BranchesController extends Controller
         }
 
         $selection->set($branch->id);
+        $removed = $cart->moveToBranch($branch);
 
-        return redirect()->route('menu.index');
+        // Only ever one of two fixed destinations — never a URL taken from
+        // the request, so this can't become an open redirect.
+        $destination = $request->query('return') === 'checkout' && ! $cart->isEmpty()
+            ? route('checkout.show')
+            : route('menu.index');
+
+        return redirect($destination)->with('status', $this->switchMessage($branch, $removed));
+    }
+
+    /**
+     * "Find my nearest branch". JSON for the page's own fetch (the
+     * coordinates go in a POST body, kept out of access logs). With
+     * apply=1 (the Branches page and branch bar) it also selects that
+     * branch and moves the cart; without it (checkout) it only reports, so
+     * the page can suggest a switch rather than make one.
+     */
+    public function nearest(Request $request, NearestBranchFinder $finder, CustomerBranchSelection $selection, CartService $cart): JsonResponse
+    {
+        $validated = $request->validate([
+            'lat' => ['required', 'numeric', 'between:-90,90'],
+            'lng' => ['required', 'numeric', 'between:-180,180'],
+            'apply' => ['boolean'],
+        ]);
+
+        $lat = (float) $validated['lat'];
+        $lng = (float) $validated['lng'];
+        $result = $finder->find($lat, $lng);
+
+        if (! $result) {
+            return response()->json(['message' => __('No branch is available right now.')], 404);
+        }
+
+        $branch = $result['branch'];
+        $current = ($cart->isEmpty() ? null : Branch::find($cart->branchId())) ?? $selection->current();
+
+        if ($request->boolean('apply')) {
+            $selection->set($branch->id, CustomerBranchSelection::SOURCE_NEAREST);
+            $removed = $cart->moveToBranch($branch);
+
+            $message = $result['closer_closed']
+                ? __(':closed is closed right now, so you\'re ordering from :branch (:km km away).', ['closed' => $result['closer_closed']->name, 'branch' => $branch->name, 'km' => $result['distance_km']])
+                : __('You\'re ordering from :branch, your nearest branch (:km km away).', ['branch' => $branch->name, 'km' => $result['distance_km']]);
+
+            session()->flash('status', trim($message.' '.$this->removedMessage($branch, $removed)));
+        }
+
+        $currentDistanceKm = $current ? $finder->distanceKm($current, $lat, $lng) : null;
+
+        return response()->json([
+            'branch' => ['id' => $branch->id, 'name' => $branch->name, 'slug' => $branch->slug],
+            'distance_km' => $result['distance_km'],
+            'closer_closed' => $result['closer_closed']?->name,
+            'current' => $current ? ['id' => $current->id, 'name' => $current->name, 'distance_km' => $currentDistanceKm] : null,
+            'suggest_switch' => $current !== null && ! $current->is($branch)
+                && $currentDistanceKm - $result['distance_km'] >= NearestBranchFinder::SUGGEST_SWITCH_KM,
+            'select_url' => route('branches.pick', $branch),
+            'redirect' => route('menu.index'),
+        ]);
+    }
+
+    /**
+     * @param  list<string>  $removed
+     */
+    private function switchMessage(Branch $branch, array $removed): string
+    {
+        return trim(__('You\'re ordering from :branch.', ['branch' => $branch->name]).' '.$this->removedMessage($branch, $removed));
+    }
+
+    /**
+     * @param  list<string>  $removed
+     */
+    private function removedMessage(Branch $branch, array $removed): string
+    {
+        if ($removed === []) {
+            return '';
+        }
+
+        return trans_choice(
+            ':items isn\'t available at :branch and was removed from your cart.|:items aren\'t available at :branch and were removed from your cart.',
+            count($removed),
+            ['items' => collect($removed)->join(', ', ' and '), 'branch' => $branch->name],
+        );
     }
 }

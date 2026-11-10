@@ -8,6 +8,7 @@ use App\Models\DeliveryArea;
 use App\Models\Order;
 use App\Services\Branches\WorkingHoursService;
 use App\Services\Cart\CartService;
+use App\Services\Customers\CustomerBranchSelection;
 use App\Services\Customers\CustomerService;
 use App\Services\Delivery\DeliveryFeeCalculator;
 use App\Services\Orders\Data\DeliveryAddressData;
@@ -86,6 +87,7 @@ class CheckoutController extends Controller
         PaystackPaymentService $paystack,
         VisitorSessionService $visitors,
         SettingsService $settings,
+        CustomerBranchSelection $selection,
     ): RedirectResponse {
         $summary = $cart->summary();
 
@@ -181,6 +183,10 @@ class CheckoutController extends Controller
         }
 
         $visitors->markConverted($request, $order);
+
+        // Placing an order is a real choice of branch — remembered on this
+        // device for next time, even if the menu had defaulted it.
+        $selection->set($branch->id);
 
         $cart->clear();
 

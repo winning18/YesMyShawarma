@@ -12,8 +12,8 @@
     <script type="application/ld+json">{!! json_encode($menuSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) !!}</script>
 
     <div class="text-center mb-6">
-        <h1 class="text-2xl font-bold">{{ __('Menu') }}: {{ $branch->name }}</h1>
-        <a href="{{ route('branches.index') }}" class="text-sm underline text-brand-gray-500">{{ __('Change branch') }}</a>
+        <h1 class="text-2xl font-bold mb-3">{{ __('Menu') }}: {{ $branch->name }}</h1>
+        <x-customer-branch-bar :branch="$branch" class="max-w-xl mx-auto" />
     </div>
 
     @if ($errors->any())

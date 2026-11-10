@@ -13,7 +13,7 @@
             {{ __('Browse the menu →') }}
         </a>
     @else
-        <p class="text-sm text-brand-gray-500 mb-4">{{ $branch->name }}</p>
+        <x-customer-branch-bar :branch="$branch" class="mb-4" />
 
         {{--
             +/- reloads the page once the PATCH confirms, rather than

@@ -12,6 +12,8 @@
 
     <a href="{{ route('menu.index') }}" class="text-sm underline text-brand-gray-500">&larr; {{ __('Back to menu') }}</a>
 
+    <x-customer-branch-bar :branch="$branch" class="mt-4" />
+
     @if ($errors->any())
         <div class="mt-6 rounded-lg bg-brand-red-light border border-brand-red text-brand-red-dark text-sm px-4 py-2">
             {{ $errors->first() }}

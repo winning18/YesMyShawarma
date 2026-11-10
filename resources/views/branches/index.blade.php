@@ -7,6 +7,10 @@
 
     <div x-data="branchSearch(@js($branches->map(fn ($b) => ['id' => $b->id, 'name' => $b->name, 'address' => $b->address])->values()))">
         <div class="max-w-xl mx-auto mb-8">
+            <div class="text-center mb-4">
+                <x-nearest-branch-button class="px-5 py-2.5 bg-brand-red text-brand-white text-sm rounded-md hover:bg-brand-red-dark" />
+                <p class="text-xs text-brand-gray-500 mt-2">{{ __('Uses your location once to find the closest open branch. Nothing is saved.') }}</p>
+            </div>
             <input
                 type="search" x-model="query"
                 placeholder="{{ __('Search by branch name or area…') }}"

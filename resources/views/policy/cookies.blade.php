@@ -2,7 +2,7 @@
     <x-slot name="pageHeader">{{ __('Cookie Policy') }}</x-slot>
 
     <div class="max-w-3xl mx-auto text-brand-black">
-        <p class="text-sm text-brand-gray-500 mb-8">{{ __('Last updated: 2 September 2026') }}</p>
+        <p class="text-sm text-brand-gray-500 mb-8">{{ __('Last updated: 10 November 2026') }}</p>
 
         <p class="leading-relaxed mb-4">
             {{ __('At Yes! My Shawarma, we care about your privacy and want to be open about the technologies we use. This Cookie Policy explains what cookies are, how we use them, and the choices you have.') }}
@@ -18,7 +18,7 @@
         <ol class="list-decimal pl-5 space-y-2 leading-relaxed mb-4">
             <li><strong>{{ __('Essential cookies.') }}</strong> {{ __("These are needed for our website to work. They help you move around the site and use key features such as secure areas and your cart. Without them, parts of the site simply won't function.") }}</li>
             <li><strong>{{ __('Performance cookies.') }}</strong> {{ __('These tell us how visitors use our site: which pages are popular, where people run into trouble, so we can keep improving how it works.') }}</li>
-            <li><strong>{{ __('Functional cookies.') }}</strong> {{ __('These remember your choices, such as your language or region, so we can give you a more personal experience.') }}</li>
+            <li><strong>{{ __('Functional cookies.') }}</strong> {{ __('These remember your choices, such as your language or region, so we can give you a more personal experience.') }} {{ __('For example, when you choose a branch (or let us find your nearest one), we remember that branch on your device for up to a year so you don\'t have to pick it again. We never store your location. Declining non-essential cookies turns this off.') }}</li>
             <li><strong>{{ __('Targeting cookies.') }}</strong> {{ __('These help us show you offers and adverts that are relevant to you, limit how often you see the same ad, and measure how well our campaigns perform.') }}</li>
         </ol>
 

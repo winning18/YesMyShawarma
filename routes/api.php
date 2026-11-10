@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\NearestBranchController;
 use App\Http\Controllers\Api\PaystackWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -10,3 +11,8 @@ use Illuminate\Support\Facades\Route;
 Route::post('/webhooks/paystack', PaystackWebhookController::class)
     ->withoutMiddleware(['throttle:api'])
     ->name('webhooks.paystack');
+
+// Read-only "nearest branch" for the coming mobile app — same
+// NearestBranchFinder as the website's /branches/nearest. Selecting the
+// branch is the app's own state, not the server's.
+Route::get('/branches/nearest', NearestBranchController::class)->name('api.branches.nearest');

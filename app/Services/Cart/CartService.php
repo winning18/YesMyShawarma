@@ -4,6 +4,7 @@ namespace App\Services\Cart;
 
 use App\Exceptions\OrderPlacementException;
 use App\Models\Branch;
+use App\Models\MenuItem;
 use App\Services\Menu\MenuPricingService;
 use App\Services\Orders\Data\PlaceOrderItemData;
 use App\Services\Promotions\PromotionService;
@@ -13,8 +14,8 @@ use Illuminate\Support\Str;
 /**
  * Session-based — no login required for guest checkout. A cart belongs to
  * exactly one branch at a time (an order is placed from one branch), so
- * adding an item from a different branch starts a fresh cart rather than
- * mixing branches.
+ * switching branch moves the cart over (moveToBranch) rather than mixing
+ * branches.
  */
 class CartService
 {
@@ -31,13 +32,12 @@ class CartService
      */
     public function add(int $branchId, int $menuItemId, int $quantity, ?string $notes, array $optionQuantities): void
     {
-        $cart = $this->raw();
-
-        if ($cart['branch_id'] !== null && $cart['branch_id'] !== $branchId) {
-            $cart = ['branch_id' => $branchId, 'items' => []];
-        } else {
-            $cart['branch_id'] = $branchId;
+        if ($this->branchId() !== null && $this->branchId() !== $branchId) {
+            $this->moveToBranch(Branch::findOrFail($branchId));
         }
+
+        $cart = $this->raw();
+        $cart['branch_id'] = $branchId;
 
         $quantity = max(1, $quantity);
 
@@ -134,6 +134,39 @@ class CartService
         }
 
         $this->save($cart);
+    }
+
+    /**
+     * Switching branch carries the cart over rather than emptying it
+     * (owner decision 2026-11-10): every line the new branch can still sell
+     * as-is stays, the rest are removed and their names returned so the
+     * customer is told exactly what went.
+     *
+     * @return list<string> names of the items removed
+     */
+    public function moveToBranch(Branch $branch): array
+    {
+        $cart = $this->raw();
+
+        if ($cart['branch_id'] === $branch->id || empty($cart['items'])) {
+            return [];
+        }
+
+        $kept = [];
+        $removed = [];
+
+        foreach ($cart['items'] as $item) {
+            try {
+                $this->pricing->priceItem($branch, $this->toItemData($item));
+                $kept[] = $item;
+            } catch (OrderPlacementException) {
+                $removed[] = MenuItem::find($item['menu_item_id'])->name ?? __('An item');
+            }
+        }
+
+        $this->save(['branch_id' => $kept ? $branch->id : null, 'items' => $kept]);
+
+        return array_values(array_unique($removed));
     }
 
     public function clear(): void
