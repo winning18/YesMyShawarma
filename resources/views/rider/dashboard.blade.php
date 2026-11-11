@@ -33,8 +33,11 @@
             </template>
 
             <div class="bg-white shadow-sm rounded-lg p-4 flex items-center justify-between gap-3">
-                <p class="text-sm text-gray-600">{{ __('Delivery fees collected in cash today') }}</p>
-                <p class="text-lg font-semibold text-gray-900" x-text="formatMoney(deliveryFeeCashToday)"></p>
+                <div>
+                    <p class="text-sm text-gray-600">{{ __('Cash delivery fees to hand in') }}</p>
+                    <p class="text-xs text-gray-400" x-text="@js(__('Collected today:')) + ' ' + formatMoney(deliveryFeeCashToday)"></p>
+                </div>
+                <p class="text-lg font-semibold text-gray-900" x-text="formatMoney(deliveryFeeToHandIn)"></p>
             </div>
 
             <section>
@@ -111,12 +114,11 @@
                                     <p class="text-sm font-semibold text-gray-900 mt-2" x-show="order.cash_to_collect > 0" x-text="@js(__('Collect')) + ' ' + formatMoney(order.cash_to_collect) + ' ' + @js(__('cash'))"></p>
                                     <p class="text-sm text-green-700 mt-2" x-show="order.cash_to_collect === 0 && !feePending(order)">{{ __('Fully paid — nothing to collect') }}</p>
                                     {{--
-                                        The customer already paid this fee to the business
-                                        (Paystack, or MoMo with the food) — delivery fees
-                                        aren't sales, so the rider gets it from the staff
-                                        on shift instead (payments.md's "Delivery fee audit").
+                                        No more "get your fee from staff": since 2026-11-11
+                                        riders hand fees in rather than keep them, so a
+                                        prepaid fee simply stays with the business
+                                        (DeliveryFeeCollectionService).
                                     --}}
-                                    <p class="text-sm font-semibold text-gray-900 mt-1" x-show="order.fee_from_staff > 0" x-text="@js(__('Get your')) + ' ' + formatMoney(order.fee_from_staff) + ' ' + @js(__('delivery fee from staff'))"></p>
                                     {{--
                                         Customer didn't share a location at checkout, so
                                         delivery_fee is deliberately still 0 — it's only
@@ -214,6 +216,7 @@
             return {
                 mine: [],
                 deliveryFeeCashToday: 0,
+                deliveryFeeToHandIn: 0,
                 error: null,
                 actionError: null,
                 arriving: null,
@@ -251,6 +254,7 @@
 
                         this.mine = data;
                         this.deliveryFeeCashToday = meta.delivery_fee_cash_today;
+                        this.deliveryFeeToHandIn = meta.delivery_fee_to_hand_in ?? 0;
                         this.error = null;
                     } catch (e) {
                         this.error = e.message;

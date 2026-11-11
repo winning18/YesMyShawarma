@@ -19,10 +19,10 @@
                     @foreach ([__('Today') => $today, __('This week') => $thisWeek] as $label => $totals)
                         <div>
                             <p class="text-xs text-gray-500">{{ $label }}</p>
-                            <p class="text-xl font-semibold text-gray-900">{{ $money($totals['total']) }}</p>
+                            <p class="text-xl font-semibold text-gray-900">{{ $money($totals['to_collect']) }} <span class="text-sm font-normal text-gray-500">{{ __('to hand in') }}</span></p>
                             <p class="text-xs text-gray-500">
                                 {{ trans_choice(':count delivery|:count deliveries', $totals['count'], ['count' => $totals['count']]) }} ·
-                                {{ __(':cash cash from customers · :staff from staff', ['cash' => $money($totals['cash']), 'staff' => $money($totals['prepaid'])]) }}
+                                {{ __(':cash cash collected · :handed handed in', ['cash' => $money($totals['cash']), 'handed' => $money($totals['collected'])]) }}
                             </p>
                         </div>
                     @endforeach
@@ -42,9 +42,10 @@
                     </div>
                     <p class="text-sm text-gray-700">
                         {{ $from->format('d M') }} – {{ $to->format('d M Y') }}:
-                        <span class="font-semibold">{{ $money($range['total']) }}</span>
-                        {{ __('from :count deliveries', ['count' => $range['count']]) }} ·
-                        {{ __(':cash from customers, :prepaid from staff', ['cash' => $money($range['cash']), 'prepaid' => $money($range['prepaid'])]) }}
+                        {{ __(':count deliveries', ['count' => $range['count']]) }} ·
+                        {{ __(':cash cash collected', ['cash' => $money($range['cash'])]) }} ·
+                        <span class="font-semibold">{{ __(':amount to hand in', ['amount' => $money($range['to_collect'])]) }}</span> ·
+                        {{ __(':amount handed in', ['amount' => $money($range['collected'])]) }}
                     </p>
                 </form>
             </div>
@@ -65,7 +66,7 @@
                     @if ($split = $order->fee_split)
                         <p class="text-sm text-gray-700 mt-2">
                             {{ __('Delivery fee') }} <span class="font-semibold">{{ $money($split['fee']) }}</span>
-                            <span class="text-gray-500">· {{ $split['prepaid'] === 0 ? __('from customer') : ($split['cash'] === 0 ? __('from staff') : __(':amount from staff', ['amount' => $money($split['prepaid'])])) }}</span>
+                            <span class="text-gray-500">· {{ $split['prepaid'] === 0 ? __('cash from customer') : ($split['cash'] === 0 ? __('prepaid, nothing to hand in') : __(':amount in cash, the rest prepaid', ['amount' => $money($split['cash'])])) }}</span>
                         </p>
                     @endif
                     <p class="text-xs text-gray-400 mt-2">{{ ($order->delivered_at ?? $order->updated_at)->timezone('Africa/Accra')->format('d M Y, H:i') }}</p>

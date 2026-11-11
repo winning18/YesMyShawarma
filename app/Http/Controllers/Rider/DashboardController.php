@@ -50,9 +50,12 @@ class DashboardController extends Controller
 
         $now = Carbon::now('Africa/Accra');
         $today = $fees->summary($fees->rowsForRider($request->user(), $now->clone()->startOfDay(), $now->clone()->endOfDay()));
+        // Everything not yet handed in since hand-ins started (owner,
+        // 2026-11-11), at every branch — not just today's.
+        $owed = $fees->summary($fees->rowsForRider($request->user(), $fees->handInStartsOn(), $now->clone()->endOfDay()));
 
         return OrderResource::collection($orders)->additional([
-            'meta' => ['delivery_fee_cash_today' => $today['cash']],
+            'meta' => ['delivery_fee_cash_today' => $today['cash'], 'delivery_fee_to_hand_in' => $owed['to_collect']],
         ]);
     }
 }

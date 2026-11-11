@@ -22,6 +22,13 @@ class DeliveryFeesReportController extends Controller
 {
     private const MAX_RANGE_DAYS = 366;
 
+    public const COLLECTION_LABELS = [
+        DeliveryFeeReportService::STATUS_KEPT => 'Kept by rider',
+        DeliveryFeeReportService::STATUS_PREPAID => 'Prepaid',
+        DeliveryFeeReportService::STATUS_COLLECTED => 'Collected',
+        DeliveryFeeReportService::STATUS_TO_COLLECT => 'To collect',
+    ];
+
     public function __construct(private readonly DeliveryFeeReportService $fees) {}
 
     public function index(Request $request, ReportBranchFilter $branches): View
@@ -32,14 +39,17 @@ class DeliveryFeesReportController extends Controller
         [$branchArgs, $branchViewData] = $branches->resolve($request);
         $riderId = $this->resolveRider($request);
 
+        $collection = $this->resolveCollectionFilter($request);
         $allRows = $this->fees->rows($from, $to, null, ...$branchArgs);
         $rows = $riderId !== null ? $allRows->where('rider_id', $riderId)->values() : $allRows;
+        $rows = $collection !== null ? $rows->where('collection_status', $collection)->values() : $rows;
         $page = LengthAwarePaginator::resolveCurrentPage();
 
         return view('dashboard.reports.delivery-fees', [
             'from' => $from,
             'to' => $to,
             'riderId' => $riderId,
+            'collection' => $collection,
             'summary' => $this->fees->summary($allRows),
             'riders' => $this->fees->byRider($allRows),
             'riderSummary' => $riderId !== null ? $this->fees->summary($rows) : null,
@@ -57,10 +67,12 @@ class DeliveryFeesReportController extends Controller
         [$from, $to] = $this->resolveRange($request);
         [$branchArgs] = $branches->resolve($request);
         $rows = $this->fees->rows($from, $to, $this->resolveRider($request), ...$branchArgs);
+        $collection = $this->resolveCollectionFilter($request);
+        $rows = $collection !== null ? $rows->where('collection_status', $collection)->values() : $rows;
 
         return response()->streamDownload(function () use ($rows) {
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['Delivered', 'Order', 'Branch', 'Rider', 'Area', 'Payment', 'Delivery fee (GHS)', 'From customer in cash (GHS)', 'From staff (GHS)', 'Fee note']);
+            fputcsv($out, ['Delivered', 'Order', 'Branch', 'Rider', 'Area', 'Payment', 'Delivery fee (GHS)', 'Cash from customer (GHS)', 'Prepaid (GHS)', 'Fee note', 'Collection', 'Collected at', 'Collected by']);
 
             foreach ($rows as $row) {
                 fputcsv($out, [
@@ -74,11 +86,24 @@ class DeliveryFeesReportController extends Controller
                     number_format($row['cash'] / 100, 2, '.', ''),
                     number_format($row['prepaid'] / 100, 2, '.', ''),
                     $row['fee_note'],
+                    self::COLLECTION_LABELS[$row['collection_status']],
+                    $row['collected_at']?->format('Y-m-d H:i'),
+                    $row['collected_by'],
                 ]);
             }
 
             fclose($out);
         }, 'delivery-fees-'.$from->toDateString().'-to-'.$to->toDateString().'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    /**
+     * 'to_collect' or 'collected' narrows the list; anything else is all.
+     */
+    private function resolveCollectionFilter(Request $request): ?string
+    {
+        $value = $request->query('collection');
+
+        return in_array($value, [DeliveryFeeReportService::STATUS_TO_COLLECT, DeliveryFeeReportService::STATUS_COLLECTED], true) ? $value : null;
     }
 
     private function resolveRider(Request $request): ?int

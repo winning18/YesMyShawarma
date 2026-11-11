@@ -51,6 +51,7 @@ Roles: `staff`, `rider`, `manager`, `general_manager`, `owner`, `stock_manager`.
 | `damage_reports.review` | — | — | ✓ | ✓ | ✓ | — |
 | `market_lists.record` | ✓ | — | ✓ | ✓ | ✓ | ✓ |
 | `market_lists.approve` | — | — | ✓ | ✓ | ✓ | — |
+| `delivery_fees.collect` | — | — | ✓ | ✓ | ✓ | — |
 
 `general_manager` holds the exact same permission set as `manager` (see `RolesAndPermissionsSeeder`'s
 `$matrix` — the two lists are meant to be kept identical apart from `users.create_operational`),
@@ -347,3 +348,11 @@ approved by the owner. The owner's own lists are approved automatically. Viewing
 Refunds/Damage Reports three-way scope: owner every branch, general_manager their GM branches,
 everyone else the current branch — and a recorder without `market_lists.approve` sees only
 their own lists.
+
+## Delivery fee collections
+
+`delivery_fees.collect` (owner, general_manager, manager) — record that a rider handed in their
+cash delivery fees for a branch and period, or void such a record
+(`DeliveryFeeCollectionService`). Kept apart from the other money permissions so it can be
+audited on its own. Checked against the collection's own branch; a manager only at their branch,
+a GM at their GM branches, owner everywhere.

@@ -107,6 +107,14 @@ class Order extends Model
         return $this->belongsTo(Promotion::class);
     }
 
+    /**
+     * The hand-in this order's cash delivery fee went into, if any.
+     */
+    public function feeCollection(): HasOne
+    {
+        return $this->hasOne(DeliveryFeeCollectionOrder::class);
+    }
+
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class);

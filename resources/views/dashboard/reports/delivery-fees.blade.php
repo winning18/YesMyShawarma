@@ -25,14 +25,19 @@
 
         <div>
             <h3 class="font-semibold text-lg text-gray-800">{{ __('Delivery fees') }}</h3>
-            <p class="text-sm text-gray-500">{{ __('Every delivery fee goes to the rider: in cash from the customer, or from staff on shift when the customer already paid it by Paystack or MoMo. Each rider sees the same totals in their app under Past deliveries.') }}</p>
+            <p class="text-sm text-gray-500">{{ __('Riders hand in the cash delivery fees they collect at the door; Paystack and MoMo fees are already with the business. Deliveries before the hand-ins started were the rider\'s to keep. Each rider sees the same totals in their app.') }}</p>
         </div>
+        @can('delivery_fees.collect')
+            <a href="{{ route('dashboard.reports.delivery-fees.collections.index', [...$branchParam, ...$rangeParams]) }}"
+                class="inline-block px-4 py-2 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-900">{{ __('Record a collection') }}</a>
+        @endcan
 
         <div class="bg-white shadow rounded-lg p-4">
             <form method="GET" action="{{ route('dashboard.reports.delivery-fees.index') }}" class="space-y-3">
                 @if ($riderId !== null)
                     <input type="hidden" name="rider" value="{{ $riderId }}">
                 @endif
+                @php $collectionParam = $collection ? ['collection' => $collection] : []; @endphp
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     <div>
                         <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Dates') }}</label>
@@ -42,6 +47,15 @@
                             :label="$from->format('d/m/Y').' - '.$to->format('d/m/Y')"
                             :preset-links="$dateRangePresetLinks"
                         />
+                    </div>
+
+                    <div>
+                        <label for="collection" class="block text-xs font-medium text-gray-500 mb-1">{{ __('Collection') }}</label>
+                        <select id="collection" name="collection" class="w-full rounded-md border-gray-300 text-sm">
+                            <option value="">{{ __('All deliveries') }}</option>
+                            <option value="to_collect" @selected($collection === 'to_collect')>{{ __('To collect') }}</option>
+                            <option value="collected" @selected($collection === 'collected')>{{ __('Collected') }}</option>
+                        </select>
                     </div>
 
                     @if ($crossBranch)
@@ -62,7 +76,7 @@
                         {{ __('Apply filters') }}
                     </button>
                     <a
-                        href="{{ route('dashboard.reports.delivery-fees.download', [...$branchParam, ...$rangeParams, ...($riderId !== null ? ['rider' => $riderId] : [])]) }}"
+                        href="{{ route('dashboard.reports.delivery-fees.download', [...$branchParam, ...$rangeParams, ...$collectionParam, ...($riderId !== null ? ['rider' => $riderId] : [])]) }}"
                         class="ml-auto px-4 py-2 bg-green-700 text-white text-sm font-semibold rounded-full hover:bg-green-800"
                     >{{ __('Download CSV') }}</a>
                 </div>
@@ -79,11 +93,12 @@
                 <p class="text-xl font-semibold text-gray-800">{{ $summary['count'] }}</p>
             </div>
             <div class="bg-white shadow rounded-lg p-4">
-                <p class="text-xs text-gray-500">{{ __('From customers (cash)') }}</p>
-                <p class="text-xl font-semibold text-gray-800">{{ $money($summary['cash']) }}</p>
+                <p class="text-xs text-gray-500">{{ __('Cash still to collect') }}</p>
+                <p class="text-xl font-semibold {{ $summary['to_collect'] > 0 ? 'text-red-600' : 'text-gray-800' }}">{{ $money($summary['to_collect']) }}</p>
+                <p class="text-xs text-gray-400">{{ __(':amount collected', ['amount' => $money($summary['collected'])]) }}</p>
             </div>
             <div class="bg-white shadow rounded-lg p-4">
-                <p class="text-xs text-gray-500">{{ __('From staff') }}</p>
+                <p class="text-xs text-gray-500">{{ __('Prepaid') }}</p>
                 <p class="text-xl font-semibold text-gray-800">{{ $money($summary['prepaid']) }}</p>
                 <p class="text-xs text-gray-400">{{ __('Customer paid by Paystack or MoMo') }}</p>
             </div>
@@ -95,8 +110,9 @@
                     <tr>
                         <th class="px-4 py-2">{{ __('Rider') }}</th>
                         <th class="px-4 py-2 text-right">{{ __('Deliveries') }}</th>
-                        <th class="px-4 py-2 text-right">{{ __('From customers') }}</th>
-                        <th class="px-4 py-2 text-right">{{ __('From staff') }}</th>
+                        <th class="px-4 py-2 text-right">{{ __('Cash') }}</th>
+                        <th class="px-4 py-2 text-right">{{ __('To collect') }}</th>
+                        <th class="px-4 py-2 text-right">{{ __('Collected') }}</th>
                         <th class="px-4 py-2 text-right">{{ __('Total fees') }}</th>
                     </tr>
                 </thead>
@@ -108,12 +124,13 @@
                             </td>
                             <td class="px-4 py-2 text-right text-gray-500">{{ $rider['count'] }}</td>
                             <td class="px-4 py-2 text-right text-gray-800">{{ $money($rider['cash']) }}</td>
-                            <td class="px-4 py-2 text-right text-gray-500">{{ $money($rider['prepaid']) }}</td>
+                            <td class="px-4 py-2 text-right {{ $rider['to_collect'] > 0 ? 'text-red-600 font-semibold' : 'text-gray-500' }}">{{ $money($rider['to_collect']) }}</td>
+                            <td class="px-4 py-2 text-right text-gray-500">{{ $money($rider['collected']) }}</td>
                             <td class="px-4 py-2 text-right font-semibold text-gray-800">{{ $money($rider['total']) }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-4 py-6 text-center text-gray-500">{{ __('No deliveries in these dates.') }}</td>
+                            <td colspan="6" class="px-4 py-6 text-center text-gray-500">{{ __('No deliveries in these dates.') }}</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -146,7 +163,8 @@
                                 <th class="px-4 py-2">{{ __('Branch') }}</th>
                             @endif
                             <th class="px-4 py-2">{{ __('Area') }}</th>
-                            <th class="px-4 py-2">{{ __('Rider gets it from') }}</th>
+                            <th class="px-4 py-2">{{ __('Paid by') }}</th>
+                            <th class="px-4 py-2">{{ __('Collection') }}</th>
                             <th class="px-4 py-2 text-right">{{ __('Fee') }}</th>
                         </tr>
                     </thead>
@@ -163,7 +181,23 @@
                                 @endif
                                 <td class="px-4 py-2 text-gray-500">{{ $order['area'] ?? '—' }}</td>
                                 <td class="px-4 py-2 text-gray-500">
-                                    {{ $order['prepaid'] === 0 ? __('Customer') : ($order['cash'] === 0 ? __('Staff') : __('Customer and staff')) }}
+                                    {{ $order['prepaid'] === 0 ? __('Cash') : ($order['cash'] === 0 ? __('Prepaid') : __('Cash and prepaid')) }}
+                                </td>
+                                <td class="px-4 py-2 whitespace-nowrap">
+                                    @switch ($order['collection_status'])
+                                        @case('collected')
+                                            <span class="text-xs font-medium px-2 py-1 rounded-md bg-green-50 text-green-700">{{ __('Collected') }}</span>
+                                            <span class="block text-xs text-gray-400 mt-1">{{ $order['collected_at']->format('d/m') }} · {{ $order['collected_by'] }}</span>
+                                            @break
+                                        @case('to_collect')
+                                            <span class="text-xs font-medium px-2 py-1 rounded-md bg-red-50 text-red-700">{{ __('To collect') }}</span>
+                                            @break
+                                        @case('prepaid')
+                                            <span class="text-xs text-gray-400">{{ __('Nothing to collect') }}</span>
+                                            @break
+                                        @default
+                                            <span class="text-xs text-gray-400">{{ __('Kept by rider') }}</span>
+                                    @endswitch
                                 </td>
                                 <td class="px-4 py-2 text-right whitespace-nowrap">
                                     <span class="text-gray-800">{{ $money($order['fee']) }}</span>
@@ -174,7 +208,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="px-4 py-6 text-center text-gray-500">{{ __('No deliveries for this rider in these dates.') }}</td>
+                                <td colspan="8" class="px-4 py-6 text-center text-gray-500">{{ __('No deliveries match these filters.') }}</td>
                             </tr>
                         @endforelse
                     </tbody>

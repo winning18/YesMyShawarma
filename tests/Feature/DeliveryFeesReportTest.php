@@ -92,7 +92,7 @@ class DeliveryFeesReportTest extends TestCase
 
         $summary = $this->fees()->summary($this->fees()->rows(now('Africa/Accra')->startOfWeek(), now('Africa/Accra')->endOfWeek(), ignoreBranchScope: true));
 
-        $this->assertSame(['total' => 1500, 'cash' => 1500, 'prepaid' => 0, 'count' => 1], $summary);
+        $this->assertSame(['total' => 1500, 'cash' => 1500, 'prepaid' => 0, 'count' => 1, 'to_collect' => 0, 'collected' => 0], $summary);
     }
 
     public function test_fee_is_split_by_who_received_the_money(): void
@@ -179,7 +179,7 @@ class DeliveryFeesReportTest extends TestCase
             ->assertOk()
             ->streamedContent();
 
-        $this->assertStringContainsString('From customer in cash (GHS)', $csv);
+        $this->assertStringContainsString('Cash from customer (GHS)', $csv);
         $this->assertStringContainsString($order->reference.',Osu,Kofi,,cash,15.00,15.00,0.00,', $csv);
     }
 

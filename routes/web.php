@@ -18,6 +18,7 @@ use App\Http\Controllers\Customer\Auth\RegisteredUserController as CustomerRegis
 use App\Http\Controllers\CustomerImportController;
 use App\Http\Controllers\CustomerManagementController;
 use App\Http\Controllers\DamageReportController;
+use App\Http\Controllers\DeliveryFeeCollectionController;
 use App\Http\Controllers\DeliveryFeesReportController;
 use App\Http\Controllers\ExpensesReportController;
 use App\Http\Controllers\FaqController;
@@ -319,6 +320,9 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
 
     Route::get('/dashboard/reports/delivery-fees', [DeliveryFeesReportController::class, 'index'])->name('dashboard.reports.delivery-fees.index');
     Route::get('/dashboard/reports/delivery-fees/download', [DeliveryFeesReportController::class, 'download'])->name('dashboard.reports.delivery-fees.download');
+    Route::get('/dashboard/reports/delivery-fees/collections', [DeliveryFeeCollectionController::class, 'index'])->name('dashboard.reports.delivery-fees.collections.index');
+    Route::post('/dashboard/reports/delivery-fees/collections', [DeliveryFeeCollectionController::class, 'store'])->name('dashboard.reports.delivery-fees.collections.store');
+    Route::post('/dashboard/reports/delivery-fees/collections/{collection}/void', [DeliveryFeeCollectionController::class, 'void'])->name('dashboard.reports.delivery-fees.collections.void');
 
     Route::get('/dashboard/reports/today', [TodayReportController::class, 'index'])->name('dashboard.reports.today.index');
 

@@ -232,7 +232,9 @@ raise it.
 
 ## Delivery fee audit
 
-Every delivery fee goes to the rider — delivery fees are not sales (owner, 2026-10-21).
+Delivery fees are not sales. Until 2026-11-10 every fee was the rider's (owner, 2026-10-21); from
+2026-11-11 riders **hand in** the cash fees they collect (owner, 2026-11-11 — see "Delivery fee
+collections" below). Profit still leaves fees out until the owner decides otherwise.
 `OrderReportService::financialSummary()` counts `total - delivery_fee`, so Sales, Detailed
 reports, Performance and shift-close `system_sales` are all food after discounts, and a refund
 only reduces sales up to that value. Fee figures are shown apart, and only to
@@ -240,12 +242,25 @@ only reduces sales up to that value. Fee figures are shown apart, and only to
 Reports → Delivery fees (`reports.view_financial`) and the rider app's Past deliveries totals are
 both built by `DeliveryFeeReportService`, so a rider's figures always equal their row in the
 report. Delivered delivery orders only, dated by `delivered_at`, using the order's final
-`delivery_fee`. `split()` says where the rider gets each fee: **from the customer** in cash (`cash`
-orders, a `paystack` order whose fee was added at arrival, or a POS `momo` order with
-`delivery_fee_paid_by = 'rider_cash'`) or **from staff on shift** (the business already holds it:
-`paystack` covering the fee, or `momo` with `delivery_fee_paid_by` `'momo'`/null). The rider
-dashboard's `cash_to_collect` / `fee_from_staff` (OrderResource) follow the same rule. Viewing
-only — no hand-in records yet.
+`delivery_fee`. `split()` says where each fee's money is: **cash** the rider took at the door
+(`cash` orders, a `paystack` order whose fee was added at arrival, or a POS `momo` order with
+`delivery_fee_paid_by = 'rider_cash'`) or **prepaid**, already with the business (`paystack`
+covering the fee, or `momo` with `delivery_fee_paid_by` `'momo'`/null). The rider dashboard's
+`cash_to_collect` (OrderResource) follows the same rule; `fee_from_staff` is still in the resource
+but no longer shown — staff stopped paying riders prepaid fees on 2026-11-11.
+
+### Delivery fee collections
+
+`delivery_fee_collections` / `delivery_fee_collection_orders` (`DeliveryFeeCollectionService`,
+`delivery_fees.collect`: owner/GM/manager at the collection's branch): one rider handing in
+their **cash** fees at one branch for a period. Only deliveries on or after the
+`delivery_fee_hand_in_starts_on` setting (2026-11-11) are ever owed; earlier ones show "Kept by
+rider". The amount actually handed in is recorded beside the expected total (shortfall/over
+shown). Each order sits in one live collection at most (unique `order_id`), so overlapping
+periods never double-count; voiding (with a reason) deletes the links and keeps the record.
+Orders themselves are never written. Each Delivery fees report row carries `collection_status`
+(`kept`|`prepaid`|`collected`|`to_collect`), filterable, and the rider app shows "to hand in"
+(everything owed since the start date) and "handed in".
 
 `orders.delivery_fee_paid_by` is chosen per order at the POS for MoMo delivery orders (it varies),
 and can be changed from the order page until delivered (`DeliveryFeePayerService`, writes an

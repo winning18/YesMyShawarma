@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\Refund;
 use App\Models\Scopes\BranchScope;
 use App\Models\User;
+use App\Services\Settings\SettingsService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -20,14 +21,19 @@ use Illuminate\Support\Collection;
  * which already includes a fee calculated at "Arrived", a manager
  * adjustment or a branch-transfer reprice.
  *
- * Every delivery fee goes to the rider — fees aren't sales (owner,
- * 2026-10-21). Each one is split by where the rider gets it:
- * - cash: from the customer at the door.
- * - prepaid: the business already holds it, so the staff on shift pay the
- *   rider — Paystack covering the fee, or a POS MoMo order whose fee came
- *   with the food (delivery_fee_paid_by 'momo', or unset). A Paystack
- *   order whose fee was only added at arrival is cash: Paystack was
- *   charged before the fee existed.
+ * Fees aren't sales. Until 2026-11-11 every fee was the rider's (owner,
+ * 2026-10-21); from then on riders hand in the cash fees they collect
+ * (owner, 2026-11-11, DeliveryFeeCollectionService). Each fee is split by
+ * where the money is:
+ * - cash: taken from the customer at the door by the rider.
+ * - prepaid: already with the business — Paystack covering the fee, or a
+ *   POS MoMo order whose fee came with the food (delivery_fee_paid_by
+ *   'momo', or unset). A Paystack order whose fee was only added at
+ *   arrival is cash: Paystack was charged before the fee existed.
+ *
+ * Each row's collection status: 'kept' (delivered before hand-ins
+ * started — the rider's), 'prepaid' (no cash to hand in), 'collected'
+ * (in a live collection) or 'to_collect'.
  *
  * Branch arguments follow WeeklySalesReportService's convention, resolved
  * by ReportBranchResolver.
@@ -36,7 +42,28 @@ class DeliveryFeeReportService
 {
     private const FEE_CHANGE_ACTIONS = ['delivery_fee_adjusted', 'arrived', 'branch_transfer', 'delivery_fee_paid_by_changed'];
 
-    public function __construct(private readonly ReportBranchResolver $branches) {}
+    public const STATUS_KEPT = 'kept';
+
+    public const STATUS_PREPAID = 'prepaid';
+
+    public const STATUS_COLLECTED = 'collected';
+
+    public const STATUS_TO_COLLECT = 'to_collect';
+
+    private ?Carbon $handInStartsOn = null;
+
+    public function __construct(
+        private readonly ReportBranchResolver $branches,
+        private readonly SettingsService $settings,
+    ) {}
+
+    /**
+     * Start of the first day riders hand cash fees in (Africa/Accra).
+     */
+    public function handInStartsOn(): Carbon
+    {
+        return $this->handInStartsOn ??= Carbon::parse($this->settings->get(SettingsService::DELIVERY_FEE_HAND_IN_STARTS_ON) ?? '2026-11-11', 'Africa/Accra')->startOfDay();
+    }
 
     /**
      * One row per delivered order, newest first.
@@ -70,7 +97,7 @@ class DeliveryFeeReportService
 
     /**
      * @param  Collection<int, array<string, mixed>>  $rows
-     * @return array{total: int, cash: int, prepaid: int, count: int}
+     * @return array{total: int, cash: int, prepaid: int, count: int, to_collect: int, collected: int}
      */
     public function summary(Collection $rows): array
     {
@@ -79,6 +106,8 @@ class DeliveryFeeReportService
             'cash' => (int) $rows->sum('cash'),
             'prepaid' => (int) $rows->sum('prepaid'),
             'count' => $rows->count(),
+            'to_collect' => (int) $rows->where('collection_status', self::STATUS_TO_COLLECT)->sum('cash'),
+            'collected' => (int) $rows->where('collection_status', self::STATUS_COLLECTED)->sum('cash'),
         ];
     }
 
@@ -114,6 +143,7 @@ class DeliveryFeeReportService
                 'rider:id,name',
                 'branch:id,name',
                 'events' => fn ($q) => $q->whereIn('meta->action', self::FEE_CHANGE_ACTIONS),
+                'feeCollection.collection.collectedBy:id,name',
             ])
             ->withSum(['payments as paystack_paid' => fn ($q) => $q->where('provider', 'paystack')->where('status', 'paid')], 'amount')
             ->withSum(['refunds as refunded_total' => fn ($q) => $q->withoutGlobalScope(BranchScope::class)->where('status', Refund::STATUS_COMPLETED)], 'amount');
@@ -125,6 +155,7 @@ class DeliveryFeeReportService
     private function row(Order $order): array
     {
         ['fee' => $fee, 'cash' => $cash, 'prepaid' => $prepaid] = $this->split($order);
+        $collection = $order->feeCollection?->collection;
 
         return [
             'order_id' => $order->id,
@@ -140,6 +171,15 @@ class DeliveryFeeReportService
             'cash' => $cash,
             'prepaid' => $prepaid,
             'fee_note' => $this->feeNote($order),
+            'collection_status' => match (true) {
+                $order->delivered_at->lt($this->handInStartsOn()) => self::STATUS_KEPT,
+                $collection !== null => self::STATUS_COLLECTED,
+                $cash === 0 => self::STATUS_PREPAID,
+                default => self::STATUS_TO_COLLECT,
+            },
+            'collection_id' => $collection?->id,
+            'collected_at' => $collection?->collected_at?->clone()->timezone('Africa/Accra'),
+            'collected_by' => $collection?->collectedBy?->name,
         ];
     }
 

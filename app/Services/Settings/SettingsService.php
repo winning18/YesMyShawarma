@@ -34,6 +34,13 @@ class SettingsService
      */
     public const PAYSTACK_ENABLED = 'paystack_enabled';
 
+    /**
+     * Date (Y-m-d, Africa/Accra) from which riders hand their cash delivery
+     * fees in (owner, 2026-11-11). Deliveries before it were the rider's to
+     * keep and are never shown as owed. See DeliveryFeeCollectionService.
+     */
+    public const DELIVERY_FEE_HAND_IN_STARTS_ON = 'delivery_fee_hand_in_starts_on';
+
     public function get(string $key, ?string $default = null): ?string
     {
         return Setting::where('key', $key)->value('value') ?? $default;

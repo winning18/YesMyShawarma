@@ -143,7 +143,7 @@ class SalesStatementService
             ? [
                 ['label' => 'Orders', 'value' => (string) count($allRows)],
                 ['label' => 'Discounts given', 'value' => $this->money($totals['discount'])],
-                ['label' => 'Delivery fees passed to riders', 'value' => $this->money($totals['delivery_fee'])],
+                ['label' => 'Delivery fees (not sales)', 'value' => $this->money($totals['delivery_fee'])],
                 ['label' => 'Refunds completed', 'value' => (string) $refunds['count']],
             ]
             : [
