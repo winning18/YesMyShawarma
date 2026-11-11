@@ -9,7 +9,11 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\CategoryManagementController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\Customer\Account\AddressesController as AccountAddressesController;
+use App\Http\Controllers\Customer\Account\DetailsController as AccountDetailsController;
+use App\Http\Controllers\Customer\Account\OrdersController as AccountOrdersController;
 use App\Http\Controllers\Customer\Auth\AuthenticatedSessionController as CustomerAuthenticatedSessionController;
+use App\Http\Controllers\Customer\Auth\PasswordResetController as CustomerPasswordResetController;
 use App\Http\Controllers\Customer\Auth\RegisteredUserController as CustomerRegisteredUserController;
 use App\Http\Controllers\CustomerImportController;
 use App\Http\Controllers\CustomerManagementController;
@@ -148,10 +152,35 @@ Route::middleware('guest:customer')->group(function () {
 
     Route::get('/customer/login', [CustomerAuthenticatedSessionController::class, 'create'])->name('customer.login');
     Route::post('/customer/login', [CustomerAuthenticatedSessionController::class, 'store']);
+
+    // Forgot password by texted code. throttle per IP here; SmsCodeService
+    // also caps texts per number.
+    Route::get('/customer/forgot-password', [CustomerPasswordResetController::class, 'create'])->name('customer.password.request');
+    Route::post('/customer/forgot-password', [CustomerPasswordResetController::class, 'sendCode'])->middleware('throttle:6,1')->name('customer.password.code');
+    Route::get('/customer/reset-password', [CustomerPasswordResetController::class, 'edit'])->name('customer.password.reset');
+    Route::post('/customer/reset-password', [CustomerPasswordResetController::class, 'update'])->middleware('throttle:10,1')->name('customer.password.update');
 });
 
 Route::middleware('auth:customer')->group(function () {
     Route::post('/customer/logout', [CustomerAuthenticatedSessionController::class, 'destroy'])->name('customer.logout');
+
+    // My account (owner, 2026-11-11).
+    Route::get('/account', [AccountDetailsController::class, 'show'])->name('customer.account.show');
+    Route::patch('/account', [AccountDetailsController::class, 'update'])->name('customer.account.update');
+    Route::put('/account/password', [AccountDetailsController::class, 'updatePassword'])->middleware('throttle:10,1')->name('customer.account.password');
+    Route::post('/account/phone/code', [AccountDetailsController::class, 'sendPhoneCode'])->middleware('throttle:6,1')->name('customer.account.phone.code');
+    Route::post('/account/phone', [AccountDetailsController::class, 'confirmPhone'])->middleware('throttle:10,1')->name('customer.account.phone.confirm');
+    Route::delete('/account/phone', [AccountDetailsController::class, 'cancelPhone'])->name('customer.account.phone.cancel');
+    Route::put('/account/sms-offers', [AccountDetailsController::class, 'updateSmsOffers'])->name('customer.account.sms-offers');
+
+    Route::get('/account/orders', [AccountOrdersController::class, 'index'])->name('customer.account.orders');
+    Route::post('/account/orders/{order}/reorder', [AccountOrdersController::class, 'reorder'])->whereNumber('order')->name('customer.account.reorder');
+
+    Route::get('/account/addresses', [AccountAddressesController::class, 'index'])->name('customer.account.addresses');
+    Route::post('/account/addresses', [AccountAddressesController::class, 'store'])->name('customer.account.addresses.store');
+    Route::put('/account/addresses/{address}', [AccountAddressesController::class, 'update'])->whereNumber('address')->name('customer.account.addresses.update');
+    Route::post('/account/addresses/{address}/default', [AccountAddressesController::class, 'makeDefault'])->whereNumber('address')->name('customer.account.addresses.default');
+    Route::delete('/account/addresses/{address}', [AccountAddressesController::class, 'destroy'])->whereNumber('address')->name('customer.account.addresses.destroy');
 });
 
 Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'staff.web_orders_check'])->group(function () {
@@ -366,7 +395,6 @@ Route::middleware(['auth:rider', 'verified', 'branch', 'password.change_required
 Route::middleware('auth:web,rider')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::get('/branches/select', [BranchSelectionController::class, 'show'])->name('branches.select');
     Route::post('/branches/select', [BranchSelectionController::class, 'store'])->name('branches.select.store');

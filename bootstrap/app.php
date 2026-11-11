@@ -47,6 +47,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
             return $request->is('rider*') ? route('rider.dashboard') : route('dashboard');
         });
+
+        // The other direction: a logged-out customer opening My account
+        // belongs on the customer login, not the staff one.
+        $middleware->redirectGuestsTo(fn (Request $request) => $request->is('account*') ? route('customer.login') : route('login'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // The default skeleton's callback only checked the URL prefix, which

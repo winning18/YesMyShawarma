@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['customer_id', 'label', 'ghanapost_code', 'landmark', 'lat', 'lng', 'is_default'])]
+#[Fillable(['customer_id', 'label', 'delivery_area_id', 'area_other', 'ghanapost_code', 'landmark', 'lat', 'lng', 'is_default'])]
 class CustomerAddress extends Model
 {
     use HasFactory;
@@ -24,5 +24,19 @@ class CustomerAddress extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function deliveryArea(): BelongsTo
+    {
+        return $this->belongsTo(DeliveryArea::class);
+    }
+
+    /**
+     * The area as the customer would say it: the named area, or what they
+     * typed when theirs wasn't listed.
+     */
+    public function areaName(): ?string
+    {
+        return $this->deliveryArea?->name ?? $this->area_other;
     }
 }

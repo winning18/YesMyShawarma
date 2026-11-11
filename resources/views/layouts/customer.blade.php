@@ -121,7 +121,7 @@
                     </a>
 
                     @auth('customer')
-                        <span class="text-brand-white text-sm">{{ auth('customer')->user()->name ?? auth('customer')->user()->phone }}</span>
+                        <a href="{{ route('customer.account.show') }}" class="text-sm text-brand-white hover:text-brand-yellow {{ request()->routeIs('customer.account.*') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('My account') }}</a>
                         <form method="POST" action="{{ route('customer.logout') }}">
                             @csrf
                             <button type="submit" class="text-sm text-brand-white hover:text-brand-yellow">{{ __('Log out') }}</button>
@@ -230,7 +230,7 @@
 
                     <div class="border-t border-brand-gray-700 p-4 shrink-0">
                         @auth('customer')
-                            <p class="text-sm text-brand-white mb-2 truncate">{{ auth('customer')->user()->name ?? auth('customer')->user()->phone }}</p>
+                            <a href="{{ route('customer.account.show') }}" class="block text-sm font-semibold text-brand-white hover:text-brand-yellow mb-2 truncate">{{ __('My account') }} · {{ auth('customer')->user()->name ?? auth('customer')->user()->phone }}</a>
                             <form method="POST" action="{{ route('customer.logout') }}">
                                 @csrf
                                 <button type="submit" class="text-sm text-brand-gray-300 hover:text-brand-yellow">{{ __('Log out') }}</button>

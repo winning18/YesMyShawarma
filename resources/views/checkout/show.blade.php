@@ -41,6 +41,36 @@
             locationOptOut: false,
             estimatedFee: null,
             closerBranch: null,
+            savedAddresses: @js($savedAddresses),
+            savedAddressId: '',
+            saveAddress: false,
+            // Fills every delivery field from a saved address. With a saved
+            // location it prices the fee straight away, exactly as if the
+            // customer had just shared it.
+            applySavedAddress() {
+                const saved = this.savedAddresses.find((address) => String(address.id) === String(this.savedAddressId));
+                if (!saved) return;
+
+                this.areaSelection = saved.area;
+                this.areaOther = saved.area_other;
+                this.ghanapostCode = saved.ghanapost_code;
+                this.landmark = saved.landmark;
+
+                if (saved.lat !== null) {
+                    this.lat = saved.lat;
+                    this.lng = saved.lng;
+                    this.estimatedFee = this.calculateFee();
+                    this.locationStatus = '{{ __('Using your saved location. Estimated fee added below.') }}';
+                    this.locationFailed = false;
+                    this.locationOptOut = false;
+                    this.suggestCloserBranch();
+                } else {
+                    this.lat = null;
+                    this.lng = null;
+                    this.estimatedFee = null;
+                    this.locationStatus = '';
+                }
+            },
             branchLat: {{ $branch->lat }},
             branchLng: {{ $branch->lng }},
             ratePerKmPesewas: {{ $ratePerKmPesewas }},
@@ -250,7 +280,22 @@
                         </div>
                     </div>
 
-                    <div x-show="fulfilmentType === 'delivery'" x-cloak class="space-y-3 border border-brand-gray-100 rounded-lg p-4">
+                    <div x-show="fulfilmentType === 'delivery'" x-cloak class="space-y-3 border border-brand-gray-100 rounded-lg p-4"
+                        x-init="$watch('fulfilmentType', (type) => {
+                            const preferred = savedAddresses.find((address) => address.is_default) ?? savedAddresses[0];
+                            if (type === 'delivery' && !savedAddressId && preferred && !landmark) { savedAddressId = String(preferred.id); applySavedAddress(); }
+                        })">
+                        <template x-if="savedAddresses.length">
+                            <div>
+                                <label class="block text-sm font-medium mb-1">{{ __('Your saved addresses') }}</label>
+                                <select x-model="savedAddressId" @change="applySavedAddress()" class="w-full rounded-md border-brand-gray-300">
+                                    <option value="">{{ __('A new address') }}</option>
+                                    <template x-for="address in savedAddresses" :key="address.id">
+                                        <option :value="String(address.id)" x-text="address.name"></option>
+                                    </template>
+                                </select>
+                            </div>
+                        </template>
                         <div>
                             <label class="block text-sm font-medium mb-1">{{ __('Delivery area') }} <span class="text-brand-red">*</span></label>
                             <select
@@ -329,6 +374,12 @@
                         <p class="text-xs text-brand-gray-500">
                             {{ __("We need your location to price delivery. If we can capture it, you'll see your estimated fee added below right away.") }}
                         </p>
+                        @auth('customer')
+                            <label x-show="!savedAddressId" class="flex items-center gap-2 text-sm">
+                                <input type="checkbox" name="save_address" value="1" x-model="saveAddress" @checked(old('save_address'))>
+                                {{ __('Save this address for next time') }}
+                            </label>
+                        @endauth
                     </div>
                 @endif
 

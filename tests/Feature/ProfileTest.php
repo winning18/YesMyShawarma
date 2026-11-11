@@ -61,40 +61,16 @@ class ProfileTest extends TestCase
         $this->assertNotNull($user->refresh()->email_verified_at);
     }
 
-    public function test_user_can_delete_their_account(): void
+    /**
+     * Staff can't delete their own account (owner, 2026-11-11) — only
+     * the owner removes staff, from Users.
+     */
+    public function test_staff_cannot_delete_their_own_account(): void
     {
         $user = User::factory()->create();
 
-        $response = $this
-            ->actingAs($user)
-            ->delete('/profile', [
-                'password' => 'password',
-            ]);
-
-        $response
-            ->assertSessionHasNoErrors()
-            ->assertRedirect('/');
-
-        $this->assertGuest();
-        // users is soft-deleted (schema.md) — the row still exists, just
-        // trashed, rather than gone entirely.
-        $this->assertTrue($user->fresh()->trashed());
-    }
-
-    public function test_correct_password_must_be_provided_to_delete_account(): void
-    {
-        $user = User::factory()->create();
-
-        $response = $this
-            ->actingAs($user)
-            ->from('/profile')
-            ->delete('/profile', [
-                'password' => 'wrong-password',
-            ]);
-
-        $response
-            ->assertSessionHasErrorsIn('userDeletion', 'password')
-            ->assertRedirect('/profile');
+        $this->actingAs($user)->get('/profile')->assertOk()->assertDontSee('Delete Account');
+        $this->actingAs($user)->delete('/profile', ['password' => 'password'])->assertStatus(405);
 
         $this->assertNotNull($user->fresh());
     }

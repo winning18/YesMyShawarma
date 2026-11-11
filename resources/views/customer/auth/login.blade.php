@@ -53,10 +53,13 @@
                 </div>
             </div>
 
-            <label class="flex items-center gap-2 text-sm">
-                <input type="checkbox" name="remember">
-                {{ __('Remember me') }}
-            </label>
+            <div class="flex items-center justify-between">
+                <label class="flex items-center gap-2 text-sm">
+                    <input type="checkbox" name="remember">
+                    {{ __('Remember me') }}
+                </label>
+                <a href="{{ route('customer.password.request') }}" class="text-sm underline text-brand-gray-500">{{ __('Forgot password?') }}</a>
+            </div>
 
             <button
                 type="submit" :disabled="!formValid"

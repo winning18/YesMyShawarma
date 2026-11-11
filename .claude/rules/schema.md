@@ -88,8 +88,8 @@ Price is always `menu_items.base_price` — no per-branch override.
 customers           id, phone (unique, nullable), name, email, password,
                     phone_verified_at, marketing_opt_in, marketing_opted_out_at,
                     suspended_at, suspended_by, suspension_reason
-customer_addresses  id, customer_id, label, ghanapost_code,
-                    landmark, lat, lng, is_default
+customer_addresses  id, customer_id, label, delivery_area_id (nullable), area_other (nullable),
+                    ghanapost_code (nullable), landmark, lat, lng, is_default
 ```
 
 `phone` is the identity key, normalised to E.164, for every path except one: a POS walk-in who
@@ -105,7 +105,20 @@ outside contacts from a CSV become ordinary `customers` rows with no orders — 
 table (owner, 2026-10-21). If one orders later, `findOrCreateByPhone()` finds the same row, so
 their history joins up. An import never changes an existing row except to fill a missing name.
 
-Both `ghanapost_code` and free-text `landmark` are required on delivery orders. Riders use both.
+Free-text `landmark` is required on delivery orders; `ghanapost_code` is optional. Riders use both.
+
+**My account** (owner, 2026-11-11, `Customer\Account\*` controllers): a logged-in customer edits
+name/email/password, toggles SMS offers (`marketing_opted_out_at`, the same flag as the broadcast
+opt-out link), sees their orders with Order again (`ReorderService` — current branch, unavailable
+items skipped and named, free promo lines never copied), and manages `customer_addresses`
+(`CustomerAddressService` — saved from checkout's "Save this address" tick, or added with the
+phone's current location; first one is the default; picking one at checkout fills every delivery
+field including lat/lng). Changing `phone` needs a 6-digit code texted to the new number
+(`SmsCodeService`: cache-only, HMAC-stored, 10-minute expiry, 5 tries, 3 texts per number per 10
+minutes); a number held by another registered or suspended customer is refused, and a guest row
+on it is merged in — its orders move over with an `order_events` row each (`meta.action =
+customer_merged`), its reviews/redemptions/addresses follow, and its own `phone` is cleared.
+Customers' "Forgot password" uses the same codes.
 
 **`lat`/`lng` (here and in `orders.delivery_address_snapshot`) are rider-only.** Staff and
 managers work off the semantic address — `area_name`, `landmark`, `ghanapost_code` — never the

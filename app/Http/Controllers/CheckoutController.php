@@ -8,6 +8,7 @@ use App\Models\DeliveryArea;
 use App\Models\Order;
 use App\Services\Branches\WorkingHoursService;
 use App\Services\Cart\CartService;
+use App\Services\Customers\CustomerAddressService;
 use App\Services\Customers\CustomerBranchSelection;
 use App\Services\Customers\CustomerService;
 use App\Services\Delivery\DeliveryFeeCalculator;
@@ -60,6 +61,20 @@ class CheckoutController extends Controller
             'deliveryAvailable' => $deliveryAreas->isNotEmpty(),
             'deliveryAreas' => $deliveryAreas,
             'customer' => Auth::guard('customer')->user(),
+            // My account's saved addresses (CustomerAddressService) —
+            // picking one fills the delivery fields, location included.
+            'savedAddresses' => Auth::guard('customer')->user()?->addresses()->with('deliveryArea:id,name')->orderByDesc('is_default')->latest('id')->get()
+                ->map(fn ($address) => [
+                    'id' => $address->id,
+                    'name' => $address->label ?: ($address->areaName() ? $address->areaName().' · '.$address->landmark : $address->landmark),
+                    'area' => $address->delivery_area_id ? (string) $address->delivery_area_id : ($address->area_other ? 'other' : ''),
+                    'area_other' => $address->area_other ?? '',
+                    'ghanapost_code' => $address->ghanapost_code ?? '',
+                    'landmark' => $address->landmark,
+                    'lat' => $address->lat !== null ? (float) $address->lat : null,
+                    'lng' => $address->lng !== null ? (float) $address->lng : null,
+                    'is_default' => $address->is_default,
+                ])->values() ?? collect(),
             // See payments.md's "Paystack on/off" section — while Paystack
             // isn't live (e.g. the merchant account is still under
             // review), checkout falls back to cash-only rather than
@@ -88,6 +103,7 @@ class CheckoutController extends Controller
         VisitorSessionService $visitors,
         SettingsService $settings,
         CustomerBranchSelection $selection,
+        CustomerAddressService $addresses,
     ): RedirectResponse {
         $summary = $cart->summary();
 
@@ -183,6 +199,10 @@ class CheckoutController extends Controller
         }
 
         $visitors->markConverted($request, $order);
+
+        if ($deliveryAddress && $request->boolean('save_address') && ($account = Auth::guard('customer')->user())) {
+            $addresses->saveFromCheckout($account, $deliveryAddress);
+        }
 
         // Placing an order is a real choice of branch — remembered on this
         // device for next time, even if the menu had defaulted it.
