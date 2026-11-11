@@ -14,7 +14,12 @@
 
             @can('create', \App\Models\MarketList::class)
                 <div class="bg-white shadow rounded-lg p-4">
-                    <h3 class="font-semibold text-gray-800">{{ __('Record purchases and expenses') }}</h3>
+                    <div class="flex flex-wrap items-baseline justify-between gap-2">
+                        <h3 class="font-semibold text-gray-800">{{ __('Record purchases and expenses') }}</h3>
+                        @can('market_lists.approve')
+                            <a href="{{ route('dashboard.market-lists.kinds.index') }}" class="text-sm text-indigo-600 hover:underline">{{ __('Manage kinds') }}</a>
+                        @endcan
+                    </div>
                     <p class="text-xs text-gray-500 mb-4">{{ __('Everything bought or paid for: market items, transport, gas… The kind is suggested as you type; change it if it\'s wrong. It counts in reports once approved.') }}</p>
                     @include('dashboard.market-lists._form', [
                         'action' => route('dashboard.market-lists.store'),

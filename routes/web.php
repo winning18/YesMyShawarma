@@ -20,6 +20,7 @@ use App\Http\Controllers\CustomerManagementController;
 use App\Http\Controllers\DamageReportController;
 use App\Http\Controllers\DeliveryFeeCollectionController;
 use App\Http\Controllers\DeliveryFeesReportController;
+use App\Http\Controllers\ExpenseKindController;
 use App\Http\Controllers\ExpensesReportController;
 use App\Http\Controllers\FaqController;
 use App\Http\Controllers\HeroSliderController;
@@ -225,6 +226,12 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::post('/dashboard/damage-reports/{damageReport}/deny', [DamageReportController::class, 'deny'])->name('dashboard.damage-reports.deny');
 
     Route::get('/dashboard/market-list', [MarketListController::class, 'index'])->name('dashboard.market-lists.index');
+    Route::get('/dashboard/market-list/kinds', [ExpenseKindController::class, 'index'])->name('dashboard.market-lists.kinds.index');
+    Route::post('/dashboard/market-list/kinds', [ExpenseKindController::class, 'store'])->name('dashboard.market-lists.kinds.store');
+    Route::put('/dashboard/market-list/kinds/{kind}', [ExpenseKindController::class, 'update'])->whereNumber('kind')->name('dashboard.market-lists.kinds.update');
+    Route::post('/dashboard/market-list/kinds/{kind}/toggle', [ExpenseKindController::class, 'toggle'])->whereNumber('kind')->name('dashboard.market-lists.kinds.toggle');
+    Route::post('/dashboard/market-list/kinds/{kind}/move', [ExpenseKindController::class, 'move'])->whereNumber('kind')->name('dashboard.market-lists.kinds.move');
+    Route::post('/dashboard/market-list/kinds/{kind}/move-items', [ExpenseKindController::class, 'moveItems'])->whereNumber('kind')->name('dashboard.market-lists.kinds.move-items');
     Route::post('/dashboard/market-list', [MarketListController::class, 'store'])->name('dashboard.market-lists.store');
     Route::get('/dashboard/market-list/{marketList}/edit', [MarketListController::class, 'edit'])->name('dashboard.market-lists.edit');
     Route::put('/dashboard/market-list/{marketList}', [MarketListController::class, 'update'])->name('dashboard.market-lists.update');

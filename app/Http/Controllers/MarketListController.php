@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\MarketListException;
-use App\Models\Branch;
+use App\Models\ExpenseCategory;
 use App\Models\MarketList;
 use App\Models\Scopes\BranchScope;
 use App\Services\Branches\BranchContext;
@@ -66,7 +66,7 @@ class MarketListController extends Controller
             'lists' => $lists,
             'status' => $validated['status'] ?? null,
             'statuses' => MarketList::STATUSES,
-            ...$this->formData($request),
+            ...$this->formData($request, $lists->getCollection()->flatMap->items->pluck('expense_category_id')->all()),
         ]);
     }
 
@@ -101,7 +101,7 @@ class MarketListController extends Controller
 
         return view('dashboard.market-lists.edit', [
             'list' => $marketList->load(['items', 'branch:id,name', 'recordedBy:id,name', 'events.actor:id,name']),
-            ...$this->formData($request),
+            ...$this->formData($request, $marketList->items->pluck('expense_category_id')->all()),
         ]);
     }
 
@@ -230,12 +230,20 @@ class MarketListController extends Controller
     }
 
     /**
+     * $usedKindIds: kinds already on the lists being shown. A hidden kind
+     * stays selectable for those, or its dropdown would quietly show (and
+     * on approval submit) a different kind.
+     *
+     * @param  list<int>  $usedKindIds
      * @return array<string, mixed>
      */
-    private function formData(Request $request): array
+    private function formData(Request $request, array $usedKindIds = []): array
     {
+        $kinds = $this->kinds->categories();
+        $hiddenInUse = array_diff(array_unique($usedKindIds), $kinds->pluck('id')->all());
+
         return [
-            'kinds' => $this->kinds->categories(),
+            'kinds' => $hiddenInUse === [] ? $kinds : $kinds->concat(ExpenseCategory::whereIn('id', $hiddenInUse)->get())->sortBy('sort_order')->values(),
             'currentBranch' => $this->context->branch(),
             'branchOptions' => $this->context->id() ? collect() : $this->context->selectableBranchesFor($request->user())->where('is_active', true)->values(),
             'today' => Carbon::now('Africa/Accra')->toDateString(),

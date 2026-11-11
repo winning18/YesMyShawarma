@@ -258,8 +258,13 @@ locked; `market_list_events` is the immutable history (submitted, edited, resubm
 sent_back, approved, auto_approved, converted). `total` is denormalised from the items, rewritten
 on every edit.
 
-`expense_categories` are the "kinds" reports group by (Chicken, Transport, … Others), filled from
-`database/seeders/data/expense_categories.php` by its migration. `ExpenseKindMatcher` suggests one
+`expense_categories` are the "kinds" reports group by (Chicken, Transport, … Others), first filled
+from `database/seeders/data/expense_categories.php` by its migration, then managed from Market
+list → Manage kinds (`ExpenseKindService`, `market_lists.approve`: owner/GM/manager): add, rename,
+reorder, edit keywords, hide/show. Others can't be renamed or hidden and always sorts last. A
+hidden kind isn't offered or suggested, but stays on past items (and selectable on lists already
+using it). After a kind gains keywords, items still in Others that now match can be moved across,
+approved lists included; each touched list logs a `kind_changed` event. `ExpenseKindMatcher` suggests one
 from the description — longest keyword at the start of a word wins, else Others; the form runs
 the same rule in the browser. Staff can change it and the approver can correct it while
 approving. The Profit tab sums `quantity` per kind only when every item shares one unit.

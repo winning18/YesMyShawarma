@@ -27,6 +27,8 @@ class MarketListEvent extends Model
 
     public const CONVERTED = 'converted';
 
+    public const KIND_CHANGED = 'kind_changed';
+
     public const UPDATED_AT = null;
 
     protected function casts(): array
