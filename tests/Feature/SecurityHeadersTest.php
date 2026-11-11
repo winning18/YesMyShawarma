@@ -18,6 +18,9 @@ class SecurityHeadersTest extends TestCase
         $this->assertNotNull($csp);
         $this->assertStringContainsString("default-src 'self'", $csp);
         $this->assertStringContainsString("frame-ancestors 'self'", $csp);
+        // Cloudflare Web Analytics: the injected beacon script and where it reports.
+        $this->assertMatchesRegularExpression('/script-src [^;]*https:\/\/static\.cloudflareinsights\.com/', $csp);
+        $this->assertMatchesRegularExpression('/connect-src [^;]*https:\/\/cloudflareinsights\.com/', $csp);
     }
 
     public function test_hsts_is_only_sent_over_https(): void

@@ -15,6 +15,10 @@ use Symfony\Component\HttpFoundation\Response;
  * successful injection could load or exfiltrate to (no arbitrary
  * third-party script/connect targets), which is the actual threat CSP
  * defends against here.
+ *
+ * static.cloudflareinsights.com / cloudflareinsights.com: Cloudflare Web
+ * Analytics, which Cloudflare injects into every page itself — blocked
+ * here, its visitor numbers were silently missing (owner, 2026-11-11).
  */
 class SecurityHeaders
 {
@@ -27,11 +31,11 @@ class SecurityHeaders
 
         $csp = implode('; ', [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://static.cloudflareinsights.com",
             "style-src 'self' 'unsafe-inline' https://fonts.bunny.net",
             "font-src 'self' https://fonts.bunny.net",
             "img-src 'self' data: https://*.tile.openstreetmap.org",
-            "connect-src 'self' {$origin} {$wsOrigin} https://nominatim.openstreetmap.org",
+            "connect-src 'self' {$origin} {$wsOrigin} https://nominatim.openstreetmap.org https://cloudflareinsights.com",
             "frame-src 'self' https://www.google.com https://challenges.cloudflare.com",
             "frame-ancestors 'self'",
             "object-src 'none'",
