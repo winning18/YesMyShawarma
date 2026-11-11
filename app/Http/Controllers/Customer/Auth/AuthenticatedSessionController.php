@@ -23,7 +23,9 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('home'));
+        // Order history by default (owner, 2026-11-11); a customer sent to
+        // log in from somewhere specific (e.g. checkout) goes back there.
+        return redirect()->intended(route('customer.account.orders'));
     }
 
     /**

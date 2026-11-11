@@ -179,7 +179,7 @@ class CustomerAccountTest extends TestCase
             ->assertSessionHasErrors('code');
 
         $this->post(route('customer.password.update'), ['code' => $this->lastCode(), 'password' => 'brand-new-1', 'password_confirmation' => 'brand-new-1'])
-            ->assertRedirect(route('customer.account.show'));
+            ->assertRedirect(route('customer.account.orders'));
 
         $this->assertAuthenticatedAs($this->customer, 'customer');
         $this->assertTrue(Hash::check('brand-new-1', $this->customer->fresh()->password));

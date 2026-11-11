@@ -94,6 +94,6 @@ class PasswordResetController extends Controller
         Auth::guard('customer')->login($customer);
         $request->session()->regenerate();
 
-        return redirect()->route('customer.account.show')->with('status', __('Your password was changed and you\'re logged in.'));
+        return redirect()->intended(route('customer.account.orders'))->with('status', __('Your password was changed and you\'re logged in.'));
     }
 }

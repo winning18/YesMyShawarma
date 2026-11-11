@@ -75,12 +75,25 @@ class CustomerAuthTest extends TestCase
     {
         Customer::create(['phone' => '+233241111111', 'password' => 'secret123']);
 
+        // Order history, not the home page (owner, 2026-11-11).
         $this->post(route('customer.login'), [
             'phone' => '0241111111',
             'password' => 'secret123',
-        ])->assertRedirect(route('home'));
+        ])->assertRedirect(route('customer.account.orders'));
 
         $this->assertAuthenticated('customer');
+    }
+
+    public function test_login_returns_to_the_page_that_asked_for_it(): void
+    {
+        Customer::create(['phone' => '+233241111111', 'password' => 'secret123']);
+
+        $this->get(route('customer.account.addresses'))->assertRedirect(route('customer.login'));
+
+        $this->post(route('customer.login'), [
+            'phone' => '0241111111',
+            'password' => 'secret123',
+        ])->assertRedirect(route('customer.account.addresses'));
     }
 
     public function test_login_with_wrong_password_fails(): void
