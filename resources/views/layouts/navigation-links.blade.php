@@ -227,6 +227,20 @@
 @endcanany
 
 {{--
+    market_lists.record (record your own) or market_lists.approve (review
+    everyone's at your branches). The count is what this person could
+    approve right now (MarketListService::awaitingApprovalCount).
+--}}
+@canany(['market_lists.record', 'market_lists.approve'])
+    <x-sidebar-link :href="route('dashboard.market-lists.index')" :active="request()->routeIs('dashboard.market-lists.*')">
+        {{ __('Market list') }}
+        @if (($navMarketListsAwaiting ?? 0) > 0)
+            <span class="ms-auto text-xs font-semibold bg-red-600 text-white rounded-full px-2 py-0.5" title="{{ __('Waiting for your approval') }}">{{ $navMarketListsAwaiting }}</span>
+        @endif
+    </x-sidebar-link>
+@endcanany
+
+{{--
     Weekly opening schedule, owner+manager only — reuses
     reports.view_financial (already exactly that audience) rather than a
     dedicated permission. Its own sidebar item, not a Reports and invoices

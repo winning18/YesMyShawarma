@@ -217,6 +217,51 @@ report from a shift that simply predates this feature (both show zero rows, but 
 the flag). The Today report's "Net" column is `total_sales` minus the sum of that shift's
 `shift_expenses`, shown as-is rather than floored at zero.
 
+Since the market list (below), each shift close's expenses are **also** written as a pending
+`market_lists` row (`shift_id` set) — `shift_expenses` itself is unchanged and still drives the
+Today report's per-shift Net, but every money report (sales statement, Expenses tab, Profit)
+reads the market list only, so nothing is deducted twice.
+
+## Market list
+
+```
+expense_categories  id, name (unique), keywords (json), sort_order, is_active
+market_lists        id, branch_id, purchased_on (date), recorded_by, recorder_role,
+                    shift_id (nullable, unique), status (pending|needs_changes|approved),
+                    total, receipt_path (nullable), note, reviewed_by, reviewed_at,
+                    review_note, timestamps
+market_list_items   id, market_list_id, expense_category_id, description,
+                    quantity (decimal 10,2, nullable), unit (nullable), amount, timestamps
+market_list_events  id, market_list_id, actor_id (nullable), action, note, created_at
+```
+
+Every purchase and expense (owner, 2026-11-11), recorded by staff/manager/GM/owner/stock_manager
+(`MarketListService`). Branch-owned (`BranchScope`; route binding bypasses it like `Order`, the
+policy checks the list's own branch). Only `approved` lists count anywhere — sales statement Net
+sales, the Expenses tab (default filter) and the Profit tab — always by `purchased_on`, the
+Africa/Accra date of purchase, never the approval date. Approval rules live in
+`MarketListService`/`MarketListPolicy` (see permissions.md's "Market list"). Approved lists are
+locked; `market_list_events` is the immutable history (submitted, edited, resubmitted,
+sent_back, approved, auto_approved, converted). `total` is denormalised from the items, rewritten
+on every edit.
+
+`expense_categories` are the "kinds" reports group by (Chicken, Transport, … Others), filled from
+`database/seeders/data/expense_categories.php` by its migration. `ExpenseKindMatcher` suggests one
+from the description — longest keyword at the start of a word wins, else Others; the form runs
+the same rule in the browser. Staff can change it and the approver can correct it while
+approving. The Profit tab sums `quantity` per kind only when every item shares one unit.
+
+`receipt_path` is on the private `local` disk like damage photos, served only through
+`MarketListController::receipt()`, but kept permanently (financial record, no expiry).
+
+Shift expenses from before the market list were converted once into approved lists
+(`2026_11_11_100300_convert_shift_expenses_to_market_lists`, `actor_id` null, event `converted`).
+
+The Profit tab (`ProfitReportService`): sales (the statement's own definition, Bolt Food
+excluded) − completed refunds − approved purchases, per day/week/month/year, with Bolt Food as a
+separate line and a "profit incl. Bolt Food" total labelled before Bolt's commission (owner,
+2026-11-11). Pending and sent-back lists are shown as "awaiting approval", never counted.
+
 ## Delivery areas
 
 ```

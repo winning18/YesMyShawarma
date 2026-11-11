@@ -7,6 +7,7 @@ use App\Contracts\PushNotifier;
 use App\Models\User;
 use App\Services\Branches\BranchContext;
 use App\Services\Cart\CartService;
+use App\Services\MarketLists\MarketListService;
 use App\Services\Notifications\ArkeselNotifier;
 use App\Services\Notifications\LogNotifier;
 use App\Services\Notifications\LogPushNotifier;
@@ -130,6 +131,9 @@ class AppServiceProvider extends ServiceProvider
                 // Owner/GM/manager with more than one branch. Staff pick
                 // theirs when starting a shift instead (navigation-links).
                 'navCanSwitchBranch' => $user && ! $context->runsATill($user) && $context->selectableBranchIdsFor($user)->count() > 1,
+                // The count beside "Market list" — lists this person
+                // could approve right now.
+                'navMarketListsAwaiting' => $user ? app(MarketListService::class)->awaitingApprovalCount($user) : 0,
             ]);
         });
     }

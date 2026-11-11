@@ -62,8 +62,17 @@
                     <tr><th></th><th>{{ __('Total') }} (ghs)</th></tr>
                     <tr class="net"><td>{{ __('Total expenses') }}</td><td class="num">{{ $amount($report['total']) }}</td></tr>
                     <tr class="memo"><td>{{ __('Entries') }}</td><td class="num">{{ $report['count'] }}</td></tr>
-                    <tr class="memo"><td>{{ __('Shifts with expenses') }}</td><td class="num">{{ $report['shifts_count'] }}</td></tr>
+                    <tr class="memo"><td>{{ __('Market lists') }}</td><td class="num">{{ $report['lists_count'] }}</td></tr>
                 </table>
+                @if ($report['by_kind'] !== [])
+                    <h2>{{ __('By kind') }}</h2>
+                    <table class="summary">
+                        <tr><th></th><th>{{ __('Total') }} (ghs)</th></tr>
+                        @foreach ($report['by_kind'] as $kind)
+                            <tr><td>{{ $kind['kind'] }} ({{ $kind['count'] }})</td><td class="num">{{ $amount($kind['total']) }}</td></tr>
+                        @endforeach
+                    </table>
+                @endif
             </td>
         </tr>
     </table>

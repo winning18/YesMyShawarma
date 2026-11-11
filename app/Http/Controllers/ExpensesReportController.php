@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\MarketList;
 use App\Services\Reports\ExpenseReportExporter;
 use App\Services\Reports\ExpenseReportService;
 use App\Services\Reports\ReportBranchFilter;
@@ -10,11 +11,12 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\HeaderUtils;
 
 /**
- * "Expenses" tab — every shift expense for a date range on its own,
+ * "Expenses" tab — every market-list purchase for a date range on its own,
  * without pulling the whole sales statement. Same access and the same
  * overall-by-default branch handling as Invoices and sales (see
  * ReportBranchFilter), downloadable in the shared report design.
@@ -43,6 +45,7 @@ class ExpensesReportController extends Controller
             'expenses' => $this->expenses->paginate($from, $to, $filters, 25, ...$branchArgs),
             'summary' => $this->expenses->summary($from, $to, $filters, ...$branchArgs),
             'recordedByOptions' => $this->expenses->recordedByOptions(...$branchArgs),
+            'kindOptions' => $this->expenses->kindOptions(),
             ...$branchViewData,
         ]);
     }
@@ -74,13 +77,15 @@ class ExpensesReportController extends Controller
      * Amounts are typed in cedis and converted to pesewas here; a
      * reversed min/max is swapped rather than returning nothing.
      *
-     * @return array{search?: string, recorded_by?: int, min_amount?: int, max_amount?: int}
+     * @return array{search?: string, recorded_by?: int, kind?: int, status?: string, min_amount?: int, max_amount?: int}
      */
     private function resolveFilters(Request $request): array
     {
         $validated = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
             'recorded_by' => ['nullable', 'integer', 'exists:users,id'],
+            'kind' => ['nullable', 'integer', 'exists:expense_categories,id'],
+            'status' => ['nullable', Rule::in([...MarketList::STATUSES, ExpenseReportService::STATUS_ALL])],
             'min_amount' => ['nullable', 'numeric', 'min:0'],
             'max_amount' => ['nullable', 'numeric', 'min:0'],
         ]);
@@ -91,6 +96,12 @@ class ExpensesReportController extends Controller
         }
         if (isset($validated['recorded_by'])) {
             $filters['recorded_by'] = (int) $validated['recorded_by'];
+        }
+        if (isset($validated['kind'])) {
+            $filters['kind'] = (int) $validated['kind'];
+        }
+        if (filled($validated['status'] ?? null)) {
+            $filters['status'] = $validated['status'];
         }
         if (isset($validated['min_amount'])) {
             $filters['min_amount'] = (int) round($validated['min_amount'] * 100);

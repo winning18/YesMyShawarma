@@ -164,11 +164,11 @@ class SalesStatementExporter
         if ($report['type'] === SalesStatementService::TYPE_SALES) {
             $rows[] = $this->labelled($width, 'EXPENSES');
             $expenseLeading = fn (array $expense) => $report['general']
-                ? [$expense['date'], $expense['time'], $expense['branch'], $expense['description']]
-                : [$expense['date'], $expense['time'], $expense['description']];
+                ? [$expense['date'], $expense['kind'], $expense['branch'], $expense['description']]
+                : [$expense['date'], $expense['kind'], $expense['description']];
             $labelIndex = $report['general'] ? 3 : 2;
 
-            $rows[] = $this->spread($width, $expenseLeading(['date' => 'Date', 'time' => 'Time', 'branch' => 'Branch', 'description' => 'Description']), 'Amount (ghs)');
+            $rows[] = $this->spread($width, $expenseLeading(['date' => 'Date', 'kind' => 'Kind', 'branch' => 'Branch', 'description' => 'Description']), 'Amount (ghs)');
 
             foreach ($report['expenses'] as $expense) {
                 $rows[] = $this->spread($width, $expenseLeading($expense), ['money' => $expense['amount']]);

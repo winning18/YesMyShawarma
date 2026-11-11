@@ -2,10 +2,11 @@
 
 namespace App\Services\Reports;
 
+use App\Models\MarketList;
+use App\Models\MarketListItem;
 use App\Models\Order;
 use App\Models\Refund;
 use App\Models\Scopes\BranchScope;
-use App\Models\ShiftExpense;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -23,7 +24,8 @@ use Illuminate\Support\Str;
  *  - 'sales'     — every order except Bolt Food. Sales per order is
  *                  subtotal − discount; the delivery fee is listed but
  *                  never counted as sales, because it goes to the rider.
- *                  Completed refunds and shift expenses are deducted.
+ *                  Completed refunds and approved market-list purchases
+ *                  are deducted.
  *  - 'bolt_food' — Bolt Food orders only. No refunds, expenses or
  *                  delivery: Bolt's own statement carries their fees.
  *
@@ -282,29 +284,33 @@ class SalesStatementService
     }
 
     /**
+     * Approved market-list items bought in the period (by purchase date) —
+     * the market list replaced raw shift expenses as the deduction
+     * (owner, 2026-11-11), and shift-close expenses feed into it, so
+     * nothing is deducted twice.
+     *
      * @param  ?list<int>  $scopeIds
-     * @return list<array{date: string, time: string, branch: string, description: string, amount: int}>
+     * @return list<array{date: string, kind: string, branch: string, description: string, amount: int}>
      */
     private function expenses(Carbon $from, Carbon $to, ?array $scopeIds): array
     {
-        return ShiftExpense::query()
-            ->whereBetween('created_at', [$from->clone()->utc(), $to->clone()->utc()])
-            ->whereHas('shift', fn (Builder $shift) => $scopeIds === null ? $shift : $shift->whereIn('branch_id', $scopeIds))
-            ->with('shift.branch:id,name')
-            ->orderBy('created_at')
-            ->orderBy('id')
+        return MarketListItem::query()
+            ->whereHas('marketList', fn (Builder $list) => $list
+                ->withoutGlobalScope(BranchScope::class)
+                ->where('status', MarketList::STATUS_APPROVED)
+                ->whereBetween('purchased_on', [$from->toDateString(), $to->toDateString()])
+                ->when($scopeIds !== null, fn (Builder $query) => $query->whereIn('branch_id', $scopeIds)))
+            ->with(['marketList' => fn ($list) => $list->withoutGlobalScope(BranchScope::class)->with('branch:id,name'), 'category:id,name'])
             ->get()
-            ->map(function (ShiftExpense $expense) {
-                $at = $expense->created_at->clone()->timezone('Africa/Accra');
-
-                return [
-                    'date' => $at->toDateString(),
-                    'time' => $at->format('H:i'),
-                    'branch' => $expense->shift?->branch?->name ?? '',
-                    'description' => $expense->description,
-                    'amount' => (int) $expense->amount,
-                ];
-            })
+            ->sortBy(fn (MarketListItem $item) => [$item->marketList->purchased_on->toDateString(), $item->id])
+            ->map(fn (MarketListItem $item) => [
+                'date' => $item->marketList->purchased_on->toDateString(),
+                'kind' => $item->category?->name ?? '',
+                'branch' => $item->marketList->branch?->name ?? '',
+                'description' => $item->description,
+                'amount' => (int) $item->amount,
+            ])
+            ->values()
             ->all();
     }
 

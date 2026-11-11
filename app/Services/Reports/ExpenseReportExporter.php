@@ -119,7 +119,7 @@ class ExpenseReportExporter
     {
         return array_values(array_filter([
             ['key' => 'date', 'label' => 'Date', 'money' => false],
-            ['key' => 'time', 'label' => 'Time', 'money' => false],
+            ['key' => 'kind', 'label' => 'Kind', 'money' => false],
             $report['general'] ? ['key' => 'branch', 'label' => 'Branch', 'money' => false] : null,
             ['key' => 'recorded_by', 'label' => 'Recorded by', 'money' => false],
             ['key' => 'description', 'label' => 'Description', 'money' => false],
@@ -167,7 +167,15 @@ class ExpenseReportExporter
         $rows[] = $line('TOTALS', 'Total (ghs)');
         $rows[] = $line('Total expenses', ['money' => $report['total']]);
         $rows[] = $line('Entries', $report['count']);
-        $rows[] = $line('Shifts with expenses', $report['shifts_count']);
+        $rows[] = $line('Market lists', $report['lists_count']);
+
+        if ($report['by_kind'] !== []) {
+            $rows[] = $blank;
+            $rows[] = $line('BY KIND', 'Total (ghs)');
+            foreach ($report['by_kind'] as $kind) {
+                $rows[] = $line($kind['kind'].' ('.$kind['count'].')', ['money' => $kind['total']]);
+            }
+        }
 
         if ($report['filters'] !== []) {
             $rows[] = $blank;

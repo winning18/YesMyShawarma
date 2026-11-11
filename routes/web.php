@@ -19,6 +19,7 @@ use App\Http\Controllers\ExpensesReportController;
 use App\Http\Controllers\FaqController;
 use App\Http\Controllers\HeroSliderController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\MarketListController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\MenuItemManagementController;
 use App\Http\Controllers\MenuItemScheduleController;
@@ -32,6 +33,7 @@ use App\Http\Controllers\PerformanceController;
 use App\Http\Controllers\PolicyController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ProfitReportController;
 use App\Http\Controllers\PromotionManagementController;
 use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\RecipeManagementController;
@@ -192,6 +194,14 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::post('/dashboard/damage-reports/{damageReport}/approve', [DamageReportController::class, 'approve'])->name('dashboard.damage-reports.approve');
     Route::post('/dashboard/damage-reports/{damageReport}/deny', [DamageReportController::class, 'deny'])->name('dashboard.damage-reports.deny');
 
+    Route::get('/dashboard/market-list', [MarketListController::class, 'index'])->name('dashboard.market-lists.index');
+    Route::post('/dashboard/market-list', [MarketListController::class, 'store'])->name('dashboard.market-lists.store');
+    Route::get('/dashboard/market-list/{marketList}/edit', [MarketListController::class, 'edit'])->name('dashboard.market-lists.edit');
+    Route::put('/dashboard/market-list/{marketList}', [MarketListController::class, 'update'])->name('dashboard.market-lists.update');
+    Route::post('/dashboard/market-list/{marketList}/approve', [MarketListController::class, 'approve'])->name('dashboard.market-lists.approve');
+    Route::post('/dashboard/market-list/{marketList}/send-back', [MarketListController::class, 'sendBack'])->name('dashboard.market-lists.send-back');
+    Route::get('/dashboard/market-list/{marketList}/receipt', [MarketListController::class, 'receipt'])->name('dashboard.market-lists.receipt');
+
     Route::get('/dashboard/reviews', [ReviewManagementController::class, 'index'])->name('dashboard.reviews.index');
     Route::post('/dashboard/reviews/{review}/approve', [ReviewManagementController::class, 'approve'])->name('dashboard.reviews.approve');
     Route::post('/dashboard/reviews/{review}/reject', [ReviewManagementController::class, 'reject'])->name('dashboard.reviews.reject');
@@ -275,6 +285,8 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
 
     Route::get('/dashboard/reports/expenses', [ExpensesReportController::class, 'index'])->name('dashboard.reports.expenses.index');
     Route::get('/dashboard/reports/expenses/download/{format}', [ExpensesReportController::class, 'download'])->name('dashboard.reports.expenses.download');
+    Route::get('/dashboard/reports/profit', [ProfitReportController::class, 'index'])->name('dashboard.reports.profit.index');
+    Route::get('/dashboard/reports/profit/download/{format}', [ProfitReportController::class, 'download'])->name('dashboard.reports.profit.download');
 
     Route::get('/dashboard/reports/delivery-fees', [DeliveryFeesReportController::class, 'index'])->name('dashboard.reports.delivery-fees.index');
     Route::get('/dashboard/reports/delivery-fees/download', [DeliveryFeesReportController::class, 'download'])->name('dashboard.reports.delivery-fees.download');

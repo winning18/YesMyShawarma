@@ -2,10 +2,10 @@
 
 namespace App\Services\Shifts;
 
-use App\Exceptions\ShiftException;
 use App\Models\Branch;
 use App\Models\Shift;
 use App\Models\User;
+use App\Services\MarketLists\MarketListService;
 
 class ShiftService
 {
@@ -80,6 +80,10 @@ class ShiftService
                 'amount' => $expense['amount'],
             ]);
         }
+
+        // Also onto the market list, pending approval like any other
+        // purchase (MarketListService::recordFromShift).
+        app(MarketListService::class)->recordFromShift($shift, $endedBy, $expenses);
 
         return $shift->fresh();
     }

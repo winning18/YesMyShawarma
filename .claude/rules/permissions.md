@@ -49,6 +49,8 @@ Roles: `staff`, `rider`, `manager`, `general_manager`, `owner`, `stock_manager`.
 | `stock.manage` | — | — | — | — | ✓ | ✓ |
 | `damage_reports.file` | ✓ | implicit | — | — | — | — |
 | `damage_reports.review` | — | — | ✓ | ✓ | ✓ | — |
+| `market_lists.record` | ✓ | — | ✓ | ✓ | ✓ | ✓ |
+| `market_lists.approve` | — | — | ✓ | ✓ | ✓ | — |
 
 `general_manager` holds the exact same permission set as `manager` (see `RolesAndPermissionsSeeder`'s
 `$matrix` — the two lists are meant to be kept identical apart from `users.create_operational`),
@@ -333,3 +335,15 @@ middleware group), loses its Sanctum tokens and stored sessions, is skipped by
 `BranchContext::usersWithRole()` (escalation/stock SMS, push) and rider auto-assignment, and — for
 a customer — can't place `web`-channel orders or re-register by phone (the POS still can).
 
+
+## Market list
+
+`market_lists.record` — record a purchase/expense list (staff, manager, general_manager, owner,
+stock_manager). `market_lists.approve` — approve or send back (manager, general_manager, owner),
+checked against the list's own branch like damage reports. On top of the permission,
+`MarketListService::approverTierAllows()` (owner, 2026-11-11): nobody approves their own list,
+and a list recorded by a `manager` or `general_manager` (`market_lists.recorder_role`) can only be
+approved by the owner. The owner's own lists are approved automatically. Viewing follows the
+Refunds/Damage Reports three-way scope: owner every branch, general_manager their GM branches,
+everyone else the current branch — and a recorder without `market_lists.approve` sees only
+their own lists.

@@ -67,7 +67,7 @@
                 <tr><th colspan="{{ $report['general'] ? 5 : 4 }}" class="caption">{{ __('Expenses') }}</th></tr>
                 <tr>
                     <th style="width: 70px;">{{ __('Date') }}</th>
-                    <th style="width: 40px;">{{ __('Time') }}</th>
+                    <th style="width: 80px;">{{ __('Kind') }}</th>
                     @if ($report['general'])
                         <th style="width: 110px;">{{ __('Branch') }}</th>
                     @endif
@@ -79,7 +79,7 @@
                 @forelse ($report['expenses'] as $expense)
                     <tr>
                         <td>{{ $expense['date'] }}</td>
-                        <td>{{ $expense['time'] }}</td>
+                        <td>{{ $expense['kind'] }}</td>
                         @if ($report['general'])
                             <td>{{ $expense['branch'] }}</td>
                         @endif

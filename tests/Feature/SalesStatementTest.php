@@ -4,12 +4,13 @@ namespace Tests\Feature;
 
 use App\Models\Branch;
 use App\Models\Customer;
+use App\Models\MarketList;
 use App\Models\Order;
 use App\Models\Refund;
-use App\Models\Shift;
-use App\Models\ShiftExpense;
 use App\Models\User;
+use App\Services\MarketLists\ExpenseKindMatcher;
 use App\Services\Reports\SalesStatementExporter;
+use App\Services\Reports\SalesStatementService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -99,12 +100,19 @@ class SalesStatementTest extends TestCase
         return $order;
     }
 
+    /**
+     * An approved market-list purchase — what Net sales deducts now.
+     */
     private function expense(Branch $branch, Carbon $at, int $amount, string $description = 'Gas refill'): void
     {
-        $shift = Shift::create(['user_id' => User::factory()->create()->id, 'branch_id' => $branch->id, 'started_at' => $at]);
-        $expense = ShiftExpense::create(['shift_id' => $shift->id, 'description' => $description, 'amount' => $amount]);
-        $expense->created_at = $at;
-        $expense->save();
+        $list = MarketList::create([
+            'branch_id' => $branch->id, 'purchased_on' => $at->toDateString(), 'recorded_by' => User::factory()->create()->id,
+            'recorder_role' => 'staff', 'status' => MarketList::STATUS_APPROVED, 'total' => $amount,
+        ]);
+        $list->items()->create([
+            'description' => $description, 'amount' => $amount,
+            'expense_category_id' => app(ExpenseKindMatcher::class)->match($description)->id,
+        ]);
     }
 
     private function refund(Order $order, int $amount, ?Carbon $completedAt, string $status = 'completed'): void
@@ -359,7 +367,7 @@ class SalesStatementTest extends TestCase
 
         $flat = collect($rows)->map(fn ($row) => implode('|', array_filter($row, fn ($cell) => $cell !== '')))->all();
         $this->assertContains('EXPENSES', $flat);
-        $this->assertContains('2026-10-05|15:00|Gas refill|20.00', $flat);
+        $this->assertContains('2026-10-05|Gas|Gas refill|20.00', $flat);
         $this->assertContains('Total sales (after discounts)|105.00', $flat);
         $this->assertContains('Refund deductions|-5.00', $flat);
         $this->assertContains('Expenses|-20.00', $flat);
@@ -405,7 +413,7 @@ class SalesStatementTest extends TestCase
         $this->assertSame('application/pdf', $response->headers->get('content-type'));
 
         // The PDF stream is compressed, so assert on the rendered view.
-        $report = app(\App\Services\Reports\SalesStatementService::class)
+        $report = app(SalesStatementService::class)
             ->build('sales', $this->monday, $this->monday->clone()->endOfWeek(), ignoreBranchScope: true);
         $html = view('dashboard.reports.pdf.sales-statement', [
             'report' => $report,

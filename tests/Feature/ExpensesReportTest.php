@@ -3,12 +3,17 @@
 namespace Tests\Feature;
 
 use App\Models\Branch;
+use App\Models\MarketList;
+use App\Models\MarketListItem;
 use App\Models\Shift;
-use App\Models\ShiftExpense;
 use App\Models\User;
+use App\Services\MarketLists\ExpenseKindMatcher;
+use App\Services\Reports\ExpenseReportExporter;
+use App\Services\Reports\ExpenseReportService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Testing\TestResponse;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
@@ -52,24 +57,28 @@ class ExpensesReportTest extends TestCase
         return $user;
     }
 
-    private function expense(Branch $branch, Carbon $at, int $amount, string $description, ?User $closedBy = null): ShiftExpense
+    /**
+     * One approved market list with a single item — the Expenses tab reads
+     * the market list now, not raw shift expenses.
+     */
+    private function expense(Branch $branch, Carbon $at, int $amount, string $description, ?User $closedBy = null, string $status = MarketList::STATUS_APPROVED): MarketListItem
     {
         $closedBy ??= User::factory()->create(['name' => 'Ama']);
-        $shift = Shift::create([
-            'user_id' => $closedBy->id, 'branch_id' => $branch->id, 'started_at' => $at->clone()->subHours(2),
-            'ended_at' => $at, 'ended_by_user_id' => $closedBy->id,
+        $list = MarketList::create([
+            'branch_id' => $branch->id, 'purchased_on' => $at->toDateString(), 'recorded_by' => $closedBy->id,
+            'recorder_role' => 'staff', 'status' => $status, 'total' => $amount,
         ]);
-        $expense = ShiftExpense::create(['shift_id' => $shift->id, 'description' => $description, 'amount' => $amount]);
-        $expense->created_at = $at;
-        $expense->save();
 
-        return $expense;
+        return $list->items()->create([
+            'description' => $description, 'amount' => $amount,
+            'expense_category_id' => app(ExpenseKindMatcher::class)->match($description)->id,
+        ]);
     }
 
     /**
      * @param  array<string, mixed>  $params
      */
-    private function page(User $user, array $params = []): \Illuminate\Testing\TestResponse
+    private function page(User $user, array $params = []): TestResponse
     {
         return $this->actingAs($user)->get(route('dashboard.reports.expenses.index', [
             'from' => '2026-10-05', 'to' => '2026-10-11', ...$params,
@@ -89,7 +98,7 @@ class ExpensesReportTest extends TestCase
 
         $rows = $response->viewData('expenses')->items();
         $this->assertSame(['Charcoal', 'Gas refill'], array_column($rows, 'description'));
-        $this->assertSame(['total' => 16500, 'count' => 2, 'shifts_count' => 2], $response->viewData('summary'));
+        $this->assertSame(['total' => 16500, 'count' => 2, 'lists_count' => 2], $response->viewData('summary'));
     }
 
     public function test_staff_cannot_see_expenses(): void
@@ -211,8 +220,8 @@ class ExpensesReportTest extends TestCase
         );
 
         $rows = array_map('str_getcsv', explode("\n", trim($response->getContent())));
-        $this->assertSame(['Date', 'Time', 'Recorded by', 'Description', 'Amount (ghs)'], $rows[0]);
-        $this->assertSame(['2026-10-05', '15:00', 'Kofi', 'Gas refill', '120.00'], $rows[1]);
+        $this->assertSame(['Date', 'Kind', 'Recorded by', 'Description', 'Amount (ghs)'], $rows[0]);
+        $this->assertSame(['2026-10-05', 'Gas', 'Kofi', 'Gas refill', '120.00'], $rows[1]);
         $this->assertSame(['2026-10-05', '', '', 'TOTAL', '150.00'], $rows[3]);
 
         $flat = collect($rows)->map(fn ($row) => implode('|', array_filter($row, fn ($cell) => $cell !== '')))->all();
@@ -256,11 +265,11 @@ class ExpensesReportTest extends TestCase
         $response->assertOk();
         $this->assertStringStartsWith('%PDF', $response->getContent());
 
-        $report = app(\App\Services\Reports\ExpenseReportService::class)
+        $report = app(ExpenseReportService::class)
             ->build($this->monday, $this->monday->clone()->endOfWeek(), ['search' => 'gas'], ignoreBranchScope: true);
         $html = view('dashboard.reports.pdf.expenses', [
             'report' => $report,
-            'columns' => app(\App\Services\Reports\ExpenseReportExporter::class)->columns($report),
+            'columns' => app(ExpenseReportExporter::class)->columns($report),
             'address' => 'Adjacent Star Oil, Odumase · GW-0286-6918',
             'logoPath' => public_path('images/logo-web.png'),
             'fontDir' => resource_path('fonts/figtree'),

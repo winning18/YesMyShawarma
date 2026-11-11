@@ -21,6 +21,8 @@
             $filterParams = array_filter([
                 'search' => $filters['search'] ?? null,
                 'recorded_by' => $filters['recorded_by'] ?? null,
+                'kind' => $filters['kind'] ?? null,
+                'status' => $filters['status'] ?? null,
                 'min_amount' => isset($filters['min_amount']) ? number_format($filters['min_amount'] / 100, 2, '.', '') : null,
                 'max_amount' => isset($filters['max_amount']) ? number_format($filters['max_amount'] / 100, 2, '.', '') : null,
             ], fn ($value) => $value !== null);
@@ -30,7 +32,7 @@
 
         <div>
             <h3 class="font-semibold text-lg text-gray-800">{{ __('Expenses') }}</h3>
-            <p class="text-sm text-gray-500">{{ __('Every expense recorded when a shift was closed. The same expenses are deducted in the sales report on Invoices and sales.') }}</p>
+            <p class="text-sm text-gray-500">{{ __('Every approved purchase and expense from the market list, by the date it was bought, including what was entered at shift close. The same amounts are deducted in the sales report and on the Profit tab.') }}</p>
         </div>
 
         <div class="bg-white shadow rounded-lg p-4">
@@ -65,6 +67,26 @@
                             @foreach ($recordedByOptions as $person)
                                 <option value="{{ $person->id }}" @selected(($filters['recorded_by'] ?? null) === $person->id)>{{ $person->name }}</option>
                             @endforeach
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="kind" class="block text-xs font-medium text-gray-500 mb-1">{{ __('Kind') }}</label>
+                        <select id="kind" name="kind" class="w-full rounded-md border-gray-300 text-sm">
+                            <option value="">{{ __('Every kind') }}</option>
+                            @foreach ($kindOptions as $kind)
+                                <option value="{{ $kind->id }}" @selected(($filters['kind'] ?? null) === $kind->id)>{{ $kind->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="status" class="block text-xs font-medium text-gray-500 mb-1">{{ __('Status') }}</label>
+                        <select id="status" name="status" class="w-full rounded-md border-gray-300 text-sm">
+                            <option value="">{{ __('Approved (counted)') }}</option>
+                            <option value="pending" @selected(($filters['status'] ?? null) === 'pending')>{{ __('Pending approval') }}</option>
+                            <option value="needs_changes" @selected(($filters['status'] ?? null) === 'needs_changes')>{{ __('Sent back') }}</option>
+                            <option value="all" @selected(($filters['status'] ?? null) === 'all')>{{ __('Every status') }}</option>
                         </select>
                     </div>
 
@@ -130,8 +152,8 @@
                 <p class="text-xl font-semibold text-gray-800">{{ $summary['count'] }}</p>
             </div>
             <div class="bg-white shadow rounded-lg p-4">
-                <p class="text-xs text-gray-500">{{ __('Shifts with expenses') }}</p>
-                <p class="text-xl font-semibold text-gray-800">{{ $summary['shifts_count'] }}</p>
+                <p class="text-xs text-gray-500">{{ __('Market lists') }}</p>
+                <p class="text-xl font-semibold text-gray-800">{{ $summary['lists_count'] }}</p>
             </div>
         </div>
 
@@ -140,7 +162,7 @@
                 <thead class="bg-gray-50 text-left text-gray-500">
                     <tr>
                         <th class="px-4 py-2">{{ __('Date') }}</th>
-                        <th class="px-4 py-2">{{ __('Time') }}</th>
+                        <th class="px-4 py-2">{{ __('Kind') }}</th>
                         @if ($crossBranch && ! $branchFilterId)
                             <th class="px-4 py-2">{{ __('Branch') }}</th>
                         @endif
@@ -153,7 +175,7 @@
                     @forelse ($expenses as $expense)
                         <tr>
                             <td class="px-4 py-2 text-gray-800 whitespace-nowrap">{{ \Illuminate\Support\Carbon::parse($expense['date'])->format('d/m/Y') }}</td>
-                            <td class="px-4 py-2 text-gray-500">{{ $expense['time'] }}</td>
+                            <td class="px-4 py-2 text-gray-500">{{ $expense['kind'] }}</td>
                             @if ($crossBranch && ! $branchFilterId)
                                 <td class="px-4 py-2 text-gray-500">{{ $expense['branch'] }}</td>
                             @endif

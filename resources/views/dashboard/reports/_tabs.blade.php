@@ -1,6 +1,6 @@
 {{--
-    Shared by all six Reports and invoices pages — $active is one of
-    'detailed' | 'invoices' | 'weekly' | 'expenses' | 'delivery-fees' | 'today'. Each tab is a full
+    Shared by all seven Reports and invoices pages — $active is one of
+    'detailed' | 'invoices' | 'weekly' | 'expenses' | 'profit' | 'delivery-fees' | 'today'. Each tab is a full
     navigation (own route, own query params), not a client-side switch —
     same server-rendered tab convention as the Performance page. $active
     stays 'today' (matches TodayReportController/the route name) even
@@ -39,6 +39,10 @@
                 href="{{ route('dashboard.reports.expenses.index') }}"
                 class="pb-3 text-sm font-semibold border-b-2 -mb-px {{ $active === 'expenses' ? 'border-green-600 text-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700' }}"
             >{{ __('Expenses') }}</a>
+            <a
+                href="{{ route('dashboard.reports.profit.index') }}"
+                class="pb-3 text-sm font-semibold border-b-2 -mb-px {{ $active === 'profit' ? 'border-green-600 text-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700' }}"
+            >{{ __('Profit') }}</a>
             <a
                 href="{{ route('dashboard.reports.delivery-fees.index') }}"
                 class="pb-3 text-sm font-semibold border-b-2 -mb-px {{ $active === 'delivery-fees' ? 'border-green-600 text-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700' }}"
