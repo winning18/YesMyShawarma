@@ -64,6 +64,30 @@
             <div class="bg-white shadow rounded-lg p-4 lg:h-full lg:overflow-y-auto">
                 <h3 class="font-semibold text-gray-800 mb-3">{{ __('Order') }}</h3>
 
+                {{--
+                    Payment first, above the items: a Bolt Food order is chosen
+                    before anything is added, so the buy-2-get-1 FREE line
+                    (never given on Bolt Food, see visibleLines()) doesn't show
+                    while staff build one (owner, 2026-11-12).
+                --}}
+                <div class="mb-4 pb-3 border-b border-gray-100">
+                    <label class="block text-xs font-medium text-gray-500 mb-2">{{ __('Payment') }} <span class="text-red-600">*</span></label>
+                    <div class="flex gap-4 text-sm">
+                        <label class="flex items-center gap-1.5">
+                            <input type="radio" x-model="paymentMethod" value="cash"> {{ __('Cash') }}
+                        </label>
+                        <label class="flex items-center gap-1.5">
+                            <input type="radio" x-model="paymentMethod" value="momo"> {{ __('Momo') }}
+                        </label>
+                        <label class="flex items-center gap-1.5">
+                            <input type="radio" x-model="paymentMethod" value="bolt_food" @change="fulfilmentType = 'pickup'"> {{ __('Bolt Food') }}
+                        </label>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1" x-show="paymentMethod === 'bolt_food'">
+                        {{ __('For an order placed through Bolt Food and brought here to prepare — not counted as this till\'s sales.') }}
+                    </p>
+                </div>
+
                 <p class="text-sm text-gray-500" x-show="lines.length === 0">{{ __('No items yet.') }}</p>
 
                 <ul class="space-y-3 mb-4 text-sm" x-show="lines.length > 0">
@@ -179,24 +203,6 @@
                             <p class="text-xs text-gray-500">{{ __('No live location capture at POS. The delivery fee is priced when the rider marks it delivered.') }}</p>
                         </div>
                     @endif
-
-                    <div>
-                        <label class="block text-xs font-medium text-gray-500 mb-2">{{ __('Payment') }} <span class="text-red-600">*</span></label>
-                        <div class="flex gap-4 text-sm">
-                            <label class="flex items-center gap-1.5">
-                                <input type="radio" x-model="paymentMethod" value="cash"> {{ __('Cash') }}
-                            </label>
-                            <label class="flex items-center gap-1.5">
-                                <input type="radio" x-model="paymentMethod" value="momo"> {{ __('Momo') }}
-                            </label>
-                            <label class="flex items-center gap-1.5">
-                                <input type="radio" x-model="paymentMethod" value="bolt_food" @change="fulfilmentType = 'pickup'"> {{ __('Bolt Food') }}
-                            </label>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1" x-show="paymentMethod === 'bolt_food'">
-                            {{ __('For an order placed through Bolt Food and brought here to prepare — not counted as this till\'s sales.') }}
-                        </p>
-                    </div>
 
                     <div x-show="paymentMethod === 'momo'" x-cloak>
                         <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Momo transaction ID') }}</label>

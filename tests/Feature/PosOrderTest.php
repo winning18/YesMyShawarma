@@ -9,7 +9,10 @@ use App\Models\MenuItem;
 use App\Models\Option;
 use App\Models\OptionGroup;
 use App\Models\Order;
+use App\Models\Promotion;
+use App\Models\PromotionRedemption;
 use App\Models\User;
+use App\Services\Settings\SettingsService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -400,6 +403,35 @@ class PosOrderTest extends TestCase
         ]);
     }
 
+    /**
+     * The POS cart shows a buy-2-get-1 free line while the payment method
+     * isn't chosen yet; once the order goes in as Bolt Food it must carry
+     * no free item, no promotion and no stock for the free unit.
+     */
+    public function test_a_bolt_food_pos_order_never_gets_the_free_item(): void
+    {
+        Promotion::create([
+            'code' => 'WEDNESDAY-AUTO', 'type' => 'buy_x_get_y_free', 'value' => 0,
+            'buy_quantity' => 2, 'free_quantity' => 1, 'is_automatic' => true,
+            'recurring_days' => [now('Africa/Accra')->dayOfWeek], 'is_active' => true,
+        ]);
+        $staff = $this->makeStaff();
+        $this->addToPosCart($staff, 2);
+
+        $response = $this->actingAs($staff)->postJson(route('dashboard.pos.orders.store'), [
+            'phone' => '0241111111',
+            'fulfilment_type' => 'pickup',
+            'payment_method' => 'bolt_food',
+        ])->assertOk();
+
+        $order = Order::with('items')->first();
+        $this->assertSame('bolt_food', $order->payment_method);
+        $this->assertNull($order->promotion_id);
+        $this->assertSame(0, $order->discount_total);
+        $this->assertSame([false], $order->items->pluck('is_free')->all());
+        $this->assertSame(0, PromotionRedemption::count());
+    }
+
     public function test_bolt_food_order_gets_its_own_reference_prefix_not_the_plain_pos_one(): void
     {
         // Bolt Food orders are always channel 'pos' (payments.md), so
@@ -420,8 +452,8 @@ class PosOrderTest extends TestCase
 
     public function test_bolt_food_order_reference_uses_a_configured_custom_prefix(): void
     {
-        app(\App\Services\Settings\SettingsService::class)->set(
-            \App\Services\Settings\SettingsService::ORDER_REFERENCE_PREFIX_BOLT_FOOD, 'SHAWARMA-BOLT'
+        app(SettingsService::class)->set(
+            SettingsService::ORDER_REFERENCE_PREFIX_BOLT_FOOD, 'SHAWARMA-BOLT'
         );
 
         $staff = $this->makeStaff();
