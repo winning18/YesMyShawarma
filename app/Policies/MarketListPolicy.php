@@ -60,6 +60,24 @@ class MarketListPolicy
         return $this->approve($user, $marketList);
     }
 
+    /**
+     * Pending or sent back only. The recorder may withdraw their own;
+     * otherwise the same people who could approve it (owner, 2026-11-12).
+     */
+    public function delete(User $user, MarketList $marketList): bool
+    {
+        if (! $marketList->isEditable()) {
+            return false;
+        }
+
+        if ($marketList->recorded_by === $user->id) {
+            return true;
+        }
+
+        return app(MarketListService::class)->approverTierAllows($user, $marketList)
+            && $this->canAtListBranch($user, $marketList, 'market_lists.approve');
+    }
+
     public function viewReceipt(User $user, MarketList $marketList): bool
     {
         return $marketList->receipt_path !== null && $this->view($user, $marketList);

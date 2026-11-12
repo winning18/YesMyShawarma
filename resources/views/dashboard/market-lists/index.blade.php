@@ -144,6 +144,16 @@
 
                     <div class="flex flex-wrap items-center justify-end gap-3 text-sm">
                         @if ($list->isEditable())
+                            @can('delete', $list)
+                                <form method="POST" action="{{ route('dashboard.market-lists.destroy', $list) }}"
+                                    onsubmit="return confirm({{ Js::from(__('Delete this market list for good? Its items, history and receipt photo are erased and can\'t be brought back.')) }})">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-red-600 hover:underline">
+                                        {{ $list->recorded_by === auth()->id() ? __('Withdraw') : __('Delete') }}
+                                    </button>
+                                </form>
+                            @endcan
                             @can('update', $list)
                                 <a href="{{ route('dashboard.market-lists.edit', $list) }}" class="text-indigo-600 hover:underline">
                                     {{ $list->status === 'needs_changes' && $list->recorded_by === auth()->id() ? __('Edit and resubmit') : __('Edit') }}

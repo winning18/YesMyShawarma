@@ -235,6 +235,7 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::post('/dashboard/market-list', [MarketListController::class, 'store'])->name('dashboard.market-lists.store');
     Route::get('/dashboard/market-list/{marketList}/edit', [MarketListController::class, 'edit'])->name('dashboard.market-lists.edit');
     Route::put('/dashboard/market-list/{marketList}', [MarketListController::class, 'update'])->name('dashboard.market-lists.update');
+    Route::delete('/dashboard/market-list/{marketList}', [MarketListController::class, 'destroy'])->name('dashboard.market-lists.destroy');
     Route::post('/dashboard/market-list/{marketList}/approve', [MarketListController::class, 'approve'])->name('dashboard.market-lists.approve');
     Route::post('/dashboard/market-list/{marketList}/send-back', [MarketListController::class, 'sendBack'])->name('dashboard.market-lists.send-back');
     Route::get('/dashboard/market-list/{marketList}/receipt', [MarketListController::class, 'receipt'])->name('dashboard.market-lists.receipt');

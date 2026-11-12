@@ -315,4 +315,57 @@ class MarketListTest extends TestCase
             ->assertSee('Market list')
             ->assertSee('title="Waiting for your approval">1</span>', false);
     }
+
+    public function test_the_recorder_can_withdraw_their_own_list_with_its_photo(): void
+    {
+        Storage::fake('local');
+        $staff = $this->userWithRole('staff');
+        $this->as($staff)->post(route('dashboard.market-lists.store'), [
+            'purchased_on' => now('Africa/Accra')->toDateString(),
+            'items' => [['description' => 'Gas refill', 'amount' => '150']],
+            'receipt' => UploadedFile::fake()->image('receipt.jpg'),
+        ]);
+        $list = MarketList::withoutGlobalScopes()->sole();
+        $path = $list->receipt_path;
+
+        $this->as($this->userWithRole('staff'))->delete(route('dashboard.market-lists.destroy', $list))->assertForbidden();
+
+        $this->as($staff)->delete(route('dashboard.market-lists.destroy', $list))
+            ->assertRedirect(route('dashboard.market-lists.index'))
+            ->assertSessionHas('status', 'Market list deleted.');
+
+        $this->assertSame(0, MarketList::withoutGlobalScopes()->count());
+        $this->assertSame(0, DB::table('market_list_items')->count());
+        $this->assertSame(0, DB::table('market_list_events')->count());
+        Storage::disk('local')->assertMissing($path);
+    }
+
+    public function test_the_people_who_could_approve_a_list_can_delete_it(): void
+    {
+        $staffList = $this->submit($this->userWithRole('staff'));
+        $managerList = $this->submit($this->userWithRole('manager'));
+        $manager = $this->userWithRole('manager');
+
+        // Sent back counts too.
+        $this->as($manager)->post(route('dashboard.market-lists.send-back', $staffList), ['reason' => 'Wrong date']);
+        $this->as($manager)->delete(route('dashboard.market-lists.destroy', $staffList))->assertSessionHas('status');
+        $this->assertNull(MarketList::withoutGlobalScopes()->find($staffList->id));
+
+        // A fellow manager's list is the owner's call.
+        $this->as($manager)->delete(route('dashboard.market-lists.destroy', $managerList))->assertForbidden();
+        $this->as($this->userWithRole('owner'))->delete(route('dashboard.market-lists.destroy', $managerList))->assertSessionHas('status');
+        $this->assertNull(MarketList::withoutGlobalScopes()->find($managerList->id));
+    }
+
+    public function test_an_approved_list_can_never_be_deleted(): void
+    {
+        $list = $this->submit($this->userWithRole('staff'));
+        $this->as($this->userWithRole('manager'))->post(route('dashboard.market-lists.approve', $list));
+
+        $this->as($this->userWithRole('manager'))->delete(route('dashboard.market-lists.destroy', $list))->assertForbidden();
+        // The owner passes every policy check, so the service itself refuses.
+        $this->as($this->userWithRole('owner'))->delete(route('dashboard.market-lists.destroy', $list))->assertSessionHasErrors('market_list');
+
+        $this->assertNotNull($list->fresh());
+    }
 }

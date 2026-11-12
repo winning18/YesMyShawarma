@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\Branches\BranchContext;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -209,6 +210,43 @@ class MarketListService
         $this->log($list, $reviewer, MarketListEvent::SENT_BACK, $reason);
 
         return $list->fresh();
+    }
+
+    /**
+     * Deletes a list that isn't approved yet — completely, items, history
+     * and receipt photo included (owner, 2026-11-12: delete, not a
+     * "cancelled" status). Allowed for the recorder (withdrawing their own
+     * entry) and for anyone who could approve it (MarketListPolicy::delete).
+     * Approved lists are locked and can never be deleted. Only a log line
+     * remains, so a deleted entry can still be traced if a question comes
+     * up later. A list fed in from a shift close takes its expenses out of
+     * the money reports with it; the shift's own expense rows stay for the
+     * Today report.
+     */
+    public function delete(MarketList $list, User $user): void
+    {
+        if (! $list->isEditable()) {
+            throw MarketListException::alreadyApproved();
+        }
+
+        DB::transaction(function () use ($list, $user) {
+            Log::info('Market list deleted', [
+                'market_list_id' => $list->id,
+                'branch_id' => $list->branch_id,
+                'purchased_on' => $list->purchased_on->toDateString(),
+                'total' => $list->total,
+                'recorded_by' => $list->recorded_by,
+                'deleted_by' => $user->id,
+                'items' => $list->items()->pluck('description')->all(),
+            ]);
+
+            $receipt = $list->receipt_path;
+            $list->delete();
+
+            if ($receipt) {
+                DB::afterCommit(fn () => Storage::disk(self::DISK)->delete($receipt));
+            }
+        });
     }
 
     /**

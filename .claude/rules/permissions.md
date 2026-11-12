@@ -349,6 +349,12 @@ Refunds/Damage Reports three-way scope: owner every branch, general_manager thei
 everyone else the current branch — and a recorder without `market_lists.approve` sees only
 their own lists.
 
+Deleting a list that isn't approved yet (pending or sent back — owner, 2026-11-12) is
+`MarketListPolicy::delete()`: the recorder may withdraw their own, otherwise the same people who
+could approve it (same tier rule). It's a hard delete — items, history and receipt photo gone,
+only a `Market list deleted` log line left (`MarketListService::delete()`). Approved lists can
+never be deleted; the service refuses even the owner, whom `Gate::before` lets past the policy.
+
 ## Delivery fee collections
 
 `delivery_fees.collect` (owner, general_manager, manager) — record that a rider handed in their

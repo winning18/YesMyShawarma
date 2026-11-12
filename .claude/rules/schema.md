@@ -254,7 +254,8 @@ policy checks the list's own branch). Only `approved` lists count anywhere — s
 sales, the Expenses tab (default filter) and the Profit tab — always by `purchased_on`, the
 Africa/Accra date of purchase, never the approval date. Approval rules live in
 `MarketListService`/`MarketListPolicy` (see permissions.md's "Market list"). Approved lists are
-locked; `market_list_events` is the immutable history (submitted, edited, resubmitted,
+locked. A pending or sent-back list can be deleted outright (owner, 2026-11-12; see
+permissions.md's "Market list") — no "cancelled" status; `market_list_events` is the immutable history (submitted, edited, resubmitted,
 sent_back, approved, auto_approved, converted). `total` is denormalised from the items, rewritten
 on every edit.
 

@@ -162,6 +162,19 @@ class MarketListController extends Controller
         return back()->with('status', __('Sent back for changes.'));
     }
 
+    public function destroy(Request $request, MarketList $marketList): RedirectResponse
+    {
+        Gate::authorize('delete', $marketList);
+
+        try {
+            $this->marketLists->delete($marketList, $request->user());
+        } catch (MarketListException $e) {
+            return back()->withErrors(['market_list' => $e->getMessage()]);
+        }
+
+        return redirect()->route('dashboard.market-lists.index')->with('status', __('Market list deleted.'));
+    }
+
     public function receipt(MarketList $marketList): StreamedResponse
     {
         Gate::authorize('viewReceipt', $marketList);
