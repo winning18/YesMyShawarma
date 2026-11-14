@@ -227,6 +227,20 @@
 @endcanany
 
 {{--
+    freebies.approve (manager/GM/owner): every POS freebie, approve or
+    reject, plus the WhatsApp group reward totals. The count is what this
+    person could approve right now (FreebieService::awaitingApprovalCount).
+--}}
+@can('freebies.approve')
+    <x-sidebar-link :href="route('dashboard.freebies.index')" :active="request()->routeIs('dashboard.freebies.*')">
+        {{ __('Freebies & rewards') }}
+        @if (($navFreebiesAwaiting ?? 0) > 0)
+            <span class="ms-auto text-xs font-semibold bg-red-600 text-white rounded-full px-2 py-0.5" title="{{ __('Waiting for your approval') }}">{{ $navFreebiesAwaiting }}</span>
+        @endif
+    </x-sidebar-link>
+@endcan
+
+{{--
     market_lists.record (record your own) or market_lists.approve (review
     everyone's at your branches). The count is what this person could
     approve right now (MarketListService::awaitingApprovalCount).

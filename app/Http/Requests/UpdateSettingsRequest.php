@@ -21,6 +21,10 @@ class UpdateSettingsRequest extends FormRequest
             'order_reference_prefix_pos' => ['required', 'string', 'max:20', 'regex:/^[A-Za-z0-9-]+$/'],
             'order_reference_prefix_web' => ['required', 'string', 'max:20', 'regex:/^[A-Za-z0-9-]+$/'],
             'order_reference_prefix_bolt_food' => ['required', 'string', 'max:20', 'regex:/^[A-Za-z0-9-]+$/'],
+            'order_reference_prefix_whatsapp' => ['required', 'string', 'max:20', 'regex:/^[A-Za-z0-9-]+$/'],
+            'order_reference_prefix_freebie' => ['required', 'string', 'max:20', 'regex:/^[A-Za-z0-9-]+$/'],
+            // Cedis off the food of a WhatsApp group order (owner, 2026-11-14).
+            'whatsapp_reward' => ['required', 'numeric', 'min:0', 'max:1000'],
             // A checkbox, so absent (unchecked) is expected, not invalid —
             // SettingsController reads it via $request->boolean(), which
             // already treats a missing key as false.

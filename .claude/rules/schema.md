@@ -281,6 +281,34 @@ excluded) − completed refunds − approved purchases, per day/week/month/year,
 separate line and a "profit incl. Bolt Food" total labelled before Bolt's commission (owner,
 2026-11-11). Pending and sent-back lists are shown as "awaiting approval", never counted.
 
+## Freebies and WhatsApp group orders
+
+```
+orders                + source (nullable; 'whatsapp')
+complimentary_orders  id, order_id (unique), recipient_type (customer|staff), recipient_user_id,
+                      recipient_name, reason, status (pending|approved|rejected),
+                      recorded_by, recorder_role, reviewed_by, reviewed_at, review_note
+```
+
+Owner, 2026-11-14, both POS-only and pickup-only:
+
+- **Freebies** — payment_method `complimentary` (`Order::COMPLIMENTARY`): food given free to a
+  customer or staff member. `subtotal` is the menu value given away, `discount_total` equals it,
+  `total` is 0; status `paid` immediately; stock is still used. In
+  `Order::EXCLUDED_FROM_SALES_PAYMENT_METHODS` alongside Bolt Food, so every sales figure, the
+  till check and Profit leave it out — code that means "Bolt Food" must test `Order::BOLT_FOOD`,
+  never that list. Never gets a promotion. `complimentary_orders` records who and why and the
+  approval (`FreebieService`, market list tier rule; see permissions.md's "Freebies"); a
+  rejected freebie stays out of sales, flagged against its giver. Reference prefix YMGS-FREE.
+- **WhatsApp group orders** — `orders.source = 'whatsapp'`: `SettingsService::WHATSAPP_REWARD_AMOUNT`
+  (GH₵10) off the food only (never drinks, `PromotionService::foodSubtotal()`), never more than
+  the food, held in `discount_total` (no `promotion_id`) so "sales = subtotal − discount" already
+  reflects it. Cash or MoMo only. On a promotion day the order keeps the promotion instead when it
+  actually earns something from it, otherwise still gets the reward. Reference prefix YMGS-WA.
+
+Freebies & rewards (`FreebieController`, `FreebieReportService`) lists freebies with value,
+recipient, reason, giver and status, with breakdowns, and totals the WhatsApp rewards.
+
 ## Delivery areas
 
 ```

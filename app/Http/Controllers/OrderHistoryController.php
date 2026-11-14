@@ -86,6 +86,7 @@ class OrderHistoryController extends Controller
                 'events' => fn ($query) => $query->orderBy('created_at'),
                 'refunds' => fn ($query) => $query->latest(),
                 'refunds.requestedBy', 'refunds.completedBy',
+                'complimentary.recipientUser', 'complimentary.recordedBy', 'complimentary.reviewedBy',
             ]),
             // orders.refund (owner/manager/general_manager, payments.md's
             // Refunds section — all three have identical rights) skips

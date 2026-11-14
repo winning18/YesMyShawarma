@@ -47,7 +47,9 @@ class PromotionService
      */
     public function findActiveAutomatic(?Branch $branch, ?string $paymentMethod = null): ?Promotion
     {
-        if ($paymentMethod === 'bolt_food') {
+        // Neither Bolt Food (settled by Bolt) nor a freebie (already free)
+        // ever gets a promotion.
+        if (in_array($paymentMethod, Order::EXCLUDED_FROM_SALES_PAYMENT_METHODS, true)) {
             return null;
         }
 
@@ -157,6 +159,30 @@ class PromotionService
         }
 
         return intdiv($paidQuantity, $promotion->buy_quantity) * $promotion->free_quantity;
+    }
+
+    /**
+     * The food part of priced rows — everything except drinks
+     * (NON_QUALIFYING_CATEGORY_SLUGS) and free lines. What the WhatsApp
+     * group reward comes off (owner, 2026-11-14: "only for food, drinks
+     * are not affected").
+     *
+     * @param  list<array<string, mixed>>  $rows
+     */
+    public function foodSubtotal(array $rows): int
+    {
+        $paid = collect($rows)->reject(fn (array $row) => $row['is_free'] ?? false);
+
+        if ($paid->isEmpty()) {
+            return 0;
+        }
+
+        $drinkIds = MenuItem::whereIn('id', $paid->pluck('menu_item_id')->unique())
+            ->whereHas('category', fn ($query) => $query->whereIn('slug', self::NON_QUALIFYING_CATEGORY_SLUGS))
+            ->pluck('id')
+            ->all();
+
+        return (int) $paid->whereNotIn('menu_item_id', $drinkIds)->sum('line_total');
     }
 
     /**

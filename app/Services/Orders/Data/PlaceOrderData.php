@@ -32,6 +32,10 @@ final class PlaceOrderData
      * @param  ?string  $deliveryFeePaidBy  POS MoMo delivery orders only — 'momo' or
      *                                      'rider_cash' (Order::DELIVERY_FEE_PAID_BY).
      *                                      Ignored for every other order.
+     * @param  ?string  $source  Order::SOURCE_WHATSAPP for a WhatsApp group order
+     *                           (GH₵10 off the food), null otherwise.
+     * @param  ?ComplimentaryData  $complimentary  required when $paymentMethod is
+     *                                             Order::COMPLIMENTARY (a freebie).
      */
     public function __construct(
         public readonly ?string $customerPhone,
@@ -49,5 +53,7 @@ final class PlaceOrderData
         public readonly ?int $actorId = null,
         public readonly ?string $paymentReference = null,
         public readonly ?string $deliveryFeePaidBy = null,
+        public readonly ?string $source = null,
+        public readonly ?ComplimentaryData $complimentary = null,
     ) {}
 }

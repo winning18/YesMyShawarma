@@ -4,23 +4,28 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\OrderPlacementException;
 use App\Models\Category;
+use App\Models\ComplimentaryOrder;
 use App\Models\DeliveryArea;
 use App\Models\Order;
+use App\Models\User;
 use App\Services\Branches\BranchContext;
 use App\Services\Cart\PosCartService;
 use App\Services\Customers\CustomerService;
 use App\Services\Delivery\DeliveryFeeCalculator;
 use App\Services\Menu\MenuPricingService;
+use App\Services\Orders\Data\ComplimentaryData;
 use App\Services\Orders\Data\DeliveryAddressData;
 use App\Services\Orders\Data\PlaceOrderData;
 use App\Services\Orders\Data\PlaceOrderItemData;
 use App\Services\Orders\OrderCreationService;
 use App\Services\Promotions\PromotionService;
+use App\Services\Settings\SettingsService;
 use App\Services\Shifts\ShiftService;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -103,6 +108,8 @@ class PosController extends Controller
             'deliveryAvailable' => $deliveryAreas->isNotEmpty(),
             'ratePerKmPesewas' => DeliveryFeeCalculator::RATE_PER_KM_PESEWAS,
             'cart' => $this->cartPayload($cart, $promotions),
+            'whatsappReward' => (int) app(SettingsService::class)->get(SettingsService::WHATSAPP_REWARD_AMOUNT, '1000'),
+            'freebieStaff' => $this->staffForFreebies(app(BranchContext::class)),
             'isStaff' => $isStaff,
             'forceShiftStart' => $isStaff && ! $shifts->activeForBranch($branch->id),
             // Manager reaches this page via the dedicated Orders nav item
@@ -232,9 +239,38 @@ class PosController extends Controller
                     if ($request->input('payment_method') === 'bolt_food' && $value !== 'pickup') {
                         $fail(__('Bolt Food orders must be pickup — Bolt handles delivery themselves.'));
                     }
+                    // Owner, 2026-11-14: freebies and WhatsApp group orders are pickup only.
+                    if (($request->input('payment_method') === Order::COMPLIMENTARY || $request->input('source') === Order::SOURCE_WHATSAPP) && $value !== 'pickup') {
+                        $fail(__('Freebies and WhatsApp group orders are pickup only.'));
+                    }
                 },
             ],
-            'payment_method' => ['required', 'in:cash,momo,bolt_food'],
+            'payment_method' => ['required', Rule::in(['cash', 'momo', 'bolt_food', Order::COMPLIMENTARY])],
+            // WhatsApp group: GH₵10 off the food, paid by cash or MoMo.
+            'source' => [
+                'nullable', Rule::in([Order::SOURCE_WHATSAPP]),
+                function (string $attribute, mixed $value, Closure $fail) use ($request): void {
+                    if ($value === Order::SOURCE_WHATSAPP && ! in_array($request->input('payment_method'), ['cash', 'momo'], true)) {
+                        $fail(__('WhatsApp group orders are paid by cash or MoMo.'));
+                    }
+                },
+            ],
+            // Freebies: who it's for and why (FreebieService).
+            'freebie_recipient_type' => [Rule::requiredIf(fn () => $request->input('payment_method') === Order::COMPLIMENTARY), 'nullable', Rule::in([ComplimentaryOrder::RECIPIENT_CUSTOMER, ComplimentaryOrder::RECIPIENT_STAFF])],
+            'freebie_recipient_user_id' => [
+                Rule::requiredIf(fn () => $request->input('payment_method') === Order::COMPLIMENTARY && $request->input('freebie_recipient_type') === ComplimentaryOrder::RECIPIENT_STAFF),
+                'nullable', 'integer',
+                function (string $attribute, mixed $value, Closure $fail) use ($context): void {
+                    if ($value && ! $this->staffForFreebies($context)->contains('id', (int) $value)) {
+                        $fail(__('Choose a staff member from this branch.'));
+                    }
+                },
+            ],
+            'freebie_recipient_name' => [
+                Rule::requiredIf(fn () => $request->input('payment_method') === Order::COMPLIMENTARY && $request->input('freebie_recipient_type') === ComplimentaryOrder::RECIPIENT_CUSTOMER && ! filled($request->input('name')) && ! filled($request->input('phone'))),
+                'nullable', 'string', 'max:255',
+            ],
+            'freebie_reason' => [Rule::requiredIf(fn () => $request->input('payment_method') === Order::COMPLIMENTARY), 'nullable', 'string', 'max:255'],
             // Momo only, and optional even then — staff may skip it during a
             // rush and enter it later via orders.confirm_momo_payment. The
             // frontend only ever shows this field for momo, but validation
@@ -300,6 +336,15 @@ class PosController extends Controller
                 actorId: $user->id,
                 paymentReference: $validated['payment_reference'] ?? null,
                 deliveryFeePaidBy: $validated['delivery_fee_paid_by'] ?? null,
+                source: $validated['payment_method'] === Order::COMPLIMENTARY ? null : ($validated['source'] ?? null),
+                complimentary: $validated['payment_method'] === Order::COMPLIMENTARY
+                    ? new ComplimentaryData(
+                        recipientType: $validated['freebie_recipient_type'],
+                        recipientUserId: isset($validated['freebie_recipient_user_id']) ? (int) $validated['freebie_recipient_user_id'] : null,
+                        recipientName: $validated['freebie_recipient_name'] ?? ($validated['name'] ?? null) ?: ($validated['phone'] ?? null),
+                        reason: $validated['freebie_reason'],
+                    )
+                    : null,
             ));
         } catch (OrderPlacementException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
@@ -329,7 +374,7 @@ class PosController extends Controller
      * regardless, so a wrong preview can never place a wrongly discounted
      * or wrongly free order.
      *
-     * @return array{branch: ?array<string, mixed>, lines: list<array<string, mixed>>, subtotal: int, dropped: string[], discount: int, promotionBanner: ?string}
+     * @return array{branch: ?array<string, mixed>, lines: list<array<string, mixed>>, subtotal: int, dropped: string[], discount: int, promotionBanner: ?string, foodSubtotal: int}
      */
     private function cartPayload(PosCartService $cart, PromotionService $promotions): array
     {
@@ -338,6 +383,9 @@ class PosController extends Controller
         $discount = ($promotion && $promotion->type !== 'buy_x_get_y_free')
             ? $promotions->calculateDiscount($promotion, $summary['subtotal'])
             : 0;
+        // For the WhatsApp group reward preview — mirrored client-side
+        // exactly as OrderCreationService applies it.
+        $foodSubtotal = $promotions->foodSubtotal($summary['lines']);
 
         return [
             'branch' => $summary['branch'] ? ['id' => $summary['branch']->id, 'name' => $summary['branch']->name] : null,
@@ -346,6 +394,28 @@ class PosController extends Controller
             'dropped' => $summary['dropped'],
             'discount' => $discount,
             'promotionBanner' => $promotion?->banner_headline,
+            'foodSubtotal' => $foodSubtotal,
         ];
+    }
+
+    /**
+     * Who a staff freebie can be for: everyone working at the current
+     * branch (any role there), active accounts only.
+     *
+     * @return Collection<int, User>
+     */
+    private function staffForFreebies(BranchContext $context): Collection
+    {
+        $branchId = $context->id();
+
+        if (! $branchId) {
+            return collect();
+        }
+
+        return collect(['staff', 'manager', 'general_manager', 'rider', 'stock_manager'])
+            ->flatMap(fn (string $role) => $context->usersWithRole($role, $branchId))
+            ->unique('id')
+            ->sortBy('name')
+            ->values();
     }
 }

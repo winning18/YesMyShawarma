@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'reference', 'track_token', 'customer_id', 'branch_id',
     'fulfilment_type',
     'subtotal', 'discount_total', 'delivery_fee', 'total',
-    'promotion_id', 'payment_method', 'delivery_fee_paid_by', 'payment_status', 'channel', 'delivery_address_snapshot',
+    'promotion_id', 'payment_method', 'delivery_fee_paid_by', 'payment_status', 'channel', 'source', 'delivery_address_snapshot',
     'instructions', 'scheduled_for',
 ])]
 #[ScopedBy([BranchScope::class])]
@@ -53,7 +53,24 @@ class Order extends Model
      *
      * @var list<string>
      */
-    public const MANUALLY_SETTLED_PAYMENT_METHODS = ['cash', 'momo', 'bolt_food'];
+    public const MANUALLY_SETTLED_PAYMENT_METHODS = ['cash', 'momo', 'bolt_food', self::COMPLIMENTARY];
+
+    public const BOLT_FOOD = 'bolt_food';
+
+    /**
+     * A freebie given to a customer or staff member (owner, 2026-11-14):
+     * the customer pays nothing, it's never sales, and it's recorded in
+     * complimentary_orders with who got it, why, and a manager's approval.
+     * See FreebieService.
+     */
+    public const COMPLIMENTARY = 'complimentary';
+
+    /**
+     * orders.source: an order taken from the WhatsApp group gets GH₵10
+     * (SettingsService::WHATSAPP_REWARD_AMOUNT) off its food, held in
+     * discount_total (owner, 2026-11-14). Null is every other order.
+     */
+    public const SOURCE_WHATSAPP = 'whatsapp';
 
     /** delivery_fee_paid_by values — POS MoMo delivery orders only (see the migration). */
     public const DELIVERY_FEE_PAID_BY = ['momo', 'rider_cash'];
@@ -65,11 +82,13 @@ class Order extends Model
      * touches a branch's till and staff should never be asked to account
      * for it as "today's sales". Still a real order everywhere else:
      * order counts, operational stats, and the raw order history/exports
-     * all still include it.
+     * all still include it. Freebies (COMPLIMENTARY) are excluded the same
+     * way — nobody paid for them. Code that means "Bolt Food orders" must
+     * test BOLT_FOOD, never this list.
      *
      * @var list<string>
      */
-    public const EXCLUDED_FROM_SALES_PAYMENT_METHODS = ['bolt_food'];
+    public const EXCLUDED_FROM_SALES_PAYMENT_METHODS = [self::BOLT_FOOD, self::COMPLIMENTARY];
 
     protected function casts(): array
     {
@@ -105,6 +124,14 @@ class Order extends Model
     public function promotion(): BelongsTo
     {
         return $this->belongsTo(Promotion::class);
+    }
+
+    /**
+     * The freebie record, when payment_method is COMPLIMENTARY.
+     */
+    public function complimentary(): HasOne
+    {
+        return $this->hasOne(ComplimentaryOrder::class);
     }
 
     /**

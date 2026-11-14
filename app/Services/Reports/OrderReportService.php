@@ -71,7 +71,11 @@ class OrderReportService
             // till — reclassified into their own 'bolt_food' bucket here
             // so "pos" means only real in-house counter/phone orders.
             'orders_by_channel' => $orders->countBy(
-                fn (Order $order) => $order->payment_method === 'bolt_food' ? 'bolt_food' : $order->channel
+                fn (Order $order) => match ($order->payment_method) {
+                    Order::BOLT_FOOD => 'bolt_food',
+                    Order::COMPLIMENTARY => 'freebie',
+                    default => $order->channel,
+                }
             ),
             'avg_time_to_accept_minutes' => $this->toMinutes($timeToAccept),
             'avg_prep_time_minutes' => $this->toMinutes($prepTime),

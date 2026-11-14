@@ -25,6 +25,18 @@ class SettingsService
      */
     public const ORDER_REFERENCE_PREFIX_BOLT_FOOD = 'order_reference_prefix_bolt_food';
 
+    /** WhatsApp group orders (orders.source 'whatsapp') — default YMGS-WA. */
+    public const ORDER_REFERENCE_PREFIX_WHATSAPP = 'order_reference_prefix_whatsapp';
+
+    /** Freebies (payment_method 'complimentary') — default YMGS-FREE. */
+    public const ORDER_REFERENCE_PREFIX_FREEBIE = 'order_reference_prefix_freebie';
+
+    /**
+     * Pesewas off the food of a WhatsApp group order (owner, 2026-11-14;
+     * GH₵10 to start). See OrderCreationService's WhatsApp reward.
+     */
+    public const WHATSAPP_REWARD_AMOUNT = 'whatsapp_reward_amount';
+
     /**
      * Web checkout's Paystack option — see payments.md's "Paystack on/off"
      * section. Off by default (missing row, not just a falsy stored value)

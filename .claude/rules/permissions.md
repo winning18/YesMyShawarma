@@ -52,6 +52,7 @@ Roles: `staff`, `rider`, `manager`, `general_manager`, `owner`, `stock_manager`.
 | `market_lists.record` | ✓ | — | ✓ | ✓ | ✓ | ✓ |
 | `market_lists.approve` | — | — | ✓ | ✓ | ✓ | — |
 | `delivery_fees.collect` | — | — | ✓ | ✓ | ✓ | — |
+| `freebies.approve` | — | — | ✓ | ✓ | ✓ | — |
 
 `general_manager` holds the exact same permission set as `manager` (see `RolesAndPermissionsSeeder`'s
 `$matrix` — the two lists are meant to be kept identical apart from `users.create_operational`),
@@ -362,3 +363,12 @@ cash delivery fees for a branch and period, or void such a record
 (`DeliveryFeeCollectionService`). Kept apart from the other money permissions so it can be
 audited on its own. Checked against the collection's own branch; a manager only at their branch,
 a GM at their GM branches, owner everywhere.
+
+## Freebies
+
+Any POS user (`orders.create`) can place a freebie (payment method `complimentary`).
+`freebies.approve` (manager, general_manager, owner) approves or rejects it afterwards, checked
+at the order's own branch, with the market list's tier rule (`FreebieService::approverTierAllows()`,
+owner 2026-11-14): nobody approves their own, a manager's or GM's freebie needs the owner, and the
+owner's own are approved automatically. Kept apart from the other money permissions so it can be
+audited on its own.

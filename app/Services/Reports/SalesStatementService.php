@@ -261,7 +261,7 @@ class SalesStatementService
         }
 
         return $type === self::TYPE_BOLT_FOOD
-            ? $query->whereIn('payment_method', Order::EXCLUDED_FROM_SALES_PAYMENT_METHODS)
+            ? $query->where('payment_method', Order::BOLT_FOOD)
             : $query->whereNotIn('payment_method', Order::EXCLUDED_FROM_SALES_PAYMENT_METHODS);
     }
 

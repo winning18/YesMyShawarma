@@ -61,6 +61,9 @@ class SettingsTest extends TestCase
             'order_reference_prefix_pos' => 'shawarma-pos',
             'order_reference_prefix_web' => 'shawarma-web',
             'order_reference_prefix_bolt_food' => 'shawarma-bolt',
+            'order_reference_prefix_whatsapp' => 'YMGS-WA',
+            'order_reference_prefix_freebie' => 'YMGS-FREE',
+            'whatsapp_reward' => '10.00',
         ])->assertRedirect();
 
         $settings = app(SettingsService::class);
@@ -85,6 +88,9 @@ class SettingsTest extends TestCase
             'order_reference_prefix_pos' => 'YMGS-POS',
             'order_reference_prefix_web' => 'YMGS-WEB',
             'order_reference_prefix_bolt_food' => 'YMGS-BOLT',
+            'order_reference_prefix_whatsapp' => 'YMGS-WA',
+            'order_reference_prefix_freebie' => 'YMGS-FREE',
+            'whatsapp_reward' => '10.00',
             'paystack_enabled' => '1',
         ])->assertRedirect();
 
@@ -95,6 +101,9 @@ class SettingsTest extends TestCase
             'order_reference_prefix_pos' => 'YMGS-POS',
             'order_reference_prefix_web' => 'YMGS-WEB',
             'order_reference_prefix_bolt_food' => 'YMGS-BOLT',
+            'order_reference_prefix_whatsapp' => 'YMGS-WA',
+            'order_reference_prefix_freebie' => 'YMGS-FREE',
+            'whatsapp_reward' => '10.00',
         ])->assertRedirect();
 
         $this->assertFalse($settings->getBool(SettingsService::PAYSTACK_ENABLED));
@@ -108,6 +117,9 @@ class SettingsTest extends TestCase
             'order_reference_prefix_pos' => 'YMGS POS!',
             'order_reference_prefix_web' => 'YMGS-WEB',
             'order_reference_prefix_bolt_food' => 'YMGS-BOLT',
+            'order_reference_prefix_whatsapp' => 'YMGS-WA',
+            'order_reference_prefix_freebie' => 'YMGS-FREE',
+            'whatsapp_reward' => '10.00',
         ])->assertSessionHasErrors('order_reference_prefix_pos');
     }
 
@@ -119,6 +131,9 @@ class SettingsTest extends TestCase
             'order_reference_prefix_pos' => 'YMGS-POS',
             'order_reference_prefix_web' => 'YMGS-WEB',
             'order_reference_prefix_bolt_food' => 'YMGS BOLT!',
+            'order_reference_prefix_whatsapp' => 'YMGS-WA',
+            'order_reference_prefix_freebie' => 'YMGS-FREE',
+            'whatsapp_reward' => '10.00',
         ])->assertSessionHasErrors('order_reference_prefix_bolt_food');
     }
 

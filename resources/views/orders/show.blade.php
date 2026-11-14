@@ -49,6 +49,19 @@
                         @endforeach
                     </ul>
 
+                    @if ($freebie = $order->complimentary)
+                        <div class="mt-4 rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-900">
+                            <p class="font-semibold">{{ __('Freebie for :who', ['who' => $freebie->recipientLabel()]) }} · {{ __(\Illuminate\Support\Str::headline($freebie->status)) }}</p>
+                            <p>{{ __('Reason: :reason', ['reason' => $freebie->reason]) }} · {{ __('Given by :name', ['name' => $freebie->recordedBy?->name]) }}</p>
+                            @if ($freebie->reviewedBy && $freebie->status !== 'pending')
+                                <p class="text-xs">{{ __(':status by :name', ['status' => \Illuminate\Support\Str::headline($freebie->status), 'name' => $freebie->reviewedBy->name]) }}@if ($freebie->review_note) · {{ $freebie->review_note }} @endif</p>
+                            @endif
+                        </div>
+                    @endif
+                    @if ($order->source === \App\Models\Order::SOURCE_WHATSAPP)
+                        <p class="mt-4 text-xs font-semibold text-green-700">{{ __('WhatsApp group order') }}</p>
+                    @endif
+
                     <div class="border-t border-gray-100 mt-4 pt-4 text-sm space-y-2">
                         <div class="flex justify-between">
                             <span class="text-gray-500">{{ __('Subtotal') }}</span>
@@ -56,7 +69,15 @@
                         </div>
                         @if ($order->discount_total > 0)
                             <div class="flex justify-between">
-                                <span class="text-gray-500">{{ __('Discount') }}{{ $order->promotion ? ' ('.$order->promotion->code.')' : '' }}</span>
+                                <span class="text-gray-500">
+                                    @if ($order->payment_method === \App\Models\Order::COMPLIMENTARY)
+                                        {{ __('Freebie') }}
+                                    @elseif ($order->source === \App\Models\Order::SOURCE_WHATSAPP && ! $order->promotion)
+                                        {{ __('WhatsApp reward') }}
+                                    @else
+                                        {{ __('Discount') }}{{ $order->promotion ? ' ('.$order->promotion->code.')' : '' }}
+                                    @endif
+                                </span>
                                 <span class="text-gray-800">-GH₵{{ number_format($order->discount_total / 100, 2) }}</span>
                             </div>
                         @endif

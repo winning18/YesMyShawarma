@@ -145,7 +145,7 @@ class ProfitReportService
             ->whereBetween('placed_at', [$from->clone()->utc(), $to->clone()->utc()])
             ->whereNotIn('status', SalesStatementService::NON_SALES_STATUSES)
             ->when($boltFood,
-                fn (Builder $query) => $query->whereIn('payment_method', Order::EXCLUDED_FROM_SALES_PAYMENT_METHODS),
+                fn (Builder $query) => $query->where('payment_method', Order::BOLT_FOOD),
                 fn (Builder $query) => $query->whereNotIn('payment_method', Order::EXCLUDED_FROM_SALES_PAYMENT_METHODS))
             ->when($scopeIds !== null, fn (Builder $query) => $query->whereIn('branch_id', $scopeIds))
             ->toBase()

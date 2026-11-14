@@ -7,6 +7,7 @@ use App\Contracts\PushNotifier;
 use App\Models\User;
 use App\Services\Branches\BranchContext;
 use App\Services\Cart\CartService;
+use App\Services\Freebies\FreebieService;
 use App\Services\MarketLists\MarketListService;
 use App\Services\Notifications\ArkeselNotifier;
 use App\Services\Notifications\LogNotifier;
@@ -134,6 +135,7 @@ class AppServiceProvider extends ServiceProvider
                 // The count beside "Market list" — lists this person
                 // could approve right now.
                 'navMarketListsAwaiting' => $user ? app(MarketListService::class)->awaitingApprovalCount($user) : 0,
+                'navFreebiesAwaiting' => $user ? app(FreebieService::class)->awaitingApprovalCount($user) : 0,
             ]);
         });
     }

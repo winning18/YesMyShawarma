@@ -72,7 +72,7 @@
                 --}}
                 <div class="mb-4 pb-3 border-b border-gray-100">
                     <label class="block text-xs font-medium text-gray-500 mb-2">{{ __('Payment') }} <span class="text-red-600">*</span></label>
-                    <div class="flex gap-4 text-sm">
+                    <div class="flex flex-wrap gap-x-4 gap-y-2 text-sm">
                         <label class="flex items-center gap-1.5">
                             <input type="radio" x-model="paymentMethod" value="cash"> {{ __('Cash') }}
                         </label>
@@ -80,12 +80,38 @@
                             <input type="radio" x-model="paymentMethod" value="momo"> {{ __('Momo') }}
                         </label>
                         <label class="flex items-center gap-1.5">
-                            <input type="radio" x-model="paymentMethod" value="bolt_food" @change="fulfilmentType = 'pickup'"> {{ __('Bolt Food') }}
+                            <input type="radio" x-model="paymentMethod" value="bolt_food" @change="fulfilmentType = 'pickup'; whatsapp = false"> <span class="whitespace-nowrap">{{ __('Bolt Food') }}</span>
+                        </label>
+                        <label class="flex items-center gap-1.5">
+                            <input type="radio" x-model="paymentMethod" value="complimentary" @change="fulfilmentType = 'pickup'; whatsapp = false"> {{ __('Freebie') }}
                         </label>
                     </div>
                     <p class="text-xs text-gray-500 mt-1" x-show="paymentMethod === 'bolt_food'">
                         {{ __('For an order placed through Bolt Food and brought here to prepare — not counted as this till\'s sales.') }}
                     </p>
+
+                    {{-- WhatsApp group orders: GH₵10 off the food, pickup only (owner, 2026-11-14). --}}
+                    <label class="flex items-center gap-2 text-sm mt-3" x-show="paymentMethod === 'cash' || paymentMethod === 'momo'">
+                        <input type="checkbox" x-model="whatsapp" @change="if (whatsapp) fulfilmentType = 'pickup'" class="rounded border-gray-300">
+                        <span>{{ __('WhatsApp group order') }} <span class="text-gray-500" x-text="'(' + formatMoney(whatsappReward) + ' ' + @js(__('off the food, pickup only')) + ')'"></span></span>
+                    </label>
+
+                    {{-- Freebies: free to the customer, never sales, approved by a manager afterwards. --}}
+                    <div x-show="paymentMethod === 'complimentary'" x-cloak class="mt-3 space-y-2 rounded-md bg-amber-50 border border-amber-200 p-3">
+                        <p class="text-xs text-amber-900">{{ __('The customer pays nothing. It\'s not counted as sales, and a manager approves it afterwards.') }}</p>
+                        <div class="flex gap-4 text-sm">
+                            <label class="flex items-center gap-1.5"><input type="radio" x-model="freebieRecipientType" value="customer"> {{ __('For a customer') }}</label>
+                            <label class="flex items-center gap-1.5"><input type="radio" x-model="freebieRecipientType" value="staff"> {{ __('For staff') }}</label>
+                        </div>
+                        <p class="text-xs text-gray-600" x-show="freebieRecipientType === 'customer'">{{ __('Enter their name or phone below.') }}</p>
+                        <select x-show="freebieRecipientType === 'staff'" x-model="freebieStaffId" class="w-full rounded-md border-gray-300 text-sm">
+                            <option value="">{{ __('Choose the staff member') }}</option>
+                            @foreach ($freebieStaff as $person)
+                                <option value="{{ $person->id }}">{{ $person->name }}</option>
+                            @endforeach
+                        </select>
+                        <input type="text" x-model="freebieReason" maxlength="255" placeholder="{{ __('Why? e.g. Birthday, Staff meal, Complaint make-good') }}" class="w-full rounded-md border-gray-300 text-sm">
+                    </div>
                 </div>
 
                 <p class="text-sm text-gray-500" x-show="lines.length === 0">{{ __('No items yet.') }}</p>
@@ -120,7 +146,7 @@
                     </template>
                 </ul>
 
-                <div x-show="promotionBanner && paymentMethod !== 'bolt_food'" x-cloak class="text-sm text-green-700 bg-green-50 rounded-md px-3 py-2 mb-3" x-text="promotionBanner"></div>
+                <div x-show="promotionBanner && paymentMethod !== 'bolt_food' && paymentMethod !== 'complimentary'" x-cloak class="text-sm text-green-700 bg-green-50 rounded-md px-3 py-2 mb-3" x-text="promotionBanner"></div>
 
                 <div class="flex justify-between border-t border-gray-100 pt-3">
                     <span>{{ __('Subtotal') }}</span>
@@ -128,7 +154,7 @@
                 </div>
 
                 <div class="flex justify-between text-sm mt-2" x-show="displayedDiscount() > 0" x-cloak>
-                    <span>{{ __('Discount') }}</span>
+                    <span x-text="paymentMethod === 'complimentary' ? @js(__('Freebie')) : (whatsappDiscount() > 0 ? @js(__('WhatsApp reward')) : @js(__('Discount')))"></span>
                     <span x-text="'-' + formatMoney(displayedDiscount())"></span>
                 </div>
 
@@ -166,13 +192,16 @@
                                 <input type="radio" x-model="fulfilmentType" value="pickup"> {{ __('Pickup') }}
                             </label>
                             @if ($deliveryAvailable)
-                                <label class="flex items-center gap-1.5" x-show="paymentMethod !== 'bolt_food'">
+                                <label class="flex items-center gap-1.5" x-show="!pickupOnly()">
                                     <input type="radio" x-model="fulfilmentType" value="delivery"> {{ __('Delivery') }}
                                 </label>
                             @endif
                         </div>
                         <p class="text-xs text-gray-500 mt-1" x-show="paymentMethod === 'bolt_food'">
                             {{ __('Bolt Food orders are always pickup — Bolt handles delivery themselves.') }}
+                        </p>
+                        <p class="text-xs text-gray-500 mt-1" x-show="paymentMethod === 'complimentary' || whatsapp">
+                            {{ __('Freebies and WhatsApp group orders are pickup only.') }}
                         </p>
                     </div>
 
@@ -330,6 +359,12 @@
                 subtotal: {{ $cart['subtotal'] }},
                 discount: {{ $cart['discount'] }},
                 promotionBanner: @json($cart['promotionBanner']),
+                foodSubtotal: {{ $cart['foodSubtotal'] }},
+                whatsappReward: {{ $whatsappReward }},
+                whatsapp: false,
+                freebieRecipientType: 'customer',
+                freebieStaffId: '',
+                freebieReason: '',
                 phone: phoneField(''),
                 name: '',
                 fulfilmentType: 'pickup',
@@ -358,7 +393,24 @@
                 // the displayed total never promises a discount that
                 // won't actually be charged.
                 displayedDiscount() {
-                    return this.paymentMethod === 'bolt_food' ? 0 : this.discount;
+                    if (this.paymentMethod === 'complimentary') return this.subtotal;
+                    if (this.paymentMethod === 'bolt_food') return 0;
+
+                    return this.discount + this.whatsappDiscount();
+                },
+
+                // Mirrors OrderCreationService: GH₵10 off the food (never
+                // drinks, never more than the food), only when the order
+                // isn't already earning the day's promotion.
+                whatsappDiscount() {
+                    if (!this.whatsapp || !['cash', 'momo'].includes(this.paymentMethod)) return 0;
+                    if (this.discount > 0 || this.lines.some((line) => line.is_free)) return 0;
+
+                    return Math.min(this.whatsappReward, this.foodSubtotal);
+                },
+
+                pickupOnly() {
+                    return ['bolt_food', 'complimentary'].includes(this.paymentMethod) || this.whatsapp;
                 },
 
                 // Same reasoning as displayedDiscount() above, applied to
@@ -368,7 +420,7 @@
                 // isn't necessarily final while the cart's still being
                 // built.
                 visibleLines() {
-                    return this.paymentMethod === 'bolt_food'
+                    return ['bolt_food', 'complimentary'].includes(this.paymentMethod)
                         ? this.lines.filter((line) => !line.is_free)
                         : this.lines;
                 },
@@ -481,6 +533,7 @@
 
                         this.lines = payload.lines;
                         this.subtotal = payload.subtotal;
+                        this.foodSubtotal = payload.foodSubtotal;
                         this.discount = payload.discount;
                         this.promotionBanner = payload.promotionBanner;
                         this.error = null;
@@ -520,6 +573,10 @@
                                 payment_reference: this.paymentMethod === 'momo' ? this.paymentReference : null,
                                 delivery_fee_paid_by: this.paymentMethod === 'momo' && this.fulfilmentType === 'delivery' ? this.deliveryFeePaidBy : null,
                                 instructions: this.instructions,
+                                source: this.whatsapp && ['cash', 'momo'].includes(this.paymentMethod) ? 'whatsapp' : null,
+                                freebie_recipient_type: this.paymentMethod === 'complimentary' ? this.freebieRecipientType : null,
+                                freebie_recipient_user_id: this.paymentMethod === 'complimentary' && this.freebieRecipientType === 'staff' ? this.freebieStaffId : null,
+                                freebie_reason: this.paymentMethod === 'complimentary' ? this.freebieReason : null,
                             }),
                         });
 
@@ -552,6 +609,12 @@
                     // give it, but a half-typed number still isn't.
                     if (this.phone.raw.length > 0 && !this.phone.valid) return '{{ __('Enter a valid 10-digit customer phone number, or leave it blank.') }}';
 
+                    if (this.paymentMethod === 'complimentary') {
+                        if (this.freebieRecipientType === 'staff' && !this.freebieStaffId) return @js(__('Choose which staff member the freebie is for.'));
+                        if (this.freebieRecipientType === 'customer' && !this.name.trim() && !this.phone.raw) return @js(__('Enter the customer\'s name or phone for the freebie.'));
+                        if (!this.freebieReason.trim()) return @js(__('Say why the freebie is being given.'));
+                    }
+
                     if (this.fulfilmentType === 'delivery') {
                         if (!this.areaId) return '{{ __('Delivery area is required.') }}';
                         if (this.areaId === 'other' && !this.areaOther.trim()) return '{{ __('Area name is required.') }}';
@@ -573,6 +636,10 @@
                     this.landmark = '';
                     this.ghanapostCode = '';
                     this.paymentMethod = 'cash';
+                    this.whatsapp = false;
+                    this.freebieRecipientType = 'customer';
+                    this.freebieStaffId = '';
+                    this.freebieReason = '';
                     this.paymentReference = '';
                     this.deliveryFeePaidBy = '';
                     this.instructions = '';

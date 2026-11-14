@@ -25,6 +25,9 @@ class SettingsController extends Controller
             'posPrefix' => $settings->get(SettingsService::ORDER_REFERENCE_PREFIX_POS, 'YMGS-POS'),
             'webPrefix' => $settings->get(SettingsService::ORDER_REFERENCE_PREFIX_WEB, 'YMGS-WEB'),
             'boltFoodPrefix' => $settings->get(SettingsService::ORDER_REFERENCE_PREFIX_BOLT_FOOD, 'YMGS-BOLT'),
+            'whatsappPrefix' => $settings->get(SettingsService::ORDER_REFERENCE_PREFIX_WHATSAPP, 'YMGS-WA'),
+            'freebiePrefix' => $settings->get(SettingsService::ORDER_REFERENCE_PREFIX_FREEBIE, 'YMGS-FREE'),
+            'whatsappReward' => number_format(((int) $settings->get(SettingsService::WHATSAPP_REWARD_AMOUNT, '1000')) / 100, 2, '.', ''),
             'paystackEnabled' => $settings->getBool(SettingsService::PAYSTACK_ENABLED),
         ]);
     }
@@ -38,6 +41,9 @@ class SettingsController extends Controller
         $settings->set(SettingsService::ORDER_REFERENCE_PREFIX_POS, strtoupper($validated['order_reference_prefix_pos']));
         $settings->set(SettingsService::ORDER_REFERENCE_PREFIX_WEB, strtoupper($validated['order_reference_prefix_web']));
         $settings->set(SettingsService::ORDER_REFERENCE_PREFIX_BOLT_FOOD, strtoupper($validated['order_reference_prefix_bolt_food']));
+        $settings->set(SettingsService::ORDER_REFERENCE_PREFIX_WHATSAPP, strtoupper($validated['order_reference_prefix_whatsapp']));
+        $settings->set(SettingsService::ORDER_REFERENCE_PREFIX_FREEBIE, strtoupper($validated['order_reference_prefix_freebie']));
+        $settings->set(SettingsService::WHATSAPP_REWARD_AMOUNT, (string) (int) round(((float) $validated['whatsapp_reward']) * 100));
         $settings->setBool(SettingsService::PAYSTACK_ENABLED, $request->boolean('paystack_enabled'));
 
         return back()->with('status', __('Settings updated.'));

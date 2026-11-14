@@ -11,6 +11,16 @@ class OrderPlacementException extends Exception
         return new self("This number can't place orders online. Please call the branch.");
     }
 
+    public static function pickupOnly(): self
+    {
+        return new self(__('Freebies and WhatsApp group orders can only be pickup orders placed at the POS.'));
+    }
+
+    public static function freebieDetailsRequired(): self
+    {
+        return new self(__('Say who the freebie is for and why.'));
+    }
+
     public static function emptyCart(): self
     {
         return new self('An order must contain at least one item.');

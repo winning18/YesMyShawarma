@@ -23,6 +23,7 @@ use App\Http\Controllers\DeliveryFeesReportController;
 use App\Http\Controllers\ExpenseKindController;
 use App\Http\Controllers\ExpensesReportController;
 use App\Http\Controllers\FaqController;
+use App\Http\Controllers\FreebieController;
 use App\Http\Controllers\HeroSliderController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MarketListController;
@@ -224,6 +225,10 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::get('/dashboard/damage-reports', [DamageReportController::class, 'index'])->name('dashboard.damage-reports.index');
     Route::post('/dashboard/damage-reports/{damageReport}/approve', [DamageReportController::class, 'approve'])->name('dashboard.damage-reports.approve');
     Route::post('/dashboard/damage-reports/{damageReport}/deny', [DamageReportController::class, 'deny'])->name('dashboard.damage-reports.deny');
+
+    Route::get('/dashboard/freebies', [FreebieController::class, 'index'])->name('dashboard.freebies.index');
+    Route::post('/dashboard/freebies/{freebie}/approve', [FreebieController::class, 'approve'])->whereNumber('freebie')->name('dashboard.freebies.approve');
+    Route::post('/dashboard/freebies/{freebie}/reject', [FreebieController::class, 'reject'])->whereNumber('freebie')->name('dashboard.freebies.reject');
 
     Route::get('/dashboard/market-list', [MarketListController::class, 'index'])->name('dashboard.market-lists.index');
     Route::get('/dashboard/market-list/kinds', [ExpenseKindController::class, 'index'])->name('dashboard.market-lists.kinds.index');

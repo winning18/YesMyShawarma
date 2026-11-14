@@ -8,8 +8,10 @@ use App\Models\Branch;
 use App\Models\DeliveryArea;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\User;
 use App\Services\Customers\CustomerService;
 use App\Services\Delivery\DeliveryFeeCalculator;
+use App\Services\Freebies\FreebieService;
 use App\Services\Menu\MenuPricingService;
 use App\Services\Notifications\CustomerOrderNotifier;
 use App\Services\Notifications\NewOrderPushNotifier;
@@ -38,6 +40,7 @@ class OrderCreationService
         private readonly SettingsService $settings,
         private readonly CustomerOrderNotifier $notifier,
         private readonly NewOrderPushNotifier $pushNotifier,
+        private readonly FreebieService $freebies,
     ) {}
 
     /**
@@ -92,6 +95,17 @@ class OrderCreationService
     {
         if (empty($data->items)) {
             throw OrderPlacementException::emptyCart();
+        }
+
+        // Freebies and WhatsApp group orders are POS-only and pickup-only
+        // (owner, 2026-11-14); a freebie must say who it's for and why.
+        if ($data->paymentMethod === Order::COMPLIMENTARY || $data->source === Order::SOURCE_WHATSAPP) {
+            if ($data->channel !== 'pos' || $data->fulfilmentType !== 'pickup') {
+                throw OrderPlacementException::pickupOnly();
+            }
+        }
+        if ($data->paymentMethod === Order::COMPLIMENTARY && ($data->complimentary === null || $data->actorId === null)) {
+            throw OrderPlacementException::freebieDetailsRequired();
         }
 
         $branch = Branch::findOrFail($data->branchId);
@@ -163,6 +177,31 @@ class OrderCreationService
                 $redemptionValue = $discountTotal;
             }
 
+            // WhatsApp group orders (owner, 2026-11-14): GH₵10 off the food
+            // — never drinks, never more than the food total, pickup only.
+            // On a promotion day the order gets the promotion instead when
+            // it actually earns something from it; otherwise it still gets
+            // the reward. Kept in discount_total, so every report's
+            // "sales = subtotal − discount" already reflects it.
+            if ($data->source === Order::SOURCE_WHATSAPP) {
+                $earnedPromotion = $discountTotal > 0 || collect($itemRows)->contains(fn ($row) => $row['is_free'] ?? false);
+
+                if (! $earnedPromotion) {
+                    $promotion = null;
+                    $redemptionValue = 0;
+                    $discountTotal = min(
+                        (int) $this->settings->get(SettingsService::WHATSAPP_REWARD_AMOUNT, '1000'),
+                        $this->promotions->foodSubtotal($itemRows),
+                    );
+                }
+            }
+
+            // A freebie: the customer pays nothing. subtotal keeps the menu
+            // value (what was given away); discount_total takes all of it.
+            if ($data->paymentMethod === Order::COMPLIMENTARY) {
+                $discountTotal = $subtotal;
+            }
+
             [$deliveryFee, $addressSnapshot] = $data->fulfilmentType === 'delivery'
                 ? $this->resolveDelivery($branch, $data, $subtotal)
                 : [0, null];
@@ -190,11 +229,12 @@ class OrderCreationService
                 $data->paymentMethod === 'cash' && $data->fulfilmentType === 'pickup' => 'paid',
                 $data->paymentMethod === 'momo' && $data->paymentReference !== null => 'paid',
                 $data->paymentMethod === 'bolt_food' => 'paid',
+                $data->paymentMethod === Order::COMPLIMENTARY => 'paid',
                 default => 'pending',
             };
 
             $order = new Order([
-                'reference' => $this->generateReference($data->channel, $data->paymentMethod),
+                'reference' => $this->generateReference($data->channel, $data->paymentMethod, $data->source),
                 'track_token' => Str::random(32),
                 'customer_id' => $customer->id,
                 'branch_id' => $branch->id,
@@ -210,6 +250,7 @@ class OrderCreationService
                     : null,
                 'payment_status' => $initialPaymentStatus,
                 'channel' => $data->channel,
+                'source' => $data->source,
                 'delivery_address_snapshot' => $addressSnapshot,
                 'instructions' => $data->instructions,
                 'scheduled_for' => $data->scheduledFor,
@@ -261,6 +302,10 @@ class OrderCreationService
                 'actor_id' => $data->actorId ?? $customer->id,
                 'meta' => ['action' => 'placed'],
             ]);
+
+            if ($data->paymentMethod === Order::COMPLIMENTARY) {
+                $this->freebies->record($order, $data->complimentary, User::findOrFail($data->actorId), $data->actorType ?? 'staff');
+            }
 
             // SafeBroadcast::afterCommit, not a bare DB::afterCommit — see
             // its own docblock for why a broadcast failure must never
@@ -362,13 +407,16 @@ class OrderCreationService
      * still a unique column — regenerating on the rare clash is cheap
      * insurance against a placement failing outright over it.
      */
-    private function generateReference(string $channel, string $paymentMethod): string
+    private function generateReference(string $channel, string $paymentMethod, ?string $source = null): string
     {
         // Bolt Food orders are always channel 'pos' (payments.md) — this
         // check must come before the plain POS case below, or a Bolt Food
-        // order would be indistinguishable from a real in-house sale.
+        // order would be indistinguishable from a real in-house sale. Same
+        // for freebies and WhatsApp group orders.
         $prefix = match (true) {
             $paymentMethod === 'bolt_food' => $this->settings->get(SettingsService::ORDER_REFERENCE_PREFIX_BOLT_FOOD, 'YMGS-BOLT'),
+            $paymentMethod === Order::COMPLIMENTARY => $this->settings->get(SettingsService::ORDER_REFERENCE_PREFIX_FREEBIE, 'YMGS-FREE'),
+            $source === Order::SOURCE_WHATSAPP => $this->settings->get(SettingsService::ORDER_REFERENCE_PREFIX_WHATSAPP, 'YMGS-WA'),
             $channel === 'pos' => $this->settings->get(SettingsService::ORDER_REFERENCE_PREFIX_POS, 'YMGS-POS'),
             default => $this->settings->get(SettingsService::ORDER_REFERENCE_PREFIX_WEB, 'YMGS-WEB'),
         };
