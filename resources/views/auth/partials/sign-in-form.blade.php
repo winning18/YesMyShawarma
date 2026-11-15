@@ -14,11 +14,13 @@
     $field = 'mt-1.5 block w-full h-12 rounded-lg border-xpos-line bg-white px-4 text-base text-xpos-midnight placeholder:text-xpos-muted focus:border-xpos-midnight focus:ring-2 focus:ring-xpos-gold';
 @endphp
 
-@if ($business->logoUrl())
-    <img src="{{ $business->logoUrl() }}" alt="" class="h-16 w-auto max-w-full mb-4">
-@endif
-<h1 class="text-3xl font-extrabold tracking-tight">{{ $business->name() }}</h1>
-<p class="mt-1 text-gray-600">{{ $subheading }}</p>
+<div class="text-center">
+    @if ($business->logoUrl())
+        <img src="{{ $business->logoUrl() }}" alt="" class="h-16 w-auto max-w-full mx-auto mb-4">
+    @endif
+    <h1 class="text-3xl font-extrabold tracking-tight">{{ $business->name() }}</h1>
+    <p class="mt-1 text-gray-600">{{ $subheading }}</p>
+</div>
 
 <x-auth-session-status class="mt-6" :status="session('status')" />
 
