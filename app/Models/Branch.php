@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 
 #[Fillable([
-    'name', 'slug', 'phone', 'address', 'ghanapost_code', 'lat', 'lng',
+    'name', 'slug', 'phone', 'address', 'areas_served', 'ghanapost_code', 'lat', 'lng',
     'opens_at', 'closes_at', 'is_accepting_orders', 'is_active', 'image_path',
 ])]
 class Branch extends Model
@@ -24,6 +24,7 @@ class Branch extends Model
             'lng' => 'decimal:7',
             'is_accepting_orders' => 'boolean',
             'is_active' => 'boolean',
+            'areas_served' => 'array',
         ];
     }
 

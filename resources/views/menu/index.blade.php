@@ -32,7 +32,6 @@
         for long, multi-line names — but a FIXED size (not measured/
         matched at all) never had that problem; it's what's used here.
     --}}
-    @php $sideBySideCategories = ['drinks']; @endphp
 
     @php
         $searchIndex = $categories->flatMap(fn ($group) => $group['items']->map(fn ($item) => [

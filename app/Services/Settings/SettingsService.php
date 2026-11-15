@@ -38,6 +38,12 @@ class SettingsService
     public const WHATSAPP_REWARD_AMOUNT = 'whatsapp_reward_amount';
 
     /**
+     * The home page's category strips as JSON, [{title, slugs[]}, …]
+     * (HomeController::menuSliders()). Unset = one strip per category.
+     */
+    public const HOME_MENU_SLIDERS = 'home_menu_sliders';
+
+    /**
      * Web checkout's Paystack option — see payments.md's "Paystack on/off"
      * section. Off by default (missing row, not just a falsy stored value)
      * so a fresh install/environment starts cash-only until someone

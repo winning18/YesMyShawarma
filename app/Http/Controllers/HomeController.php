@@ -9,26 +9,13 @@ use App\Services\Customers\CustomerBranchSelection;
 use App\Services\Menu\PopularItemsService;
 use App\Services\Promotions\PromotionService;
 use App\Services\Seo\RestaurantSchemaBuilder;
+use App\Services\Settings\SettingsService;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class HomeController extends Controller
 {
-    /**
-     * Home page menu-item strips, in display order. Hot-dogs/loaded-fries
-     * are deliberately merged into one row rather than two.
-     *
-     * @var list<array{title: string, slugs: list<string>}>
-     */
-    private const MENU_SLIDERS = [
-        ['title' => 'Shawarma favourites', 'slugs' => ['shawarma']],
-        ['title' => 'Burgers', 'slugs' => ['burgers']],
-        ['title' => 'Hot Dogs & Loaded Fries', 'slugs' => ['hot-dogs', 'loaded-fries']],
-        ['title' => 'Sandwiches', 'slugs' => ['sandwiches']],
-        ['title' => 'Drinks', 'slugs' => ['drinks']],
-    ];
-
-    public function index(CustomerBranchSelection $selection, RestaurantSchemaBuilder $restaurantSchema, PromotionService $promotions, PopularItemsService $popular): View
+    public function index(CustomerBranchSelection $selection, RestaurantSchemaBuilder $restaurantSchema, PromotionService $promotions, PopularItemsService $popular, SettingsService $settings): View
     {
         // Every category is hero-slide-eligible (Hero Slider dashboard
         // page), but only ones staff actually gave a photo appear on the
@@ -58,14 +45,27 @@ class HomeController extends Controller
                 'imageUrl' => $promotion->bannerImageUrl(),
             ] : null,
             'popularItems' => $this->popularItems($popular, $selection->current()),
-            'menuSliders' => $this->menuSliders($selection->current()),
+            'menuSliders' => $this->menuSliders($selection->current(), $settings),
             'restaurantSchema' => $restaurantSchema->forActiveBranches(),
         ]);
     }
 
-    private function menuSliders(?Branch $branch): Collection
+    /**
+     * Home page menu-item strips, in display order. A business can set its
+     * own grouping in the home_menu_sliders setting (Yes My Shawarma's
+     * merges hot dogs and loaded fries into one strip); otherwise there's
+     * one strip per active category, in menu order.
+     */
+    private function menuSliders(?Branch $branch, SettingsService $settings): Collection
     {
-        return collect(self::MENU_SLIDERS)
+        $configured = json_decode((string) $settings->get(SettingsService::HOME_MENU_SLIDERS), true);
+        $sliders = is_array($configured) && $configured !== []
+            ? $configured
+            : Category::where('is_active', true)->orderBy('sort_order')->orderBy('name')->get()
+                ->map(fn (Category $category) => ['title' => $category->name, 'slugs' => [$category->slug]])
+                ->all();
+
+        return collect($sliders)
             ->map(fn (array $slider) => [
                 'title' => $slider['title'],
                 // First slug only — enough for the "Show all" link's

@@ -47,6 +47,7 @@ class BranchManagementController extends Controller
             'slug' => $this->uniqueSlug($validated['name']),
             'is_accepting_orders' => $request->boolean('is_accepting_orders'),
             'is_active' => $request->boolean('is_active'),
+            'areas_served' => $this->areas($validated['areas_served'] ?? null),
         ]);
 
         // Symmetric with MenuItemManagementController::store() attaching a
@@ -81,6 +82,7 @@ class BranchManagementController extends Controller
             ...$validated,
             'is_accepting_orders' => $request->boolean('is_accepting_orders'),
             'is_active' => $request->boolean('is_active'),
+            'areas_served' => $this->areas($validated['areas_served'] ?? null),
         ]);
 
         // Self-heals a branch that predates the attach-on-create fix in
@@ -156,5 +158,18 @@ class BranchManagementController extends Controller
         }
 
         return $slug;
+    }
+
+    /**
+     * "Amasaman, Kwabenya,  Ofankor" → ['Amasaman', 'Kwabenya', 'Ofankor'];
+     * nothing typed → null.
+     *
+     * @return list<string>|null
+     */
+    private function areas(?string $typed): ?array
+    {
+        $areas = array_values(array_unique(array_filter(array_map('trim', preg_split('/[,\n]+/', (string) $typed)))));
+
+        return $areas === [] ? null : $areas;
     }
 }

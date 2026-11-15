@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StorePromotionRequest;
 use App\Http\Requests\UpdatePromotionRequest;
 use App\Models\Branch;
+use App\Models\MenuItem;
 use App\Models\Promotion;
 use App\Services\Media\ImageUploadService;
 use App\Support\Money;
@@ -30,6 +31,7 @@ class PromotionManagementController extends Controller
 
         return view('dashboard.promotions.create', [
             'branches' => Branch::orderBy('name')->get(),
+            'menuItems' => MenuItem::where('is_active', true)->orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -45,6 +47,7 @@ class PromotionManagementController extends Controller
             'value' => $this->valueInPesewas($validated),
             'buy_quantity' => $validated['buy_quantity'] ?? null,
             'free_quantity' => $validated['free_quantity'] ?? null,
+            'free_menu_item_id' => ($validated['type'] ?? null) === 'buy_x_get_y_free' ? ($validated['free_menu_item_id'] ?? null) : null,
             'min_order_total' => isset($validated['min_order_total']) ? Money::toPesewas($validated['min_order_total']) : null,
             'starts_at' => $validated['starts_at'] ?? null,
             'ends_at' => $validated['ends_at'] ?? null,
@@ -69,6 +72,7 @@ class PromotionManagementController extends Controller
         return view('dashboard.promotions.edit', [
             'promotion' => $promotion->load('branches'),
             'branches' => Branch::orderBy('name')->get(),
+            'menuItems' => MenuItem::where('is_active', true)->orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -84,6 +88,7 @@ class PromotionManagementController extends Controller
             'value' => $this->valueInPesewas($validated),
             'buy_quantity' => $validated['buy_quantity'] ?? null,
             'free_quantity' => $validated['free_quantity'] ?? null,
+            'free_menu_item_id' => ($validated['type'] ?? null) === 'buy_x_get_y_free' ? ($validated['free_menu_item_id'] ?? null) : null,
             'min_order_total' => isset($validated['min_order_total']) ? Money::toPesewas($validated['min_order_total']) : null,
             'starts_at' => $validated['starts_at'] ?? null,
             'ends_at' => $validated['ends_at'] ?? null,

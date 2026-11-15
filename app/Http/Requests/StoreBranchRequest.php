@@ -22,6 +22,7 @@ class StoreBranchRequest extends FormRequest
             'opens_at' => ['required', 'date_format:H:i'],
             'closes_at' => ['required', 'date_format:H:i'],
             'is_accepting_orders' => ['nullable', 'boolean'],
+            'areas_served' => ['nullable', 'string', 'max:1000'],
             'is_active' => ['nullable', 'boolean'],
         ];
     }

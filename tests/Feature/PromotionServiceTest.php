@@ -224,7 +224,7 @@ class PromotionServiceTest extends TestCase
     {
         $shawarma = Category::create(['name' => 'Shawarma', 'slug' => 'shawarma']);
         $burgers = Category::create(['name' => 'Burgers', 'slug' => 'burgers']);
-        $drinks = Category::create(['name' => 'Drinks', 'slug' => 'drinks']);
+        $drinks = Category::create(['name' => 'Drinks', 'slug' => 'drinks', 'is_beverage' => true]);
         $item = fn (Category $category, string $name, string $slug, int $price) => MenuItem::create([
             'category_id' => $category->id, 'name' => $name, 'slug' => $slug, 'base_price' => $price,
         ]);
@@ -244,7 +244,10 @@ class PromotionServiceTest extends TestCase
 
     private function buyTwoGetOne(): Promotion
     {
-        return $this->makePromotion(['type' => 'buy_x_get_y_free', 'value' => 0, 'buy_quantity' => 2, 'free_quantity' => 1]);
+        return $this->makePromotion([
+            'type' => 'buy_x_get_y_free', 'value' => 0, 'buy_quantity' => 2, 'free_quantity' => 1,
+            'free_menu_item_id' => MenuItem::where('slug', 'chicken-shawarma')->value('id'),
+        ]);
     }
 
     public function test_two_signatures_earn_a_plain_chicken_shawarma_not_a_third_signature(): void
@@ -317,7 +320,7 @@ class PromotionServiceTest extends TestCase
         $this->assertSame($rows, $this->service->appendFreeLines(null, $rows));
     }
 
-    public function test_findActiveAutomatic_returns_a_promotion_matching_today(): void
+    public function test_find_active_automatic_returns_a_promotion_matching_today(): void
     {
         $today = now('Africa/Accra')->dayOfWeek;
         $this->makePromotion(['is_automatic' => true, 'recurring_days' => [$today]]);
@@ -327,7 +330,7 @@ class PromotionServiceTest extends TestCase
         $this->assertNotNull($result);
     }
 
-    public function test_findActiveAutomatic_ignores_a_promotion_not_recurring_today(): void
+    public function test_find_active_automatic_ignores_a_promotion_not_recurring_today(): void
     {
         $today = now('Africa/Accra')->dayOfWeek;
         $otherDay = ($today + 1) % 7;
@@ -336,7 +339,7 @@ class PromotionServiceTest extends TestCase
         $this->assertNull($this->service->findActiveAutomatic($this->branch));
     }
 
-    public function test_findActiveAutomatic_ignores_a_non_automatic_promotion(): void
+    public function test_find_active_automatic_ignores_a_non_automatic_promotion(): void
     {
         $today = now('Africa/Accra')->dayOfWeek;
         $this->makePromotion(['is_automatic' => false, 'recurring_days' => [$today]]);
@@ -344,7 +347,7 @@ class PromotionServiceTest extends TestCase
         $this->assertNull($this->service->findActiveAutomatic($this->branch));
     }
 
-    public function test_findActiveAutomatic_excludes_bolt_food(): void
+    public function test_find_active_automatic_excludes_bolt_food(): void
     {
         $today = now('Africa/Accra')->dayOfWeek;
         $this->makePromotion(['is_automatic' => true, 'recurring_days' => [$today]]);
@@ -352,7 +355,7 @@ class PromotionServiceTest extends TestCase
         $this->assertNull($this->service->findActiveAutomatic($this->branch, 'bolt_food'));
     }
 
-    public function test_findActiveAutomatic_respects_branch_restriction(): void
+    public function test_find_active_automatic_respects_branch_restriction(): void
     {
         $today = now('Africa/Accra')->dayOfWeek;
         $promotion = $this->makePromotion(['is_automatic' => true, 'recurring_days' => [$today]]);
@@ -365,7 +368,7 @@ class PromotionServiceTest extends TestCase
         $this->assertNull($this->service->findActiveAutomatic($this->branch));
     }
 
-    public function test_findActiveAutomatic_with_no_branch_only_matches_storewide_promotions(): void
+    public function test_find_active_automatic_with_no_branch_only_matches_storewide_promotions(): void
     {
         $today = now('Africa/Accra')->dayOfWeek;
         $promotion = $this->makePromotion(['is_automatic' => true, 'recurring_days' => [$today]]);

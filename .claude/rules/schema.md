@@ -20,7 +20,11 @@ Column lists are indicative. **Propose migrations before writing them.**
 ```
 branches
   id, name, slug, phone, address, ghanapost_code, lat, lng,
-  opens_at, closes_at, is_accepting_orders, is_active
+  opens_at, closes_at, is_accepting_orders, is_active,
+  areas_served (json list of neighbourhood names, nullable — shown on the branch page and
+  as schema.org areaServed; informational only, never limits delivery. Express POS 2b,
+  replaced config/delivery_areas.php; YMS values copied from
+  database/seeders/data/branch_areas.php by the 2026_11_15_110000 migration)
 
 branch_working_hours
   id, branch_id, day_of_week (1=Mon..7=Sun), opens_at, closes_at
@@ -44,7 +48,12 @@ never touched the feature behaves exactly as before it existed.
 ## Menu
 
 ```
-categories              id, name, slug, tagline, sort_order, is_active, hero_image_path
+categories              id, name, slug, tagline, sort_order, is_active, is_beverage,
+                        hero_image_path
+                        (is_beverage = "these are drinks": never count toward
+                        buy-X-get-Y, no WhatsApp reward, small side-by-side cards
+                        on the menu, suggested on item pages. Replaced the
+                        hard-coded "drinks" slug, Express POS 2b)
 menu_items              id, category_id, name, slug, description,
                         base_price, image_path, is_active, sort_order
 branch_menu_item        branch_id, menu_item_id, is_available, unavailable_until
@@ -384,7 +393,8 @@ starts once someone's actually looked.
 
 ```
 promotions             id, code, type (percentage|fixed|buy_x_get_y_free), value,
-                       buy_quantity, free_quantity, min_order_total,
+                       buy_quantity, free_quantity, free_menu_item_id (FK
+                       menu_items, nullOnDelete), min_order_total,
                        starts_at, ends_at, recurring_days, is_automatic,
                        banner_headline, banner_image_path,
                        max_redemptions, max_per_customer, is_active
@@ -400,9 +410,11 @@ assumed.
 stays `0` (the column is `NOT NULL`) and unused for that type. **`buy_quantity` is how many
 qualifying items the customer pays for per grant, not a total group size** — "buy 2 get 1 free"
 is `buy_quantity=2, free_quantity=1`, not 3. Owner's rule (2026-11-06): qualifying items are
-everything except drinks (`PromotionService::NON_QUALIFYING_CATEGORY_SLUGS`), mixed freely
-across items, and the giveaway is always plain Chicken Shawarma (`FREE_ITEM_SLUG`) — 2x
-Signature earns a Chicken Shawarma, not a third Signature. Add-on options are never free. `PromotionService::freeUnitsForQuantity()` computes
+everything except drinks (categories with `is_beverage`), mixed freely across items, and the
+giveaway is the promotion's own `free_menu_item_id`, always plain (Yes My Shawarma's is Chicken
+Shawarma) — 2x Signature earns a Chicken Shawarma, not a third Signature. The free item is
+required on the form for this type; a promotion without one (or whose item is inactive) gives
+nothing away and reports the problem to Sentry. Add-on options are never free. `PromotionService::freeUnitsForQuantity()` computes
 `floor(paidQuantity / buy_quantity) * free_quantity`, repeating per group rather than capping at
 one freebie per order (paying for 4 grants 2, not 1). A `buy_x_get_y_free` promotion is always
 `is_automatic` — enforced in `Store`/`UpdatePromotionRequest` — since it has no code-entry path

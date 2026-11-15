@@ -47,6 +47,7 @@ class StorePromotionRequest extends FormRequest
             // "buy 1 get 1 free".
             'buy_quantity' => [Rule::requiredIf(fn () => $this->input('type') === 'buy_x_get_y_free'), 'nullable', 'integer', 'min:1'],
             'free_quantity' => [Rule::requiredIf(fn () => $this->input('type') === 'buy_x_get_y_free'), 'nullable', 'integer', 'min:1'],
+            'free_menu_item_id' => [Rule::requiredIf(fn () => $this->input('type') === 'buy_x_get_y_free'), 'nullable', 'integer', 'exists:menu_items,id'],
             'min_order_total' => ['nullable', 'numeric', 'min:0'],
             'starts_at' => ['nullable', 'date'],
             'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],

@@ -17,6 +17,7 @@ class StoreCategoryRequest extends FormRequest
             'tagline' => ['nullable', 'string', 'max:255'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
+            'is_beverage' => ['nullable', 'boolean'],
         ];
     }
 }

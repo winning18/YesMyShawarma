@@ -28,7 +28,8 @@ class HomeTest extends TestCase
         $response = $this->get(route('home'));
 
         $response->assertOk();
-        $response->assertSee('Shawarma favourites');
+        // No strips set: one per category, titled with the category's name.
+        $response->assertSee('text-brand-white">Shawarma</h2>', false);
         $response->assertSee('Chicken Shawarma');
         // Zero-JS scroll-snap strip, not the old auto-scrolling menuSlider()
         // Alpine component — see home.blade.php's own comment for why.

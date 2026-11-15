@@ -2,15 +2,13 @@
 
 /*
 |--------------------------------------------------------------------------
-| Delivery areas per branch
+| Yes My Shawarma's areas served, per branch slug
 |--------------------------------------------------------------------------
 |
-| Neighbourhoods each branch delivers to, keyed by branch slug, as named by
-| the owner (2026-10-18). Display/SEO only — shown on the branch's page and
-| as `areaServed` in its Restaurant structured data so searches like
-| "shawarma in Kwabenya" can find it. It does NOT limit delivery: fees are
-| priced by distance with no cap (DeliveryFeeCalculator). Not exhaustive —
-| the page adds "and nearby areas". A branch missing here shows no list.
+| As named by the owner (2026-10-18). Copied once onto each branch's
+| areas_served by the 2026_11_15_110000 migration (Express POS step 2b);
+| from then on each branch's list is edited on its branch page. Display
+| and SEO only — it never limits delivery.
 |
 */
 

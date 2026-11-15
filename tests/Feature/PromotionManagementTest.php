@@ -3,8 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\Branch;
+use App\Models\Category;
+use App\Models\MenuItem;
 use App\Models\Promotion;
 use App\Models\User;
+use App\Services\Promotions\PromotionService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -159,6 +162,7 @@ class PromotionManagementTest extends TestCase
         $this->actingAs($manager)->post(route('dashboard.promotions.store'), [
             'code' => 'THURSDAY-AUTO',
             'type' => 'buy_x_get_y_free',
+            'free_menu_item_id' => $this->freeItem()->id,
             'buy_quantity' => 2,
             'free_quantity' => 1,
             'is_automatic' => '1',
@@ -173,7 +177,7 @@ class PromotionManagementTest extends TestCase
         $today = now('Africa/Accra')->dayOfWeek;
         $promotion->update(['recurring_days' => ["{$today}"]]);
 
-        $this->assertNotNull(app(\App\Services\Promotions\PromotionService::class)->findActiveAutomatic($this->branch));
+        $this->assertNotNull(app(PromotionService::class)->findActiveAutomatic($this->branch));
     }
 
     /**
@@ -202,6 +206,7 @@ class PromotionManagementTest extends TestCase
         $this->actingAs($manager)->put(route('dashboard.promotions.update', $promotion), [
             'code' => 'STALE-VALUE',
             'type' => 'buy_x_get_y_free',
+            'free_menu_item_id' => $this->freeItem()->id,
             'value' => '0',
             'buy_quantity' => 2,
             'free_quantity' => 1,
@@ -240,6 +245,7 @@ class PromotionManagementTest extends TestCase
         $this->actingAs($manager)->put(route('dashboard.promotions.update', $promotion), [
             'code' => 'MONDAY-AUTO',
             'type' => 'buy_x_get_y_free',
+            'free_menu_item_id' => $this->freeItem()->id,
             'buy_quantity' => 2,
             'free_quantity' => 1,
             'is_automatic' => '1',
@@ -260,6 +266,7 @@ class PromotionManagementTest extends TestCase
         $this->actingAs($manager)->post(route('dashboard.promotions.store'), [
             'code' => 'wednesday-auto',
             'type' => 'buy_x_get_y_free',
+            'free_menu_item_id' => $this->freeItem()->id,
             'buy_quantity' => 3,
             'free_quantity' => 1,
             'is_automatic' => '1',
@@ -351,5 +358,13 @@ class PromotionManagementTest extends TestCase
             ->assertRedirect();
 
         $this->assertNull($promotion->refresh()->banner_image_path);
+    }
+
+    private function freeItem(): MenuItem
+    {
+        return MenuItem::firstOrCreate(['slug' => 'chicken-shawarma'], [
+            'category_id' => Category::firstOrCreate(['slug' => 'shawarma'], ['name' => 'Shawarma'])->id,
+            'name' => 'Chicken Shawarma', 'base_price' => 5000,
+        ]);
     }
 }

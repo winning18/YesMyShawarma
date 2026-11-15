@@ -638,6 +638,7 @@ class OrderCreationServiceTest extends TestCase
         Promotion::create([
             'code' => 'WEDNESDAY-AUTO', 'type' => 'buy_x_get_y_free', 'value' => 0,
             'buy_quantity' => 2, 'free_quantity' => 1, 'is_automatic' => true,
+            'free_menu_item_id' => $this->shawarma->id,
             'recurring_days' => [$today], 'is_active' => true,
         ]);
 
@@ -696,6 +697,7 @@ class OrderCreationServiceTest extends TestCase
         Promotion::create([
             'code' => 'WEDNESDAY-AUTO', 'type' => 'buy_x_get_y_free', 'value' => 0,
             'buy_quantity' => 2, 'free_quantity' => 1, 'is_automatic' => true,
+            'free_menu_item_id' => $this->shawarma->id,
             'recurring_days' => [$today], 'is_active' => true,
         ]);
 
@@ -725,6 +727,7 @@ class OrderCreationServiceTest extends TestCase
         $automatic = Promotion::create([
             'code' => 'WEDNESDAY-AUTO', 'type' => 'buy_x_get_y_free', 'value' => 0,
             'buy_quantity' => 2, 'free_quantity' => 1, 'is_automatic' => true,
+            'free_menu_item_id' => $this->shawarma->id,
             'recurring_days' => [$today], 'is_active' => true,
         ]);
         Promotion::create(['code' => 'TENOFF', 'type' => 'percentage', 'value' => 10, 'is_active' => true]);

@@ -36,7 +36,7 @@ class FreebieAndWhatsappOrderTest extends TestCase
         ]);
 
         $wraps = Category::create(['name' => 'Wraps', 'slug' => 'wraps']);
-        $drinks = Category::create(['name' => 'Drinks', 'slug' => 'drinks']);
+        $drinks = Category::create(['name' => 'Drinks', 'slug' => 'drinks', 'is_beverage' => true]);
         $this->shawarma = MenuItem::create(['category_id' => $wraps->id, 'name' => 'Chicken Shawarma', 'slug' => 'chicken-shawarma', 'base_price' => 5000]);
         $this->coke = MenuItem::create(['category_id' => $drinks->id, 'name' => 'Coke', 'slug' => 'coke', 'base_price' => 800]);
         $this->branch->menuItems()->attach([$this->shawarma->id, $this->coke->id], ['is_available' => true]);
@@ -81,6 +81,7 @@ class FreebieAndWhatsappOrderTest extends TestCase
     {
         Promotion::create([
             'code' => 'WED', 'type' => 'buy_x_get_y_free', 'value' => 0, 'buy_quantity' => 2, 'free_quantity' => 1,
+            'free_menu_item_id' => $this->shawarma->id,
             'is_automatic' => true, 'recurring_days' => [now('Africa/Accra')->dayOfWeek], 'is_active' => true,
         ]);
     }

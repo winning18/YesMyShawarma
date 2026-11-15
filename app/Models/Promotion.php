@@ -5,13 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
 
 #[Fillable([
-    'code', 'type', 'value', 'buy_quantity', 'free_quantity', 'min_order_total',
+    'code', 'type', 'value', 'buy_quantity', 'free_quantity', 'free_menu_item_id', 'min_order_total',
     'starts_at', 'ends_at', 'recurring_days', 'is_automatic', 'banner_headline',
     'banner_image_path', 'max_redemptions', 'max_per_customer', 'is_active',
 ])]
@@ -53,5 +54,14 @@ class Promotion extends Model
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
+    }
+
+    /**
+     * What a buy_x_get_y_free promotion gives away (Express POS step 2b:
+     * chosen per promotion; it was always Chicken Shawarma).
+     */
+    public function freeMenuItem(): BelongsTo
+    {
+        return $this->belongsTo(MenuItem::class, 'free_menu_item_id');
     }
 }

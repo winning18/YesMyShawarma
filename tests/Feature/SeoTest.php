@@ -245,8 +245,7 @@ class SeoTest extends TestCase
 
     public function test_branch_page_lists_its_delivery_areas_in_text_and_structured_data(): void
     {
-        config(['delivery_areas.pokuase-y-junction' => ['Pokuase', 'Ofankor']]);
-        $this->makeBranch('Pokuase Y-Junction', 'pokuase-y-junction');
+        $this->makeBranch('Pokuase Y-Junction', 'pokuase-y-junction', ['areas_served' => ['Pokuase', 'Ofankor']]);
 
         $response = $this->get('/branches/pokuase-y-junction')->assertOk();
 

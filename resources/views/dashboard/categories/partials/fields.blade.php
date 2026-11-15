@@ -35,4 +35,9 @@
         <input type="checkbox" name="is_active" value="1" @checked(old('is_active', $category?->is_active ?? true)) class="rounded border-gray-300">
         {{ __('Active') }}
     </label>
+    <label class="flex items-center gap-2 text-sm mt-2">
+        <input type="checkbox" name="is_beverage" value="1" @checked(old('is_beverage', $category?->is_beverage ?? false)) class="rounded border-gray-300">
+        {{ __('These are drinks') }}
+    </label>
+    <p class="text-xs text-gray-500 mt-1">{{ __('Drinks never count toward buy-X-get-Y offers, never get the WhatsApp reward, show as small cards on the menu, and are suggested on item pages.') }}</p>
 </div>

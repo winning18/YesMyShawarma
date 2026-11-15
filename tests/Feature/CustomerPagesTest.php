@@ -388,7 +388,7 @@ class CustomerPagesTest extends TestCase
 
     public function test_menu_renders_categories_in_their_configured_order_regardless_of_item_order(): void
     {
-        $drinks = Category::create(['name' => 'Drinks', 'slug' => 'drinks', 'sort_order' => 1]);
+        $drinks = Category::create(['name' => 'Drinks', 'slug' => 'drinks', 'is_beverage' => true, 'sort_order' => 1]);
         $shawarma = Category::create(['name' => 'Shawarma', 'slug' => 'shawarma', 'sort_order' => 0]);
 
         // Drinks' item has a lower sort_order than Shawarma's, despite
@@ -436,7 +436,7 @@ class CustomerPagesTest extends TestCase
     public function test_product_page_shows_the_item_its_extras_and_drinks_as_optional_addons(): void
     {
         $shawarma = Category::create(['name' => 'Shawarma', 'slug' => 'shawarma']);
-        $drinks = Category::create(['name' => 'Drinks', 'slug' => 'drinks']);
+        $drinks = Category::create(['name' => 'Drinks', 'slug' => 'drinks', 'is_beverage' => true]);
 
         $item = MenuItem::create([
             'category_id' => $shawarma->id, 'name' => 'Chicken Shawarma', 'slug' => 'chicken-shawarma', 'base_price' => 5000,
@@ -461,7 +461,7 @@ class CustomerPagesTest extends TestCase
 
     public function test_product_page_excludes_itself_from_its_own_drinks_addon_list(): void
     {
-        $drinks = Category::create(['name' => 'Drinks', 'slug' => 'drinks']);
+        $drinks = Category::create(['name' => 'Drinks', 'slug' => 'drinks', 'is_beverage' => true]);
         $mango = MenuItem::create([
             'category_id' => $drinks->id, 'name' => 'Mango', 'slug' => 'mango', 'base_price' => 2000,
         ]);

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 
-#[Fillable(['name', 'slug', 'tagline', 'sort_order', 'is_active', 'hero_image_path'])]
+#[Fillable(['name', 'slug', 'tagline', 'sort_order', 'is_active', 'is_beverage', 'hero_image_path'])]
 class Category extends Model
 {
     use HasFactory;
@@ -17,6 +17,7 @@ class Category extends Model
     {
         return [
             'is_active' => 'boolean',
+            'is_beverage' => 'boolean',
         ];
     }
 

@@ -12,12 +12,6 @@ use App\Models\PromotionRedemption;
 
 class PromotionService
 {
-    /** What a buy_x_get_y_free promotion always gives away (see appendFreeLines()). */
-    public const FREE_ITEM_SLUG = 'chicken-shawarma';
-
-    /** Categories that never count toward a buy_x_get_y_free promotion. */
-    public const NON_QUALIFYING_CATEGORY_SLUGS = ['drinks'];
-
     /**
      * The automatic, no-code equivalent of validate() — finds the one
      * recurring promotion (if any) that applies to this branch today, e.g.
@@ -162,8 +156,8 @@ class PromotionService
     }
 
     /**
-     * The food part of priced rows — everything except drinks
-     * (NON_QUALIFYING_CATEGORY_SLUGS) and free lines. What the WhatsApp
+     * The food part of priced rows — everything except drinks (items in
+     * a category marked as drinks, categories.is_beverage) and free lines. What the WhatsApp
      * group reward comes off (owner, 2026-11-14: "only for food, drinks
      * are not affected").
      *
@@ -178,7 +172,7 @@ class PromotionService
         }
 
         $drinkIds = MenuItem::whereIn('id', $paid->pluck('menu_item_id')->unique())
-            ->whereHas('category', fn ($query) => $query->whereIn('slug', self::NON_QUALIFYING_CATEGORY_SLUGS))
+            ->whereHas('category', fn ($query) => $query->where('is_beverage', true))
             ->pluck('id')
             ->all();
 
@@ -190,11 +184,12 @@ class PromotionService
      * with the promotion's free row appended — never mutates an existing
      * row. Owner's rule (2026-11-06): every buy_quantity qualifying items
      * in the order, mixed freely across items and cart lines, earn
-     * free_quantity plain Chicken Shawarma (FREE_ITEM_SLUG). Drinks
-     * (NON_QUALIFYING_CATEGORY_SLUGS) never count, and add-on options are
-     * never free — the free row is always the plain base item, priced at
-     * 0 with no options. So 2x Signature (chicken, cheese & sausage)
-     * earns one plain Chicken Shawarma, not a third Signature.
+     * free_quantity of the promotion's own free item (free_menu_item_id —
+     * Yes My Shawarma's is Chicken Shawarma). Drinks (categories marked
+     * is_beverage) never count, and add-on options are never free — the
+     * free row is always the plain base item, priced at 0 with no
+     * options. So 2x Signature earns one plain Chicken Shawarma, not a
+     * third Signature.
      *
      * Used identically by CartService::summary() (so the free line shows
      * up the moment it's earned, before any order exists) and
@@ -211,7 +206,7 @@ class PromotionService
         }
 
         $qualifyingIds = MenuItem::whereIn('id', collect($rows)->pluck('menu_item_id')->unique())
-            ->whereDoesntHave('category', fn ($query) => $query->whereIn('slug', self::NON_QUALIFYING_CATEGORY_SLUGS))
+            ->whereDoesntHave('category', fn ($query) => $query->where('is_beverage', true))
             ->pluck('id')
             ->all();
 
@@ -225,12 +220,12 @@ class PromotionService
             return $rows;
         }
 
-        $freeItem = MenuItem::where('slug', self::FREE_ITEM_SLUG)->where('is_active', true)->first();
+        $freeItem = $promotion->free_menu_item_id ? MenuItem::where('is_active', true)->find($promotion->free_menu_item_id) : null;
 
         if (! $freeItem) {
-            // Renamed or removed from the menu — no giveaway is better
-            // than guessing at a substitute.
-            report(new \RuntimeException('Buy-X-get-Y free item "'.self::FREE_ITEM_SLUG.'" is missing or inactive.'));
+            // Not chosen, or since removed from the menu — no giveaway is
+            // better than guessing at a substitute.
+            report(new \RuntimeException("Buy-X-get-Y promotion {$promotion->code} has no active free item."));
 
             return $rows;
         }

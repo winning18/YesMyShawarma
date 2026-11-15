@@ -46,6 +46,7 @@ class CategoryManagementController extends Controller
             ...$validated,
             'slug' => $this->uniqueSlug($validated['name']),
             'is_active' => $request->boolean('is_active'),
+            'is_beverage' => $request->boolean('is_beverage'),
         ]);
 
         return redirect()->route('dashboard.categories.edit', $category)
@@ -68,6 +69,7 @@ class CategoryManagementController extends Controller
         $category->update([
             ...$validated,
             'is_active' => $request->boolean('is_active'),
+            'is_beverage' => $request->boolean('is_beverage'),
         ]);
 
         return redirect()->route('dashboard.categories.edit', $category)

@@ -47,6 +47,8 @@ class MenuController extends Controller
             'branch' => $branch,
             'categories' => $categories,
             'popularIds' => $popular->badged(),
+            // Drinks sit side by side with a small square photo, everything else stacked.
+            'sideBySideCategories' => Category::where('is_beverage', true)->pluck('slug')->all(),
             'menuSchema' => $this->menuSchema($branch, $categories),
         ]);
     }
@@ -76,11 +78,12 @@ class MenuController extends Controller
 
         $isAvailable = (bool) $item->pivot->is_available;
 
-        $drinksCategory = Category::where('slug', 'drinks')->first();
+        // Every category marked as drinks (categories.is_beverage).
+        $drinkCategoryIds = Category::where('is_beverage', true)->where('is_active', true)->pluck('id');
 
-        $drinks = $drinksCategory
+        $drinks = $drinkCategoryIds->isNotEmpty()
             ? $branch->menuItems()
-                ->where('menu_items.category_id', $drinksCategory->id)
+                ->whereIn('menu_items.category_id', $drinkCategoryIds)
                 ->where('menu_items.id', '!=', $item->id)
                 ->where('menu_items.is_active', true)
                 ->wherePivot('is_available', true)

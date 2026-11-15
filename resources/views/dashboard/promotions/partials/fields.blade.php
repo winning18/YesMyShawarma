@@ -77,6 +77,17 @@
             <p class="text-xs text-gray-500 mt-1">{{ __('How many extra they get free each time, e.g. 1 — repeats: paying for 4 grants 2 free.') }}</p>
             <x-input-error class="mt-2" :messages="$errors->get('free_quantity')" />
         </div>
+        <div class="col-span-2">
+            <x-input-label for="free_menu_item_id" :value="__('Free item')" />
+            <select id="free_menu_item_id" name="free_menu_item_id" x-bind:required="type === 'buy_x_get_y_free'" class="mt-1 block w-full rounded-md border-gray-300 text-sm">
+                <option value="">{{ __('Choose what they get free') }}</option>
+                @foreach ($menuItems as $menuItem)
+                    <option value="{{ $menuItem->id }}" @selected((int) old('free_menu_item_id', $promotion?->free_menu_item_id) === $menuItem->id)>{{ $menuItem->name }}</option>
+                @endforeach
+            </select>
+            <p class="text-xs text-gray-500 mt-1">{{ __('Always given plain, without add-ons. Drinks never count toward the offer.') }}</p>
+            <x-input-error class="mt-2" :messages="$errors->get('free_menu_item_id')" />
+        </div>
     </div>
 
     <div>
