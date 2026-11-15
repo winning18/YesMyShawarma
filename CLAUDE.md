@@ -60,9 +60,26 @@ These come before everything else in this file.
 6. **Branding.** Inside the app, staff and customers see the business's own name, logo and
    colours. The staff login page always shows EXPRESS POS, a Solusys Digital product. A
    business's customers never see "Express POS".
-7. **Every change is safe for Yes My Shawarma.** Staging first, the owner checks it, the owner
-   pushes to production. All modules stay on for Yes My Shawarma; switching modules off is only
-   ever tested on staging and on other clients' installs.
+7. **Every change is safe for Yes My Shawarma.** All modules stay on for Yes My Shawarma;
+   switching modules off is only ever tested on staging and on other clients' installs.
+
+### Release routine until the MVP (owner decision, 2026-11-15)
+
+Express POS work stays on the `staging` branch and the staging server until the MVP is finished,
+then goes to production in one release. Production (`Main`) stays as it was on 2026-11-15
+(`d19f436`) apart from live fixes.
+
+A fix or small request for live Yes My Shawarma in the meantime takes the fix route, never the
+staging branch:
+
+1. Branch from production: `git switch -c fix/<name> origin/Main`.
+2. Make the fix there, with tests; run `php artisan test`.
+3. Push the branch; the owner releases it with `git push origin fix/<name>:refs/heads/Main`.
+4. Merge it into the Express POS work: `git switch staging && git merge origin/Main`, run the
+   tests, push `staging`.
+
+Never push `staging` to `Main` before the MVP release, and never put Express POS work on a fix
+branch.
 
 ---
 
