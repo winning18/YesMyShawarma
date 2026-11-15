@@ -71,11 +71,15 @@ class CustomerOrderNotifier
             return;
         }
 
-        $link = route('tracking.show', $order);
+        // The tracking page is part of the customer website; without the
+        // Website module the message goes without the link (ModuleService).
+        $text = app(ModuleService::class)->enabled(ModuleService::WEBSITE)
+            ? "{$message} Track it here: ".route('tracking.show', $order)
+            : $message;
 
         SendSms::dispatch(
             $order->customer->phone,
-            "{$message} Track it here: {$link}",
+            $text,
             ['order_id' => $order->id],
         );
     }

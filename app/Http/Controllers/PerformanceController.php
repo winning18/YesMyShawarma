@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Branch;
 use App\Models\Shift;
 use App\Services\Branches\BranchContext;
+use App\Services\Modules\ModuleService;
 use App\Services\Performance\PerformanceReportService;
 use App\Services\Reports\OrderReportService;
 use App\Services\Shifts\ShiftService;
@@ -61,6 +62,10 @@ class PerformanceController extends Controller
         ]);
 
         $tab = $validated['tab'] ?? 'sales';
+        // Website traffic only exists with the Website module (ModuleService).
+        if ($tab === 'traffic' && ! app(ModuleService::class)->enabled(ModuleService::WEBSITE)) {
+            $tab = 'sales';
+        }
 
         // Traffic is site-wide, never branch-scoped (see
         // PerformanceReportService::visitorTraffic()'s docblock) — there's

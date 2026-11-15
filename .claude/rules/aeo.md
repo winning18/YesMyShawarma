@@ -20,6 +20,9 @@ merely tolerated. Every piece below exists because of that choice — don't remo
 
 ## robots.txt
 
+On a POS-only install (no Website module, Express POS step 3c) there's no site to index:
+robots.txt disallows everything and `/sitemap.xml` and `/llms.txt` answer 404.
+
 `RobotsController::AI_CRAWLERS` names known AI crawlers (`GPTBot`, `ClaudeBot`, `PerplexityBot`,
 `Google-Extended`, `CCBot`, etc.) with their own explicit `Disallow:` (allow) rule in
 production, ahead of the blanket `User-agent: *` rule. This is deliberately redundant with the

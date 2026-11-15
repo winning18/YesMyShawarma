@@ -81,10 +81,12 @@
     </button>
 
     <div x-show="historyOpen" x-cloak class="mt-1 ml-3 pl-3 border-l border-gray-100 space-y-1">
+        @module('website')
         <a
             href="{{ route('dashboard.orders.history', ['channel' => 'web']) }}"
             class="block px-3 py-1.5 rounded-md text-sm transition duration-150 ease-in-out {{ request()->routeIs('dashboard.orders.history') && request('channel') === 'web' ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
         >{{ __('Web') }}</a>
+        @endmodule
         <a
             href="{{ route('dashboard.orders.history', ['channel' => 'pos']) }}"
             class="block px-3 py-1.5 rounded-md text-sm transition duration-150 ease-in-out {{ request()->routeIs('dashboard.orders.history') && request('channel') === 'pos' ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
@@ -92,10 +94,12 @@
         {{-- Bolt Food is a payment_method, not a channel — these orders
              are entered via POS like any other counter order, so this
              filters by payment_method instead of reusing ?channel=. --}}
+        @module('bolt_food')
         <a
             href="{{ route('dashboard.orders.history', ['payment_method' => 'bolt_food']) }}"
             class="block px-3 py-1.5 rounded-md text-sm transition duration-150 ease-in-out {{ request()->routeIs('dashboard.orders.history') && request('payment_method') === 'bolt_food' ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
         >{{ __('Bolt Food') }}</a>
+        @endmodule
     </div>
 </div>
 
@@ -163,11 +167,13 @@
     </div>
 @endcanany
 
+@module('website')
 @can('menu.edit_content')
     <x-sidebar-link :href="route('dashboard.hero-slider.index')" :active="request()->routeIs('dashboard.hero-slider.*')">
         {{ __('Hero Slider') }}
     </x-sidebar-link>
 @endcan
+@endmodule
 
 @can('branches.manage')
     <x-sidebar-link :href="route('dashboard.branches.index')" :active="request()->routeIs('dashboard.branches.*')">
@@ -344,20 +350,24 @@
                     class="block px-3 py-1.5 rounded-md text-sm transition duration-150 ease-in-out {{ request()->routeIs('dashboard.modules.*') ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
                 >{{ __('Modules') }}</a>
             @endcan
+            @module('website')
             @can('content.manage')
                 <a
                     href="{{ route('dashboard.site-pages.index') }}"
                     class="block px-3 py-1.5 rounded-md text-sm transition duration-150 ease-in-out {{ request()->routeIs('dashboard.site-pages.*', 'dashboard.faq-items.*') ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
                 >{{ __('Website content') }}</a>
             @endcan
+            @endmodule
             <a
                 href="{{ route('dashboard.settings.index') }}"
                 class="block px-3 py-1.5 rounded-md text-sm transition duration-150 ease-in-out {{ request()->routeIs('dashboard.settings.*') ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
             >{{ __('General') }}</a>
+            @module('website')
             <a
                 href="{{ route('dashboard.staff-members.index') }}"
                 class="block px-3 py-1.5 rounded-md text-sm transition duration-150 ease-in-out {{ request()->routeIs('dashboard.staff-members.*') ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
             >{{ __('Staff members') }}</a>
+            @endmodule
         </div>
     </div>
 @endcan

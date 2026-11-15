@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Modules\ModuleService;
 use Illuminate\Http\Response;
 
 /**
@@ -35,7 +36,8 @@ class RobotsController extends Controller
 
     public function index(): Response
     {
-        if (! app()->environment('production')) {
+        // Nothing to index on staging, or on a POS-only install (no Website module).
+        if (! app()->environment('production') || ! app(ModuleService::class)->enabled(ModuleService::WEBSITE)) {
             return response("User-agent: *\nDisallow: /\n")->header('Content-Type', 'text/plain');
         }
 

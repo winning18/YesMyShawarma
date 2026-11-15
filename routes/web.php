@@ -77,10 +77,19 @@ use App\Http\Controllers\WeeklyReportController;
 use App\Http\Controllers\WorkingHoursController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
+Route::get('/sitemap.xml', [SitemapController::class, 'index'])->middleware('module:website')->name('sitemap');
 Route::get('/robots.txt', [RobotsController::class, 'index'])->name('robots');
 Route::get('/site.webmanifest', ManifestController::class)->name('manifest');
-Route::get('/llms.txt', LlmsController::class)->name('llms');
+Route::get('/llms.txt', LlmsController::class)->middleware('module:website')->name('llms');
+
+// The opt-out link in an SMS broadcast always works, whatever is switched
+// off — a customer can always stop marketing messages.
+Route::get('/stop/{code}', [SmsOptOutController::class, 'show'])->where('code', '[A-Za-z0-9]{8}')->name('sms.opt-out.show');
+Route::post('/stop/{code}', [SmsOptOutController::class, 'store'])->where('code', '[A-Za-z0-9]{8}')->middleware('throttle:10,1')->name('sms.opt-out.store');
+
+// The home page: the customer website, or — with the Website module
+// switched off (POS-only, Express POS step 4) — the staff login.
+Route::get('/', [HomeController::class, 'index'])->middleware('track.visit')->name('home');
 
 // track.visit records an anonymous first-party-cookie visit for every
 // page in the actual browse-to-order funnel — home through tracking —
@@ -88,9 +97,8 @@ Route::get('/llms.txt', LlmsController::class)->name('llms');
 // something. Deliberately not applied anywhere under /dashboard, /rider,
 // or the customer auth routes below. /sitemap.xml above is deliberately
 // outside this group too — a crawler fetching it isn't a customer visit.
-Route::middleware('track.visit')->group(function () {
-    Route::get('/', [HomeController::class, 'index'])->name('home');
-
+// The whole customer site belongs to the Website module (ModuleService).
+Route::middleware(['module:website', 'track.visit'])->group(function () {
     Route::get('/menu', [MenuController::class, 'index'])->name('menu.index');
     Route::get('/menu/{menuItem:slug}', [MenuController::class, 'show'])->name('menu.show');
 
@@ -145,15 +153,12 @@ Route::middleware('track.visit')->group(function () {
     Route::get('/cookie-policy', [PolicyController::class, 'cookies'])->name('policy.cookies');
     Route::post('/cookie-consent', [PolicyController::class, 'updateCookieConsent'])->name('cookie-consent.update');
 
-    Route::get('/stop/{code}', [SmsOptOutController::class, 'show'])->where('code', '[A-Za-z0-9]{8}')->name('sms.opt-out.show');
-    Route::post('/stop/{code}', [SmsOptOutController::class, 'store'])->where('code', '[A-Za-z0-9]{8}')->middleware('throttle:10,1')->name('sms.opt-out.store');
-
     Route::post('/page-views/{pageView}/duration', [PageViewController::class, 'recordDuration'])->name('page-views.duration');
 });
 
 // Distinct /customer/* paths — staff auth already owns /login, /register,
 // /logout in routes/auth.php, and these would otherwise collide exactly.
-Route::middleware('guest:customer')->group(function () {
+Route::middleware(['module:website', 'guest:customer'])->group(function () {
     Route::get('/customer/register', [CustomerRegisteredUserController::class, 'create'])->name('customer.register');
     // Unlike login (Customer\LoginRequest rate-limits per phone+IP itself),
     // this has no rate limiting of its own — without this it's open to
@@ -172,7 +177,7 @@ Route::middleware('guest:customer')->group(function () {
     Route::post('/customer/reset-password', [CustomerPasswordResetController::class, 'update'])->middleware('throttle:10,1')->name('customer.password.update');
 });
 
-Route::middleware('auth:customer')->group(function () {
+Route::middleware(['module:website', 'auth:customer'])->group(function () {
     Route::post('/customer/logout', [CustomerAuthenticatedSessionController::class, 'destroy'])->name('customer.logout');
 
     // My account (owner, 2026-11-11).
@@ -297,13 +302,13 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
 
     // Website content (content.manage: owner, general manager) — the
     // FAQ routes come first so /website/faq isn't read as a page slug.
-    Route::get('/dashboard/website', [SitePageManagementController::class, 'index'])->name('dashboard.site-pages.index');
-    Route::get('/dashboard/website/faq', [FaqItemManagementController::class, 'index'])->name('dashboard.faq-items.index');
-    Route::post('/dashboard/website/faq', [FaqItemManagementController::class, 'store'])->name('dashboard.faq-items.store');
-    Route::put('/dashboard/website/faq/{faqItem}', [FaqItemManagementController::class, 'update'])->name('dashboard.faq-items.update');
-    Route::delete('/dashboard/website/faq/{faqItem}', [FaqItemManagementController::class, 'destroy'])->name('dashboard.faq-items.destroy');
-    Route::get('/dashboard/website/{page}', [SitePageManagementController::class, 'edit'])->name('dashboard.site-pages.edit');
-    Route::put('/dashboard/website/{page}', [SitePageManagementController::class, 'update'])->name('dashboard.site-pages.update');
+    Route::get('/dashboard/website', [SitePageManagementController::class, 'index'])->middleware('module:website')->name('dashboard.site-pages.index');
+    Route::get('/dashboard/website/faq', [FaqItemManagementController::class, 'index'])->middleware('module:website')->name('dashboard.faq-items.index');
+    Route::post('/dashboard/website/faq', [FaqItemManagementController::class, 'store'])->middleware('module:website')->name('dashboard.faq-items.store');
+    Route::put('/dashboard/website/faq/{faqItem}', [FaqItemManagementController::class, 'update'])->middleware('module:website')->name('dashboard.faq-items.update');
+    Route::delete('/dashboard/website/faq/{faqItem}', [FaqItemManagementController::class, 'destroy'])->middleware('module:website')->name('dashboard.faq-items.destroy');
+    Route::get('/dashboard/website/{page}', [SitePageManagementController::class, 'edit'])->middleware('module:website')->name('dashboard.site-pages.edit');
+    Route::put('/dashboard/website/{page}', [SitePageManagementController::class, 'update'])->middleware('module:website')->name('dashboard.site-pages.update');
 
     Route::get('/dashboard/modules', [ModuleController::class, 'edit'])->name('dashboard.modules.edit');
     Route::put('/dashboard/modules', [ModuleController::class, 'update'])->name('dashboard.modules.update');
@@ -313,14 +318,14 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::get('/dashboard/settings', [SettingsController::class, 'index'])->name('dashboard.settings.index');
     Route::put('/dashboard/settings', [SettingsController::class, 'update'])->name('dashboard.settings.update');
 
-    Route::get('/dashboard/staff-members', [StaffMemberManagementController::class, 'index'])->name('dashboard.staff-members.index');
-    Route::get('/dashboard/staff-members/create', [StaffMemberManagementController::class, 'create'])->name('dashboard.staff-members.create');
-    Route::post('/dashboard/staff-members', [StaffMemberManagementController::class, 'store'])->name('dashboard.staff-members.store');
-    Route::get('/dashboard/staff-members/{staffMember}/edit', [StaffMemberManagementController::class, 'edit'])->name('dashboard.staff-members.edit');
-    Route::put('/dashboard/staff-members/{staffMember}', [StaffMemberManagementController::class, 'update'])->name('dashboard.staff-members.update');
-    Route::post('/dashboard/staff-members/{staffMember}/image', [StaffMemberManagementController::class, 'updateImage'])->name('dashboard.staff-members.image.update');
-    Route::delete('/dashboard/staff-members/{staffMember}/image', [StaffMemberManagementController::class, 'destroyImage'])->name('dashboard.staff-members.image.destroy');
-    Route::delete('/dashboard/staff-members/{staffMember}', [StaffMemberManagementController::class, 'destroy'])->name('dashboard.staff-members.destroy');
+    Route::get('/dashboard/staff-members', [StaffMemberManagementController::class, 'index'])->middleware('module:website')->name('dashboard.staff-members.index');
+    Route::get('/dashboard/staff-members/create', [StaffMemberManagementController::class, 'create'])->middleware('module:website')->name('dashboard.staff-members.create');
+    Route::post('/dashboard/staff-members', [StaffMemberManagementController::class, 'store'])->middleware('module:website')->name('dashboard.staff-members.store');
+    Route::get('/dashboard/staff-members/{staffMember}/edit', [StaffMemberManagementController::class, 'edit'])->middleware('module:website')->name('dashboard.staff-members.edit');
+    Route::put('/dashboard/staff-members/{staffMember}', [StaffMemberManagementController::class, 'update'])->middleware('module:website')->name('dashboard.staff-members.update');
+    Route::post('/dashboard/staff-members/{staffMember}/image', [StaffMemberManagementController::class, 'updateImage'])->middleware('module:website')->name('dashboard.staff-members.image.update');
+    Route::delete('/dashboard/staff-members/{staffMember}/image', [StaffMemberManagementController::class, 'destroyImage'])->middleware('module:website')->name('dashboard.staff-members.image.destroy');
+    Route::delete('/dashboard/staff-members/{staffMember}', [StaffMemberManagementController::class, 'destroy'])->middleware('module:website')->name('dashboard.staff-members.destroy');
 
     Route::get('/dashboard/promotions', [PromotionManagementController::class, 'index'])->middleware('module:promotions')->name('dashboard.promotions.index');
     Route::get('/dashboard/promotions/create', [PromotionManagementController::class, 'create'])->middleware('module:promotions')->name('dashboard.promotions.create');
@@ -370,7 +375,7 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::post('/dashboard/categories/{category}/image', [CategoryManagementController::class, 'updateImage'])->name('dashboard.categories.image.update');
     Route::delete('/dashboard/categories/{category}/image', [CategoryManagementController::class, 'destroyImage'])->name('dashboard.categories.image.destroy');
 
-    Route::get('/dashboard/hero-slider', [HeroSliderController::class, 'index'])->name('dashboard.hero-slider.index');
+    Route::get('/dashboard/hero-slider', [HeroSliderController::class, 'index'])->middleware('module:website')->name('dashboard.hero-slider.index');
 
     Route::get('/dashboard/menu-items', [MenuItemManagementController::class, 'index'])->name('dashboard.menu-items.index');
     Route::get('/dashboard/menu-items/availability', [MenuItemManagementController::class, 'availability'])->name('dashboard.menu-items.availability');

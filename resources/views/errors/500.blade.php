@@ -15,6 +15,8 @@
     </div>
 
     <div class="max-w-xl mx-auto mt-8 flex flex-col sm:flex-row gap-3">
+        {{-- POS-only (no Website module): there's no menu to send them to. --}}
+        @if (app(\App\Services\Modules\ModuleService::class)->enabled('website'))
         <a
             href="{{ route('menu.index') }}"
             class="flex-1 text-center px-6 py-3 bg-brand-yellow text-brand-black font-semibold rounded-md hover:bg-brand-yellow-dark"
@@ -27,5 +29,13 @@
         >
             {{ __('Go to homepage') }}
         </a>
+        @else
+            <a
+                href="{{ route('login') }}"
+                class="flex-1 text-center px-6 py-3 bg-brand-yellow text-brand-black font-semibold rounded-md hover:bg-brand-yellow-dark"
+            >
+                {{ __('Go to the login page') }}
+            </a>
+        @endif
     </div>
 </x-customer-layout>

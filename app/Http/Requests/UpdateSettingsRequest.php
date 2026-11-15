@@ -20,7 +20,7 @@ class UpdateSettingsRequest extends FormRequest
             // punctuation that would look wrong printed on a receipt are
             // rejected outright rather than silently allowed.
             'order_reference_prefix_pos' => ['required', 'string', 'max:20', 'regex:/^[A-Za-z0-9-]+$/'],
-            'order_reference_prefix_web' => ['required', 'string', 'max:20', 'regex:/^[A-Za-z0-9-]+$/'],
+            'order_reference_prefix_web' => [$this->forModule(ModuleService::WEBSITE), 'string', 'max:20', 'regex:/^[A-Za-z0-9-]+$/'],
             // A switched-off module's fields aren't on the form (ModuleService).
             'order_reference_prefix_bolt_food' => [$this->forModule(ModuleService::BOLT_FOOD), 'string', 'max:20', 'regex:/^[A-Za-z0-9-]+$/'],
             'order_reference_prefix_whatsapp' => [$this->forModule(ModuleService::WHATSAPP_REWARD), 'string', 'max:20', 'regex:/^[A-Za-z0-9-]+$/'],

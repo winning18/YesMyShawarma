@@ -29,6 +29,7 @@
                 <x-input-error class="mt-2" :messages="$errors->get('order_reference_prefix_pos')" />
             </div>
 
+            @module('website')
             <div>
                 <x-input-label for="order_reference_prefix_web" :value="__('Web orders prefix')" required />
                 <x-text-input
@@ -38,6 +39,7 @@
                 />
                 <x-input-error class="mt-2" :messages="$errors->get('order_reference_prefix_web')" />
             </div>
+            @endmodule
 
             @module('bolt_food')
             <div>

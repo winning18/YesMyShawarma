@@ -102,6 +102,7 @@
                     <x-brand-logo class="h-10 w-auto" text-class="font-bold text-xl text-brand-white" />
                 </a>
 
+                @if ($websiteOn)
                 <nav class="hidden md:flex items-center gap-6 text-sm text-brand-white">
                     <a href="{{ route('home') }}" class="hover:text-brand-yellow {{ request()->routeIs('home') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Home') }}</a>
                     <a href="{{ route('menu.index') }}" class="hover:text-brand-yellow {{ request()->routeIs('menu.index') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Menu') }}</a>
@@ -112,7 +113,9 @@
                     @endif
                     <a href="{{ route('tracking.lookup') }}" class="hover:text-brand-yellow {{ request()->routeIs('tracking.*') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Track order') }}</a>
                 </nav>
+                @endif
 
+                @if ($websiteOn)
                 <div class="hidden md:flex items-center gap-4">
                     <a href="{{ route('cart.show') }}" class="relative text-brand-white hover:text-brand-yellow" aria-label="{{ __('Cart') }}">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
@@ -136,7 +139,9 @@
                         <a href="{{ route('customer.register') }}" class="px-3 py-1.5 bg-brand-yellow text-brand-black text-sm font-semibold rounded-md hover:bg-brand-yellow-dark">{{ __('Sign up') }}</a>
                     @endauth
                 </div>
+                @endif
 
+                @if ($websiteOn)
                 {{--
                     SVG, not a Unicode "&#9776;" glyph — a raw hamburger
                     character renders using whatever system font the OS
@@ -153,9 +158,11 @@
                         <path d="M4 6h16M4 12h16M4 18h16" />
                     </svg>
                 </button>
+                @endif
             </div>
         </header>
 
+            @if ($websiteOn)
             {{--
                 Off-canvas drawer — same pattern as the staff/rider
                 dashboards (layouts/navigation.blade.php, layouts/
@@ -252,6 +259,7 @@
                 </div>
             </div>
         </div>
+            @endif
 
         @isset($fullHero)
             {{ $fullHero }}
@@ -301,6 +309,7 @@
             choice), and on a phone it covers far less of the screen.
             Bottom-centre on phones, bottom-right from sm up.
         --}}
+        @if ($websiteOn)
         <div
             x-data="{ show: {{ $cookieConsentGiven ? 'false' : 'true' }} }"
             x-on:open-cookie-banner.window="show = true"
@@ -331,6 +340,7 @@
                 </form>
             </div>
         </div>
+        @endif
 
         <footer class="mt-12 bg-brand-black border-t border-brand-yellow">
             <div class="max-w-5xl mx-auto px-4 py-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 text-sm text-brand-gray-300">
@@ -341,6 +351,7 @@
                     @endif
                 </div>
 
+                @if ($websiteOn)
                 <div>
                     <p class="font-semibold text-brand-yellow uppercase text-xs tracking-wide mb-4">{{ __('Quick links') }}</p>
                     <nav class="space-y-2">
@@ -379,6 +390,7 @@
                         <button type="button" @click="$dispatch('open-cookie-banner')" class="block hover:text-brand-yellow transition text-left">{{ __('Cookie preferences') }}</button>
                     </nav>
                 </div>
+                @endif
 
                 @if ($footerHasSocialLinks)
                     <div>

@@ -217,14 +217,14 @@ step before the previous one is released.
 
 Straight after the MVP: offline mode for the subscription edition.
 
-**Current step:** 3c (module switches: website). Step 1,
-this rulebook, approved 2026-11-15; step 2, business settings, built 2026-11-15 (2a business
-profile, 2b menu and branch rules, 2c website content). Step 3 runs in three parts: 3a the
-switches, the Modules page and seven modules (Bolt Food, WhatsApp reward, freebies, market list
-and profit, stock, refunds and damage, reviews), built 2026-11-15; 3b promotions, customer SMS
-(order updates, refund notices, broadcasts only — staff alerts, account codes and SMS opt-out
-always work), Paystack (its Settings switch moved to Modules), delivery and riders, built
-2026-11-15; 3c website. Then the home page strip editor (`home_menu_sliders`).
+**Current step:** 5 (Express POS identity). Step 1, this rulebook, approved 2026-11-15; step 2,
+business settings, built 2026-11-15 (2a business profile, 2b menu and branch rules, 2c website
+content); step 3, module switches, built 2026-11-15 in three parts (3a the switches, the Modules
+page and seven modules; 3b promotions, customer SMS, Paystack, delivery and riders; 3c website);
+step 4, POS-only mode, built with 3c (no Website module: `/` opens the staff login, the customer
+site answers 404, error pages show no site links). Still to do from step 2/3: the home page strip
+editor (`home_menu_sliders`), and — awaiting the owner — moving the delivery fee rate per km
+(`DeliveryFeeCalculator::RATE_PER_KM_PESEWAS`, GH₵5) into a setting.
 <!-- Update this line as steps complete. It is the fastest signal of where the project is. -->
 
 ---

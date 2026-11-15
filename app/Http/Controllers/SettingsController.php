@@ -38,9 +38,9 @@ class SettingsController extends Controller
         $validated = $request->validated();
 
         $settings->set(SettingsService::ORDER_REFERENCE_PREFIX_POS, strtoupper($validated['order_reference_prefix_pos']));
-        $settings->set(SettingsService::ORDER_REFERENCE_PREFIX_WEB, strtoupper($validated['order_reference_prefix_web']));
         // A switched-off module's fields aren't on the form; theirs stay as they were.
         foreach ([
+            'order_reference_prefix_web' => SettingsService::ORDER_REFERENCE_PREFIX_WEB,
             'order_reference_prefix_bolt_food' => SettingsService::ORDER_REFERENCE_PREFIX_BOLT_FOOD,
             'order_reference_prefix_whatsapp' => SettingsService::ORDER_REFERENCE_PREFIX_WHATSAPP,
             'order_reference_prefix_freebie' => SettingsService::ORDER_REFERENCE_PREFIX_FREEBIE,

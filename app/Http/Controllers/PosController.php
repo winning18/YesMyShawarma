@@ -364,7 +364,7 @@ class PosController extends Controller
             'order' => [
                 'reference' => $order->reference,
                 'total' => $order->total,
-                'tracking_url' => route('tracking.show', $order),
+                'tracking_url' => $modules->enabled(ModuleService::WEBSITE) ? route('tracking.show', $order) : null,
             ],
         ]);
     }

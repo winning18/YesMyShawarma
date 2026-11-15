@@ -8,17 +8,25 @@ use App\Models\MenuItem;
 use App\Services\Content\SitePageService;
 use App\Services\Customers\CustomerBranchSelection;
 use App\Services\Menu\PopularItemsService;
+use App\Services\Modules\ModuleService;
 use App\Services\Promotions\PromotionService;
 use App\Services\Seo\RestaurantSchemaBuilder;
 use App\Services\Settings\SettingsService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class HomeController extends Controller
 {
-    public function index(CustomerBranchSelection $selection, RestaurantSchemaBuilder $restaurantSchema, PromotionService $promotions, PopularItemsService $popular, SettingsService $settings, SitePageService $pages): View
+    public function index(CustomerBranchSelection $selection, RestaurantSchemaBuilder $restaurantSchema, PromotionService $promotions, PopularItemsService $popular, SettingsService $settings, SitePageService $pages): View|RedirectResponse
     {
+        // POS-only (Express POS step 4): with no Website module, the
+        // business's address opens the staff login.
+        if (! app(ModuleService::class)->enabled(ModuleService::WEBSITE)) {
+            return redirect()->route('login');
+        }
+
         // Every category is hero-slide-eligible (Hero Slider dashboard
         // page), but only ones staff actually gave a photo appear on the
         // live carousel — otherwise a freshly created category would

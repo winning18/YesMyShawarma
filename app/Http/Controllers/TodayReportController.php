@@ -73,6 +73,9 @@ class TodayReportController extends Controller
 
         $selected = $validated['channel'] ?? 'pos';
         // With Bolt Food switched off, its view isn't offered (ModuleService).
+        if ($selected === 'web' && ! app(ModuleService::class)->enabled(ModuleService::WEBSITE)) {
+            $selected = 'pos';
+        }
         if ($selected === 'bolt_food' && ! app(ModuleService::class)->enabled(ModuleService::BOLT_FOOD)) {
             $selected = 'pos';
         }

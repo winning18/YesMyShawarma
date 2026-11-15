@@ -102,16 +102,15 @@ class ModulesTest extends TestCase
         $this->as($this->userWithRole('manager'))->put(route('dashboard.modules.update'), ['modules' => ['freebies' => '0']])->assertForbidden();
 
         $owner = $this->userWithRole('owner');
-        $this->as($owner)->get(route('dashboard.modules.edit'))->assertOk()->assertSee('Market list and profit')->assertSee('its switch comes in a later update');
+        $this->as($owner)->get(route('dashboard.modules.edit'))->assertOk()->assertSee('Market list and profit')->assertSee('Website ordering');
 
         $this->as($owner)->put(route('dashboard.modules.update'), [
-            'modules' => [...array_fill_keys(self::STEP_3A, '1'), 'freebies' => '0', 'website' => '0'],
+            'modules' => [...array_fill_keys(array_keys(ModuleService::MODULES), '1'), 'freebies' => '0', 'website' => '0'],
         ])->assertSessionHas('status');
 
         $this->assertSame('0', Setting::where('key', 'module_freebies')->value('value'));
         $this->assertSame('1', Setting::where('key', 'module_stock')->value('value'));
-        // A switch that isn't built yet can't be changed.
-        $this->assertNull(Setting::where('key', 'module_website')->value('value'));
+        $this->assertSame('0', Setting::where('key', 'module_website')->value('value'));
     }
 
     public function test_a_new_install_starts_with_every_module_off(): void
@@ -119,11 +118,9 @@ class ModulesTest extends TestCase
         config(['modules.default_on' => false]);
         $modules = new ModuleService;
 
-        foreach ([...self::STEP_3A, ...self::STEP_3B] as $module) {
+        foreach (array_keys(ModuleService::MODULES) as $module) {
             $this->assertFalse($modules->enabled($module), "{$module} should start off");
         }
-        // Not switchable yet, so it behaves as before.
-        $this->assertTrue($modules->enabled(ModuleService::WEBSITE));
     }
 
     public function test_the_migration_switches_every_module_on_only_for_an_install_with_orders(): void
@@ -198,7 +195,7 @@ class ModulesTest extends TestCase
         ])->assertSessionHasNoErrors();
 
         // Switched back on, it all returns.
-        $this->as($owner)->put(route('dashboard.modules.update'), ['modules' => array_fill_keys(self::STEP_3A, '1')]);
+        $this->as($owner)->put(route('dashboard.modules.update'), ['modules' => array_fill_keys(array_keys(ModuleService::MODULES), '1')]);
 
         $settings = $this->as($owner)->get(route('dashboard.settings.index'));
         foreach (['dashboard.market-lists.index', 'dashboard.stock.index', 'dashboard.refunds.index', 'dashboard.freebies.index', 'dashboard.reviews.index'] as $route) {
@@ -361,5 +358,51 @@ class ModulesTest extends TestCase
             customerPhone: '+233241111111', customerName: 'Ama', branchId: $this->branch->id,
             fulfilmentType: 'delivery', paymentMethod: 'cash', items: [new PlaceOrderItemData(menuItemId: $this->item->id, quantity: 1)],
         ));
+    }
+
+    public function test_with_the_website_off_the_address_opens_the_staff_login(): void
+    {
+        Queue::fake();
+        $this->switchOff(ModuleService::WEBSITE);
+        $owner = $this->userWithRole('owner');
+        $order = $this->order();
+
+        // POS-only: the address opens the staff login; the customer site is gone.
+        $this->get(route('home'))->assertRedirect(route('login'));
+        foreach (['menu.index', 'branches.index', 'contact', 'cart.show', 'checkout.show', 'customer.login', 'customer.register', 'sitemap', 'llms'] as $route) {
+            $this->get(route($route))->assertNotFound();
+        }
+        $this->get(route('tracking.show', $order))->assertNotFound();
+        $this->get(route('robots'))->assertSeeText('Disallow: /');
+
+        // A "not found" page shows no links into the missing site.
+        $notFound = $this->get('/menu')->getContent();
+        $this->assertStringNotContainsString('See our menu', $notFound);
+        $this->assertStringNotContainsString(route('cart.show'), $notFound);
+        $this->assertStringContainsString(route('login'), $notFound);
+
+        // The SMS opt-out link always works.
+        $this->assertNotContains('module:website', Route::getRoutes()->getByName('sms.opt-out.show')->gatherMiddleware());
+
+        // Paystack and Reviews need the website.
+        $modules = app(ModuleService::class);
+        $this->assertTrue($modules->switchedOn(ModuleService::REVIEWS));
+        $this->assertFalse($modules->enabled(ModuleService::REVIEWS));
+        $this->assertFalse($modules->enabled(ModuleService::PAYSTACK));
+
+        // Staff side: no website pages, web history, Web report view or traffic.
+        $settings = $this->as($owner)->get(route('dashboard.settings.index'))->assertOk();
+        foreach (['dashboard.hero-slider.index', 'dashboard.site-pages.index', 'dashboard.staff-members.index'] as $route) {
+            $settings->assertDontSee(route($route), false);
+            $this->as($owner)->get(route($route))->assertNotFound();
+        }
+        $settings->assertDontSee(route('dashboard.orders.history', ['channel' => 'web']), false)->assertDontSee('Web orders prefix');
+        $this->as($owner)->get(route('dashboard.reports.today.index', ['channel' => 'web']))->assertViewHas('channel', 'pos');
+        $this->as($owner)->get(route('dashboard.performance', ['tab' => 'traffic']))->assertOk()->assertViewHas('tab', 'sales');
+        $this->as($owner)->get(route('dashboard.modules.edit'))->assertSee('Needs Website ordering switched on');
+
+        // Order updates by SMS still go, without a link to a tracking page that isn't there.
+        app(CustomerOrderNotifier::class)->readyForPickup($order);
+        Queue::assertPushed(SendSms::class, fn (SendSms $job) => ! str_contains($job->message, 'http'));
     }
 }

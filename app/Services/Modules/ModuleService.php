@@ -55,7 +55,7 @@ class ModuleService
      * @var array<string, array{label: string, description: string, requires: list<string>, ready: bool}>
      */
     public const MODULES = [
-        self::WEBSITE => ['label' => 'Website ordering', 'description' => 'Customer website, online checkout, order tracking and customer accounts.', 'requires' => [], 'ready' => false],
+        self::WEBSITE => ['label' => 'Website ordering', 'description' => 'Customer website, online checkout, order tracking and customer accounts.', 'requires' => [], 'ready' => true],
         self::PAYSTACK => ['label' => 'Paystack', 'description' => 'Online card and MoMo payment at website checkout.', 'requires' => [self::WEBSITE], 'ready' => true],
         self::DELIVERY => ['label' => 'Delivery and riders', 'description' => 'Delivery orders, the rider app, distance-based delivery fees and fee collections.', 'requires' => [], 'ready' => true],
         self::BOLT_FOOD => ['label' => 'Bolt Food', 'description' => 'Take Bolt Food orders at the POS, kept out of sales with their own reference prefix and reports.', 'requires' => [], 'ready' => true],

@@ -133,6 +133,11 @@ class AppServiceProvider extends ServiceProvider
             $view->with('footerBranches', app(BusinessProfile::class)->branchPhones());
             $view->with('footerHasSocialLinks', app(BusinessProfile::class)->socialLinks() !== []);
 
+            // No Website module (POS-only): just the business name and the
+            // page itself — an error page or the SMS opt-out page — with no
+            // links into a customer site that isn't there.
+            $view->with('websiteOn', app(ModuleService::class)->enabled(ModuleService::WEBSITE));
+
             // Only pages someone has written are linked (Website content).
             $pages = app(SitePageService::class);
             $view->with('publishedPages', $pages->published());

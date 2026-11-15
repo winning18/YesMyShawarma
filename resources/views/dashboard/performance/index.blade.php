@@ -59,7 +59,7 @@
                 href="{{ route('dashboard.performance', ['tab' => 'operations', 'range' => $rangeKey]) }}"
                 class="pb-3 text-sm font-semibold border-b-2 -mb-px {{ $tab === 'operations' ? 'border-green-600 text-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700' }}"
             >{{ __('Operations') }}</a>
-            @if ($isOwner)
+            @if ($isOwner && app(\App\Services\Modules\ModuleService::class)->enabled('website'))
                 <a
                     href="{{ route('dashboard.performance', ['tab' => 'traffic', 'range' => $rangeKey]) }}"
                     class="pb-3 text-sm font-semibold border-b-2 -mb-px {{ $tab === 'traffic' ? 'border-green-600 text-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700' }}"

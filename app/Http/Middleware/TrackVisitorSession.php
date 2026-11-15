@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\Modules\ModuleService;
 use App\Services\Visitors\VisitorSessionService;
 use Closure;
 use Illuminate\Http\Request;
@@ -32,7 +33,8 @@ class TrackVisitorSession
 
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->cookie('cookie_consent') === 'decline') {
+        // No customer website, no visitors to count (ModuleService).
+        if ($request->cookie('cookie_consent') === 'decline' || ! app(ModuleService::class)->enabled(ModuleService::WEBSITE)) {
             return $next($request);
         }
 
