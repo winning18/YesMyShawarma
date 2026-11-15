@@ -49,7 +49,13 @@ These come before everything else in this file.
    Decide which before building, and say so in the plan.
 3. **A module switched off disappears completely** — its routes, menu items, POS options, page
    sections, report lines, scheduled jobs and notifications. Never a half-hidden feature that
-   still runs underneath. Test it switched off as well as on.
+   still runs underneath. Test it switched off as well as on. How: `App\Services\Modules\
+   ModuleService` lists the modules (switches are `module_<key>` settings, owner-only Modules
+   page); routes take `->middleware('module:<key>')` (404 when off); Blade wraps parts in
+   `@module('<key>') … @endmodule`; services and scheduled jobs check
+   `ModuleService::enabled()` themselves. A new install starts with every module off; the test
+   suite runs with every module on (`MODULES_DEFAULT_ON` in phpunit.xml) unless a test switches
+   one off.
 4. **One client's request is built as a module or a setting**, never as a branch of the code or a
    copy. If only Yes My Shawarma wants something, it goes behind a switch that's on for Yes My
    Shawarma.
@@ -211,9 +217,14 @@ step before the previous one is released.
 
 Straight after the MVP: offline mode for the subscription edition.
 
-**Current step:** 3 (module switches). Step 1, this rulebook, approved 2026-11-15; step 2,
-business settings, built 2026-11-15 in three parts: 2a business profile, 2b menu and branch
-rules, 2c website content.
+**Current step:** 3b (module switches: promotions, SMS, Paystack, delivery and riders). Step 1,
+this rulebook, approved 2026-11-15; step 2, business settings, built 2026-11-15 (2a business
+profile, 2b menu and branch rules, 2c website content). Step 3 runs in three parts: 3a the
+switches, the Modules page and seven modules (Bolt Food, WhatsApp reward, freebies, market list
+and profit, stock, refunds and damage, reviews), built 2026-11-15; 3b promotions, customer SMS
+(order updates, refund notices, broadcasts only — staff alerts and account codes always send),
+Paystack (its Settings switch moves to Modules), delivery and riders; 3c website. Then the home
+page strip editor (`home_menu_sliders`).
 <!-- Update this line as steps complete. It is the fastest signal of where the project is. -->
 
 ---

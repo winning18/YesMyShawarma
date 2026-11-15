@@ -35,6 +35,7 @@
                 href="{{ route('dashboard.reports.weekly.index') }}"
                 class="pb-3 text-sm font-semibold border-b-2 -mb-px {{ $active === 'weekly' ? 'border-green-600 text-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700' }}"
             >{{ __('Order export') }}</a>
+            @module('market_list')
             <a
                 href="{{ route('dashboard.reports.expenses.index') }}"
                 class="pb-3 text-sm font-semibold border-b-2 -mb-px {{ $active === 'expenses' ? 'border-green-600 text-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700' }}"
@@ -43,6 +44,7 @@
                 href="{{ route('dashboard.reports.profit.index') }}"
                 class="pb-3 text-sm font-semibold border-b-2 -mb-px {{ $active === 'profit' ? 'border-green-600 text-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700' }}"
             >{{ __('Profit') }}</a>
+            @endmodule
             <a
                 href="{{ route('dashboard.reports.delivery-fees.index') }}"
                 class="pb-3 text-sm font-semibold border-b-2 -mb-px {{ $active === 'delivery-fees' ? 'border-green-600 text-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700' }}"

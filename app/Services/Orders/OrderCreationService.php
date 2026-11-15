@@ -13,6 +13,7 @@ use App\Services\Customers\CustomerService;
 use App\Services\Delivery\DeliveryFeeCalculator;
 use App\Services\Freebies\FreebieService;
 use App\Services\Menu\MenuPricingService;
+use App\Services\Modules\ModuleService;
 use App\Services\Notifications\CustomerOrderNotifier;
 use App\Services\Notifications\NewOrderPushNotifier;
 use App\Services\Orders\Data\PlaceOrderData;
@@ -41,6 +42,7 @@ class OrderCreationService
         private readonly CustomerOrderNotifier $notifier,
         private readonly NewOrderPushNotifier $pushNotifier,
         private readonly FreebieService $freebies,
+        private readonly ModuleService $modules,
     ) {}
 
     /**
@@ -95,6 +97,17 @@ class OrderCreationService
     {
         if (empty($data->items)) {
             throw OrderPlacementException::emptyCart();
+        }
+
+        // Options belonging to a switched-off module (ModuleService).
+        if ($data->paymentMethod === Order::BOLT_FOOD && ! $this->modules->enabled(ModuleService::BOLT_FOOD)) {
+            throw OrderPlacementException::moduleOff(__('Bolt Food'));
+        }
+        if ($data->paymentMethod === Order::COMPLIMENTARY && ! $this->modules->enabled(ModuleService::FREEBIES)) {
+            throw OrderPlacementException::moduleOff(__('Freebies'));
+        }
+        if ($data->source === Order::SOURCE_WHATSAPP && ! $this->modules->enabled(ModuleService::WHATSAPP_REWARD)) {
+            throw OrderPlacementException::moduleOff(__('The WhatsApp group reward'));
         }
 
         // Freebies and WhatsApp group orders are POS-only and pickup-only

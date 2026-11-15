@@ -1,0 +1,131 @@
+<?php
+
+namespace App\Services\Modules;
+
+use App\Models\Setting;
+
+/**
+ * Module switches (Express POS step 3). Core — counter POS, kitchen board,
+ * menu, branches, staff, shifts, sales reports, order history — is always
+ * on; everything listed here is a module the business owner switches on
+ * or off under Settings → Modules (ModuleController, business.manage).
+ *
+ * A module that's off disappears completely (CLAUDE.md product rule 3):
+ * its routes answer 404 (the `module:` route middleware), its menu items,
+ * POS options and report lines are hidden (`@module` in Blade), its
+ * services refuse its actions and its scheduled jobs do nothing. Its data
+ * is kept, so switching it back on brings everything back.
+ *
+ * Stored as settings `module_<key>` = '1' / '0'. No stored switch means
+ * off on a real install (config/modules.php); Yes My Shawarma's are all
+ * stored on (2026_11_15_130000_switch_on_every_module).
+ */
+class ModuleService
+{
+    public const WEBSITE = 'website';
+
+    public const PAYSTACK = 'paystack';
+
+    public const DELIVERY = 'delivery';
+
+    public const BOLT_FOOD = 'bolt_food';
+
+    public const PROMOTIONS = 'promotions';
+
+    public const WHATSAPP_REWARD = 'whatsapp_reward';
+
+    public const FREEBIES = 'freebies';
+
+    public const MARKET_LIST = 'market_list';
+
+    public const STOCK = 'stock';
+
+    public const SMS = 'sms';
+
+    public const REFUNDS = 'refunds';
+
+    public const REVIEWS = 'reviews';
+
+    /**
+     * label/description: shown on the Modules page. requires: modules
+     * that must be on for this one to work. ready: false while its switch
+     * isn't built yet — such a module stays on whatever is stored (it's
+     * shown on the page as coming soon).
+     *
+     * @var array<string, array{label: string, description: string, requires: list<string>, ready: bool}>
+     */
+    public const MODULES = [
+        self::WEBSITE => ['label' => 'Website ordering', 'description' => 'Customer website, online checkout, order tracking and customer accounts.', 'requires' => [], 'ready' => false],
+        self::PAYSTACK => ['label' => 'Paystack', 'description' => 'Online card and MoMo payment at website checkout.', 'requires' => [self::WEBSITE], 'ready' => false],
+        self::DELIVERY => ['label' => 'Delivery and riders', 'description' => 'Delivery orders, the rider app, distance-based delivery fees and fee collections.', 'requires' => [], 'ready' => false],
+        self::BOLT_FOOD => ['label' => 'Bolt Food', 'description' => 'Take Bolt Food orders at the POS, kept out of sales with their own reference prefix and reports.', 'requires' => [], 'ready' => true],
+        self::PROMOTIONS => ['label' => 'Promotions', 'description' => 'Promo codes and automatic offers such as buy 2 get 1 free.', 'requires' => [], 'ready' => false],
+        self::WHATSAPP_REWARD => ['label' => 'WhatsApp group reward', 'description' => 'A fixed amount off the food for orders from your WhatsApp customer group.', 'requires' => [], 'ready' => true],
+        self::FREEBIES => ['label' => 'Freebies', 'description' => 'Free orders for customers and staff, approved by a manager.', 'requires' => [], 'ready' => true],
+        self::MARKET_LIST => ['label' => 'Market list and profit', 'description' => 'Record purchases, approve them, and see expenses and profit by period.', 'requires' => [], 'ready' => true],
+        self::STOCK => ['label' => 'Recipes and stock', 'description' => 'Stock items, recipes that use them up as orders are accepted, and low-stock alerts.', 'requires' => [], 'ready' => true],
+        self::SMS => ['label' => 'Customer SMS', 'description' => 'Order updates, refund notices and SMS broadcasts to customers.', 'requires' => [], 'ready' => false],
+        self::REFUNDS => ['label' => 'Refunds and damage reports', 'description' => 'Request, approve and complete refunds; damage reports with photos.', 'requires' => [], 'ready' => true],
+        self::REVIEWS => ['label' => 'Reviews', 'description' => 'Customers review their order after it arrives; approved reviews show on the website.', 'requires' => [self::WEBSITE], 'ready' => true],
+    ];
+
+    /** @var array<string, ?string>|null module key => stored '1'/'0' */
+    private ?array $stored = null;
+
+    public function enabled(string $module): bool
+    {
+        if (! isset(self::MODULES[$module])) {
+            throw new \InvalidArgumentException("Unknown module {$module}.");
+        }
+
+        if (! self::MODULES[$module]['ready']) {
+            return true;
+        }
+
+        foreach (self::MODULES[$module]['requires'] as $required) {
+            if (! $this->enabled($required)) {
+                return false;
+            }
+        }
+
+        return $this->switchedOn($module);
+    }
+
+    /**
+     * The switch itself, ignoring what it depends on — what the Modules
+     * page shows as ticked.
+     */
+    public function switchedOn(string $module): bool
+    {
+        $this->stored ??= Setting::where('key', 'like', 'module%')->pluck('value', 'key')
+            ->filter(fn (?string $value, string $key) => str_starts_with($key, 'module_'))
+            ->mapWithKeys(fn (?string $value, string $key) => [substr($key, 7) => $value])
+            ->all();
+
+        $value = $this->stored[$module] ?? null;
+
+        return $value === null ? (bool) config('modules.default_on') : $value === '1';
+    }
+
+    public function set(string $module, bool $on): void
+    {
+        if (! isset(self::MODULES[$module])) {
+            throw new \InvalidArgumentException("Unknown module {$module}.");
+        }
+
+        Setting::updateOrCreate(['key' => 'module_'.$module], ['value' => $on ? '1' : '0']);
+        $this->stored = null;
+    }
+
+    /**
+     * @param  array<string, bool>  $switches  module key => on
+     */
+    public function update(array $switches): void
+    {
+        foreach (self::MODULES as $module => $config) {
+            if ($config['ready'] && array_key_exists($module, $switches)) {
+                $this->set($module, $switches[$module]);
+            }
+        }
+    }
+}

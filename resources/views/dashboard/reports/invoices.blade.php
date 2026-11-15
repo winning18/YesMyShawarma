@@ -50,6 +50,7 @@
                             :preset-links="$dateRangePresetLinks"
                         />
                     </div>
+                    @module('bolt_food')
                     <div>
                         <label class="block text-xs font-medium text-gray-500 mb-1" for="type">{{ __('Report') }}</label>
                         <select id="type" name="type" onchange="this.form.submit()" class="rounded-md border-gray-300 text-sm">
@@ -57,6 +58,7 @@
                             <option value="bolt_food" @selected(! $isSalesReport)>{{ __('Bolt Food') }}</option>
                         </select>
                     </div>
+                    @endmodule
                     @if ($crossBranch)
                         <div>
                             <label class="block text-xs font-medium text-gray-500 mb-1" for="branch">{{ __('Branch') }}</label>

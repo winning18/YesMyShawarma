@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Branch;
 use App\Models\MenuItem;
 use App\Services\Content\SitePageService;
+use App\Services\Modules\ModuleService;
 use Illuminate\Http\Response;
 
 /**
@@ -21,7 +22,7 @@ class SitemapController extends Controller
      * of redirecting) makes indexable at all, so a crawler has no way to
      * discover them without this.
      */
-    public function index(SitePageService $pages): Response
+    public function index(SitePageService $pages, ModuleService $modules): Response
     {
         // About, FAQ and the policies only once something is written on them.
         $published = $pages->published();
@@ -33,7 +34,7 @@ class SitemapController extends Controller
             $published['about'] ? ['url' => route('about'), 'priority' => '0.5'] : null,
             ['url' => route('contact'), 'priority' => '0.5'],
             $published['faq'] ? ['url' => route('faq'), 'priority' => '0.4'] : null,
-            ['url' => route('reviews.index'), 'priority' => '0.4'],
+            $modules->enabled(ModuleService::REVIEWS) ? ['url' => route('reviews.index'), 'priority' => '0.4'] : null,
             $published['terms'] ? ['url' => route('policy.terms'), 'priority' => '0.2'] : null,
             $published['refunds'] ? ['url' => route('policy.refunds'), 'priority' => '0.2'] : null,
             $published['privacy'] ? ['url' => route('policy.privacy'), 'priority' => '0.2'] : null,

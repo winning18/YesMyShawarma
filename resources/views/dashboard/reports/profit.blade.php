@@ -85,11 +85,13 @@
                 <p class="text-xs text-gray-500">{{ __('Profit') }}</p>
                 <p class="text-xl font-semibold {{ $totals['profit'] < 0 ? 'text-red-600' : 'text-green-700' }}">{{ $money($totals['profit']) }}</p>
             </div>
+            @module('bolt_food')
             <div class="bg-white shadow rounded-lg p-4">
                 <p class="text-xs text-gray-500">{{ __('Profit incl. Bolt Food') }}</p>
                 <p class="text-xl font-semibold {{ $totals['profit_with_bolt'] < 0 ? 'text-red-600' : 'text-gray-800' }}">{{ $money($totals['profit_with_bolt']) }}</p>
                 <p class="text-xs text-gray-400">{{ __('Bolt Food :amount, before Bolt\'s commission', ['amount' => $money($totals['bolt_food'])]) }}</p>
             </div>
+            @endmodule
         </div>
 
         @if ($report['awaiting']['count'] > 0)
@@ -108,8 +110,12 @@
                         <th class="px-4 py-2 text-right">{{ __('Refunds') }}</th>
                         <th class="px-4 py-2 text-right">{{ __('Purchases & expenses') }}</th>
                         <th class="px-4 py-2 text-right">{{ __('Profit') }}</th>
+                        @module('bolt_food')
                         <th class="px-4 py-2 text-right">{{ __('Bolt Food') }}</th>
+                        @endmodule
+                        @module('bolt_food')
                         <th class="px-4 py-2 text-right">{{ __('Profit incl. Bolt') }}</th>
+                        @endmodule
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
@@ -120,8 +126,12 @@
                             <td class="px-4 py-2 text-right whitespace-nowrap text-gray-500">{{ $period['refunds'] ? '−'.$money($period['refunds']) : '—' }}</td>
                             <td class="px-4 py-2 text-right whitespace-nowrap text-gray-500">{{ $period['purchases'] ? '−'.$money($period['purchases']) : '—' }}</td>
                             <td class="px-4 py-2 text-right whitespace-nowrap font-semibold {{ $period['profit'] < 0 ? 'text-red-600' : 'text-gray-800' }}">{{ $money($period['profit']) }}</td>
+                            @module('bolt_food')
                             <td class="px-4 py-2 text-right whitespace-nowrap text-gray-500">{{ $money($period['bolt_food']) }}</td>
+                            @endmodule
+                            @module('bolt_food')
                             <td class="px-4 py-2 text-right whitespace-nowrap {{ $period['profit_with_bolt'] < 0 ? 'text-red-600' : 'text-gray-800' }}">{{ $money($period['profit_with_bolt']) }}</td>
+                            @endmodule
                         </tr>
                     @endforeach
                 </tbody>
@@ -132,8 +142,12 @@
                         <td class="px-4 py-2 text-right whitespace-nowrap">−{{ $money($totals['refunds']) }}</td>
                         <td class="px-4 py-2 text-right whitespace-nowrap">−{{ $money($totals['purchases']) }}</td>
                         <td class="px-4 py-2 text-right whitespace-nowrap {{ $totals['profit'] < 0 ? 'text-red-600' : '' }}">{{ $money($totals['profit']) }}</td>
+                        @module('bolt_food')
                         <td class="px-4 py-2 text-right whitespace-nowrap">{{ $money($totals['bolt_food']) }}</td>
+                        @endmodule
+                        @module('bolt_food')
                         <td class="px-4 py-2 text-right whitespace-nowrap {{ $totals['profit_with_bolt'] < 0 ? 'text-red-600' : '' }}">{{ $money($totals['profit_with_bolt']) }}</td>
+                        @endmodule
                     </tr>
                 </tfoot>
             </table>

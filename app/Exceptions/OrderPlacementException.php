@@ -11,6 +11,12 @@ class OrderPlacementException extends Exception
         return new self("This number can't place orders online. Please call the branch.");
     }
 
+    /** A switched-off module's option (ModuleService), e.g. a Bolt Food order with Bolt Food off. */
+    public static function moduleOff(string $what): self
+    {
+        return new self(__(':what isn\'t available.', ['what' => $what]));
+    }
+
     public static function pickupOnly(): self
     {
         return new self(__('Freebies and WhatsApp group orders can only be pickup orders placed at the POS.'));

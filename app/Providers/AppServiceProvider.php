@@ -11,6 +11,7 @@ use App\Services\Cart\CartService;
 use App\Services\Content\SitePageService;
 use App\Services\Freebies\FreebieService;
 use App\Services\MarketLists\MarketListService;
+use App\Services\Modules\ModuleService;
 use App\Services\Notifications\ArkeselNotifier;
 use App\Services\Notifications\LogNotifier;
 use App\Services\Notifications\LogPushNotifier;
@@ -21,6 +22,7 @@ use App\Services\Shifts\ShiftService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\View;
@@ -35,6 +37,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // One per request (or queued job): its switches are read once and
+        // reused by every check on the page.
+        $this->app->scoped(ModuleService::class);
+
         $this->app->singleton(PaystackClient::class, fn () => new PaystackClient(
             secretKey: config('services.paystack.secret_key'),
             baseUrl: config('services.paystack.base_url'),
@@ -61,6 +67,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // @module('freebies') … @endmodule — shows a part only while that
+        // module is switched on (ModuleService).
+        Blade::if('module', fn (string $module) => app(ModuleService::class)->enabled($module));
+
         // The business's name from its profile (Express POS: set per
         // install), so the 40-odd places that read config('app.name') all
         // follow it. Skipped quietly before the settings table exists (a
@@ -165,8 +175,8 @@ class AppServiceProvider extends ServiceProvider
                 'navCanSwitchBranch' => $user && ! $context->runsATill($user) && $context->selectableBranchIdsFor($user)->count() > 1,
                 // The count beside "Market list" — lists this person
                 // could approve right now.
-                'navMarketListsAwaiting' => $user ? app(MarketListService::class)->awaitingApprovalCount($user) : 0,
-                'navFreebiesAwaiting' => $user ? app(FreebieService::class)->awaitingApprovalCount($user) : 0,
+                'navMarketListsAwaiting' => $user && app(ModuleService::class)->enabled(ModuleService::MARKET_LIST) ? app(MarketListService::class)->awaitingApprovalCount($user) : 0,
+                'navFreebiesAwaiting' => $user && app(ModuleService::class)->enabled(ModuleService::FREEBIES) ? app(FreebieService::class)->awaitingApprovalCount($user) : 0,
             ]);
         });
     }

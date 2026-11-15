@@ -40,10 +40,19 @@ class SettingsController extends Controller
 
         $settings->set(SettingsService::ORDER_REFERENCE_PREFIX_POS, strtoupper($validated['order_reference_prefix_pos']));
         $settings->set(SettingsService::ORDER_REFERENCE_PREFIX_WEB, strtoupper($validated['order_reference_prefix_web']));
-        $settings->set(SettingsService::ORDER_REFERENCE_PREFIX_BOLT_FOOD, strtoupper($validated['order_reference_prefix_bolt_food']));
-        $settings->set(SettingsService::ORDER_REFERENCE_PREFIX_WHATSAPP, strtoupper($validated['order_reference_prefix_whatsapp']));
-        $settings->set(SettingsService::ORDER_REFERENCE_PREFIX_FREEBIE, strtoupper($validated['order_reference_prefix_freebie']));
-        $settings->set(SettingsService::WHATSAPP_REWARD_AMOUNT, (string) (int) round(((float) $validated['whatsapp_reward']) * 100));
+        // A switched-off module's fields aren't on the form; theirs stay as they were.
+        foreach ([
+            'order_reference_prefix_bolt_food' => SettingsService::ORDER_REFERENCE_PREFIX_BOLT_FOOD,
+            'order_reference_prefix_whatsapp' => SettingsService::ORDER_REFERENCE_PREFIX_WHATSAPP,
+            'order_reference_prefix_freebie' => SettingsService::ORDER_REFERENCE_PREFIX_FREEBIE,
+        ] as $field => $key) {
+            if (isset($validated[$field])) {
+                $settings->set($key, strtoupper($validated[$field]));
+            }
+        }
+        if (isset($validated['whatsapp_reward'])) {
+            $settings->set(SettingsService::WHATSAPP_REWARD_AMOUNT, (string) (int) round(((float) $validated['whatsapp_reward']) * 100));
+        }
         $settings->setBool(SettingsService::PAYSTACK_ENABLED, $request->boolean('paystack_enabled'));
 
         return back()->with('status', __('Settings updated.'));

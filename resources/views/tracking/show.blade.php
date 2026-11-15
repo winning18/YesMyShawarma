@@ -75,6 +75,7 @@
                             </ol>
                         </template>
 
+                        @module('reviews')
                         <div x-show="order.review_eligible" x-cloak class="mt-6 border-t border-brand-gray-100 pt-6">
                             <template x-if="!order.review">
                                 <div>
@@ -123,6 +124,7 @@
                                 </div>
                             </template>
                         </div>
+                        @endmodule
                     </div>
 
                     <div class="space-y-6">

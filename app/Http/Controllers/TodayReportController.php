@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Branch;
 use App\Models\Shift;
 use App\Services\Branches\BranchContext;
+use App\Services\Modules\ModuleService;
 use App\Services\Reports\DailySalesReportService;
 use App\Services\Reports\DeliveryFeeReportService;
 use App\Services\Reports\ReportBranchFilter;
@@ -71,6 +72,10 @@ class TodayReportController extends Controller
         ]);
 
         $selected = $validated['channel'] ?? 'pos';
+        // With Bolt Food switched off, its view isn't offered (ModuleService).
+        if ($selected === 'bolt_food' && ! app(ModuleService::class)->enabled(ModuleService::BOLT_FOOD)) {
+            $selected = 'pos';
+        }
         $channel = $selected === 'bolt_food' ? 'pos' : $selected;
         $paymentMethod = $selected === 'bolt_food' ? 'bolt_food' : null;
 

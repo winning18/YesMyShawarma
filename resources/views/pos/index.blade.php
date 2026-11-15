@@ -79,23 +79,32 @@
                         <label class="flex items-center gap-1.5">
                             <input type="radio" x-model="paymentMethod" value="momo"> {{ __('Momo') }}
                         </label>
+                        @module('bolt_food')
                         <label class="flex items-center gap-1.5">
                             <input type="radio" x-model="paymentMethod" value="bolt_food" @change="fulfilmentType = 'pickup'; whatsapp = false"> <span class="whitespace-nowrap">{{ __('Bolt Food') }}</span>
                         </label>
+                        @endmodule
+                        @module('freebies')
                         <label class="flex items-center gap-1.5">
                             <input type="radio" x-model="paymentMethod" value="complimentary" @change="fulfilmentType = 'pickup'; whatsapp = false"> {{ __('Freebie') }}
                         </label>
+                        @endmodule
                     </div>
+                    @module('bolt_food')
                     <p class="text-xs text-gray-500 mt-1" x-show="paymentMethod === 'bolt_food'">
                         {{ __('For an order placed through Bolt Food and brought here to prepare — not counted as this till\'s sales.') }}
                     </p>
+                    @endmodule
 
                     {{-- WhatsApp group orders: GH₵10 off the food, pickup only (owner, 2026-11-14). --}}
+                    @module('whatsapp_reward')
                     <label class="flex items-center gap-2 text-sm mt-3" x-show="paymentMethod === 'cash' || paymentMethod === 'momo'">
                         <input type="checkbox" x-model="whatsapp" @change="if (whatsapp) fulfilmentType = 'pickup'" class="rounded border-gray-300">
                         <span>{{ __('WhatsApp group order') }} <span class="text-gray-500" x-text="'(' + formatMoney(whatsappReward) + ' ' + @js(__('off the food, pickup only')) + ')'"></span></span>
                     </label>
+                    @endmodule
 
+                    @module('freebies')
                     {{-- Freebies: free to the customer, never sales, approved by a manager afterwards. --}}
                     <div x-show="paymentMethod === 'complimentary'" x-cloak class="mt-3 space-y-2 rounded-md bg-amber-50 border border-amber-200 p-3">
                         <p class="text-xs text-amber-900">{{ __('The customer pays nothing. It\'s not counted as sales, and a manager approves it afterwards.') }}</p>
@@ -112,6 +121,7 @@
                         </select>
                         <input type="text" x-model="freebieReason" maxlength="255" placeholder="{{ __('Why? e.g. Birthday, Staff meal, Complaint make-good') }}" class="w-full rounded-md border-gray-300 text-sm">
                     </div>
+                    @endmodule
                 </div>
 
                 <p class="text-sm text-gray-500" x-show="lines.length === 0">{{ __('No items yet.') }}</p>
@@ -197,12 +207,23 @@
                                 </label>
                             @endif
                         </div>
+                        @module('bolt_food')
                         <p class="text-xs text-gray-500 mt-1" x-show="paymentMethod === 'bolt_food'">
                             {{ __('Bolt Food orders are always pickup — Bolt handles delivery themselves.') }}
                         </p>
-                        <p class="text-xs text-gray-500 mt-1" x-show="paymentMethod === 'complimentary' || whatsapp">
-                            {{ __('Freebies and WhatsApp group orders are pickup only.') }}
-                        </p>
+                        @endmodule
+                        @php
+                            $posModules = app(\App\Services\Modules\ModuleService::class);
+                            $pickupOnlyNote = match (true) {
+                                $posModules->enabled('freebies') && $posModules->enabled('whatsapp_reward') => __('Freebies and WhatsApp group orders are pickup only.'),
+                                $posModules->enabled('freebies') => __('Freebies are pickup only.'),
+                                $posModules->enabled('whatsapp_reward') => __('WhatsApp group orders are pickup only.'),
+                                default => null,
+                            };
+                        @endphp
+                        @if ($pickupOnlyNote)
+                            <p class="text-xs text-gray-500 mt-1" x-show="paymentMethod === 'complimentary' || whatsapp">{{ $pickupOnlyNote }}</p>
+                        @endif
                     </div>
 
                     @if ($deliveryAvailable)

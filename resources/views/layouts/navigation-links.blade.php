@@ -187,11 +187,13 @@
     </x-sidebar-link>
 @endcan
 
+@module('reviews')
 @can('reviews.moderate')
     <x-sidebar-link :href="route('dashboard.reviews.index')" :active="request()->routeIs('dashboard.reviews.*')">
         {{ __('Reviews') }}
     </x-sidebar-link>
 @endcan
+@endmodule
 
 @can('reports.view_operational')
     <x-sidebar-link :href="route('dashboard.reports.index')" :active="request()->routeIs('dashboard.reports.*')">
@@ -207,11 +209,13 @@
     sees; the view itself hides Approve/Deny from anyone without
     orders.refund.
 --}}
+@module('refunds')
 @canany(['orders.refund', 'orders.refund_request'])
     <x-sidebar-link :href="route('dashboard.refunds.index')" :active="request()->routeIs('dashboard.refunds.*')">
         {{ __('Refunds') }}
     </x-sidebar-link>
 @endcanany
+@endmodule
 
 {{--
     damage_reports.file (staff — submit one) or damage_reports.review
@@ -220,31 +224,36 @@
     dashboard nav); they file their own order-specific report from a modal
     on their own rider dashboard instead.
 --}}
+@module('refunds')
 @canany(['damage_reports.file', 'damage_reports.review'])
     <x-sidebar-link :href="route('dashboard.damage-reports.index')" :active="request()->routeIs('dashboard.damage-reports.*')">
         {{ __('Damage Reports') }}
     </x-sidebar-link>
 @endcanany
+@endmodule
 
 {{--
     freebies.approve (manager/GM/owner): every POS freebie, approve or
     reject, plus the WhatsApp group reward totals. The count is what this
     person could approve right now (FreebieService::awaitingApprovalCount).
 --}}
+@if (($navModules ??= app(\App\Services\Modules\ModuleService::class))->enabled('freebies') || $navModules->enabled('whatsapp_reward'))
 @can('freebies.approve')
     <x-sidebar-link :href="route('dashboard.freebies.index')" :active="request()->routeIs('dashboard.freebies.*')">
-        {{ __('Freebies & rewards') }}
+        {{ $navModules->enabled('freebies') && $navModules->enabled('whatsapp_reward') ? __('Freebies & rewards') : ($navModules->enabled('freebies') ? __('Freebies') : __('WhatsApp rewards')) }}
         @if (($navFreebiesAwaiting ?? 0) > 0)
             <span class="ms-auto text-xs font-semibold bg-red-600 text-white rounded-full px-2 py-0.5" title="{{ __('Waiting for your approval') }}">{{ $navFreebiesAwaiting }}</span>
         @endif
     </x-sidebar-link>
 @endcan
+@endif
 
 {{--
     market_lists.record (record your own) or market_lists.approve (review
     everyone's at your branches). The count is what this person could
     approve right now (MarketListService::awaitingApprovalCount).
 --}}
+@module('market_list')
 @canany(['market_lists.record', 'market_lists.approve'])
     <x-sidebar-link :href="route('dashboard.market-lists.index')" :active="request()->routeIs('dashboard.market-lists.*')">
         {{ __('Market list') }}
@@ -253,6 +262,7 @@
         @endif
     </x-sidebar-link>
 @endcanany
+@endmodule
 
 {{--
     Weekly opening schedule, owner+manager only — reuses
@@ -275,11 +285,13 @@
     deduction" section), so staff/manager/general_manager have no stock
     screen of their own left to reach at all.
 --}}
+@module('stock')
 @can('stock.manage')
     <x-sidebar-link :href="route('dashboard.stock.index')" :active="request()->routeIs('dashboard.stock.*')">
         {{ __('Stock') }}
     </x-sidebar-link>
 @endcan
+@endmodule
 
 {{--
     users.create_operational (general_manager) reaches the same index/create
@@ -305,7 +317,7 @@
 --}}
 @can('settings.manage')
     @php
-        $onSettingsSection = request()->routeIs('dashboard.settings.*', 'dashboard.staff-members.*', 'dashboard.business-profile.*', 'dashboard.site-pages.*', 'dashboard.faq-items.*');
+        $onSettingsSection = request()->routeIs('dashboard.settings.*', 'dashboard.staff-members.*', 'dashboard.business-profile.*', 'dashboard.site-pages.*', 'dashboard.faq-items.*', 'dashboard.modules.*');
     @endphp
     <div x-data="{ settingsOpen: {{ $onSettingsSection ? 'true' : 'false' }} }">
         <button
@@ -325,6 +337,10 @@
                     href="{{ route('dashboard.business-profile.edit') }}"
                     class="block px-3 py-1.5 rounded-md text-sm transition duration-150 ease-in-out {{ request()->routeIs('dashboard.business-profile.*') ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
                 >{{ __('Business profile') }}</a>
+                <a
+                    href="{{ route('dashboard.modules.edit') }}"
+                    class="block px-3 py-1.5 rounded-md text-sm transition duration-150 ease-in-out {{ request()->routeIs('dashboard.modules.*') ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
+                >{{ __('Modules') }}</a>
             @endcan
             @can('content.manage')
                 <a

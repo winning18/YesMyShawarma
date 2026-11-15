@@ -13,6 +13,7 @@ use App\Models\Order;
 use App\Models\Shift;
 use App\Models\StockItem;
 use App\Models\User;
+use App\Services\Modules\ModuleService;
 use App\Services\Stock\StockService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -161,6 +162,20 @@ class RecipeStockTest extends TestCase
         $this->assertDatabaseHas('stock_movements', [
             'stock_item_id' => $sausage->id, 'type' => 'sale', 'quantity' => 6, 'actor_id' => $staff->id,
         ]);
+    }
+
+    public function test_with_recipes_and_stock_switched_off_accepting_never_touches_stock(): void
+    {
+        app(ModuleService::class)->set(ModuleService::STOCK, false);
+        $sausage = $this->makeStockItem('Sausages', quantity: 100);
+        $this->makeRecipeItem($sausage, 2, menuItem: $this->loadedFries);
+        $staff = $this->makeStaff();
+        $order = $this->makeOrder([['menu_item_id' => $this->loadedFries->id, 'quantity' => 3]]);
+
+        $this->actingAs($staff)->postJson(route('orders.accept', $order))->assertOk();
+
+        $this->assertSame('100.00', $sausage->fresh()->quantity);
+        $this->assertDatabaseMissing('stock_movements', ['stock_item_id' => $sausage->id, 'type' => 'sale']);
     }
 
     public function test_an_item_with_no_recipe_never_touches_stock(): void

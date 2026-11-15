@@ -1,6 +1,12 @@
+@php
+    // One page for two modules: freebies, and the WhatsApp group reward.
+    $modules = app(\App\Services\Modules\ModuleService::class);
+    $showFreebies = $modules->enabled('freebies');
+    $showWhatsapp = $modules->enabled('whatsapp_reward');
+@endphp
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">{{ __('Freebies & rewards') }}</h2>
+        <h2 class="font-semibold text-xl text-gray-800 leading-tight">{{ $showFreebies && $showWhatsapp ? __('Freebies & rewards') : ($showFreebies ? __('Freebies') : __('WhatsApp group rewards')) }}</h2>
     </x-slot>
 
     <div class="py-8">
@@ -14,7 +20,10 @@
                 <div class="rounded-md bg-red-50 text-red-700 text-sm px-4 py-2">{{ $errors->first() }}</div>
             @endif
 
-            <p class="text-sm text-gray-500">{{ __('Freebies are food given free to customers or staff from the POS. They\'re never counted as sales; their value is the menu price. WhatsApp group orders get a reward off their food and still count as sales.') }}</p>
+            <p class="text-sm text-gray-500">
+                @if ($showFreebies){{ __('Freebies are food given free to customers or staff from the POS. They\'re never counted as sales; their value is the menu price.') }}@endif
+                @if ($showWhatsapp){{ __('WhatsApp group orders get a reward off their food and still count as sales.') }}@endif
+            </p>
 
             <form method="GET" action="{{ route('dashboard.freebies.index') }}" class="bg-white shadow rounded-lg p-4 flex flex-wrap items-end gap-3">
                 <div>
@@ -25,6 +34,7 @@
                     <label for="to" class="block text-xs font-medium text-gray-500 mb-1">{{ __('To') }}</label>
                     <input id="to" type="date" name="to" value="{{ $to->toDateString() }}" class="rounded-md border-gray-300 text-sm">
                 </div>
+                @if ($showFreebies)
                 <div>
                     <label for="status" class="block text-xs font-medium text-gray-500 mb-1">{{ __('Status') }}</label>
                     <select id="status" name="status" class="rounded-md border-gray-300 text-sm">
@@ -34,10 +44,12 @@
                         @endforeach
                     </select>
                 </div>
+                @endif
                 <button type="submit" class="px-4 py-2 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-900">{{ __('Apply') }}</button>
             </form>
 
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                @if ($showFreebies)
                 <div class="bg-white shadow rounded-lg p-4">
                     <p class="text-xs text-gray-500">{{ __('Freebies given') }}</p>
                     <p class="text-xl font-semibold text-gray-800">{{ $money($summary['value']) }}</p>
@@ -53,12 +65,17 @@
                     <p class="text-xl font-semibold {{ $summary['rejected']['count'] ? 'text-red-600' : 'text-gray-800' }}">{{ $money($summary['rejected']['value']) }}</p>
                     <p class="text-xs text-gray-400">{{ trans_choice(':count freebie|:count freebies', $summary['rejected']['count'], ['count' => $summary['rejected']['count']]) }}</p>
                 </div>
+                @endif
+                @if ($showWhatsapp)
                 <div class="bg-white shadow rounded-lg p-4">
                     <p class="text-xs text-gray-500">{{ __('WhatsApp group rewards') }}</p>
                     <p class="text-xl font-semibold text-gray-800">{{ $money($whatsapp['rewards']) }}</p>
                     <p class="text-xs text-gray-400">{{ trans_choice(':count WhatsApp order|:count WhatsApp orders', $whatsapp['count'], ['count' => $whatsapp['count']]) }} · {{ __(':amount sales', ['amount' => $money($whatsapp['sales'])]) }}</p>
                 </div>
+                @endif
             </div>
+
+            @if ($showFreebies)
 
             @if ($summary['count'] > 0)
                 <div class="grid md:grid-cols-3 gap-4">
@@ -138,6 +155,7 @@
                     </tbody>
                 </table>
             </div>
+            @endif
         </div>
     </div>
 </x-app-layout>

@@ -355,7 +355,9 @@
                         @if ($publishedPages['faq'])
                         <a href="{{ route('faq') }}" class="block hover:text-brand-yellow transition">{{ __('FAQ') }}</a>
                         @endif
-                        <a href="{{ route('reviews.index') }}" class="block hover:text-brand-yellow transition">{{ __('Reviews') }}</a>
+                        @module('reviews')
+                            <a href="{{ route('reviews.index') }}" class="block hover:text-brand-yellow transition">{{ __('Reviews') }}</a>
+                        @endmodule
                     </nav>
                 </div>
 

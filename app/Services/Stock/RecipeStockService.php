@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\StockItem;
 use App\Models\User;
+use App\Services\Modules\ModuleService;
 use Illuminate\Support\Collection;
 
 /**
@@ -48,6 +49,12 @@ class RecipeStockService
      */
     private function apply(Order $order, int $actorId, callable $action): void
     {
+        // With Recipes and stock switched off, orders never touch stock
+        // (and so never send low-stock alerts) — ModuleService.
+        if (! app(ModuleService::class)->enabled(ModuleService::STOCK)) {
+            return;
+        }
+
         $consumption = $this->resolveConsumption($order);
 
         if ($consumption->isEmpty()) {

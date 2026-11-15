@@ -34,6 +34,7 @@ use App\Http\Controllers\MarketListController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\MenuItemManagementController;
 use App\Http\Controllers\MenuItemScheduleController;
+use App\Http\Controllers\ModuleController;
 use App\Http\Controllers\NewsletterController;
 use App\Http\Controllers\OptionGroupManagementController;
 use App\Http\Controllers\OrderActionController;
@@ -134,9 +135,9 @@ Route::middleware('track.visit')->group(function () {
     Route::post('/track/find', [TrackingController::class, 'find'])->middleware('throttle:10,1')->name('tracking.find');
     Route::get('/track/{order:track_token}', [TrackingController::class, 'show'])->name('tracking.show');
     Route::get('/track/{order:track_token}/data', [TrackingController::class, 'data'])->name('tracking.data');
-    Route::post('/track/{order:track_token}/review', [TrackingController::class, 'storeReview'])->name('tracking.review.store');
+    Route::post('/track/{order:track_token}/review', [TrackingController::class, 'storeReview'])->middleware('module:reviews')->name('tracking.review.store');
 
-    Route::get('/reviews', [ReviewsController::class, 'index'])->name('reviews.index');
+    Route::get('/reviews', [ReviewsController::class, 'index'])->middleware('module:reviews')->name('reviews.index');
 
     Route::get('/terms-and-conditions', [PolicyController::class, 'terms'])->name('policy.terms');
     Route::get('/refund-policy', [PolicyController::class, 'refunds'])->name('policy.refunds');
@@ -216,45 +217,45 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::post('/dashboard/orders/{order}/delivery-fee-paid-by', [OrderActionController::class, 'changeDeliveryFeePayer'])->name('orders.delivery_fee_paid_by');
     Route::post('/dashboard/orders/{order}/transfer-branch', [OrderActionController::class, 'transferBranch'])->name('orders.transfer_branch');
     Route::post('/dashboard/orders/{order}/delivery-fee', [OrderActionController::class, 'adjustDeliveryFee'])->name('orders.adjust_delivery_fee');
-    Route::post('/dashboard/orders/{order}/refunds', [RefundController::class, 'store'])->name('orders.refunds.store');
+    Route::post('/dashboard/orders/{order}/refunds', [RefundController::class, 'store'])->middleware('module:refunds')->name('orders.refunds.store');
 
     Route::post('/push/subscribe', [PushSubscriptionController::class, 'store'])->name('push.subscribe');
     Route::delete('/push/unsubscribe', [PushSubscriptionController::class, 'destroy'])->name('push.unsubscribe');
 
-    Route::get('/dashboard/refunds', [RefundController::class, 'index'])->name('dashboard.refunds.index');
-    Route::post('/dashboard/refunds/{refund}/approve', [RefundController::class, 'approve'])->name('dashboard.refunds.approve');
-    Route::post('/dashboard/refunds/{refund}/deny', [RefundController::class, 'deny'])->name('dashboard.refunds.deny');
-    Route::post('/dashboard/refunds/{refund}/complete', [RefundController::class, 'complete'])->name('dashboard.refunds.complete');
+    Route::get('/dashboard/refunds', [RefundController::class, 'index'])->middleware('module:refunds')->name('dashboard.refunds.index');
+    Route::post('/dashboard/refunds/{refund}/approve', [RefundController::class, 'approve'])->middleware('module:refunds')->name('dashboard.refunds.approve');
+    Route::post('/dashboard/refunds/{refund}/deny', [RefundController::class, 'deny'])->middleware('module:refunds')->name('dashboard.refunds.deny');
+    Route::post('/dashboard/refunds/{refund}/complete', [RefundController::class, 'complete'])->middleware('module:refunds')->name('dashboard.refunds.complete');
 
     // store()/photo() are NOT here — a rider files/views their own
     // order-specific report too, so those two live in the shared
     // auth:web,rider group below instead (next to orders.advance/arrive).
-    Route::get('/dashboard/damage-reports', [DamageReportController::class, 'index'])->name('dashboard.damage-reports.index');
-    Route::post('/dashboard/damage-reports/{damageReport}/approve', [DamageReportController::class, 'approve'])->name('dashboard.damage-reports.approve');
-    Route::post('/dashboard/damage-reports/{damageReport}/deny', [DamageReportController::class, 'deny'])->name('dashboard.damage-reports.deny');
+    Route::get('/dashboard/damage-reports', [DamageReportController::class, 'index'])->middleware('module:refunds')->name('dashboard.damage-reports.index');
+    Route::post('/dashboard/damage-reports/{damageReport}/approve', [DamageReportController::class, 'approve'])->middleware('module:refunds')->name('dashboard.damage-reports.approve');
+    Route::post('/dashboard/damage-reports/{damageReport}/deny', [DamageReportController::class, 'deny'])->middleware('module:refunds')->name('dashboard.damage-reports.deny');
 
-    Route::get('/dashboard/freebies', [FreebieController::class, 'index'])->name('dashboard.freebies.index');
-    Route::post('/dashboard/freebies/{freebie}/approve', [FreebieController::class, 'approve'])->whereNumber('freebie')->name('dashboard.freebies.approve');
-    Route::post('/dashboard/freebies/{freebie}/reject', [FreebieController::class, 'reject'])->whereNumber('freebie')->name('dashboard.freebies.reject');
+    Route::get('/dashboard/freebies', [FreebieController::class, 'index'])->middleware('module:freebies,whatsapp_reward')->name('dashboard.freebies.index');
+    Route::post('/dashboard/freebies/{freebie}/approve', [FreebieController::class, 'approve'])->whereNumber('freebie')->middleware('module:freebies')->name('dashboard.freebies.approve');
+    Route::post('/dashboard/freebies/{freebie}/reject', [FreebieController::class, 'reject'])->whereNumber('freebie')->middleware('module:freebies')->name('dashboard.freebies.reject');
 
-    Route::get('/dashboard/market-list', [MarketListController::class, 'index'])->name('dashboard.market-lists.index');
-    Route::get('/dashboard/market-list/kinds', [ExpenseKindController::class, 'index'])->name('dashboard.market-lists.kinds.index');
-    Route::post('/dashboard/market-list/kinds', [ExpenseKindController::class, 'store'])->name('dashboard.market-lists.kinds.store');
-    Route::put('/dashboard/market-list/kinds/{kind}', [ExpenseKindController::class, 'update'])->whereNumber('kind')->name('dashboard.market-lists.kinds.update');
-    Route::post('/dashboard/market-list/kinds/{kind}/toggle', [ExpenseKindController::class, 'toggle'])->whereNumber('kind')->name('dashboard.market-lists.kinds.toggle');
-    Route::post('/dashboard/market-list/kinds/{kind}/move', [ExpenseKindController::class, 'move'])->whereNumber('kind')->name('dashboard.market-lists.kinds.move');
-    Route::post('/dashboard/market-list/kinds/{kind}/move-items', [ExpenseKindController::class, 'moveItems'])->whereNumber('kind')->name('dashboard.market-lists.kinds.move-items');
-    Route::post('/dashboard/market-list', [MarketListController::class, 'store'])->name('dashboard.market-lists.store');
-    Route::get('/dashboard/market-list/{marketList}/edit', [MarketListController::class, 'edit'])->name('dashboard.market-lists.edit');
-    Route::put('/dashboard/market-list/{marketList}', [MarketListController::class, 'update'])->name('dashboard.market-lists.update');
-    Route::delete('/dashboard/market-list/{marketList}', [MarketListController::class, 'destroy'])->name('dashboard.market-lists.destroy');
-    Route::post('/dashboard/market-list/{marketList}/approve', [MarketListController::class, 'approve'])->name('dashboard.market-lists.approve');
-    Route::post('/dashboard/market-list/{marketList}/send-back', [MarketListController::class, 'sendBack'])->name('dashboard.market-lists.send-back');
-    Route::get('/dashboard/market-list/{marketList}/receipt', [MarketListController::class, 'receipt'])->name('dashboard.market-lists.receipt');
+    Route::get('/dashboard/market-list', [MarketListController::class, 'index'])->middleware('module:market_list')->name('dashboard.market-lists.index');
+    Route::get('/dashboard/market-list/kinds', [ExpenseKindController::class, 'index'])->middleware('module:market_list')->name('dashboard.market-lists.kinds.index');
+    Route::post('/dashboard/market-list/kinds', [ExpenseKindController::class, 'store'])->middleware('module:market_list')->name('dashboard.market-lists.kinds.store');
+    Route::put('/dashboard/market-list/kinds/{kind}', [ExpenseKindController::class, 'update'])->whereNumber('kind')->middleware('module:market_list')->name('dashboard.market-lists.kinds.update');
+    Route::post('/dashboard/market-list/kinds/{kind}/toggle', [ExpenseKindController::class, 'toggle'])->whereNumber('kind')->middleware('module:market_list')->name('dashboard.market-lists.kinds.toggle');
+    Route::post('/dashboard/market-list/kinds/{kind}/move', [ExpenseKindController::class, 'move'])->whereNumber('kind')->middleware('module:market_list')->name('dashboard.market-lists.kinds.move');
+    Route::post('/dashboard/market-list/kinds/{kind}/move-items', [ExpenseKindController::class, 'moveItems'])->whereNumber('kind')->middleware('module:market_list')->name('dashboard.market-lists.kinds.move-items');
+    Route::post('/dashboard/market-list', [MarketListController::class, 'store'])->middleware('module:market_list')->name('dashboard.market-lists.store');
+    Route::get('/dashboard/market-list/{marketList}/edit', [MarketListController::class, 'edit'])->middleware('module:market_list')->name('dashboard.market-lists.edit');
+    Route::put('/dashboard/market-list/{marketList}', [MarketListController::class, 'update'])->middleware('module:market_list')->name('dashboard.market-lists.update');
+    Route::delete('/dashboard/market-list/{marketList}', [MarketListController::class, 'destroy'])->middleware('module:market_list')->name('dashboard.market-lists.destroy');
+    Route::post('/dashboard/market-list/{marketList}/approve', [MarketListController::class, 'approve'])->middleware('module:market_list')->name('dashboard.market-lists.approve');
+    Route::post('/dashboard/market-list/{marketList}/send-back', [MarketListController::class, 'sendBack'])->middleware('module:market_list')->name('dashboard.market-lists.send-back');
+    Route::get('/dashboard/market-list/{marketList}/receipt', [MarketListController::class, 'receipt'])->middleware('module:market_list')->name('dashboard.market-lists.receipt');
 
-    Route::get('/dashboard/reviews', [ReviewManagementController::class, 'index'])->name('dashboard.reviews.index');
-    Route::post('/dashboard/reviews/{review}/approve', [ReviewManagementController::class, 'approve'])->name('dashboard.reviews.approve');
-    Route::post('/dashboard/reviews/{review}/reject', [ReviewManagementController::class, 'reject'])->name('dashboard.reviews.reject');
+    Route::get('/dashboard/reviews', [ReviewManagementController::class, 'index'])->middleware('module:reviews')->name('dashboard.reviews.index');
+    Route::post('/dashboard/reviews/{review}/approve', [ReviewManagementController::class, 'approve'])->middleware('module:reviews')->name('dashboard.reviews.approve');
+    Route::post('/dashboard/reviews/{review}/reject', [ReviewManagementController::class, 'reject'])->middleware('module:reviews')->name('dashboard.reviews.reject');
 
     Route::get('/dashboard/riders', [RiderAvailabilityController::class, 'index'])->name('dashboard.riders');
 
@@ -285,14 +286,14 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::get('/dashboard/working-hours', [WorkingHoursController::class, 'index'])->name('dashboard.working-hours.index');
     Route::put('/dashboard/working-hours', [WorkingHoursController::class, 'update'])->name('dashboard.working-hours.update');
 
-    Route::get('/dashboard/stock', [StockItemController::class, 'index'])->name('dashboard.stock.index');
-    Route::get('/dashboard/stock/create', [StockItemController::class, 'create'])->name('dashboard.stock.create');
-    Route::post('/dashboard/stock', [StockItemController::class, 'store'])->name('dashboard.stock.store');
-    Route::get('/dashboard/stock/{stockItem}/edit', [StockItemController::class, 'edit'])->name('dashboard.stock.edit');
-    Route::put('/dashboard/stock/{stockItem}', [StockItemController::class, 'update'])->name('dashboard.stock.update');
-    Route::post('/dashboard/stock/{stockItem}/restock', [StockItemController::class, 'restock'])->name('dashboard.stock.restock');
+    Route::get('/dashboard/stock', [StockItemController::class, 'index'])->middleware('module:stock')->name('dashboard.stock.index');
+    Route::get('/dashboard/stock/create', [StockItemController::class, 'create'])->middleware('module:stock')->name('dashboard.stock.create');
+    Route::post('/dashboard/stock', [StockItemController::class, 'store'])->middleware('module:stock')->name('dashboard.stock.store');
+    Route::get('/dashboard/stock/{stockItem}/edit', [StockItemController::class, 'edit'])->middleware('module:stock')->name('dashboard.stock.edit');
+    Route::put('/dashboard/stock/{stockItem}', [StockItemController::class, 'update'])->middleware('module:stock')->name('dashboard.stock.update');
+    Route::post('/dashboard/stock/{stockItem}/restock', [StockItemController::class, 'restock'])->middleware('module:stock')->name('dashboard.stock.restock');
 
-    Route::get('/dashboard/stock/{stockItem}/history', [StockMovementController::class, 'history'])->name('dashboard.stock.history');
+    Route::get('/dashboard/stock/{stockItem}/history', [StockMovementController::class, 'history'])->middleware('module:stock')->name('dashboard.stock.history');
 
     // Website content (content.manage: owner, general manager) — the
     // FAQ routes come first so /website/faq isn't read as a page slug.
@@ -303,6 +304,9 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::delete('/dashboard/website/faq/{faqItem}', [FaqItemManagementController::class, 'destroy'])->name('dashboard.faq-items.destroy');
     Route::get('/dashboard/website/{page}', [SitePageManagementController::class, 'edit'])->name('dashboard.site-pages.edit');
     Route::put('/dashboard/website/{page}', [SitePageManagementController::class, 'update'])->name('dashboard.site-pages.update');
+
+    Route::get('/dashboard/modules', [ModuleController::class, 'edit'])->name('dashboard.modules.edit');
+    Route::put('/dashboard/modules', [ModuleController::class, 'update'])->name('dashboard.modules.update');
 
     Route::get('/dashboard/business-profile', [BusinessProfileController::class, 'edit'])->name('dashboard.business-profile.edit');
     Route::put('/dashboard/business-profile', [BusinessProfileController::class, 'update'])->name('dashboard.business-profile.update');
@@ -345,10 +349,10 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::get('/dashboard/reports/weekly', [WeeklyReportController::class, 'index'])->name('dashboard.reports.weekly.index');
     Route::get('/dashboard/reports/weekly/download', [WeeklyReportController::class, 'download'])->name('dashboard.reports.weekly.download');
 
-    Route::get('/dashboard/reports/expenses', [ExpensesReportController::class, 'index'])->name('dashboard.reports.expenses.index');
-    Route::get('/dashboard/reports/expenses/download/{format}', [ExpensesReportController::class, 'download'])->name('dashboard.reports.expenses.download');
-    Route::get('/dashboard/reports/profit', [ProfitReportController::class, 'index'])->name('dashboard.reports.profit.index');
-    Route::get('/dashboard/reports/profit/download/{format}', [ProfitReportController::class, 'download'])->name('dashboard.reports.profit.download');
+    Route::get('/dashboard/reports/expenses', [ExpensesReportController::class, 'index'])->middleware('module:market_list')->name('dashboard.reports.expenses.index');
+    Route::get('/dashboard/reports/expenses/download/{format}', [ExpensesReportController::class, 'download'])->middleware('module:market_list')->name('dashboard.reports.expenses.download');
+    Route::get('/dashboard/reports/profit', [ProfitReportController::class, 'index'])->middleware('module:market_list')->name('dashboard.reports.profit.index');
+    Route::get('/dashboard/reports/profit/download/{format}', [ProfitReportController::class, 'download'])->middleware('module:market_list')->name('dashboard.reports.profit.download');
 
     Route::get('/dashboard/reports/delivery-fees', [DeliveryFeesReportController::class, 'index'])->name('dashboard.reports.delivery-fees.index');
     Route::get('/dashboard/reports/delivery-fees/download', [DeliveryFeesReportController::class, 'download'])->name('dashboard.reports.delivery-fees.download');
@@ -382,8 +386,8 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::post('/dashboard/menu-items/{menuItem}/components', [MenuItemManagementController::class, 'storeComponent'])->name('dashboard.menu-items.components.store');
     Route::delete('/dashboard/menu-items/{menuItem}/components/{component}', [MenuItemManagementController::class, 'destroyComponent'])->name('dashboard.menu-items.components.destroy');
 
-    Route::post('/dashboard/menu-items/{menuItem}/recipe', [RecipeManagementController::class, 'storeForMenuItem'])->name('dashboard.menu-items.recipe.store');
-    Route::delete('/dashboard/recipe/{recipeItem}', [RecipeManagementController::class, 'destroy'])->name('dashboard.recipe.destroy');
+    Route::post('/dashboard/menu-items/{menuItem}/recipe', [RecipeManagementController::class, 'storeForMenuItem'])->middleware('module:stock')->name('dashboard.menu-items.recipe.store');
+    Route::delete('/dashboard/recipe/{recipeItem}', [RecipeManagementController::class, 'destroy'])->middleware('module:stock')->name('dashboard.recipe.destroy');
 
     Route::get('/dashboard/menu-items/timetable', [MenuItemScheduleController::class, 'index'])->name('dashboard.menu-items.timetable');
     Route::post('/dashboard/menu-items/{menuItem}/schedule', [MenuItemScheduleController::class, 'update'])->name('dashboard.menu-items.schedule.update');
@@ -397,7 +401,7 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::post('/dashboard/option-groups/{optionGroup}/options', [OptionGroupManagementController::class, 'storeOption'])->name('dashboard.option-groups.options.store');
     Route::put('/dashboard/option-groups/{optionGroup}/options/{option}', [OptionGroupManagementController::class, 'updateOption'])->name('dashboard.option-groups.options.update');
     Route::delete('/dashboard/option-groups/{optionGroup}/options/{option}', [OptionGroupManagementController::class, 'destroyOption'])->name('dashboard.option-groups.options.destroy');
-    Route::post('/dashboard/options/{option}/recipe', [RecipeManagementController::class, 'storeForOption'])->name('dashboard.options.recipe.store');
+    Route::post('/dashboard/options/{option}/recipe', [RecipeManagementController::class, 'storeForOption'])->middleware('module:stock')->name('dashboard.options.recipe.store');
 });
 
 // Same `users` table as staff, but its own 'rider' guard (config/auth.php)
@@ -419,8 +423,8 @@ Route::middleware(['auth:rider', 'verified', 'branch', 'password.change_required
     Route::get('/history', [RiderDeliveryHistoryController::class, 'index'])->name('history');
     Route::get('/profile', [RiderProfileController::class, 'edit'])->name('profile.edit');
     Route::post('/logout', [RiderAuthenticatedSessionController::class, 'destroy'])->name('logout');
-    Route::post('/orders/{order}/refund', [RiderRefundController::class, 'store'])->whereNumber('order')->middleware('throttle:10,1')->name('refunds.store');
-    Route::post('/refunds/{refund}/complete', [RiderRefundController::class, 'complete'])->whereNumber('refund')->name('refunds.complete');
+    Route::post('/orders/{order}/refund', [RiderRefundController::class, 'store'])->whereNumber('order')->middleware('throttle:10,1')->middleware('module:refunds')->name('refunds.store');
+    Route::post('/refunds/{refund}/complete', [RiderRefundController::class, 'complete'])->whereNumber('refund')->middleware('module:refunds')->name('refunds.complete');
 });
 
 // auth:web,rider, not the bare 'auth' (default 'web' only) — /branches/select
@@ -454,8 +458,8 @@ Route::middleware(['auth:web,rider', 'verified', 'branch', 'password.change_requ
     // branches on whether one was sent). photo() is here too since a
     // rider must be able to see their own submission back
     // (DamageReportPolicy::viewPhoto()), not just reviewers.
-    Route::post('/dashboard/damage-reports', [DamageReportController::class, 'store'])->name('dashboard.damage-reports.store');
-    Route::get('/dashboard/damage-reports/{damageReport}/photo', [DamageReportController::class, 'photo'])->name('dashboard.damage-reports.photo');
+    Route::post('/dashboard/damage-reports', [DamageReportController::class, 'store'])->middleware('module:refunds')->name('dashboard.damage-reports.store');
+    Route::get('/dashboard/damage-reports/{damageReport}/photo', [DamageReportController::class, 'photo'])->middleware('module:refunds')->name('dashboard.damage-reports.photo');
 });
 
 require __DIR__.'/auth.php';

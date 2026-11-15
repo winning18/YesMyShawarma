@@ -38,7 +38,7 @@
             are transient attributes set by BranchesController/
             ContactController, same pattern as is_open_now above.
         --}}
-        @if (($branch->reviews_count ?? 0) > 0)
+        @if (($branch->reviews_count ?? 0) > 0 && app(\App\Services\Modules\ModuleService::class)->enabled('reviews'))
             <div class="flex items-center gap-1 text-sm mb-3">
                 <span class="text-brand-yellow-dark">★</span>
                 <span class="font-semibold">{{ number_format($branch->reviews_avg_rating, 1) }}</span>

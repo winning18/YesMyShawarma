@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\DeliveryArea;
 use App\Models\Order;
 use App\Services\Branches\BranchContext;
+use App\Services\Modules\ModuleService;
 use App\Services\Orders\RefundService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
@@ -105,7 +106,7 @@ class OrderHistoryController extends Controller
             'search' => ['nullable', 'string', 'max:255'],
             'status' => ['nullable', 'string', Rule::in(Order::STATUSES)],
             'fulfilment_type' => ['nullable', 'in:pickup,delivery'],
-            'payment_method' => ['nullable', 'in:cash,momo,paystack,bolt_food'],
+            'payment_method' => ['nullable', 'in:cash,momo,paystack'.(app(ModuleService::class)->enabled(ModuleService::BOLT_FOOD) ? ',bolt_food' : '')],
             'location' => ['nullable', 'string', 'max:255'],
             'range' => ['nullable', Rule::in(self::RANGE_PRESETS)],
             'from' => ['nullable', 'date'],

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Services\Branches\BranchContext;
+use App\Services\Modules\ModuleService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -61,9 +62,16 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended($stockManagerOnly
-            ? route('dashboard.stock.index', absolute: false)
-            : route('dashboard', absolute: false));
+        // A stock manager also records the market list; with Stock
+        // switched off, that's where they start (ModuleService).
+        $modules = app(ModuleService::class);
+        $stockManagerHome = match (true) {
+            $modules->enabled(ModuleService::STOCK) => route('dashboard.stock.index', absolute: false),
+            $modules->enabled(ModuleService::MARKET_LIST) => route('dashboard.market-lists.index', absolute: false),
+            default => route('dashboard', absolute: false),
+        };
+
+        return redirect()->intended($stockManagerOnly ? $stockManagerHome : route('dashboard', absolute: false));
     }
 
     /**

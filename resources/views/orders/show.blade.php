@@ -275,6 +275,7 @@
                     </div>
                 @endif
 
+                @module('refunds')
                 @can('requestRefund', $order)
                     <div class="bg-white shadow rounded-lg p-4">
                         <h3 class="font-semibold text-gray-800 mb-3">{{ __('Refunds') }}</h3>
@@ -339,6 +340,7 @@
                         @endcan
                     </div>
                 @endcan
+                @endmodule
             </div>
             </div>
         </div>

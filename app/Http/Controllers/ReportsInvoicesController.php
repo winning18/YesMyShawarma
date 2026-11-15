@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Modules\ModuleService;
 use App\Services\Reports\ReportBranchFilter;
 use App\Services\Reports\SalesStatementExporter;
 use App\Services\Reports\SalesStatementService;
@@ -146,6 +147,9 @@ class ReportsInvoicesController extends Controller
     {
         $validated = $request->validate(['type' => ['nullable', Rule::in(SalesStatementService::TYPES)]]);
 
-        return $validated['type'] ?? SalesStatementService::TYPE_SALES;
+        $type = $validated['type'] ?? SalesStatementService::TYPE_SALES;
+
+        // With Bolt Food switched off, only the sales statement is offered (ModuleService).
+        return $type !== SalesStatementService::TYPE_SALES && ! app(ModuleService::class)->enabled(ModuleService::BOLT_FOOD) ? SalesStatementService::TYPE_SALES : $type;
     }
 }

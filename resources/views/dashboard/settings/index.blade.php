@@ -39,6 +39,7 @@
                 <x-input-error class="mt-2" :messages="$errors->get('order_reference_prefix_web')" />
             </div>
 
+            @module('bolt_food')
             <div>
                 <x-input-label for="order_reference_prefix_bolt_food" :value="__('Bolt Food orders prefix')" required />
                 <x-text-input
@@ -49,7 +50,9 @@
                 <p class="text-xs text-gray-400 mt-1">{{ __('For orders taken at the POS with payment method set to Bolt Food, so they\'re distinguishable from real in-house sales at a glance.') }}</p>
                 <x-input-error class="mt-2" :messages="$errors->get('order_reference_prefix_bolt_food')" />
             </div>
+            @endmodule
 
+            @module('whatsapp_reward')
             <div>
                 <x-input-label for="order_reference_prefix_whatsapp" :value="__('WhatsApp group orders prefix')" required />
                 <x-text-input
@@ -59,7 +62,9 @@
                 />
                 <x-input-error class="mt-2" :messages="$errors->get('order_reference_prefix_whatsapp')" />
             </div>
+            @endmodule
 
+            @module('freebies')
             <div>
                 <x-input-label for="order_reference_prefix_freebie" :value="__('Freebies prefix')" required />
                 <x-text-input
@@ -69,11 +74,13 @@
                 />
                 <x-input-error class="mt-2" :messages="$errors->get('order_reference_prefix_freebie')" />
             </div>
+            @endmodule
 
             <p class="text-xs text-gray-400">
                 {{ __('Letters, numbers and dashes only. Only applies to new orders. Existing references are never changed.') }}
             </p>
 
+            @module('whatsapp_reward')
             <div class="border-t border-gray-100 pt-6">
                 <h3 class="font-semibold text-gray-800">{{ __('WhatsApp group reward') }}</h3>
                 <p class="text-sm text-gray-500 mb-3">{{ __('Taken off the food (never drinks) of every WhatsApp group order at the POS, pickup only. On a promotion day, an order that earns the promotion gets that instead.') }}</p>
@@ -81,6 +88,7 @@
                 <x-text-input id="whatsapp_reward" name="whatsapp_reward" type="number" min="0" step="0.01" class="mt-1 block w-40" :value="old('whatsapp_reward', $whatsappReward)" required />
                 <x-input-error class="mt-2" :messages="$errors->get('whatsapp_reward')" />
             </div>
+            @endmodule
 
             <div class="border-t border-gray-100 pt-6">
                 <h3 class="font-semibold text-gray-800">{{ __('Paystack') }}</h3>

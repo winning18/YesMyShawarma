@@ -148,10 +148,12 @@
                         <p class="text-xs text-gray-500">{{ __('Discounts given') }}</p>
                         <p class="text-xl font-semibold text-gray-800">GH₵{{ number_format($financial['discount_total'] / 100, 2) }}</p>
                     </div>
+                    @if (app(\App\Services\Modules\ModuleService::class)->enabled('refunds') || $financial['refund_total'] > 0)
                     <div class="bg-white shadow rounded-lg p-4">
                         <p class="text-xs text-gray-500">{{ __('Refunds') }}</p>
                         <p class="text-xl font-semibold text-gray-800">GH₵{{ number_format($financial['refund_total'] / 100, 2) }}</p>
                     </div>
+                    @endif
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">

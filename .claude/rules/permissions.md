@@ -382,6 +382,9 @@ audited on its own.
 icon, brand colours and main branch (`BusinessProfile`). A manager or GM can't rename the business
 or swap its logo; the ordinary Settings page (`settings.manage`) stays theirs.
 
+The Modules page (Settings → Modules, `ModuleController`) also uses `business.manage`: only the
+owner switches modules on or off (owner decision 2026-11-15).
+
 `content.manage` (owner and general manager, owner decision 2026-11-15) — Settings → Website
 content: page text, search titles and descriptions, the FAQ and the About page (schema.md's
 "Website content"). Page text changes more often than the business's identity, so a GM can do

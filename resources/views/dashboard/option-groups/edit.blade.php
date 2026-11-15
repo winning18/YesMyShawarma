@@ -48,10 +48,12 @@
                         </button>
                     </form>
                     <div class="flex items-center gap-3 mt-2">
+                        @module('stock')
                         <button type="button" @click="recipeOpen = ! recipeOpen" class="text-xs text-indigo-600 hover:underline">
                             <span x-show="!recipeOpen">{{ __('Recipe (stock used)') }}</span>
                             <span x-show="recipeOpen" x-cloak>{{ __('Hide recipe') }}</span>
                         </button>
+                        @endmodule
                         <form
                             method="POST" action="{{ route('dashboard.option-groups.options.destroy', [$optionGroup, $option]) }}"
                             onsubmit="return confirm('{{ __('Remove :name?', ['name' => $option->name]) }}')"
@@ -62,6 +64,7 @@
                         </form>
                     </div>
 
+                    @module('stock')
                     <div x-show="recipeOpen" x-cloak class="mt-2 pl-3 border-l-2 border-gray-100 space-y-2">
                         @if (is_null($recipeBranchId))
                             <p class="text-xs text-gray-500">{{ __('Select a branch to manage this option\'s recipe.') }}</p>
@@ -101,6 +104,7 @@
                             @endif
                         @endif
                     </div>
+                    @endmodule
                 </div>
             @empty
                 <p class="text-sm text-gray-500">{{ __('No options in this group yet.') }}</p>

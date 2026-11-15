@@ -71,6 +71,7 @@
                     @endif
                     <p class="text-xs text-gray-400 mt-2">{{ ($order->delivered_at ?? $order->updated_at)->timezone('Africa/Accra')->format('d M Y, H:i') }}</p>
 
+                    @module('refunds')
                     @php $card = $order->refund_card; $refund = $card['refund']; @endphp
                     <x-input-error class="mt-2" :messages="$errors->get('refund_'.$order->id)" />
                     @if ($refund)
@@ -112,6 +113,7 @@
                             </form>
                         </details>
                     @endif
+                    @endmodule
                 </div>
             @empty
                 <p class="text-sm text-gray-500">{{ __("You haven't completed any deliveries yet.") }}</p>

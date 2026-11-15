@@ -2,6 +2,7 @@
 
 namespace App\Services\Reports;
 
+use App\Services\Modules\ModuleService;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -99,14 +100,19 @@ class ProfitReportExporter
     public function grid(array $report): array
     {
         $money = fn (int $pesewas) => ['money' => $pesewas];
-        $rows = [['Period', 'Sales (ghs)', 'Refunds (ghs)', 'Purchases & expenses (ghs)', 'Profit (ghs)', 'Bolt Food sales, before commission (ghs)', 'Profit incl. Bolt Food (ghs)']];
+        // The Bolt Food columns only while Bolt Food is switched on (ModuleService).
+        $bolt = app(ModuleService::class)->enabled(ModuleService::BOLT_FOOD);
+        $row = fn (string $label, array $p) => [
+            $label, $money($p['sales']), $money($p['refunds']), $money($p['purchases']), $money($p['profit']),
+            ...($bolt ? [$money($p['bolt_food']), $money($p['profit_with_bolt'])] : []),
+        ];
+        $rows = [['Period', 'Sales (ghs)', 'Refunds (ghs)', 'Purchases & expenses (ghs)', 'Profit (ghs)', ...($bolt ? ['Bolt Food sales, before commission (ghs)', 'Profit incl. Bolt Food (ghs)'] : [])]];
 
         foreach ($report['periods'] as $period) {
-            $rows[] = [$period['label'], $money($period['sales']), $money($period['refunds']), $money($period['purchases']), $money($period['profit']), $money($period['bolt_food']), $money($period['profit_with_bolt'])];
+            $rows[] = $row($period['label'], $period);
         }
 
-        $t = $report['totals'];
-        $rows[] = ['TOTAL', $money($t['sales']), $money($t['refunds']), $money($t['purchases']), $money($t['profit']), $money($t['bolt_food']), $money($t['profit_with_bolt'])];
+        $rows[] = $row('TOTAL', $report['totals']);
         $rows[] = [];
         $rows[] = ['Kind', 'Purchases', 'Quantity', 'Total (ghs)'];
 

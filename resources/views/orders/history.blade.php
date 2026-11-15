@@ -76,7 +76,9 @@
                                 <option value="cash" @selected(($filters['payment_method'] ?? null) === 'cash')>{{ __('Cash') }}</option>
                                 <option value="momo" @selected(($filters['payment_method'] ?? null) === 'momo')>{{ __('Momo') }}</option>
                                 <option value="paystack" @selected(($filters['payment_method'] ?? null) === 'paystack')>{{ __('Paystack') }}</option>
-                                <option value="bolt_food" @selected(($filters['payment_method'] ?? null) === 'bolt_food')>{{ __('Bolt Food') }}</option>
+                                @module('bolt_food')
+                                    <option value="bolt_food" @selected(($filters['payment_method'] ?? null) === 'bolt_food')>{{ __('Bolt Food') }}</option>
+                                @endmodule
                             </select>
                         </div>
                     </div>

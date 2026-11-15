@@ -624,6 +624,12 @@ Current keys:
   orders and never overwrites an existing setting. Order reference prefixes default to neutral
   POS / WEB / BOLT / WA / FREE (`SettingsService::DEFAULT_PREFIXES`); Yes My Shawarma's YMGS-*
   are stored settings.
+- **Module switches** (Express POS step 3, `ModuleService`, owner-only Modules page):
+  `module_<key>` = `'1'` / `'0'` for website, paystack, delivery, bolt_food, promotions,
+  whatsapp_reward, freebies, market_list, stock, sms, refunds, reviews. No row = off on a real
+  install (`config/modules.php`); Yes My Shawarma's are all stored on by
+  `2026_11_15_130000_switch_on_every_module` (installs with orders only). Data belonging to a
+  switched-off module is kept, never deleted.
 - **Location and food** (Business profile, step 2c): `business_city`, `business_region`,
   `business_cuisines` (comma list) — Google's Restaurant data, the `:city` placeholder, the
   menu-item search snippet and the weekly sales report. Empty on a new install.

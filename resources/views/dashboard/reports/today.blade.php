@@ -167,10 +167,12 @@
                     href="{{ route('dashboard.reports.today.index', [...$branchParam, ...$calendarDateParams, 'channel' => 'web']) }}"
                     class="px-4 py-2 text-sm font-semibold rounded-full {{ $channel === 'web' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}"
                 >{{ __('Web') }}</a>
+                @module('bolt_food')
                 <a
                     href="{{ route('dashboard.reports.today.index', [...$branchParam, ...$calendarDateParams, 'channel' => 'bolt_food']) }}"
                     class="px-4 py-2 text-sm font-semibold rounded-full {{ $channel === 'bolt_food' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}"
                 >{{ __('Bolt Food') }}</a>
+                @endmodule
             </div>
         @else
             {{--
@@ -237,10 +239,12 @@
                     href="{{ route('dashboard.reports.today.index', [...$shiftParams, 'channel' => 'web']) }}"
                     class="px-4 py-2 text-sm font-semibold rounded-full {{ $channel === 'web' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}"
                 >{{ __('Web') }}</a>
+                @module('bolt_food')
                 <a
                     href="{{ route('dashboard.reports.today.index', [...$shiftParams, 'channel' => 'bolt_food']) }}"
                     class="px-4 py-2 text-sm font-semibold rounded-full {{ $channel === 'bolt_food' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}"
                 >{{ __('Bolt Food') }}</a>
+                @endmodule
             </div>
         @endif
 

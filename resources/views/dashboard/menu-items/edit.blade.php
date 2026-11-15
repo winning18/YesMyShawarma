@@ -170,6 +170,7 @@
             @enderror
         </div>
 
+        @module('stock')
         <div class="bg-white shadow rounded-lg p-6 space-y-3">
             <div>
                 <h3 class="font-semibold text-gray-800">{{ __('Recipe (stock used)') }}</h3>
@@ -221,6 +222,7 @@
                 @endif
             @endif
         </div>
+        @endmodule
 
         <form
             method="POST" action="{{ route('dashboard.menu-items.destroy', $menuItem) }}"

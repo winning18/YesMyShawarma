@@ -13,6 +13,7 @@ use App\Services\Cart\PosCartService;
 use App\Services\Customers\CustomerService;
 use App\Services\Delivery\DeliveryFeeCalculator;
 use App\Services\Menu\MenuPricingService;
+use App\Services\Modules\ModuleService;
 use App\Services\Orders\Data\ComplimentaryData;
 use App\Services\Orders\Data\DeliveryAddressData;
 use App\Services\Orders\Data\PlaceOrderData;
@@ -215,6 +216,7 @@ class PosController extends Controller
         CustomerService $customers,
         OrderCreationService $orders,
         BranchContext $context,
+        ModuleService $modules,
     ): JsonResponse {
         Gate::authorize('orders.create');
 
@@ -245,10 +247,15 @@ class PosController extends Controller
                     }
                 },
             ],
-            'payment_method' => ['required', Rule::in(['cash', 'momo', 'bolt_food', Order::COMPLIMENTARY])],
+            'payment_method' => ['required', Rule::in(array_keys(array_filter([
+                'cash' => true,
+                'momo' => true,
+                Order::BOLT_FOOD => $modules->enabled(ModuleService::BOLT_FOOD),
+                Order::COMPLIMENTARY => $modules->enabled(ModuleService::FREEBIES),
+            ])))],
             // WhatsApp group: GH₵10 off the food, paid by cash or MoMo.
             'source' => [
-                'nullable', Rule::in([Order::SOURCE_WHATSAPP]),
+                'nullable', Rule::in($modules->enabled(ModuleService::WHATSAPP_REWARD) ? [Order::SOURCE_WHATSAPP] : []),
                 function (string $attribute, mixed $value, Closure $fail) use ($request): void {
                     if ($value === Order::SOURCE_WHATSAPP && ! in_array($request->input('payment_method'), ['cash', 'momo'], true)) {
                         $fail(__('WhatsApp group orders are paid by cash or MoMo.'));

@@ -160,11 +160,13 @@
                                         feature). Available at any point in
                                         the delivery, not just at the end.
                                     --}}
+                                    @module('refunds')
                                     <button
                                         type="button"
                                         class="px-4 py-2 border border-amber-300 text-amber-700 text-sm font-semibold rounded-md hover:bg-amber-50"
                                         @click="openDamageModal(order)"
                                     >{{ __('Report damage') }}</button>
+                                    @endmodule
                                 </div>
                             </div>
                         </div>
