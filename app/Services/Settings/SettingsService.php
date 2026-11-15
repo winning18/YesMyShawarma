@@ -44,6 +44,17 @@ class SettingsService
     public const HOME_MENU_SLIDERS = 'home_menu_sliders';
 
     /**
+     * Delivery fees, in pesewas (DeliveryFeeCalculator): per km from the
+     * branch, the smallest fee charged, and the smallest order that can be
+     * delivered. Unset = the calculator's starting values.
+     */
+    public const DELIVERY_RATE_PER_KM = 'delivery_rate_per_km';
+
+    public const DELIVERY_MINIMUM_FEE = 'delivery_minimum_fee';
+
+    public const DELIVERY_MINIMUM_ORDER = 'delivery_minimum_order';
+
+    /**
      * Date (Y-m-d, Africa/Accra) from which riders hand their cash delivery
      * fees in (owner, 2026-11-11). Deliveries before it were the rider's to
      * keep and are never shown as owed. See DeliveryFeeCollectionService.

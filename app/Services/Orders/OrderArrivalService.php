@@ -61,7 +61,7 @@ class OrderArrivalService
             if ($order->delivery_fee === 0) {
                 $newFee = $lat !== null && $lng !== null
                     ? $this->feeCalculator->calculate($order->branch, $lat, $lng)
-                    : DeliveryFeeCalculator::MINIMUM_DELIVERY_FEE_PESEWAS;
+                    : $this->feeCalculator->minimumFee();
 
                 $order->delivery_fee = $newFee;
                 $order->total = $order->subtotal - $order->discount_total + $newFee;

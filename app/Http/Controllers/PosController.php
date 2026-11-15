@@ -108,7 +108,7 @@ class PosController extends Controller
             'categories' => $categories,
             'deliveryAreas' => $deliveryAreas,
             'deliveryAvailable' => $deliveryAreas->isNotEmpty(),
-            'ratePerKmPesewas' => DeliveryFeeCalculator::RATE_PER_KM_PESEWAS,
+            'ratePerKmPesewas' => app(DeliveryFeeCalculator::class)->ratePerKm(),
             'cart' => $this->cartPayload($cart, $promotions),
             'whatsappReward' => (int) app(SettingsService::class)->get(SettingsService::WHATSAPP_REWARD_AMOUNT, '1000'),
             'freebieStaff' => $this->staffForFreebies(app(BranchContext::class)),

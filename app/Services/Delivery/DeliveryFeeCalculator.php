@@ -3,13 +3,14 @@
 namespace App\Services\Delivery;
 
 use App\Models\Branch;
+use App\Services\Settings\SettingsService;
 
 /**
  * Distance-based delivery pricing — replaces the old per-zone flat fee.
- * The rate and minimum are plain constants for now rather than admin-
- * configurable rows, since the business is still iterating on the model
- * itself (see conversation history: "we'll later make necessary changes
- * as the need arises"). Bump these here when the real numbers change.
+ * The rate per km, the minimum fee and the minimum order for delivery are
+ * each business's own (Settings → General → Delivery fees, Express POS);
+ * the constants below are the starting values a business has until it
+ * sets them. Yes My Shawarma's are stored settings.
  */
 class DeliveryFeeCalculator
 {
@@ -25,6 +26,31 @@ class DeliveryFeeCalculator
      */
     public const MINIMUM_DELIVERY_FEE_PESEWAS = 1000;
 
+    public function __construct(private readonly ?SettingsService $settings = null) {}
+
+    public function ratePerKm(): int
+    {
+        return $this->setting(SettingsService::DELIVERY_RATE_PER_KM, self::RATE_PER_KM_PESEWAS);
+    }
+
+    public function minimumFee(): int
+    {
+        return $this->setting(SettingsService::DELIVERY_MINIMUM_FEE, self::MINIMUM_DELIVERY_FEE_PESEWAS);
+    }
+
+    /** The smallest food subtotal a delivery order can have. */
+    public function minimumOrderTotal(): int
+    {
+        return $this->setting(SettingsService::DELIVERY_MINIMUM_ORDER, self::MINIMUM_ORDER_TOTAL_PESEWAS);
+    }
+
+    private function setting(string $key, int $default): int
+    {
+        $value = $this->settings?->get($key);
+
+        return $value === null || $value === '' ? $default : (int) $value;
+    }
+
     /**
      * Straight-line (haversine) distance from the branch to the given
      * point, in kilometres, times the flat per-km rate. This is
@@ -37,9 +63,9 @@ class DeliveryFeeCalculator
     {
         $distanceKm = $this->distanceKm($branch, $lat, $lng);
 
-        $fee = (int) round($distanceKm * self::RATE_PER_KM_PESEWAS / 100) * 100;
+        $fee = (int) round($distanceKm * $this->ratePerKm() / 100) * 100;
 
-        return max($fee, self::MINIMUM_DELIVERY_FEE_PESEWAS);
+        return max($fee, $this->minimumFee());
     }
 
     /**

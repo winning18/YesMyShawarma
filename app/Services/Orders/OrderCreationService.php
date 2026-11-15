@@ -369,8 +369,8 @@ class OrderCreationService
             throw OrderPlacementException::deliveryAddressRequired();
         }
 
-        if ($subtotal < DeliveryFeeCalculator::MINIMUM_ORDER_TOTAL_PESEWAS) {
-            throw OrderPlacementException::belowMinimumOrderTotal(DeliveryFeeCalculator::MINIMUM_ORDER_TOTAL_PESEWAS);
+        if ($subtotal < $this->feeCalculator->minimumOrderTotal()) {
+            throw OrderPlacementException::belowMinimumOrderTotal($this->feeCalculator->minimumOrderTotal());
         }
 
         // A label for the rider only — validated here too (not just in the

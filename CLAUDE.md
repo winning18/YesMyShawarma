@@ -222,9 +222,8 @@ business settings, built 2026-11-15 (2a business profile, 2b menu and branch rul
 content); step 3, module switches, built 2026-11-15 in three parts (3a the switches, the Modules
 page and seven modules; 3b promotions, customer SMS, Paystack, delivery and riders; 3c website);
 step 4, POS-only mode, built with 3c (no Website module: `/` opens the staff login, the customer
-site answers 404, error pages show no site links). Still to do from step 2/3: the home page strip
-editor (`home_menu_sliders`), and — awaiting the owner — moving the delivery fee rate per km
-(`DeliveryFeeCalculator::RATE_PER_KM_PESEWAS`, GH₵5) into a setting.
+site answers 404, error pages show no site links). Also built 2026-11-15: the home page strip
+editor (Website content), and delivery fees (per km, minimum fee, minimum order) as settings.
 <!-- Update this line as steps complete. It is the fastest signal of where the project is. -->
 
 ---

@@ -92,6 +92,22 @@
             </div>
             @endmodule
 
+            @module('delivery')
+            <div class="border-t border-gray-100 pt-6">
+                <h3 class="font-semibold text-gray-800">{{ __('Delivery fees') }}</h3>
+                <p class="text-sm text-gray-500 mb-3">{{ __('The fee is the straight-line distance from the branch times the rate per km, rounded to whole cedis and never below the minimum fee.') }}</p>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    @foreach (['delivery_rate_per_km' => __('Per km (GH₵)'), 'delivery_minimum_fee' => __('Minimum fee (GH₵)'), 'delivery_minimum_order' => __('Smallest order for delivery (GH₵)')] as $field => $label)
+                        <div>
+                            <x-input-label :for="$field" :value="$label" required />
+                            <x-text-input :id="$field" :name="$field" type="number" min="0" step="0.01" class="mt-1 block w-full" :value="old($field, $deliveryFees[$field])" required />
+                            <x-input-error class="mt-2" :messages="$errors->get($field)" />
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+            @endmodule
+
             <x-primary-button>{{ __('Save settings') }}</x-primary-button>
         </form>
     </div>

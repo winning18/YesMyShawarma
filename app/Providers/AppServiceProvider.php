@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\Branches\BranchContext;
 use App\Services\Cart\CartService;
 use App\Services\Content\SitePageService;
+use App\Services\Delivery\DeliveryFeeCalculator;
 use App\Services\Freebies\FreebieService;
 use App\Services\MarketLists\MarketListService;
 use App\Services\Modules\ModuleService;
@@ -18,6 +19,7 @@ use App\Services\Notifications\LogPushNotifier;
 use App\Services\Notifications\WebPushNotifier;
 use App\Services\Payments\PaystackClient;
 use App\Services\Settings\BusinessProfile;
+use App\Services\Settings\SettingsService;
 use App\Services\Shifts\ShiftService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -40,6 +42,10 @@ class AppServiceProvider extends ServiceProvider
         // One per request (or queued job): its switches are read once and
         // reused by every check on the page.
         $this->app->scoped(ModuleService::class);
+
+        // Its settings are optional only so unit tests can build it bare;
+        // the app always gives it the business's delivery fee settings.
+        $this->app->bind(DeliveryFeeCalculator::class, fn ($app) => new DeliveryFeeCalculator($app->make(SettingsService::class)));
 
         $this->app->singleton(PaystackClient::class, fn () => new PaystackClient(
             secretKey: config('services.paystack.secret_key'),

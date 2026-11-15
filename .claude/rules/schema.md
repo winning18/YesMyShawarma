@@ -332,12 +332,15 @@ pricing or branch routing. `$data->branchId` is assumed already resolved by the 
 
 Delivery pricing is continuous, not zone-based: haversine distance from the branch to the
 customer's shared location, times a flat rate per km, rounded to the nearest whole cedi and
-floored at `MINIMUM_DELIVERY_FEE_PESEWAS` (GHS 10) — no fractional-cedi change, and never
-cheaper than the floor regardless of distance — see `App\Services\Delivery\
-DeliveryFeeCalculator`. `RATE_PER_KM_PESEWAS`, `MINIMUM_DELIVERY_FEE_PESEWAS`, and the unrelated
-`MINIMUM_ORDER_TOTAL_PESEWAS` (a minimum cart subtotal for delivery orders, checked in
-`OrderCreationService` — not a delivery-fee concept at all) are plain constants for now, not
-admin-configurable rows, since the business is still iterating on the model itself.
+floored at a minimum fee — no fractional-cedi change, and never cheaper than the floor
+regardless of distance — see `App\Services\Delivery\DeliveryFeeCalculator`. The rate per km,
+the minimum fee and the unrelated minimum order for delivery (a minimum cart subtotal, checked in
+`OrderCreationService`) are each business's settings — `delivery_rate_per_km`,
+`delivery_minimum_fee`, `delivery_minimum_order` in pesewas, Settings → General → Delivery fees,
+shown only with the Delivery module on. Unset, the calculator's constants apply (GH₵5 / GH₵10 /
+GH₵20, Yes My Shawarma's values, which `2026_11_15_150000_fill_delivery_fee_settings` also
+stored for it). Read them through `ratePerKm()`, `minimumFee()`, `minimumOrderTotal()`, never the
+constants.
 
 ## Payments
 
@@ -624,6 +627,8 @@ Current keys:
   orders and never overwrites an existing setting. Order reference prefixes default to neutral
   POS / WEB / BOLT / WA / FREE (`SettingsService::DEFAULT_PREFIXES`); Yes My Shawarma's YMGS-*
   are stored settings.
+- `home_menu_sliders` — the home page strips as JSON `[{title, slugs[]}]`, edited under Website
+  content → Home page strips (`HomeStripService`); unset = one strip per active category.
 - **Module switches** (Express POS step 3, `ModuleService`, owner-only Modules page):
   `module_<key>` = `'1'` / `'0'` for website, paystack, delivery, bolt_food, promotions,
   whatsapp_reward, freebies, market_list, stock, sms, refunds, reviews. No row = off on a real

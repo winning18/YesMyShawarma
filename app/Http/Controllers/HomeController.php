@@ -5,13 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\Branch;
 use App\Models\Category;
 use App\Models\MenuItem;
+use App\Services\Content\HomeStripService;
 use App\Services\Content\SitePageService;
 use App\Services\Customers\CustomerBranchSelection;
 use App\Services\Menu\PopularItemsService;
 use App\Services\Modules\ModuleService;
 use App\Services\Promotions\PromotionService;
 use App\Services\Seo\RestaurantSchemaBuilder;
-use App\Services\Settings\SettingsService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -19,7 +19,7 @@ use Illuminate\View\View;
 
 class HomeController extends Controller
 {
-    public function index(CustomerBranchSelection $selection, RestaurantSchemaBuilder $restaurantSchema, PromotionService $promotions, PopularItemsService $popular, SettingsService $settings, SitePageService $pages): View|RedirectResponse
+    public function index(CustomerBranchSelection $selection, RestaurantSchemaBuilder $restaurantSchema, PromotionService $promotions, PopularItemsService $popular, SitePageService $pages): View|RedirectResponse
     {
         // POS-only (Express POS step 4): with no Website module, the
         // business's address opens the staff login.
@@ -60,7 +60,7 @@ class HomeController extends Controller
                 'imageUrl' => $promotion->bannerImageUrl(),
             ] : null,
             'popularItems' => $this->popularItems($popular, $selection->current()),
-            'menuSliders' => $this->menuSliders($selection->current(), $settings),
+            'menuSliders' => $this->menuSliders($selection->current()),
             'restaurantSchema' => $schema,
         ]);
     }
@@ -71,16 +71,9 @@ class HomeController extends Controller
      * merges hot dogs and loaded fries into one strip); otherwise there's
      * one strip per active category, in menu order.
      */
-    private function menuSliders(?Branch $branch, SettingsService $settings): Collection
+    private function menuSliders(?Branch $branch): Collection
     {
-        $configured = json_decode((string) $settings->get(SettingsService::HOME_MENU_SLIDERS), true);
-        $sliders = is_array($configured) && $configured !== []
-            ? $configured
-            : Category::where('is_active', true)->orderBy('sort_order')->orderBy('name')->get()
-                ->map(fn (Category $category) => ['title' => $category->name, 'slugs' => [$category->slug]])
-                ->all();
-
-        return collect($sliders)
+        return collect(app(HomeStripService::class)->strips())
             ->map(fn (array $slider) => [
                 'title' => $slider['title'],
                 // First slug only — enough for the "Show all" link's

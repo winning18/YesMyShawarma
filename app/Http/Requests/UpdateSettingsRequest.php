@@ -27,6 +27,10 @@ class UpdateSettingsRequest extends FormRequest
             'order_reference_prefix_freebie' => [$this->forModule(ModuleService::FREEBIES), 'string', 'max:20', 'regex:/^[A-Za-z0-9-]+$/'],
             // Cedis off the food of a WhatsApp group order (owner, 2026-11-14).
             'whatsapp_reward' => [$this->forModule(ModuleService::WHATSAPP_REWARD), 'numeric', 'min:0', 'max:1000'],
+            // Delivery fees, in cedis (DeliveryFeeCalculator).
+            'delivery_rate_per_km' => ['sometimes', $this->forModule(ModuleService::DELIVERY), 'numeric', 'min:0', 'max:1000'],
+            'delivery_minimum_fee' => ['sometimes', $this->forModule(ModuleService::DELIVERY), 'numeric', 'min:0', 'max:1000'],
+            'delivery_minimum_order' => ['sometimes', $this->forModule(ModuleService::DELIVERY), 'numeric', 'min:0', 'max:10000'],
         ];
     }
 

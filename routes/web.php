@@ -28,6 +28,7 @@ use App\Http\Controllers\FaqItemManagementController;
 use App\Http\Controllers\FreebieController;
 use App\Http\Controllers\HeroSliderController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\HomeStripController;
 use App\Http\Controllers\LlmsController;
 use App\Http\Controllers\ManifestController;
 use App\Http\Controllers\MarketListController;
@@ -303,6 +304,8 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     // Website content (content.manage: owner, general manager) — the
     // FAQ routes come first so /website/faq isn't read as a page slug.
     Route::get('/dashboard/website', [SitePageManagementController::class, 'index'])->middleware('module:website')->name('dashboard.site-pages.index');
+    Route::get('/dashboard/website/home-strips', [HomeStripController::class, 'edit'])->middleware('module:website')->name('dashboard.home-strips.edit');
+    Route::put('/dashboard/website/home-strips', [HomeStripController::class, 'update'])->middleware('module:website')->name('dashboard.home-strips.update');
     Route::get('/dashboard/website/faq', [FaqItemManagementController::class, 'index'])->middleware('module:website')->name('dashboard.faq-items.index');
     Route::post('/dashboard/website/faq', [FaqItemManagementController::class, 'store'])->middleware('module:website')->name('dashboard.faq-items.store');
     Route::put('/dashboard/website/faq/{faqItem}', [FaqItemManagementController::class, 'update'])->middleware('module:website')->name('dashboard.faq-items.update');

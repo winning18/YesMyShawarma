@@ -225,7 +225,7 @@ charged until the rider actually reaches the door.
   If `delivery_fee` is still 0 at that moment, this is also where it finally gets calculated —
   from the *rider's own GPS position* now that they're standing at the customer's location,
   using the same `DeliveryFeeCalculator` rate/rounding/floor as everywhere else, falling back
-  to `DeliveryFeeCalculator::MINIMUM_DELIVERY_FEE_PESEWAS` if the rider's own geolocation isn't
+  to `DeliveryFeeCalculator::minimumFee()` (the business's minimum fee) if the rider's own geolocation isn't
   available either. A non-zero `delivery_fee` (a real checkout-time location, or a prior
   `DeliveryFeeAdjustmentService` correction) is never overwritten — arrival only ever fills in
   a fee nobody has priced yet. This is a bookkeeping `order_events` row

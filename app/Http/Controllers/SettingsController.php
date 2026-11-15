@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateSettingsRequest;
+use App\Services\Delivery\DeliveryFeeCalculator;
 use App\Services\Settings\SettingsService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
@@ -17,7 +18,7 @@ use Illuminate\View\View;
  */
 class SettingsController extends Controller
 {
-    public function index(SettingsService $settings): View
+    public function index(SettingsService $settings, DeliveryFeeCalculator $fees): View
     {
         Gate::authorize('settings.manage');
 
@@ -28,6 +29,11 @@ class SettingsController extends Controller
             'whatsappPrefix' => $settings->prefix(SettingsService::ORDER_REFERENCE_PREFIX_WHATSAPP),
             'freebiePrefix' => $settings->prefix(SettingsService::ORDER_REFERENCE_PREFIX_FREEBIE),
             'whatsappReward' => number_format(((int) $settings->get(SettingsService::WHATSAPP_REWARD_AMOUNT, '1000')) / 100, 2, '.', ''),
+            'deliveryFees' => [
+                'delivery_rate_per_km' => number_format($fees->ratePerKm() / 100, 2, '.', ''),
+                'delivery_minimum_fee' => number_format($fees->minimumFee() / 100, 2, '.', ''),
+                'delivery_minimum_order' => number_format($fees->minimumOrderTotal() / 100, 2, '.', ''),
+            ],
         ]);
     }
 
@@ -47,6 +53,15 @@ class SettingsController extends Controller
         ] as $field => $key) {
             if (isset($validated[$field])) {
                 $settings->set($key, strtoupper($validated[$field]));
+            }
+        }
+        foreach ([
+            'delivery_rate_per_km' => SettingsService::DELIVERY_RATE_PER_KM,
+            'delivery_minimum_fee' => SettingsService::DELIVERY_MINIMUM_FEE,
+            'delivery_minimum_order' => SettingsService::DELIVERY_MINIMUM_ORDER,
+        ] as $field => $key) {
+            if (isset($validated[$field])) {
+                $settings->set($key, (string) (int) round(((float) $validated[$field]) * 100));
             }
         }
         if (isset($validated['whatsapp_reward'])) {

@@ -19,6 +19,12 @@
                     </div>
                     <a href="{{ route('dashboard.site-pages.edit', $page['slug']) }}" class="text-sm font-semibold text-indigo-600 hover:text-indigo-800 shrink-0">{{ __('Edit') }}</a>
                 </div>
+                @if ($page['slug'] === 'home')
+                    <div class="flex items-center justify-between gap-4 px-5 py-3 bg-gray-50">
+                        <p class="text-sm font-medium text-gray-800 pl-4">{{ __('Home page strips') }}</p>
+                        <a href="{{ route('dashboard.home-strips.edit') }}" class="text-sm font-semibold text-indigo-600 hover:text-indigo-800 shrink-0">{{ __('Edit') }}</a>
+                    </div>
+                @endif
                 @if ($page['slug'] === 'faq')
                     <div class="flex items-center justify-between gap-4 px-5 py-3 bg-gray-50">
                         <p class="text-sm font-medium text-gray-800 pl-4">{{ __('FAQ questions') }}</p>
