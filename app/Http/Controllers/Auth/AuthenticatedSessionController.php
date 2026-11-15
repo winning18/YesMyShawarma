@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Requests\Auth\PinLoginRequest;
 use App\Services\Branches\BranchContext;
 use App\Services\Modules\ModuleService;
+use App\Services\Shifts\CounterService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,9 +19,10 @@ class AuthenticatedSessionController extends Controller
     /**
      * Display the login view.
      */
-    public function create(): View
+    public function create(CounterService $counters): View
     {
-        return view('auth.login');
+        // On a counter, the page opens on Staff ID + PIN (step 7b).
+        return view('auth.login', ['counter' => $counters->current()]);
     }
 
     /**
@@ -34,6 +37,23 @@ class AuthenticatedSessionController extends Controller
      * ResolveCurrentBranch's 403, and someone holding a staff-type role at
      * one branch plus rider at another is unaffected either way.
      */
+    /**
+     * Staff ID + PIN at a counter (Express POS step 7b): till staff only,
+     * only on a device set up as a counter, at that counter's branch. Not
+     * remembered — counters are shared devices.
+     */
+    public function storePin(PinLoginRequest $request, CounterService $counters, BranchContext $context): RedirectResponse
+    {
+        $counter = $counters->current() ?? abort(404);
+        $user = $request->authenticate($counter);
+
+        Auth::guard('web')->login($user);
+        $request->session()->regenerate();
+        $context->setCurrent((int) $counter->branch_id);
+
+        return redirect()->intended(route('dashboard', absolute: false));
+    }
+
     public function store(LoginRequest $request, BranchContext $context): RedirectResponse
     {
         $request->authenticate();

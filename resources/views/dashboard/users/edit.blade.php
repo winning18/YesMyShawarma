@@ -55,6 +55,39 @@
             </details>
         @endif
 
+        @if (app(\App\Services\Users\PinService::class)->canHavePin($targetUser))
+            {{-- Counter sign-in (Express POS step 7b). --}}
+            <div class="bg-white shadow rounded-lg p-6 space-y-3">
+                <h3 class="font-semibold text-gray-800">{{ __('Counter sign-in') }}</h3>
+                <p class="text-sm text-gray-600">
+                    {{ __('Staff ID:') }} <strong class="font-mono">{{ $targetUser->staff_code ?? __('given when a PIN is set') }}</strong>
+                    · {{ $targetUser->pin ? __('PIN set') : __('No PIN yet') }}
+                </p>
+                <p class="text-xs text-gray-500">{{ __('At a counter, :name signs in with their Staff ID and this PIN. Anywhere else they use their email and password.', ['name' => $targetUser->name]) }}</p>
+                <form method="POST" action="{{ route('dashboard.users.pin.set', $targetUser) }}" class="flex flex-wrap items-end gap-3">
+                    @csrf
+                    @method('PUT')
+                    <div>
+                        <label for="pin" class="block text-xs font-medium text-gray-500">{{ $targetUser->pin ? __('New PIN') : __('PIN') }}</label>
+                        <input id="pin" name="pin" type="password" inputmode="numeric" pattern="[0-9]*" minlength="4" maxlength="6" required autocomplete="new-password" class="mt-1 w-32 rounded-md border-gray-300 text-sm tracking-widest">
+                    </div>
+                    <div>
+                        <label for="pin_confirmation" class="block text-xs font-medium text-gray-500">{{ __('Type it again') }}</label>
+                        <input id="pin_confirmation" name="pin_confirmation" type="password" inputmode="numeric" pattern="[0-9]*" minlength="4" maxlength="6" required autocomplete="new-password" class="mt-1 w-32 rounded-md border-gray-300 text-sm tracking-widest">
+                    </div>
+                    <x-primary-button>{{ $targetUser->pin ? __('Reset PIN') : __('Set PIN') }}</x-primary-button>
+                </form>
+                <x-input-error :messages="$errors->get('pin')" />
+                @if ($targetUser->pin)
+                    <form method="POST" action="{{ route('dashboard.users.pin.clear', $targetUser) }}" onsubmit="return confirm(@js(__('Remove this PIN? They can still sign in with email and password.')))">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="text-sm text-red-600 underline">{{ __('Remove PIN') }}</button>
+                    </form>
+                @endif
+            </div>
+        @endif
+
         <div class="bg-white shadow rounded-lg p-6">
             <h3 class="font-semibold text-gray-800 mb-4">{{ __('Roles') }}</h3>
 

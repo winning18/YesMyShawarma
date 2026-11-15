@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\Accounts\AccountSuspensionService;
 use App\Services\Branches\BranchContext;
 use App\Services\Modules\ModuleService;
+use App\Services\Users\PinService;
 use App\Services\Users\UserManagementService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -133,6 +134,29 @@ class UserManagementController extends Controller
             'availableRoles' => $this->offered(self::ROLES),
             'branches' => Branch::orderBy('name')->get(),
         ]);
+    }
+
+    /**
+     * Sets or resets a till staff member's counter PIN (step 7b). Anyone
+     * who manages users at all can; the PIN is never shown again.
+     */
+    public function setPin(Request $request, User $user, BranchContext $context, PinService $pins): RedirectResponse
+    {
+        $this->authorizeView($request, $context);
+        abort_unless($pins->canHavePin($user), 422);
+
+        $validated = $request->validate(['pin' => ['required', 'digits_between:4,6', 'confirmed']]);
+        $pins->set($user, $validated['pin']);
+
+        return back()->with('status', __('PIN set. :name signs in at a counter with :code and this PIN.', ['name' => $user->name, 'code' => $user->staff_code]));
+    }
+
+    public function clearPin(Request $request, User $user, BranchContext $context, PinService $pins): RedirectResponse
+    {
+        $this->authorizeView($request, $context);
+        $pins->clear($user);
+
+        return back()->with('status', __('PIN removed.'));
     }
 
     public function addRole(Request $request, User $user, UserManagementService $users): RedirectResponse

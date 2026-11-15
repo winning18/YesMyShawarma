@@ -24,6 +24,11 @@ Route::middleware('guest')->group(function () {
     Route::post('login', [AuthenticatedSessionController::class, 'store'])
         ->middleware('throttle:20,1');
 
+    // Staff ID + PIN, only on a device set up as a counter (step 7b).
+    Route::post('login/pin', [AuthenticatedSessionController::class, 'storePin'])
+        ->middleware('throttle:20,1')
+        ->name('login.pin');
+
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
         ->name('password.request');
 

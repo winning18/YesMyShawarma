@@ -385,6 +385,14 @@ or swap its logo; the ordinary Settings page (`settings.manage`) stays theirs.
 The Modules page (Settings → Modules, `ModuleController`) also uses `business.manage`: only the
 owner switches modules on or off (owner decision 2026-11-15).
 
+**Counter sign-in (Express POS step 7b, owner 2026-11-15).** Till staff (`BranchContext::
+runsATill()`) can sign in with Staff ID + PIN (`PinService`, `AuthenticatedSessionController::
+storePin`), but only on a device set up as a counter, and only at that counter's branch where
+they hold the staff role. Managers, GMs and the owner always use email + password, even if a PIN
+were somehow set. Five wrong tries lock that Staff ID on that IP for 15 minutes
+(`PinLoginRequest`). Anyone who can open a user's edit page (users.manage, manager, GM) can set or
+remove a till staff member's PIN; Counters themselves are `settings.manage`.
+
 `content.manage` (owner and general manager, owner decision 2026-11-15) — Settings → Website
 content: page text, search titles and descriptions, the FAQ and the About page (schema.md's
 "Website content"). Page text changes more often than the business's identity, so a GM can do

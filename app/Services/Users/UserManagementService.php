@@ -100,6 +100,11 @@ class UserManagementService
     public function assignRole(User $user, string $role, int $branchId): void
     {
         $this->withTeamId($branchId, fn () => $user->assignRole($role));
+
+        // Till staff get a Staff ID for counter sign-in (step 7b).
+        if ($role === 'staff' && app(PinService::class)->canHavePin($user)) {
+            app(StaffCodeService::class)->ensureFor($user);
+        }
     }
 
     /**

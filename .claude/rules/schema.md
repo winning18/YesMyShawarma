@@ -200,6 +200,9 @@ terminals  id, branch_id, name (unique per branch), device_token_hash (unique, n
            paired_at, is_active, timestamps
 
 orders.shift_id  (nullable) the till that took the money
+
+users.staff_code  (nullable, unique) "YMS-0042" — till staff's counter sign-in ID (step 7b)
+users.pin         (nullable) hashed like a password; set by a manager
 ```
 
 **Counters (Express POS step 7a, owner 2026-11-15).** A branch with no counters (`terminals`)

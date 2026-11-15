@@ -275,6 +275,8 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::post('/dashboard/users', [UserManagementController::class, 'store'])->name('dashboard.users.store');
     Route::get('/dashboard/users/{user}/edit', [UserManagementController::class, 'edit'])->name('dashboard.users.edit');
     Route::post('/dashboard/users/{user}/roles', [UserManagementController::class, 'addRole'])->name('dashboard.users.roles.add');
+    Route::put('/dashboard/users/{user}/pin', [UserManagementController::class, 'setPin'])->middleware('throttle:20,1')->name('dashboard.users.pin.set');
+    Route::delete('/dashboard/users/{user}/pin', [UserManagementController::class, 'clearPin'])->name('dashboard.users.pin.clear');
     Route::delete('/dashboard/users/{user}/roles', [UserManagementController::class, 'removeRole'])->name('dashboard.users.roles.remove');
     Route::post('/dashboard/users/{user}/change-branch', [UserManagementController::class, 'changeBranch'])->name('dashboard.users.change_branch');
     Route::delete('/dashboard/users/{user}', [UserManagementController::class, 'destroy'])->name('dashboard.users.destroy');
