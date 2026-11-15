@@ -100,7 +100,7 @@ class PosController extends Controller
         // would immediately redirect them straight back to the picker
         // again, forever, since nothing ever marks the branch as freshly
         // confirmed).
-        if ($isStaff && ! $shifts->activeForBranch($branch->id) && $context->branchIdsFor($user)->count() > 1 && ! $request->session()->get('branch_just_confirmed')) {
+        if ($isStaff && ! $shifts->activeForBranch($branch->id) && app(CounterService::class)->canTakeSalesHere($branch->id) && $context->branchIdsFor($user)->count() > 1 && ! $request->session()->get('branch_just_confirmed')) {
             return redirect()->route('branches.select');
         }
 

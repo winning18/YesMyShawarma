@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Branches\BranchContext;
 use App\Services\Modules\ModuleService;
 use App\Services\Orders\OrderTransferService;
+use App\Services\Shifts\CounterService;
 use App\Services\Shifts\ShiftService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -68,7 +69,7 @@ class OrderDashboardController extends Controller
         // open at the current branch (another staff member got there first
         // today), there's nothing to pick — straight through to the board
         // below, already on shift.
-        if ($role === 'staff' && ! $shifts->activeForBranch($branchId) && $context->branchIdsFor($user)->count() > 1 && ! $request->session()->get('branch_just_confirmed')) {
+        if ($role === 'staff' && ! $shifts->activeForBranch($branchId) && app(CounterService::class)->canTakeSalesHere($branchId) && $context->branchIdsFor($user)->count() > 1 && ! $request->session()->get('branch_just_confirmed')) {
             return redirect()->route('branches.select');
         }
 
@@ -96,7 +97,9 @@ class OrderDashboardController extends Controller
         return view('orders.dashboard', [
             'branchId' => $branchId,
             'isStaff' => $isStaff,
-            'forceShiftStart' => $isStaff && ! $shifts->activeForBranch($branchId),
+            // Not on a device that can't open a till (a branch with counters,
+            // on a device that isn't one) — staff would be stuck behind it.
+            'forceShiftStart' => $isStaff && ! $shifts->activeForBranch($branchId) && app(CounterService::class)->canTakeSalesHere($branchId),
             'ordersUrl' => $ordersUrl,
             // Staff holds this permission too (see permissions.md) — the
             // resulting refund, if any, is what stays gated to a pending

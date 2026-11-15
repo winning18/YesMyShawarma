@@ -49,6 +49,7 @@ class AuthenticatedSessionController extends Controller
 
         Auth::guard('web')->login($user);
         $request->session()->regenerate();
+        $request->session()->put('signed_in_with_pin', true);
         $context->setCurrent((int) $counter->branch_id);
 
         return redirect()->intended(route('dashboard', absolute: false));
@@ -81,6 +82,7 @@ class AuthenticatedSessionController extends Controller
         $stockManagerOnly = ! $hasStaffRole && ! $riderOnly && $context->hasRoleAtAnyBranch($user, 'stock_manager');
 
         $request->session()->regenerate();
+        $request->session()->forget('signed_in_with_pin');
 
         // A stock manager also records the market list; with Stock
         // switched off, that's where they start (ModuleService).
@@ -110,6 +112,7 @@ class AuthenticatedSessionController extends Controller
         Auth::guard('web')->logout();
 
         $request->session()->regenerate();
+        $request->session()->forget('signed_in_with_pin');
 
         return redirect()->route('login');
     }

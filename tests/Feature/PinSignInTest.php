@@ -136,4 +136,18 @@ class PinSignInTest extends TestCase
             ->assertSessionHasErrors(['staff_code' => __('Too many tries. Try again in :minutes minutes, or ask a manager.', ['minutes' => 15])]);
         $this->assertGuest();
     }
+
+    public function test_a_pin_sign_in_skips_the_temporary_password_change_but_email_does_not(): void
+    {
+        $result = app(UserManagementService::class)->create(['name' => 'New Staff', 'email' => 'new@example.test'], 'staff', $this->branch->id);
+        $staff = $result['user'];
+        app(PinService::class)->set($staff, '4821');
+
+        $this->onCounter()->post(route('login.pin'), ['staff_code' => $staff->fresh()->staff_code, 'pin' => '4821']);
+        $this->get(route('dashboard'))->assertOk();
+
+        $this->post(route('logout'));
+        $this->post(route('login'), ['email' => 'new@example.test', 'password' => $result['temporary_password']]);
+        $this->get(route('dashboard'))->assertRedirect(route('password.force-change'));
+    }
 }

@@ -117,9 +117,9 @@ class OrderReportService
      *
      * @param  ?list<int>  $branchIds  See operationalSummary().
      */
-    public function financialSummary(Carbon $from, Carbon $to, bool $ignoreBranchScope = false, ?int $branchId = null, ?array $branchIds = null, ?string $channel = null, ?string $paymentMethod = null): array
+    public function financialSummary(Carbon $from, Carbon $to, bool $ignoreBranchScope = false, ?int $branchId = null, ?array $branchIds = null, ?string $channel = null, ?string $paymentMethod = null, ?int $shiftId = null): array
     {
-        $orders = $this->ordersInRange($from, $to, $ignoreBranchScope, $branchId, $branchIds, $channel, $paymentMethod);
+        $orders = $this->ordersInRange($from, $to, $ignoreBranchScope, $branchId, $branchIds, $channel, $paymentMethod, $shiftId);
         $revenueOrders = $orders->whereNotIn('status', Order::NON_REVENUE_STATUSES)
             ->when(
                 $paymentMethod,
@@ -137,7 +137,7 @@ class OrderReportService
 
         $grossRevenueTotal = (int) $revenueOrders->sum($salesValue);
 
-        $refunds = $this->refundsInRange($from, $to, $ignoreBranchScope, $branchId, $branchIds, $channel, $paymentMethod);
+        $refunds = $this->refundsInRange($from, $to, $ignoreBranchScope, $branchId, $branchIds, $channel, $paymentMethod, $shiftId);
         $refundTotal = (int) $refunds->sum('amount');
         $salesRefundedTotal = (int) $refunds->sum($salesRefunded);
         $refundsByDay = $this->groupByAccraDay($refunds, 'completed_at')->map(fn (Collection $day) => $day->sum($salesRefunded));
@@ -166,23 +166,7 @@ class OrderReportService
      */
     public function tillSales(Shift $shift): int
     {
-        $orders = Order::withoutGlobalScope(BranchScope::class)
-            ->where('shift_id', $shift->id)
-            ->whereNotIn('status', Order::NON_REVENUE_STATUSES)
-            ->whereNotIn('payment_method', Order::EXCLUDED_FROM_SALES_PAYMENT_METHODS)
-            ->get(['id', 'total', 'delivery_fee']);
-
-        $sales = (int) $orders->sum(fn (Order $order) => (int) $order->total - (int) $order->delivery_fee);
-
-        $refunded = (int) Refund::where('status', Refund::STATUS_COMPLETED)
-            ->whereIn('order_id', Order::withoutGlobalScope(BranchScope::class)->where('shift_id', $shift->id)->select('id'))
-            ->with(['order' => fn ($q) => $q->withoutGlobalScope(BranchScope::class)->select('id', 'total', 'delivery_fee')])
-            ->get()
-            ->sum(fn (Refund $refund) => $refund->order
-                ? min((int) $refund->amount, max(0, (int) $refund->order->total - (int) $refund->order->delivery_fee))
-                : (int) $refund->amount);
-
-        return $sales - $refunded;
+        return $this->financialSummary($shift->started_at, now(), shiftId: $shift->id)['revenue_total'];
     }
 
     /**
@@ -197,8 +181,19 @@ class OrderReportService
      *
      * @param  ?list<int>  $branchIds
      */
-    private function refundsInRange(Carbon $from, Carbon $to, bool $ignoreBranchScope = false, ?int $branchId = null, ?array $branchIds = null, ?string $channel = null, ?string $paymentMethod = null): Collection
+    private function refundsInRange(Carbon $from, Carbon $to, bool $ignoreBranchScope = false, ?int $branchId = null, ?array $branchIds = null, ?string $channel = null, ?string $paymentMethod = null, ?int $shiftId = null): Collection
     {
+        // One counter's till: every completed refund on the orders it took.
+        if ($shiftId !== null) {
+            return Refund::where('status', Refund::STATUS_COMPLETED)
+                ->whereIn('order_id', Order::withoutGlobalScope(BranchScope::class)->where('shift_id', $shiftId)
+                    ->when($channel, fn ($query) => $query->where('channel', $channel))
+                    ->when($paymentMethod, fn ($query) => $query->where('payment_method', $paymentMethod))
+                    ->select('id'))
+                ->with(['order' => fn ($q) => $q->withoutGlobalScope(BranchScope::class)->select('id', 'total', 'delivery_fee')])
+                ->get();
+        }
+
         $query = Refund::where('status', Refund::STATUS_COMPLETED)
             ->with(['order' => fn ($q) => $q->withoutGlobalScope(BranchScope::class)->select('id', 'total', 'delivery_fee')])
             ->whereBetween('completed_at', [$from, $to])
@@ -241,8 +236,18 @@ class OrderReportService
      * never exactly one (that's the regular manager's branch-switcher
      * model). Takes precedence over $branchId when both are given.
      */
-    private function ordersInRange(Carbon $from, Carbon $to, bool $ignoreBranchScope = false, ?int $branchId = null, ?array $branchIds = null, ?string $channel = null, ?string $paymentMethod = null): Collection
+    private function ordersInRange(Carbon $from, Carbon $to, bool $ignoreBranchScope = false, ?int $branchId = null, ?array $branchIds = null, ?string $channel = null, ?string $paymentMethod = null, ?int $shiftId = null): Collection
     {
+        // One counter's till (step 7a): the orders it took, whenever they
+        // were placed — a web order can be placed before the till opened
+        // and still be accepted into it.
+        if ($shiftId !== null) {
+            return Order::withoutGlobalScope(BranchScope::class)->where('shift_id', $shiftId)
+                ->when($channel, fn ($query) => $query->where('channel', $channel))
+                ->when($paymentMethod, fn ($query) => $query->where('payment_method', $paymentMethod))
+                ->get(['id', 'status', 'fulfilment_type', 'payment_method', 'channel', 'total', 'delivery_fee', 'placed_at', 'accepted_at', 'ready_at', 'dispatched_at', 'delivered_at']);
+        }
+
         $query = Order::whereBetween('placed_at', [$from, $to])
             ->when($channel, fn ($query) => $query->where('channel', $channel))
             ->when($paymentMethod, fn ($query) => $query->where('payment_method', $paymentMethod));

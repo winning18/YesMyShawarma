@@ -20,7 +20,12 @@ class EnsurePasswordIsChanged
     {
         $user = $request->user();
 
-        if ($user?->must_change_password && ! $request->routeIs('password.force-change*', 'logout', 'rider.logout')) {
+        // Signed in at a counter with a PIN (step 7b): the temporary
+        // password isn't in play; it's still changed at the first email
+        // sign-in.
+        $signedInWithPin = $request->hasSession() && $request->session()->get('signed_in_with_pin', false);
+
+        if ($user?->must_change_password && ! $signedInWithPin && ! $request->routeIs('password.force-change*', 'logout', 'rider.logout')) {
             // Same mechanism redirect()->guest() uses for guests — lets
             // ForcePasswordChangeController send them on to wherever they
             // were actually headed (staff or rider dashboard) once done,

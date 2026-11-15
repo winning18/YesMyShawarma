@@ -51,7 +51,7 @@ class DailySalesReportService
      *   by_payment_method: Collection<string, int>,
      * }
      */
-    public function summary(Carbon $dayStart, Carbon $dayEnd, string $channel, ?string $paymentMethod = null, ?int $branchId = null, bool $ignoreBranchScope = false, ?array $branchIds = null): array
+    public function summary(Carbon $dayStart, Carbon $dayEnd, string $channel, ?string $paymentMethod = null, ?int $branchId = null, bool $ignoreBranchScope = false, ?array $branchIds = null, ?int $shiftId = null): array
     {
         $orders = Order::with([
             'items.menuItem' => fn ($query) => $query->withTrashed(),
@@ -71,7 +71,12 @@ class DailySalesReportService
             // ($ignoreBranchScope) or a manager/GM's own set ($branchIds).
             ->when($ignoreBranchScope, fn ($query) => $query->withoutGlobalScope(BranchScope::class))
             ->when($branchIds !== null, fn ($query) => $query->withoutGlobalScope(BranchScope::class)->whereIn('branch_id', $branchIds))
-            ->whereBetween('placed_at', [$dayStart->clone()->utc(), $dayEnd->clone()->utc()])
+            // One counter's till (step 7a): its own orders, whenever placed.
+            ->when(
+                $shiftId !== null,
+                fn ($query) => $query->withoutGlobalScope(BranchScope::class)->where('shift_id', $shiftId),
+                fn ($query) => $query->whereBetween('placed_at', [$dayStart->clone()->utc(), $dayEnd->clone()->utc()]),
+            )
             ->where('channel', $channel)
             ->whereNotIn('status', Order::NON_REVENUE_STATUSES)
             // $paymentMethod set (e.g. TodayReportController's "Bolt Food"
@@ -111,7 +116,7 @@ class DailySalesReportService
 
         $modifierLines = collect($modifierBucket)->sortByDesc('total')->values();
 
-        $financial = $this->reports->financialSummary($dayStart->clone()->utc(), $dayEnd->clone()->utc(), ignoreBranchScope: $ignoreBranchScope, branchId: $branchId, branchIds: $branchIds, channel: $channel, paymentMethod: $paymentMethod);
+        $financial = $this->reports->financialSummary($dayStart->clone()->utc(), $dayEnd->clone()->utc(), ignoreBranchScope: $ignoreBranchScope, branchId: $branchId, branchIds: $branchIds, channel: $channel, paymentMethod: $paymentMethod, shiftId: $shiftId);
 
         return [
             'categories' => $categories,

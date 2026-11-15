@@ -18,7 +18,7 @@
     <div class="relative bg-white rounded-lg shadow-lg max-w-sm w-full p-6">
         <h3 class="font-semibold text-gray-800 mb-1">{{ $tillCounter ? __('Open :counter\'s till', ['counter' => $tillCounter->name]) : __('Start your shift') }}</h3>
         <p class="text-sm text-gray-500 mb-4" x-show="forceStart">
-            {{ __('Starting a shift is required before you can use the dashboard.') }}
+            {{ $tillCounter ? __('Open this counter\'s till before you can use the dashboard.') : __('Starting a shift is required before you can use the dashboard.') }}
         </p>
 
         <div x-show="error" x-cloak class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3 mb-3" x-text="error"></div>
@@ -53,7 +53,7 @@
             <button
                 type="button" @click="confirmStart()"
                 class="px-4 py-2 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-900"
-            >{{ __('Start shift') }}</button>
+            >{{ $tillCounter ? __('Open till') : __('Start shift') }}</button>
         </div>
     </div>
 </div>
@@ -71,7 +71,7 @@
         <div x-show="error" x-cloak class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3 mb-3" x-text="error"></div>
 
         <p class="text-sm text-gray-600 mb-3" x-show="systemSales !== null">
-            {{ __("This shift's recorded sales:") }} <span class="font-semibold" x-text="formatMoney(systemSales)"></span>
+            {{ $tillCounter ? __("This till's recorded sales:") : __("This shift's recorded sales:") }} <span class="font-semibold" x-text="formatMoney(systemSales)"></span>
         </p>
 
         <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Total sales (GHS)') }}</label>
@@ -80,8 +80,8 @@
             class="w-full rounded-md border-gray-300 text-sm" placeholder="0.00"
         >
         <p class="text-xs text-gray-400 mb-4">
-            {{ __('Total sales for the shift, separate from any starting cash you entered.') }}
-            {{ __("Can't be less than this shift's recorded sales. Entering more is fine and gets noted in the Today report.") }}
+            {{ $tillCounter ? __('Total sales for this till, separate from any starting cash you entered.') : __('Total sales for the shift, separate from any starting cash you entered.') }}
+            {{ $tillCounter ? __("Can't be less than this till's recorded sales. Entering more is fine and gets noted in the Today report.") : __("Can't be less than this shift's recorded sales. Entering more is fine and gets noted in the Today report.") }}
         </p>
 
         <div class="border-t border-gray-100 pt-3 mb-4">
@@ -130,7 +130,7 @@
         <textarea
             x-model="closingNote" rows="2" maxlength="255"
             class="w-full rounded-md border-gray-300 text-sm mb-4"
-            placeholder="{{ __('Anything worth flagging about today\'s shift...') }}"
+            placeholder="{{ $tillCounter ? __('Anything worth flagging about this till...') : __('Anything worth flagging about today\'s shift...') }}"
         ></textarea>
 
         <div class="flex gap-2 justify-end">
@@ -141,7 +141,7 @@
             <button
                 type="button" @click="confirmEnd()"
                 class="px-4 py-2 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-900"
-            >{{ __('End shift') }}</button>
+            >{{ $tillCounter ? __('Close till') : __('End shift') }}</button>
         </div>
     </div>
 </div>

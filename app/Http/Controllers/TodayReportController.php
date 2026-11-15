@@ -120,7 +120,8 @@ class TodayReportController extends Controller
             'selectedBranchId' => $branchId,
             'branchOptions' => $branchFilter->options($isOwner, $scope),
             'allBranchesLabel' => $branchFilter->allBranchesLabel($isOwner),
-            'summary' => $sales->summary($rangeStart, $rangeEnd, $channel, $paymentMethod, $requestedBranchId, $allBranches && $isOwner, $scopeIds),
+            // A counter's till shows its own sales; a shared shift, the branch's over its hours.
+            'summary' => $sales->summary($rangeStart, $rangeEnd, $channel, $paymentMethod, $requestedBranchId, $allBranches && $isOwner, $scopeIds, $shift?->terminal_id ? $shift->id : null),
             // Shown apart from sales, and never to staff — delivery fee
             // figures are for the owner, managers and the rider themselves
             // (same access as the Delivery fees tab). Dated by delivery,

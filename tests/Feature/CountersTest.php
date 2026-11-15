@@ -207,4 +207,36 @@ class CountersTest extends TestCase
         $this->as($this->userWithRole('owner'))->get(route('dashboard.reports.today.index', ['branch' => $this->branch->id]))
             ->assertOk()->assertSee('Front Counter');
     }
+
+    public function test_staff_on_a_device_that_isnt_a_counter_are_not_stuck_behind_open_till(): void
+    {
+        Terminal::create(['branch_id' => $this->branch->id, 'name' => 'Counter 1']);
+        $staff = $this->userWithRole('staff');
+
+        $this->as($staff)->get(route('dashboard'))->assertOk()
+            ->assertViewHas('forceShiftStart', false)
+            ->assertSee('Not a counter');
+    }
+
+    public function test_the_today_report_for_one_till_shows_only_that_till_s_sales(): void
+    {
+        $counterOne = Terminal::create(['branch_id' => $this->branch->id, 'name' => 'Counter 1']);
+        $counterTwo = Terminal::create(['branch_id' => $this->branch->id, 'name' => 'Counter 2']);
+        $ama = $this->userWithRole('staff');
+        $kofi = $this->userWithRole('staff');
+
+        $this->useDevice($counterOne);
+        $this->as($ama)->postJson(route('shift.start'))->assertOk();
+        $this->sell($ama, 2)->assertOk();
+
+        $this->useDevice($counterTwo);
+        $this->as($kofi)->postJson(route('shift.start'))->assertOk();
+        $this->sell($kofi, 1)->assertOk();
+        $tillTwo = Shift::where('terminal_id', $counterTwo->id)->sole();
+
+        $this->as($this->userWithRole('owner'))
+            ->get(route('dashboard.reports.today.index', ['branch' => $this->branch->id, 'shift' => $tillTwo->id]))
+            ->assertOk()
+            ->assertViewHas('summary', fn (array $summary) => $summary['total_sales'] === 3000 && $summary['orders_count'] === 1);
+    }
 }

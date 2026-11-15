@@ -74,6 +74,10 @@
             >{{ __('POS') }}</a>
         </div>
 
+        @if (! app(\App\Services\Shifts\CounterService::class)->canTakeSalesHere((int) app(\App\Services\Branches\BranchContext::class)->id()))
+            {{-- A branch with counters, on a device that isn't one: no till to open or close here. --}}
+            <div class="flex items-center justify-end text-sm text-gray-500">{{ __('Not a counter') }}</div>
+        @else
         <div class="flex items-center justify-end gap-3 text-sm">
             <span x-show="active" class="text-gray-500">
                 {{ __('On shift') }} <span x-text="branch"></span>
@@ -91,6 +95,7 @@
                 class="px-3 py-1.5 bg-gray-200 text-gray-800 text-sm font-semibold rounded-md hover:bg-gray-300"
             >{{ $tillCounter ? __('Close till') : __('End shift') }}</button>
         </div>
+        @endif
 
         @include('partials.shift-modals')
     @endunless
