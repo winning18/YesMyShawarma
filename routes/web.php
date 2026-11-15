@@ -124,7 +124,7 @@ Route::middleware('track.visit')->group(function () {
     // or trying a couple of promo codes stays well under this; a script
     // hammering order placement or promo codes doesn't.
     Route::post('/checkout', [CheckoutController::class, 'store'])->middleware('throttle:10,1')->name('checkout.store');
-    Route::post('/checkout/apply-promo', [CheckoutController::class, 'applyPromoCode'])->middleware('throttle:10,1')->name('checkout.apply-promo');
+    Route::post('/checkout/apply-promo', [CheckoutController::class, 'applyPromoCode'])->middleware('throttle:10,1')->middleware('module:promotions')->name('checkout.apply-promo');
     Route::get('/checkout/{order:track_token}/confirmation', [CheckoutController::class, 'confirmation'])->name('checkout.confirmation');
     Route::get('/checkout/{order:track_token}/paystack-return', [CheckoutController::class, 'paystackReturn'])->name('checkout.paystack-return');
     Route::get('/checkout/{order:track_token}/declined', [CheckoutController::class, 'declined'])->name('checkout.declined');
@@ -182,16 +182,16 @@ Route::middleware('auth:customer')->group(function () {
     Route::post('/account/phone/code', [AccountDetailsController::class, 'sendPhoneCode'])->middleware('throttle:6,1')->name('customer.account.phone.code');
     Route::post('/account/phone', [AccountDetailsController::class, 'confirmPhone'])->middleware('throttle:10,1')->name('customer.account.phone.confirm');
     Route::delete('/account/phone', [AccountDetailsController::class, 'cancelPhone'])->name('customer.account.phone.cancel');
-    Route::put('/account/sms-offers', [AccountDetailsController::class, 'updateSmsOffers'])->name('customer.account.sms-offers');
+    Route::put('/account/sms-offers', [AccountDetailsController::class, 'updateSmsOffers'])->middleware('module:sms')->name('customer.account.sms-offers');
 
     Route::get('/account/orders', [AccountOrdersController::class, 'index'])->name('customer.account.orders');
     Route::post('/account/orders/{order}/reorder', [AccountOrdersController::class, 'reorder'])->whereNumber('order')->name('customer.account.reorder');
 
-    Route::get('/account/addresses', [AccountAddressesController::class, 'index'])->name('customer.account.addresses');
-    Route::post('/account/addresses', [AccountAddressesController::class, 'store'])->name('customer.account.addresses.store');
-    Route::put('/account/addresses/{address}', [AccountAddressesController::class, 'update'])->whereNumber('address')->name('customer.account.addresses.update');
-    Route::post('/account/addresses/{address}/default', [AccountAddressesController::class, 'makeDefault'])->whereNumber('address')->name('customer.account.addresses.default');
-    Route::delete('/account/addresses/{address}', [AccountAddressesController::class, 'destroy'])->whereNumber('address')->name('customer.account.addresses.destroy');
+    Route::get('/account/addresses', [AccountAddressesController::class, 'index'])->middleware('module:delivery')->name('customer.account.addresses');
+    Route::post('/account/addresses', [AccountAddressesController::class, 'store'])->middleware('module:delivery')->name('customer.account.addresses.store');
+    Route::put('/account/addresses/{address}', [AccountAddressesController::class, 'update'])->whereNumber('address')->middleware('module:delivery')->name('customer.account.addresses.update');
+    Route::post('/account/addresses/{address}/default', [AccountAddressesController::class, 'makeDefault'])->whereNumber('address')->middleware('module:delivery')->name('customer.account.addresses.default');
+    Route::delete('/account/addresses/{address}', [AccountAddressesController::class, 'destroy'])->whereNumber('address')->middleware('module:delivery')->name('customer.account.addresses.destroy');
 });
 
 Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'staff.web_orders_check'])->group(function () {
@@ -212,11 +212,11 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::post('/dashboard/orders/{order}/accept', [OrderActionController::class, 'accept'])->name('orders.accept');
     Route::post('/dashboard/orders/{order}/reject', [OrderActionController::class, 'reject'])->name('orders.reject');
     Route::post('/dashboard/orders/{order}/cancel', [OrderActionController::class, 'cancel'])->name('orders.cancel');
-    Route::post('/dashboard/orders/{order}/assign-rider', [OrderActionController::class, 'assignRider'])->name('orders.assign_rider');
+    Route::post('/dashboard/orders/{order}/assign-rider', [OrderActionController::class, 'assignRider'])->middleware('module:delivery')->name('orders.assign_rider');
     Route::post('/dashboard/orders/{order}/confirm-momo-payment', [OrderActionController::class, 'confirmMomoPayment'])->name('orders.confirm_momo_payment');
-    Route::post('/dashboard/orders/{order}/delivery-fee-paid-by', [OrderActionController::class, 'changeDeliveryFeePayer'])->name('orders.delivery_fee_paid_by');
+    Route::post('/dashboard/orders/{order}/delivery-fee-paid-by', [OrderActionController::class, 'changeDeliveryFeePayer'])->middleware('module:delivery')->name('orders.delivery_fee_paid_by');
     Route::post('/dashboard/orders/{order}/transfer-branch', [OrderActionController::class, 'transferBranch'])->name('orders.transfer_branch');
-    Route::post('/dashboard/orders/{order}/delivery-fee', [OrderActionController::class, 'adjustDeliveryFee'])->name('orders.adjust_delivery_fee');
+    Route::post('/dashboard/orders/{order}/delivery-fee', [OrderActionController::class, 'adjustDeliveryFee'])->middleware('module:delivery')->name('orders.adjust_delivery_fee');
     Route::post('/dashboard/orders/{order}/refunds', [RefundController::class, 'store'])->middleware('module:refunds')->name('orders.refunds.store');
 
     Route::post('/push/subscribe', [PushSubscriptionController::class, 'store'])->name('push.subscribe');
@@ -257,7 +257,7 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::post('/dashboard/reviews/{review}/approve', [ReviewManagementController::class, 'approve'])->middleware('module:reviews')->name('dashboard.reviews.approve');
     Route::post('/dashboard/reviews/{review}/reject', [ReviewManagementController::class, 'reject'])->middleware('module:reviews')->name('dashboard.reviews.reject');
 
-    Route::get('/dashboard/riders', [RiderAvailabilityController::class, 'index'])->name('dashboard.riders');
+    Route::get('/dashboard/riders', [RiderAvailabilityController::class, 'index'])->middleware('module:delivery')->name('dashboard.riders');
 
     Route::get('/dashboard/shift', [ShiftController::class, 'show'])->name('shift.show');
     Route::post('/dashboard/shift/start', [ShiftController::class, 'start'])->name('shift.start');
@@ -322,14 +322,14 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::delete('/dashboard/staff-members/{staffMember}/image', [StaffMemberManagementController::class, 'destroyImage'])->name('dashboard.staff-members.image.destroy');
     Route::delete('/dashboard/staff-members/{staffMember}', [StaffMemberManagementController::class, 'destroy'])->name('dashboard.staff-members.destroy');
 
-    Route::get('/dashboard/promotions', [PromotionManagementController::class, 'index'])->name('dashboard.promotions.index');
-    Route::get('/dashboard/promotions/create', [PromotionManagementController::class, 'create'])->name('dashboard.promotions.create');
-    Route::post('/dashboard/promotions', [PromotionManagementController::class, 'store'])->name('dashboard.promotions.store');
-    Route::get('/dashboard/promotions/{promotion}/edit', [PromotionManagementController::class, 'edit'])->name('dashboard.promotions.edit');
-    Route::put('/dashboard/promotions/{promotion}', [PromotionManagementController::class, 'update'])->name('dashboard.promotions.update');
-    Route::delete('/dashboard/promotions/{promotion}', [PromotionManagementController::class, 'destroy'])->name('dashboard.promotions.destroy');
-    Route::post('/dashboard/promotions/{promotion}/banner-image', [PromotionManagementController::class, 'updateBannerImage'])->name('dashboard.promotions.banner-image.update');
-    Route::delete('/dashboard/promotions/{promotion}/banner-image', [PromotionManagementController::class, 'destroyBannerImage'])->name('dashboard.promotions.banner-image.destroy');
+    Route::get('/dashboard/promotions', [PromotionManagementController::class, 'index'])->middleware('module:promotions')->name('dashboard.promotions.index');
+    Route::get('/dashboard/promotions/create', [PromotionManagementController::class, 'create'])->middleware('module:promotions')->name('dashboard.promotions.create');
+    Route::post('/dashboard/promotions', [PromotionManagementController::class, 'store'])->middleware('module:promotions')->name('dashboard.promotions.store');
+    Route::get('/dashboard/promotions/{promotion}/edit', [PromotionManagementController::class, 'edit'])->middleware('module:promotions')->name('dashboard.promotions.edit');
+    Route::put('/dashboard/promotions/{promotion}', [PromotionManagementController::class, 'update'])->middleware('module:promotions')->name('dashboard.promotions.update');
+    Route::delete('/dashboard/promotions/{promotion}', [PromotionManagementController::class, 'destroy'])->middleware('module:promotions')->name('dashboard.promotions.destroy');
+    Route::post('/dashboard/promotions/{promotion}/banner-image', [PromotionManagementController::class, 'updateBannerImage'])->middleware('module:promotions')->name('dashboard.promotions.banner-image.update');
+    Route::delete('/dashboard/promotions/{promotion}/banner-image', [PromotionManagementController::class, 'destroyBannerImage'])->middleware('module:promotions')->name('dashboard.promotions.banner-image.destroy');
 
     Route::get('/dashboard/customers', [CustomerManagementController::class, 'index'])->name('dashboard.customers.index');
     Route::get('/dashboard/customers/export', [CustomerManagementController::class, 'export'])->name('dashboard.customers.export');
@@ -337,9 +337,9 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::post('/dashboard/customers/{customer}/unsuspend', [AccountSuspensionController::class, 'liftCustomer'])->name('dashboard.customers.unsuspend');
     Route::get('/dashboard/customers/import', [CustomerImportController::class, 'create'])->name('dashboard.customers.import.create');
     Route::post('/dashboard/customers/import', [CustomerImportController::class, 'store'])->name('dashboard.customers.import.store');
-    Route::get('/dashboard/customers/broadcasts', [SmsBroadcastController::class, 'index'])->name('dashboard.customers.broadcasts.index');
-    Route::post('/dashboard/customers/broadcasts', [SmsBroadcastController::class, 'store'])->name('dashboard.customers.broadcasts.store');
-    Route::post('/dashboard/customers/broadcasts/{broadcast}/cancel', [SmsBroadcastController::class, 'cancel'])->name('dashboard.customers.broadcasts.cancel');
+    Route::get('/dashboard/customers/broadcasts', [SmsBroadcastController::class, 'index'])->middleware('module:sms')->name('dashboard.customers.broadcasts.index');
+    Route::post('/dashboard/customers/broadcasts', [SmsBroadcastController::class, 'store'])->middleware('module:sms')->name('dashboard.customers.broadcasts.store');
+    Route::post('/dashboard/customers/broadcasts/{broadcast}/cancel', [SmsBroadcastController::class, 'cancel'])->middleware('module:sms')->name('dashboard.customers.broadcasts.cancel');
 
     Route::get('/dashboard/reports', [ReportsController::class, 'index'])->name('dashboard.reports.index');
 
@@ -354,11 +354,11 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::get('/dashboard/reports/profit', [ProfitReportController::class, 'index'])->middleware('module:market_list')->name('dashboard.reports.profit.index');
     Route::get('/dashboard/reports/profit/download/{format}', [ProfitReportController::class, 'download'])->middleware('module:market_list')->name('dashboard.reports.profit.download');
 
-    Route::get('/dashboard/reports/delivery-fees', [DeliveryFeesReportController::class, 'index'])->name('dashboard.reports.delivery-fees.index');
-    Route::get('/dashboard/reports/delivery-fees/download', [DeliveryFeesReportController::class, 'download'])->name('dashboard.reports.delivery-fees.download');
-    Route::get('/dashboard/reports/delivery-fees/collections', [DeliveryFeeCollectionController::class, 'index'])->name('dashboard.reports.delivery-fees.collections.index');
-    Route::post('/dashboard/reports/delivery-fees/collections', [DeliveryFeeCollectionController::class, 'store'])->name('dashboard.reports.delivery-fees.collections.store');
-    Route::post('/dashboard/reports/delivery-fees/collections/{collection}/void', [DeliveryFeeCollectionController::class, 'void'])->name('dashboard.reports.delivery-fees.collections.void');
+    Route::get('/dashboard/reports/delivery-fees', [DeliveryFeesReportController::class, 'index'])->middleware('module:delivery')->name('dashboard.reports.delivery-fees.index');
+    Route::get('/dashboard/reports/delivery-fees/download', [DeliveryFeesReportController::class, 'download'])->middleware('module:delivery')->name('dashboard.reports.delivery-fees.download');
+    Route::get('/dashboard/reports/delivery-fees/collections', [DeliveryFeeCollectionController::class, 'index'])->middleware('module:delivery')->name('dashboard.reports.delivery-fees.collections.index');
+    Route::post('/dashboard/reports/delivery-fees/collections', [DeliveryFeeCollectionController::class, 'store'])->middleware('module:delivery')->name('dashboard.reports.delivery-fees.collections.store');
+    Route::post('/dashboard/reports/delivery-fees/collections/{collection}/void', [DeliveryFeeCollectionController::class, 'void'])->middleware('module:delivery')->name('dashboard.reports.delivery-fees.collections.void');
 
     Route::get('/dashboard/reports/today', [TodayReportController::class, 'index'])->name('dashboard.reports.today.index');
 
@@ -408,7 +408,7 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
 // — a separate path/entry point AND a separate guard, so a staff login and
 // a rider login can be simultaneously active in the same browser instead
 // of one overwriting the other's session.
-Route::middleware('guest:rider')->prefix('rider')->name('rider.')->group(function () {
+Route::middleware(['guest:rider', 'module:delivery'])->prefix('rider')->name('rider.')->group(function () {
     Route::get('/login', [RiderAuthenticatedSessionController::class, 'create'])->name('login');
     // Same IP-wide ceiling as the staff login route (routes/auth.php) — its
     // own LoginRequest rate-limits per phone+IP, this catches a spray
@@ -417,7 +417,7 @@ Route::middleware('guest:rider')->prefix('rider')->name('rider.')->group(functio
         ->middleware('throttle:20,1');
 });
 
-Route::middleware(['auth:rider', 'verified', 'branch', 'password.change_required'])->prefix('rider')->name('rider.')->group(function () {
+Route::middleware(['auth:rider', 'verified', 'branch', 'password.change_required', 'module:delivery'])->prefix('rider')->name('rider.')->group(function () {
     Route::get('/', [RiderDashboardController::class, 'index'])->name('dashboard');
     Route::get('/orders', [RiderDashboardController::class, 'data'])->name('orders.data');
     Route::get('/history', [RiderDeliveryHistoryController::class, 'index'])->name('history');

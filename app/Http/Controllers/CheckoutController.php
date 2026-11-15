@@ -12,6 +12,7 @@ use App\Services\Customers\CustomerAddressService;
 use App\Services\Customers\CustomerBranchSelection;
 use App\Services\Customers\CustomerService;
 use App\Services\Delivery\DeliveryFeeCalculator;
+use App\Services\Modules\ModuleService;
 use App\Services\Orders\Data\DeliveryAddressData;
 use App\Services\Orders\Data\PlaceOrderData;
 use App\Services\Orders\OrderCreationService;
@@ -37,7 +38,8 @@ class CheckoutController extends Controller
             return redirect()->route('cart.show')->with('status', 'Your cart is empty.');
         }
 
-        $deliveryAreas = DeliveryArea::where('is_active', true)->orderBy('name')->get();
+        // No delivery at all while Delivery and riders is switched off (ModuleService).
+        $deliveryAreas = app(ModuleService::class)->enabled(ModuleService::DELIVERY) ? DeliveryArea::where('is_active', true)->orderBy('name')->get() : collect();
         $branchOpen = $workingHours->isOpenNow($summary['branch']);
 
         // Web checkout never submits payment_method bolt_food (that's
@@ -79,7 +81,7 @@ class CheckoutController extends Controller
             // isn't live (e.g. the merchant account is still under
             // review), checkout falls back to cash-only rather than
             // offering a payment method that can't actually be charged.
-            'paystackEnabled' => $settings->getBool(SettingsService::PAYSTACK_ENABLED),
+            'paystackEnabled' => app(ModuleService::class)->enabled(ModuleService::PAYSTACK),
             // For the client-side fee estimate shown the instant location
             // is captured — the authoritative fee is still always priced
             // server-side (OrderCreationService, or OrderStateMachine at
@@ -112,7 +114,7 @@ class CheckoutController extends Controller
         }
 
         $branch = $summary['branch'];
-        $deliveryAvailable = DeliveryArea::where('is_active', true)->exists();
+        $deliveryAvailable = app(ModuleService::class)->enabled(ModuleService::DELIVERY) && DeliveryArea::where('is_active', true)->exists();
 
         $rules = [
             'phone' => [
@@ -163,7 +165,7 @@ class CheckoutController extends Controller
         // request can't place a paystack order while it's switched off,
         // same "never trust the client" reasoning as everything else this
         // validates. See payments.md's "Paystack on/off" section.
-        $paystackEnabled = $settings->getBool(SettingsService::PAYSTACK_ENABLED);
+        $paystackEnabled = app(ModuleService::class)->enabled(ModuleService::PAYSTACK);
         $rules['payment_method'] = ['required', $paystackEnabled ? 'in:cash,paystack' : 'in:cash'];
         $rules['promo_code'] = ['nullable', 'string'];
 

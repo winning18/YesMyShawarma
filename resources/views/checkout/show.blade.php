@@ -569,7 +569,7 @@
                 <div class="border-t border-brand-gray-100 pt-3 mt-3 text-sm text-green-700 bg-green-50 rounded-md px-3 py-2">
                     {{ $automaticPromotion->banner_headline ?: __('A promotion has been applied automatically.') }}
                 </div>
-            @else
+            @elseif (app(\App\Services\Modules\ModuleService::class)->enabled('promotions'))
                 <div class="border-t border-brand-gray-100 pt-3 mt-3">
                     <label class="block text-sm font-medium mb-1" for="discount_code">{{ __('Discount code') }}</label>
                     <div class="flex gap-2">

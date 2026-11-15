@@ -5,7 +5,7 @@
     </div>
 @endif
 
-<div class="grid grid-cols-2 sm:grid-cols-5 gap-4">
+<div class="grid grid-cols-2 {{ app(\App\Services\Modules\ModuleService::class)->enabled('delivery') ? 'sm:grid-cols-5' : 'sm:grid-cols-4' }} gap-4">
     <div class="bg-white shadow rounded-lg p-4">
         <p class="text-xs text-gray-500">{{ __('Orders') }}</p>
         <p class="text-xl font-semibold text-gray-800">{{ $operational['total_orders'] }}</p>
@@ -18,10 +18,12 @@
         <p class="text-xs text-gray-500">{{ __('Avg. prep time') }}</p>
         <p class="text-xl font-semibold text-gray-800">{{ $operational['avg_prep_time_minutes'] !== null ? $operational['avg_prep_time_minutes'].' '.__('min') : 'N/A' }}</p>
     </div>
+    @module('delivery')
     <div class="bg-white shadow rounded-lg p-4">
         <p class="text-xs text-gray-500">{{ __('Avg. delivery time') }}</p>
         <p class="text-xl font-semibold text-gray-800">{{ $operational['avg_delivery_time_minutes'] !== null ? $operational['avg_delivery_time_minutes'].' '.__('min') : 'N/A' }}</p>
     </div>
+    @endmodule
     <div class="bg-white shadow rounded-lg p-4">
         <p class="text-xs text-gray-500">{{ __('Escalations') }}</p>
         <p class="text-xl font-semibold {{ $operational['escalations'] > 0 ? 'text-brand-red' : 'text-gray-800' }}">{{ $operational['escalations'] }}</p>
@@ -44,7 +46,9 @@
                         <th class="px-4 py-2 text-right">{{ __('Revenue') }}</th>
                         <th class="px-4 py-2 text-right">{{ __('Avg. time to accept') }}</th>
                         <th class="px-4 py-2 text-right">{{ __('Avg. prep time') }}</th>
+                        @module('delivery')
                         <th class="px-4 py-2 text-right">{{ __('Avg. delivery time') }}</th>
+                        @endmodule
                         <th class="px-4 py-2 text-right">{{ __('Escalated') }}</th>
                         <th class="px-4 py-2"></th>
                     </tr>
@@ -59,7 +63,9 @@
                             <td class="px-4 py-2 text-right text-gray-700">GH₵{{ number_format($row['revenue'] / 100, 2) }}</td>
                             <td class="px-4 py-2 text-right text-gray-700">{{ $row['avg_time_to_accept_minutes'] !== null ? $row['avg_time_to_accept_minutes'].' '.__('min') : 'N/A' }}</td>
                             <td class="px-4 py-2 text-right text-gray-700">{{ $row['avg_prep_time_minutes'] !== null ? $row['avg_prep_time_minutes'].' '.__('min') : 'N/A' }}</td>
+                            @module('delivery')
                             <td class="px-4 py-2 text-right text-gray-700">{{ $row['avg_delivery_time_minutes'] !== null ? $row['avg_delivery_time_minutes'].' '.__('min') : 'N/A' }}</td>
+                            @endmodule
                             <td class="px-4 py-2 text-right {{ $row['escalated'] > 0 ? 'text-brand-red font-semibold' : 'text-gray-500' }}">{{ $row['escalated'] }}</td>
                             <td class="px-4 py-2 text-right">
                                 <a href="{{ route('dashboard.reports.today.index', ['branch' => $row['branch']->id]) }}" class="text-indigo-600 hover:underline whitespace-nowrap">{{ __('Sales report') }}</a>

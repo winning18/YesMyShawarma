@@ -84,7 +84,8 @@ class PosController extends Controller
             ->filter(fn (array $group) => $group['items']->isNotEmpty())
             ->values();
 
-        $deliveryAreas = DeliveryArea::where('is_active', true)->orderBy('name')->get();
+        // No delivery at all while Delivery and riders is switched off (ModuleService).
+        $deliveryAreas = app(ModuleService::class)->enabled(ModuleService::DELIVERY) ? DeliveryArea::where('is_active', true)->orderBy('name')->get() : collect();
 
         $user = $request->user();
         $isStaff = $context->primaryRoleFor($user, $branch->id) === 'staff';
@@ -227,13 +228,13 @@ class PosController extends Controller
         }
 
         $branch = $summary['branch'];
-        $deliveryAvailable = DeliveryArea::where('is_active', true)->exists();
+        $deliveryAvailable = $modules->enabled(ModuleService::DELIVERY) && DeliveryArea::where('is_active', true)->exists();
 
         $rules = [
             'phone' => ['nullable', 'string'],
             'name' => ['nullable', 'string', 'max:255'],
             'fulfilment_type' => [
-                'required', 'in:pickup,delivery',
+                'required', $deliveryAvailable ? 'in:pickup,delivery' : 'in:pickup',
                 // Bolt's own courier handles delivery for a Bolt Food
                 // order — never ours, so there's nothing for our rider
                 // flow to do with one placed as 'delivery'.

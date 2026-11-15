@@ -44,15 +44,6 @@ class SettingsService
     public const HOME_MENU_SLIDERS = 'home_menu_sliders';
 
     /**
-     * Web checkout's Paystack option — see payments.md's "Paystack on/off"
-     * section. Off by default (missing row, not just a falsy stored value)
-     * so a fresh install/environment starts cash-only until someone
-     * deliberately opts in, same reasoning as the order-reference prefixes
-     * defaulting to a sane value rather than needing to be seeded.
-     */
-    public const PAYSTACK_ENABLED = 'paystack_enabled';
-
-    /**
      * Date (Y-m-d, Africa/Accra) from which riders hand their cash delivery
      * fees in (owner, 2026-11-11). Deliveries before it were the rider's to
      * keep and are never shown as owed. See DeliveryFeeCollectionService.

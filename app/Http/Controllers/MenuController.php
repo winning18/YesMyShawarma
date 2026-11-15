@@ -8,6 +8,7 @@ use App\Models\MenuItem;
 use App\Services\Content\SitePageService;
 use App\Services\Customers\CustomerBranchSelection;
 use App\Services\Menu\PopularItemsService;
+use App\Services\Modules\ModuleService;
 use App\Services\Settings\BusinessProfile;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
@@ -121,8 +122,8 @@ class MenuController extends Controller
 
         foreach ([
             $this->city()
-                ? __(' GH₵:price, for delivery or pickup in :city.', ['price' => $price, 'city' => $this->city()])
-                : __(' GH₵:price, for delivery or pickup.', ['price' => $price]),
+                ? __(' GH₵:price, :how in :city.', ['price' => $price, 'how' => $this->how(), 'city' => $this->city()])
+                : __(' GH₵:price, :how.', ['price' => $price, 'how' => $this->how()]),
             __(' GH₵:price.', ['price' => $price]),
             '',
         ] as $suffix) {
@@ -152,8 +153,8 @@ class MenuController extends Controller
             // the same sentence the page's meta description uses.
             'description' => $item->description
                 ?: ($this->city()
-                    ? __('Order :item from :name, for delivery or pickup in :city.', ['item' => $item->name, 'name' => config('app.name'), 'city' => $this->city()])
-                    : __('Order :item from :name, for delivery or pickup.', ['item' => $item->name, 'name' => config('app.name')])),
+                    ? __('Order :item from :name, :how in :city.', ['item' => $item->name, 'name' => config('app.name'), 'how' => $this->how(), 'city' => $this->city()])
+                    : __('Order :item from :name, :how.', ['item' => $item->name, 'name' => config('app.name'), 'how' => $this->how()])),
             'brand' => [
                 '@type' => 'Brand',
                 'name' => config('app.name'),
@@ -253,6 +254,12 @@ class MenuController extends Controller
         }
 
         return $branch;
+    }
+
+    /** "for pickup" alone while Delivery and riders is switched off (ModuleService). */
+    private function how(): string
+    {
+        return app(ModuleService::class)->enabled(ModuleService::DELIVERY) ? __('for delivery or pickup') : __('for pickup');
     }
 
     private function city(): ?string

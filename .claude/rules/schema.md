@@ -635,10 +635,8 @@ Current keys:
   menu-item search snippet and the weekly sales report. Empty on a new install.
 - **About page** (Website content, step 2c): `about_mission`, `about_vision`,
   `about_founded_year` (shows "years of operation"), `about_customers_label` ("5,000+").
-- `paystack_enabled` — see payments.md's "Paystack on/off" section. Stored as the string `'1'`
-  or `'0'`, read via `SettingsService::getBool()`/written via `setBool()` rather than `get()`/
-  `set()` directly, so every caller agrees on the same string encoding. Off (missing row) by
-  default.
+- `paystack_enabled` — removed in Express POS step 3b; now the Paystack module switch
+  (`module_paystack`, payments.md's "Paystack on/off" section).
 
 ## Website content
 

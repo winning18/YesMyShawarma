@@ -6,6 +6,7 @@ use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\Branches\BranchContext;
+use App\Services\Modules\ModuleService;
 use App\Services\Orders\OrderTransferService;
 use App\Services\Shifts\ShiftService;
 use Illuminate\Http\RedirectResponse;
@@ -105,7 +106,7 @@ class OrderDashboardController extends Controller
             // Manager-and-above only (see permissions.md) — setting or
             // correcting a delivery fee changes what the rider actually
             // collects, same tier as void/refund/discount.
-            'canAdjustFee' => $branchId && $user->can('orders.adjust_delivery_fee'),
+            'canAdjustFee' => $branchId && $user->can('orders.adjust_delivery_fee') && app(ModuleService::class)->enabled(ModuleService::DELIVERY),
         ]);
     }
 

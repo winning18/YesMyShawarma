@@ -109,6 +109,9 @@ class OrderCreationService
         if ($data->source === Order::SOURCE_WHATSAPP && ! $this->modules->enabled(ModuleService::WHATSAPP_REWARD)) {
             throw OrderPlacementException::moduleOff(__('The WhatsApp group reward'));
         }
+        if ($data->fulfilmentType === 'delivery' && ! $this->modules->enabled(ModuleService::DELIVERY)) {
+            throw OrderPlacementException::moduleOff(__('Delivery'));
+        }
 
         // Freebies and WhatsApp group orders are POS-only and pickup-only
         // (owner, 2026-11-14); a freebie must say who it's for and why.

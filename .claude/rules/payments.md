@@ -35,22 +35,24 @@ whatever string is stored here — a new value shows up as its own row with no c
 
 ## Paystack on/off
 
-`SettingsService::PAYSTACK_ENABLED` (`paystack_enabled`, schema.md's Settings section) is a
-dashboard-editable kill switch for the whole `paystack` payment method — built for exactly the
-situation of the Paystack merchant account still being under review, where the option can't
-actually be charged and shouldn't be offered. **Off by default** (no seeding needed on a fresh
-install).
+The **Paystack module** (`ModuleService::PAYSTACK`, Settings → Modules, owner only — Express POS
+step 3b) is the on/off for the whole `paystack` payment method. It replaced the old
+`paystack_enabled` setting on Settings → General; `2026_11_15_140000_move_paystack_switch_to_modules`
+carried each install's value over exactly (missing meant off). Built originally for the Paystack
+merchant account still being under review, where the option can't actually be charged and
+shouldn't be offered. Needs the Website module.
 
 - `CheckoutController::show()` passes `paystackEnabled` to the view; `checkout/show.blade.php`
   shows both payment options when true, or a plain "cash only" line (still submitting
   `payment_method=cash` via a hidden input) when false. Nothing else about the page changes —
   delivery, pickup, promo codes all work exactly the same.
-- `CheckoutController::store()` re-checks the same flag server-side (`Rule::in('cash')` vs
+- `CheckoutController::store()` re-checks the same switch server-side (`Rule::in('cash')` vs
   `Rule::in('cash', 'paystack')`) — a client-tampered request can't place a paystack order while
   it's switched off, same "never trust the client" reasoning as every other checkout rule.
-- Deliberately **does not** touch `PaystackPaymentService`, `PaystackClient`, or the webhook
-  route at all — an order already placed via Paystack before the flag was flipped off must still
-  be confirmable when its webhook eventually lands. This only gates *new* order placement.
+- Deliberately **does not** touch `PaystackPaymentService`, `PaystackClient`, the webhook route
+  or the `AbandonPendingPaymentOrders` clean-up — an order already placed via Paystack before the
+  switch went off must still be confirmable (or abandoned) when its webhook or timeout lands.
+  This only gates *new* order placement.
 - POS never offered Paystack in the first place (staff-entered orders are `cash`/`momo` only —
   see below), so it's unaffected by this flag either way.
 

@@ -10,6 +10,7 @@ use App\Models\SmsBroadcast;
 use App\Models\SmsBroadcastRecipient;
 use App\Models\User;
 use App\Services\Customers\CustomerService;
+use App\Services\Modules\ModuleService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -178,6 +179,11 @@ class SmsBroadcastService
      */
     public function startDue(): int
     {
+        // Customer SMS switched off: nothing goes out (ModuleService).
+        if (! app(ModuleService::class)->enabled(ModuleService::SMS)) {
+            return 0;
+        }
+
         $started = 0;
 
         SmsBroadcast::where('status', SmsBroadcast::STATUS_SCHEDULED)
@@ -214,6 +220,10 @@ class SmsBroadcastService
      */
     public function send(SmsBroadcast $broadcast, ?Carbon $until = null): bool
     {
+        if (! app(ModuleService::class)->enabled(ModuleService::SMS)) {
+            return false;
+        }
+
         if ($broadcast->status !== SmsBroadcast::STATUS_SENDING) {
             return false;
         }

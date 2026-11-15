@@ -28,9 +28,11 @@
                 @if ($result['truncated'])
                     <p class="text-sm text-amber-700">{{ __('Only the first :max rows were read. Split the file and upload the rest.', ['max' => number_format($maxRows)]) }}</p>
                 @endif
+                @module('sms')
                 @can('customers.broadcast')
                     <a href="{{ route('dashboard.customers.broadcasts.index') }}" class="inline-block text-sm font-semibold underline text-gray-800">{{ __('Send an SMS broadcast') }} &rarr;</a>
                 @endcan
+                @endmodule
             </div>
         @endif
 
@@ -50,7 +52,9 @@ Kofi,+233 20 123 4567</pre>
             <ul class="text-xs text-gray-500 list-disc list-inside space-y-0.5">
                 <li>{{ __('Numbers are checked and saved as +233…. Numbers missing their leading 0 are fixed.') }}</li>
                 <li>{{ __('Numbers already in the list are kept as they are. Duplicates and invalid numbers are skipped.') }}</li>
-                <li>{{ __('New contacts are included in "All customers" SMS broadcasts.') }}</li>
+                @module('sms')
+                    <li>{{ __('New contacts are included in "All customers" SMS broadcasts.') }}</li>
+                @endmodule
             </ul>
 
             <div>

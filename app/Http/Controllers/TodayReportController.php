@@ -122,7 +122,7 @@ class TodayReportController extends Controller
             // figures are for the owner, managers and the rider themselves
             // (same access as the Delivery fees tab). Dated by delivery,
             // like that tab. Bolt Food's courier isn't ours, so no line there.
-            'deliveryFees' => $user->can('reports.view_financial') && $selected !== 'bolt_food'
+            'deliveryFees' => $user->can('reports.view_financial') && $selected !== 'bolt_food' && app(ModuleService::class)->enabled(ModuleService::DELIVERY)
                 ? $deliveryFees->summary(
                     $deliveryFees->rows($rangeStart, $rangeEnd, ignoreBranchScope: $branchId === null && $scopeIds === null, branchId: $branchId, branchIds: $scopeIds)->where('channel', $channel)
                 )

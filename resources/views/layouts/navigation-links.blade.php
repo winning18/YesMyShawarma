@@ -175,11 +175,13 @@
     </x-sidebar-link>
 @endcan
 
+@module('promotions')
 @can('promotions.manage')
     <x-sidebar-link :href="route('dashboard.promotions.index')" :active="request()->routeIs('dashboard.promotions.*')">
         {{ __('Promotions') }}
     </x-sidebar-link>
 @endcan
+@endmodule
 
 @can('customers.view')
     <x-sidebar-link :href="route('dashboard.customers.index')" :active="request()->routeIs('dashboard.customers.*')">

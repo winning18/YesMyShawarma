@@ -5,6 +5,7 @@ namespace App\Services\Notifications;
 use App\Jobs\SendSms;
 use App\Models\Order;
 use App\Models\Refund;
+use App\Services\Modules\ModuleService;
 
 /**
  * The customer-facing order-status SMS points — delivery gets placed,
@@ -46,7 +47,7 @@ class CustomerOrderNotifier
     {
         $order = $refund->order;
 
-        if (! $order->customer->phone) {
+        if (! $order->customer->phone || ! $this->smsOn()) {
             return;
         }
 
@@ -66,7 +67,7 @@ class CustomerOrderNotifier
      */
     private function send(Order $order, string $message): void
     {
-        if (! $order->customer->phone) {
+        if (! $order->customer->phone || ! $this->smsOn()) {
             return;
         }
 
@@ -77,5 +78,15 @@ class CustomerOrderNotifier
             "{$message} Track it here: {$link}",
             ['order_id' => $order->id],
         );
+    }
+
+    /**
+     * Customer SMS switched off: customers get no messages (ModuleService).
+     * Staff alerts and account security codes don't come through here,
+     * so they still send.
+     */
+    private function smsOn(): bool
+    {
+        return app(ModuleService::class)->enabled(ModuleService::SMS);
     }
 }

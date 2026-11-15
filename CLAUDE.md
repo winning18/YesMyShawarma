@@ -217,14 +217,14 @@ step before the previous one is released.
 
 Straight after the MVP: offline mode for the subscription edition.
 
-**Current step:** 3b (module switches: promotions, SMS, Paystack, delivery and riders). Step 1,
+**Current step:** 3c (module switches: website). Step 1,
 this rulebook, approved 2026-11-15; step 2, business settings, built 2026-11-15 (2a business
 profile, 2b menu and branch rules, 2c website content). Step 3 runs in three parts: 3a the
 switches, the Modules page and seven modules (Bolt Food, WhatsApp reward, freebies, market list
 and profit, stock, refunds and damage, reviews), built 2026-11-15; 3b promotions, customer SMS
-(order updates, refund notices, broadcasts only — staff alerts and account codes always send),
-Paystack (its Settings switch moves to Modules), delivery and riders; 3c website. Then the home
-page strip editor (`home_menu_sliders`).
+(order updates, refund notices, broadcasts only — staff alerts, account codes and SMS opt-out
+always work), Paystack (its Settings switch moved to Modules), delivery and riders, built
+2026-11-15; 3c website. Then the home page strip editor (`home_menu_sliders`).
 <!-- Update this line as steps complete. It is the fastest signal of where the project is. -->
 
 ---

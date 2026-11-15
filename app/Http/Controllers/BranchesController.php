@@ -8,6 +8,7 @@ use App\Services\Branches\WorkingHoursService;
 use App\Services\Cart\CartService;
 use App\Services\Content\SitePageService;
 use App\Services\Customers\CustomerBranchSelection;
+use App\Services\Modules\ModuleService;
 use App\Services\Seo\RestaurantSchemaBuilder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -56,7 +57,7 @@ class BranchesController extends Controller
             'intro' => $pages->body('branch', $placeholders),
             'branch' => $branch,
             'weeklyHours' => $workingHours->forBranch($branch->id),
-            'deliveryAreas' => $branch->areas_served ?? [],
+            'deliveryAreas' => app(ModuleService::class)->enabled(ModuleService::DELIVERY) ? ($branch->areas_served ?? []) : [],
             'otherBranches' => Branch::where('is_active', true)->whereKeyNot($branch->id)->orderBy('name')->get(['id', 'name', 'slug']),
             'selected' => $selection->id() === $branch->id,
             'restaurantSchema' => $restaurantSchema->forBranch($branch),

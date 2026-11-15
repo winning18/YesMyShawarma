@@ -89,6 +89,7 @@
                 </form>
             </section>
 
+            @module('sms')
             <section class="border border-brand-gray-100 rounded-lg p-5">
                 <h2 class="font-bold mb-1">{{ __('SMS offers') }}</h2>
                 <p class="text-sm text-brand-gray-500 mb-4">{{ __('Deals and news by text. Order updates are always texted, whatever you choose here.') }}</p>
@@ -106,6 +107,7 @@
                     @endif
                 </form>
             </section>
+            @endmodule
         </div>
     </div>
 

@@ -28,7 +28,6 @@ class SettingsController extends Controller
             'whatsappPrefix' => $settings->prefix(SettingsService::ORDER_REFERENCE_PREFIX_WHATSAPP),
             'freebiePrefix' => $settings->prefix(SettingsService::ORDER_REFERENCE_PREFIX_FREEBIE),
             'whatsappReward' => number_format(((int) $settings->get(SettingsService::WHATSAPP_REWARD_AMOUNT, '1000')) / 100, 2, '.', ''),
-            'paystackEnabled' => $settings->getBool(SettingsService::PAYSTACK_ENABLED),
         ]);
     }
 
@@ -53,7 +52,6 @@ class SettingsController extends Controller
         if (isset($validated['whatsapp_reward'])) {
             $settings->set(SettingsService::WHATSAPP_REWARD_AMOUNT, (string) (int) round(((float) $validated['whatsapp_reward']) * 100));
         }
-        $settings->setBool(SettingsService::PAYSTACK_ENABLED, $request->boolean('paystack_enabled'));
 
         return back()->with('status', __('Settings updated.'));
     }

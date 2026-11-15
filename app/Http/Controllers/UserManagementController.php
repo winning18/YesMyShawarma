@@ -8,6 +8,7 @@ use App\Models\Branch;
 use App\Models\User;
 use App\Services\Accounts\AccountSuspensionService;
 use App\Services\Branches\BranchContext;
+use App\Services\Modules\ModuleService;
 use App\Services\Users\UserManagementService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -89,7 +90,7 @@ class UserManagementController extends Controller
 
         return view('dashboard.users.create', [
             'branches' => $branches,
-            'roles' => $canManage ? self::ROLES : self::OPERATIONAL_ROLES,
+            'roles' => $this->offered($canManage ? self::ROLES : self::OPERATIONAL_ROLES),
         ]);
     }
 
@@ -129,7 +130,7 @@ class UserManagementController extends Controller
             'suspendedBy' => $user->suspended_by ? User::withTrashed()->find($user->suspended_by)?->name : null,
             'targetUser' => $user,
             'roles' => $users->rolesFor($user),
-            'availableRoles' => self::ROLES,
+            'availableRoles' => $this->offered(self::ROLES),
             'branches' => Branch::orderBy('name')->get(),
         ]);
     }
@@ -139,7 +140,7 @@ class UserManagementController extends Controller
         Gate::authorize('users.manage');
 
         $validated = $request->validate([
-            'role' => ['required', 'string', Rule::in(self::ROLES)],
+            'role' => ['required', 'string', Rule::in($this->offered(self::ROLES))],
             'branch_id' => ['required', 'integer', 'exists:branches,id'],
         ]);
 
@@ -153,7 +154,7 @@ class UserManagementController extends Controller
         Gate::authorize('users.manage');
 
         $validated = $request->validate([
-            'role' => ['required', 'string', Rule::in(self::ROLES)],
+            'role' => ['required', 'string', Rule::in($this->offered(self::ROLES))],
             'branch_id' => ['required', 'integer', 'exists:branches,id'],
         ]);
 
@@ -176,7 +177,7 @@ class UserManagementController extends Controller
     public function changeBranch(Request $request, User $user, UserManagementService $users): RedirectResponse
     {
         $validated = $request->validate([
-            'role' => ['required', 'string', Rule::in(self::ROLES)],
+            'role' => ['required', 'string', Rule::in($this->offered(self::ROLES))],
             'from_branch_id' => ['required', 'integer', 'exists:branches,id'],
             'to_branch_id' => ['required', 'integer', 'exists:branches,id', 'different:from_branch_id'],
         ]);
@@ -221,5 +222,19 @@ class UserManagementController extends Controller
 
         return redirect()->route('dashboard.users.index')
             ->with('status', __(':name has been deleted.', ['name' => $user->name]));
+    }
+
+    /**
+     * The rider role only while Delivery and riders is switched on
+     * (ModuleService); existing riders keep their accounts either way.
+     *
+     * @param  list<string>  $roles
+     * @return list<string>
+     */
+    private function offered(array $roles): array
+    {
+        return app(ModuleService::class)->enabled(ModuleService::DELIVERY)
+            ? $roles
+            : array_values(array_diff($roles, ['rider']));
     }
 }

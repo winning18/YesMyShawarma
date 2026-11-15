@@ -214,6 +214,7 @@
                         @php $feePaidBy = $order->delivery_fee_paid_by ?? 'momo'; @endphp
                         <div class="mt-4 pt-4 border-t border-gray-100 space-y-2">
                             <p class="text-xs font-medium text-gray-500">{{ __('Delivery fee paid') }}</p>
+                            @module('delivery')
                             @can('changeDeliveryFeePayer', $order)
                                 <form method="POST" action="{{ route('orders.delivery_fee_paid_by', $order) }}" class="flex flex-wrap items-center gap-3 text-sm">
                                     @csrf
@@ -229,6 +230,7 @@
                             @else
                                 <p class="text-sm text-gray-800">{{ $feePaidBy === 'momo' ? __('By MoMo') : __('Cash to rider') }}</p>
                             @endcan
+                            @endmodule
                         </div>
                     @endif
 

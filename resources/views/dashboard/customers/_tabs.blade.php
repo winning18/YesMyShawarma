@@ -24,11 +24,13 @@
             href="{{ route('dashboard.customers.index') }}"
             class="pb-3 text-sm font-semibold border-b-2 -mb-px {{ $active === 'customers' ? 'border-green-600 text-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700' }}"
         >{{ __('Customer list') }}</a>
+        @if (app(\App\Services\Modules\ModuleService::class)->enabled('sms'))
         @can('customers.broadcast')
             <a
                 href="{{ route('dashboard.customers.broadcasts.index') }}"
                 class="pb-3 text-sm font-semibold border-b-2 -mb-px {{ $active === 'broadcasts' ? 'border-green-600 text-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700' }}"
             >{{ __('SMS broadcasts') }}</a>
         @endcan
+        @endif
     </div>
 </div>

@@ -339,6 +339,9 @@
                 // start/end shifts during the session. Only ever holds
                 // riders, never staff.
                 async fetchRiders() {
+                    // No riders while Delivery and riders is switched off (ModuleService).
+                    if (! @js(app(\App\Services\Modules\ModuleService::class)->enabled('delivery'))) return;
+
                     const wasEmpty = this.riders.length === 0;
 
                     try {

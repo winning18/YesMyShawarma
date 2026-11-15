@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\MenuItem;
 use App\Services\Branches\WorkingHoursService;
 use App\Services\Customers\CustomerService;
+use App\Services\Modules\ModuleService;
 use App\Services\Settings\BusinessProfile;
 
 /**
@@ -102,7 +103,7 @@ class RestaurantSchemaBuilder
         }
 
         // Same list the branch page shows (branches.areas_served).
-        if ($areas = $branch->areas_served ?? []) {
+        if (($areas = $branch->areas_served ?? []) && app(ModuleService::class)->enabled(ModuleService::DELIVERY)) {
             $schema['areaServed'] = array_map(fn (string $area) => ['@type' => 'Place', 'name' => $area], $areas);
         }
 

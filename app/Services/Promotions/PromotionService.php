@@ -9,6 +9,7 @@ use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\Promotion;
 use App\Models\PromotionRedemption;
+use App\Services\Modules\ModuleService;
 
 class PromotionService
 {
@@ -47,6 +48,12 @@ class PromotionService
             return null;
         }
 
+        // With Promotions switched off there are no offers anywhere: no
+        // banner, no free items, no discount (ModuleService).
+        if (! app(ModuleService::class)->enabled(ModuleService::PROMOTIONS)) {
+            return null;
+        }
+
         $now = now();
         // Carbon's own numbering (0=Sunday..6=Saturday), matching
         // menu_item_schedules — Africa/Accra local, since "Wednesday" is a
@@ -78,6 +85,10 @@ class PromotionService
      */
     public function validate(string $code, Branch $branch, Customer $customer, int $subtotal): Promotion
     {
+        if (! app(ModuleService::class)->enabled(ModuleService::PROMOTIONS)) {
+            throw OrderPlacementException::invalidPromoCode('This promo code is not valid.');
+        }
+
         $promotion = Promotion::where('code', $code)->with('branches')->first();
 
         // Automatic promotions still need some unique code value for the

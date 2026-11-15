@@ -3,19 +3,26 @@
 namespace Tests\Feature;
 
 use App\Exceptions\OrderPlacementException;
+use App\Jobs\SendSms;
 use App\Models\Branch;
 use App\Models\Category;
 use App\Models\Customer;
+use App\Models\DeliveryArea;
 use App\Models\MenuItem;
 use App\Models\Order;
+use App\Models\Promotion;
 use App\Models\Setting;
 use App\Models\User;
 use App\Services\Modules\ModuleService;
+use App\Services\Notifications\CustomerOrderNotifier;
 use App\Services\Orders\Data\PlaceOrderData;
 use App\Services\Orders\Data\PlaceOrderItemData;
 use App\Services\Orders\OrderCreationService;
+use App\Services\Promotions\PromotionService;
+use App\Services\Sms\SmsBroadcastService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
@@ -33,6 +40,8 @@ class ModulesTest extends TestCase
         ModuleService::BOLT_FOOD, ModuleService::WHATSAPP_REWARD, ModuleService::FREEBIES,
         ModuleService::MARKET_LIST, ModuleService::STOCK, ModuleService::REFUNDS, ModuleService::REVIEWS,
     ];
+
+    private const STEP_3B = [ModuleService::PROMOTIONS, ModuleService::SMS, ModuleService::PAYSTACK, ModuleService::DELIVERY];
 
     private Branch $branch;
 
@@ -110,7 +119,7 @@ class ModulesTest extends TestCase
         config(['modules.default_on' => false]);
         $modules = new ModuleService;
 
-        foreach (self::STEP_3A as $module) {
+        foreach ([...self::STEP_3A, ...self::STEP_3B] as $module) {
             $this->assertFalse($modules->enabled($module), "{$module} should start off");
         }
         // Not switchable yet, so it behaves as before.
@@ -249,5 +258,108 @@ class ModulesTest extends TestCase
         $csv = $this->as($owner)->get(route('dashboard.reports.profit.download', ['format' => 'csv']))->assertOk()->getContent();
         $this->assertStringContainsString('Profit (ghs)', $csv);
         $this->assertStringNotContainsString('Bolt Food', $csv);
+    }
+
+    public function test_the_paystack_switch_keeps_each_installs_current_setting(): void
+    {
+        $migration = require database_path('migrations/2026_11_15_140000_move_paystack_switch_to_modules.php');
+
+        $migration->up();
+        $this->assertNull(Setting::where('key', 'module_paystack')->value('value'), 'a new install stays unset (off)');
+
+        Setting::create(['key' => 'paystack_enabled', 'value' => '1']);
+        Setting::create(['key' => 'module_paystack', 'value' => '1']);
+        $migration->up();
+        $this->assertSame('1', Setting::where('key', 'module_paystack')->value('value'));
+        $this->assertNull(Setting::where('key', 'paystack_enabled')->value('value'));
+
+        // An install with orders whose Paystack was never switched on stays off.
+        $this->order();
+        Setting::where('key', 'module_paystack')->update(['value' => '1']);
+        $migration->up();
+        $this->assertSame('0', Setting::where('key', 'module_paystack')->value('value'));
+    }
+
+    public function test_with_promotions_off_there_are_no_offers_anywhere(): void
+    {
+        Promotion::create([
+            'code' => 'EVERY-DAY', 'type' => 'percentage', 'value' => 10, 'is_active' => true,
+            'is_automatic' => true, 'recurring_days' => [now('Africa/Accra')->dayOfWeek], 'banner_headline' => 'Ten percent off today',
+        ]);
+        Promotion::create(['code' => 'TENOFF', 'type' => 'percentage', 'value' => 10, 'is_active' => true]);
+        $promotions = app(PromotionService::class);
+        $this->assertNotNull($promotions->findActiveAutomatic($this->branch));
+
+        $this->switchOff(ModuleService::PROMOTIONS);
+
+        $this->assertNull($promotions->findActiveAutomatic($this->branch));
+        $this->get(route('home'))->assertDontSee('Ten percent off today');
+        $owner = $this->userWithRole('owner');
+        $this->as($owner)->get(route('dashboard.promotions.index'))->assertNotFound();
+        $this->as($owner)->get(route('dashboard.settings.index'))->assertDontSee(route('dashboard.promotions.index'), false);
+        $this->postJson(route('checkout.apply-promo'), ['code' => 'TENOFF'])->assertNotFound();
+
+        $order = app(OrderCreationService::class)->create(new PlaceOrderData(
+            customerPhone: '+233241111111', customerName: 'Ama', branchId: $this->branch->id,
+            fulfilmentType: 'pickup', paymentMethod: 'cash', items: [new PlaceOrderItemData(menuItemId: $this->item->id, quantity: 1)],
+        ));
+        $this->assertSame(0, $order->discount_total);
+
+        $this->expectException(OrderPlacementException::class);
+        app(OrderCreationService::class)->create(new PlaceOrderData(
+            customerPhone: '+233241111111', customerName: 'Ama', branchId: $this->branch->id,
+            fulfilmentType: 'pickup', paymentMethod: 'cash', items: [new PlaceOrderItemData(menuItemId: $this->item->id, quantity: 1)],
+            promoCode: 'TENOFF',
+        ));
+    }
+
+    public function test_with_customer_sms_off_customers_get_no_messages_but_the_rest_still_works(): void
+    {
+        Queue::fake();
+        $order = $this->order();
+
+        app(CustomerOrderNotifier::class)->placed($order);
+        Queue::assertPushed(SendSms::class, 1);
+
+        $this->switchOff(ModuleService::SMS);
+        app(CustomerOrderNotifier::class)->readyForPickup($order);
+        Queue::assertPushed(SendSms::class, 1);
+        $this->assertSame(0, app(SmsBroadcastService::class)->startDue());
+
+        $owner = $this->userWithRole('owner');
+        $this->as($owner)->get(route('dashboard.customers.broadcasts.index'))->assertNotFound();
+        $this->as($owner)->get(route('dashboard.customers.index'))->assertOk()->assertDontSee(route('dashboard.customers.broadcasts.index'), false);
+    }
+
+    public function test_with_delivery_off_everything_is_pickup_and_the_rider_app_is_gone(): void
+    {
+        DeliveryArea::create(['name' => 'Labone']);
+        $this->branch->update(['areas_served' => ['Labone', 'Osu']]);
+        $this->switchOff(ModuleService::DELIVERY);
+        $owner = $this->userWithRole('owner');
+        $staff = $this->userWithRole('staff');
+
+        $this->get('/rider/login')->assertNotFound();
+        $this->as($owner)->get(route('dashboard.riders'))->assertNotFound();
+        $this->as($owner)->get(route('dashboard.reports.delivery-fees.index'))->assertNotFound();
+        $this->as($owner)->get(route('dashboard.reports.today.index'))->assertDontSee(route('dashboard.reports.delivery-fees.index'), false);
+        $this->as($owner)->get(route('dashboard.users.create'))->assertOk()->assertViewHas('roles', fn (array $roles) => ! in_array('rider', $roles, true));
+
+        $this->as($staff)->get(route('dashboard.pos.index'))->assertOk()->assertViewHas('deliveryAvailable', false);
+        $this->as($staff)->postJson(route('dashboard.pos.cart.add'), ['menu_item_id' => $this->item->id, 'quantity' => 1, 'option_ids' => []])->assertOk();
+        $this->as($staff)->postJson(route('dashboard.pos.orders.store'), ['fulfilment_type' => 'delivery', 'payment_method' => 'cash'])->assertUnprocessable();
+
+        $branchPage = $this->get(route('branches.show', $this->branch))->assertOk();
+        $branchPage->assertDontSee('Delivery areas')->assertDontSee('areaServed', false);
+
+        $customer = Customer::create(['phone' => '+233240000009', 'password' => 'secret-password']);
+        $this->actingAs($customer, 'customer')->get(route('customer.account.addresses'))->assertNotFound();
+        $this->actingAs($customer, 'customer')->get(route('customer.account.show'))->assertOk()->assertDontSee(route('customer.account.addresses'), false);
+
+        $this->expectException(OrderPlacementException::class);
+        app(OrderCreationService::class)->create(new PlaceOrderData(
+            customerPhone: '+233241111111', customerName: 'Ama', branchId: $this->branch->id,
+            fulfilmentType: 'delivery', paymentMethod: 'cash', items: [new PlaceOrderItemData(menuItemId: $this->item->id, quantity: 1)],
+        ));
     }
 }

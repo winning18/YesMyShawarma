@@ -4,6 +4,7 @@ namespace App\Services\Content;
 
 use App\Models\FaqItem;
 use App\Models\SitePage;
+use App\Services\Modules\ModuleService;
 use App\Services\Settings\BusinessProfile;
 use App\Services\Settings\SettingsService;
 use Illuminate\Support\HtmlString;
@@ -284,6 +285,8 @@ class SitePageService
     {
         return $this->page('default')->meta_description
             ?: $this->profile->tagline()
-            ?: 'Order online from :name for delivery or pickup.';
+            ?: (app(ModuleService::class)->enabled(ModuleService::DELIVERY)
+                ? 'Order online from :name for delivery or pickup.'
+                : 'Order online from :name for pickup.');
     }
 }

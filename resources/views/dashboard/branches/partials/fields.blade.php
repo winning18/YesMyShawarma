@@ -29,12 +29,14 @@
     <x-input-error class="mt-2" :messages="$errors->get('address')" />
 </div>
 
+@module('delivery')
 <div>
     <x-input-label for="areas_served" :value="__('Areas served (optional)')" />
     <textarea id="areas_served" name="areas_served" rows="2" class="mt-1 block w-full rounded-md border-gray-300 text-sm" placeholder="{{ __('e.g. Amasaman, Kwabenya, Ofankor') }}">{{ old('areas_served', implode(', ', $branch?->areas_served ?? [])) }}</textarea>
     <p class="text-xs text-gray-500 mt-1">{{ __('Neighbourhoods this branch delivers to, separated by commas. Shown on the branch\'s page and to search engines; it doesn\'t limit delivery.') }}</p>
     <x-input-error class="mt-2" :messages="$errors->get('areas_served')" />
 </div>
+@endmodule
 
 <div>
     <x-input-label for="ghanapost_code" :value="__('GhanaPost GPS code (optional)')" />

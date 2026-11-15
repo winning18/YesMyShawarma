@@ -56,15 +56,15 @@ class ModuleService
      */
     public const MODULES = [
         self::WEBSITE => ['label' => 'Website ordering', 'description' => 'Customer website, online checkout, order tracking and customer accounts.', 'requires' => [], 'ready' => false],
-        self::PAYSTACK => ['label' => 'Paystack', 'description' => 'Online card and MoMo payment at website checkout.', 'requires' => [self::WEBSITE], 'ready' => false],
-        self::DELIVERY => ['label' => 'Delivery and riders', 'description' => 'Delivery orders, the rider app, distance-based delivery fees and fee collections.', 'requires' => [], 'ready' => false],
+        self::PAYSTACK => ['label' => 'Paystack', 'description' => 'Online card and MoMo payment at website checkout.', 'requires' => [self::WEBSITE], 'ready' => true],
+        self::DELIVERY => ['label' => 'Delivery and riders', 'description' => 'Delivery orders, the rider app, distance-based delivery fees and fee collections.', 'requires' => [], 'ready' => true],
         self::BOLT_FOOD => ['label' => 'Bolt Food', 'description' => 'Take Bolt Food orders at the POS, kept out of sales with their own reference prefix and reports.', 'requires' => [], 'ready' => true],
-        self::PROMOTIONS => ['label' => 'Promotions', 'description' => 'Promo codes and automatic offers such as buy 2 get 1 free.', 'requires' => [], 'ready' => false],
+        self::PROMOTIONS => ['label' => 'Promotions', 'description' => 'Promo codes and automatic offers such as buy 2 get 1 free.', 'requires' => [], 'ready' => true],
         self::WHATSAPP_REWARD => ['label' => 'WhatsApp group reward', 'description' => 'A fixed amount off the food for orders from your WhatsApp customer group.', 'requires' => [], 'ready' => true],
         self::FREEBIES => ['label' => 'Freebies', 'description' => 'Free orders for customers and staff, approved by a manager.', 'requires' => [], 'ready' => true],
         self::MARKET_LIST => ['label' => 'Market list and profit', 'description' => 'Record purchases, approve them, and see expenses and profit by period.', 'requires' => [], 'ready' => true],
         self::STOCK => ['label' => 'Recipes and stock', 'description' => 'Stock items, recipes that use them up as orders are accepted, and low-stock alerts.', 'requires' => [], 'ready' => true],
-        self::SMS => ['label' => 'Customer SMS', 'description' => 'Order updates, refund notices and SMS broadcasts to customers.', 'requires' => [], 'ready' => false],
+        self::SMS => ['label' => 'Customer SMS', 'description' => 'Order updates, refund notices and SMS broadcasts to customers.', 'requires' => [], 'ready' => true],
         self::REFUNDS => ['label' => 'Refunds and damage reports', 'description' => 'Request, approve and complete refunds; damage reports with photos.', 'requires' => [], 'ready' => true],
         self::REVIEWS => ['label' => 'Reviews', 'description' => 'Customers review their order after it arrives; approved reviews show on the website.', 'requires' => [self::WEBSITE], 'ready' => true],
     ];

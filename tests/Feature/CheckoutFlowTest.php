@@ -11,7 +11,7 @@ use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\Promotion;
 use App\Services\Delivery\DeliveryFeeCalculator;
-use App\Services\Settings\SettingsService;
+use App\Services\Modules\ModuleService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
@@ -82,7 +82,7 @@ class CheckoutFlowTest extends TestCase
 
     public function test_paystack_checkout_redirects_to_paystack_authorization_url(): void
     {
-        app(SettingsService::class)->setBool(SettingsService::PAYSTACK_ENABLED, true);
+        app(ModuleService::class)->set(ModuleService::PAYSTACK, true);
 
         Http::fake([
             'api.paystack.co/transaction/initialize' => Http::response([
@@ -107,12 +107,12 @@ class CheckoutFlowTest extends TestCase
     }
 
     /**
-     * Regression test for the Paystack on/off setting (payments.md) —
-     * default-off, and enforced server-side, not just hidden from the
-     * checkout form.
+     * Regression test for the Paystack module switch (payments.md) —
+     * enforced server-side, not just hidden from the checkout form.
      */
-    public function test_paystack_is_rejected_when_the_setting_is_off(): void
+    public function test_paystack_is_rejected_when_the_module_is_off(): void
     {
+        app(ModuleService::class)->set(ModuleService::PAYSTACK, false);
         $this->addToCart(1);
 
         $response = $this->post(route('checkout.store'), [
@@ -127,6 +127,7 @@ class CheckoutFlowTest extends TestCase
 
     public function test_checkout_page_only_offers_cash_when_paystack_is_off(): void
     {
+        app(ModuleService::class)->set(ModuleService::PAYSTACK, false);
         $this->addToCart(1);
 
         $this->get(route('checkout.show'))
@@ -165,7 +166,7 @@ class CheckoutFlowTest extends TestCase
 
     public function test_checkout_page_offers_paystack_when_enabled(): void
     {
-        app(SettingsService::class)->setBool(SettingsService::PAYSTACK_ENABLED, true);
+        app(ModuleService::class)->set(ModuleService::PAYSTACK, true);
 
         $this->addToCart(1);
 
@@ -285,7 +286,7 @@ class CheckoutFlowTest extends TestCase
 
     public function test_paystack_is_allowed_for_delivery_checkout(): void
     {
-        app(SettingsService::class)->setBool(SettingsService::PAYSTACK_ENABLED, true);
+        app(ModuleService::class)->set(ModuleService::PAYSTACK, true);
 
         Http::fake([
             'api.paystack.co/transaction/initialize' => Http::response([
