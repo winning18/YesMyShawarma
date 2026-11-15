@@ -14,14 +14,6 @@
         <title>{{ __('Sign in') }} · Express POS</title>
         <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,{{ rawurlencode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="10" fill="#101010"/><circle cx="12" cy="24" r="4" fill="#fff"/><path d="M18.4 16.9a10 10 0 0 1 0 14.2" stroke="#FCD116" stroke-width="4.5" stroke-linecap="round" fill="none"/><path d="M23.3 11.6a17 17 0 0 1 0 24.8" stroke="#12A150" stroke-width="4.5" stroke-linecap="round" fill="none"/><path d="M28.2 6.3a24 24 0 0 1 0 35.4" stroke="#E23A3A" stroke-width="4.5" stroke-linecap="round" fill="none"/></svg>') }}">
 
-        <!-- Fonts -->
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link
-            href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap"
-            rel="stylesheet"
-            integrity="sha384-lQM68ivKBOfXgJDga3JtrfUEh8B2uRHapweBL5h4+Dz79cLzvpVQ5pDQbFa9Mlh4"
-            crossorigin="anonymous"
-        />
         {{-- Archivo Black Italic (SIL Open Font License), latin only, 15 KB — the wordmark and headline. --}}
         <link rel="preload" href="{{ asset('fonts/archivo-900-italic-latin.woff2') }}" as="font" type="font/woff2" crossorigin>
         <style>

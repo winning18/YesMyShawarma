@@ -9,14 +9,6 @@
 
         @include('partials.brand-head')
 
-        <!-- Fonts -->
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link
-            href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap"
-            rel="stylesheet"
-            integrity="sha384-lQM68ivKBOfXgJDga3JtrfUEh8B2uRHapweBL5h4+Dz79cLzvpVQ5pDQbFa9Mlh4"
-            crossorigin="anonymous"
-        />
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])

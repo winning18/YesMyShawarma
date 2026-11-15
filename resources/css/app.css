@@ -7,6 +7,33 @@
 }
 
 /*
+ * Figtree, the staff app's typeface — served from our own site (SIL Open
+ * Font License, latin only, about 34 KB), not a font CDN: a CDN changing
+ * its stylesheet once broke the pinned integrity hash and blocked the font.
+ */
+@font-face {
+    font-family: 'Figtree';
+    src: url('/fonts/figtree-400-latin.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Figtree';
+    src: url('/fonts/figtree-500-latin.woff2') format('woff2');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Figtree';
+    src: url('/fonts/figtree-600-latin.woff2') format('woff2');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+
+/*
  * Brand colours as "r g b" channels (tailwind.config.js reads them). These
  * are the defaults; each page's partials/brand-head overrides them with
  * the business's own colours from its Business profile.
