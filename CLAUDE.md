@@ -63,7 +63,12 @@ These come before everything else in this file.
    current value is filled in automatically (a data migration), so nothing changes on the day.
 6. **Branding.** Inside the app, staff and customers see the business's own name, logo and
    colours. The staff login page always shows EXPRESS POS, a Solusys Digital product. A
-   business's customers never see "Express POS".
+   business's customers never see "Express POS". The sign-in pages (`layouts/guest`, the
+   `x-express-pos-logo` component, `auth/partials/sign-in-form`) use Express POS's own logo
+   system — Midnight #101010, Kente Gold #FCD116, Forest Green #12A150, Signal Red #E23A3A
+   (`xpos-*` Tailwind colours), Archivo Black Italic for the wordmark and headline (self-hosted,
+   `public/fonts`), Figtree for text. Source: the owner's "Tap & Go · Logo system" and "POS
+   sign-in screen" designs (2026-11-15). Never use the `xpos-*` colours on a business's screens.
 7. **Every change is safe for Yes My Shawarma.** All modules stay on for Yes My Shawarma;
    switching modules off is only ever tested on staging and on other clients' installs.
 
@@ -217,7 +222,8 @@ step before the previous one is released.
 
 Straight after the MVP: offline mode for the subscription edition.
 
-**Current step:** 5 (Express POS identity). Step 1, this rulebook, approved 2026-11-15; step 2,
+**Current step:** 6 (installs per client). Step 5, Express POS identity, built 2026-11-15
+(sign-in pages; email + password kept until staff ID + PIN in step 7). Step 1, this rulebook, approved 2026-11-15; step 2,
 business settings, built 2026-11-15 (2a business profile, 2b menu and branch rules, 2c website
 content); step 3, module switches, built 2026-11-15 in three parts (3a the switches, the Modules
 page and seven modules; 3b promotions, customer SMS, Paystack, delivery and riders; 3c website);

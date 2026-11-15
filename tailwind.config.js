@@ -16,8 +16,26 @@ export default {
                 // Scoped to customer-facing views (see layouts/customer.blade.php)
                 // rather than replacing the staff dashboard's existing Figtree.
                 customer: ['Inter', ...defaultTheme.fontFamily.sans],
+                // Express POS's own display face — the wordmark and the
+                // sign-in headline only (layouts/guest.blade.php), served
+                // from public/fonts.
+                'xpos-display': ['"Archivo Express"', ...defaultTheme.fontFamily.sans],
             },
             colors: {
+                // Express POS (Solusys Digital) — the sign-in pages only,
+                // never a business's own screens. From the logo system:
+                // Midnight, Kente Gold, Forest Green, Signal Red; paper
+                // and line are the sign-in screen's background and borders,
+                // green-dark is Forest Green darkened for readable link text.
+                xpos: {
+                    midnight: '#101010',
+                    gold: '#FCD116',
+                    green: { DEFAULT: '#12A150', dark: '#0B7A3A' },
+                    red: '#E23A3A',
+                    paper: '#F4F2EE',
+                    line: '#D6D1C4',
+                    muted: '#9A968E',
+                },
                 // Brand palette. yellow (the primary colour) and red (the
                 // accent) come from CSS variables set per business from its
                 // Business profile (partials/brand-head, BusinessProfile);

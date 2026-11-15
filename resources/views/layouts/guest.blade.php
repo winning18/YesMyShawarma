@@ -4,10 +4,15 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
+        <meta name="robots" content="noindex">
 
-        <title>{{ config('app.name', 'Laravel') }}</title>
-
-        @include('partials.brand-head')
+        {{--
+            The staff and rider sign-in pages are Express POS's own (CLAUDE.md
+            product rule 6): its logo, colours and display face, never the
+            business's. Everything after sign-in is the business's branding.
+        --}}
+        <title>{{ __('Sign in') }} · Express POS</title>
+        <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,{{ rawurlencode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="10" fill="#101010"/><circle cx="12" cy="24" r="4" fill="#fff"/><path d="M18.4 16.9a10 10 0 0 1 0 14.2" stroke="#FCD116" stroke-width="4.5" stroke-linecap="round" fill="none"/><path d="M23.3 11.6a17 17 0 0 1 0 24.8" stroke="#12A150" stroke-width="4.5" stroke-linecap="round" fill="none"/><path d="M28.2 6.3a24 24 0 0 1 0 35.4" stroke="#E23A3A" stroke-width="4.5" stroke-linecap="round" fill="none"/></svg>') }}">
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
@@ -17,21 +22,45 @@
             integrity="sha384-lQM68ivKBOfXgJDga3JtrfUEh8B2uRHapweBL5h4+Dz79cLzvpVQ5pDQbFa9Mlh4"
             crossorigin="anonymous"
         />
+        {{-- Archivo Black Italic (SIL Open Font License), latin only, 15 KB — the wordmark and headline. --}}
+        <link rel="preload" href="{{ asset('fonts/archivo-900-italic-latin.woff2') }}" as="font" type="font/woff2" crossorigin>
+        <style>
+            @font-face {
+                font-family: 'Archivo Express';
+                src: url('{{ asset('fonts/archivo-900-italic-latin.woff2') }}') format('woff2');
+                font-weight: 900;
+                font-style: italic;
+                font-display: swap;
+            }
+        </style>
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="font-sans text-gray-900 antialiased">
-        <div class="min-h-screen flex flex-col sm:justify-center items-center pt-10 sm:pt-0 bg-brand-black">
-            <div>
-                <a href="/">
-                    <x-brand-logo class="h-14 w-auto" text-class="font-bold text-2xl text-brand-white" />
-                </a>
-            </div>
+    <body class="font-sans antialiased bg-xpos-paper text-xpos-midnight">
+        <div class="min-h-screen md:grid md:grid-cols-[minmax(20rem,26rem)_1fr]">
+            <aside class="bg-xpos-midnight text-white px-6 py-6 md:px-12 md:py-12 flex flex-col">
+                <div>
+                    <x-express-pos-logo />
+                    <p class="mt-3 text-xs text-xpos-muted">{{ __('A Solusys Digital product') }}</p>
+                </div>
 
-            <div class="w-full sm:max-w-md mt-6 px-6 py-6 bg-white shadow-md overflow-hidden sm:rounded-lg border-t-4 border-brand-yellow">
-                {{ $slot }}
-            </div>
+                <div class="hidden md:block my-auto">
+                    <p class="font-xpos-display italic font-black text-6xl leading-[0.95] tracking-tight">
+                        {{ __('Tap.') }}<br>{{ __('Pay.') }}<br><span class="text-xpos-gold">{{ __('Go.') }}</span>
+                    </p>
+                    <p class="mt-6 text-lg text-gray-300 max-w-xs">{{ __('Fast checkout for cash and mobile money.') }}</p>
+                </div>
+
+                <p class="hidden md:block text-sm text-xpos-muted">{{ __('Signing in to :business', ['business' => config('app.name')]) }}</p>
+            </aside>
+
+            <main class="flex flex-col items-center justify-center px-6 py-10 md:py-12">
+                <div class="w-full max-w-sm">
+                    {{ $slot }}
+                </div>
+                <p class="md:hidden mt-10 text-sm text-xpos-muted">{{ __('Signing in to :business', ['business' => config('app.name')]) }}</p>
+            </main>
         </div>
     </body>
 </html>
