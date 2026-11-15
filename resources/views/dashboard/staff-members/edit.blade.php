@@ -10,7 +10,7 @@
 
         <div class="bg-white shadow rounded-lg p-6 flex items-center gap-6">
             <img
-                src="{{ $staffMember->photoUrl() ?? asset('images/favicon.png') }}"
+                src="{{ $staffMember->photoUrl() ?? 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 80 80%27%3E%3Crect width=%2780%27 height=%2780%27 fill=%27%23f3f4f6%27/%3E%3Ccircle cx=%2740%27 cy=%2731%27 r=%2713%27 fill=%27%239ca3af%27/%3E%3Cpath d=%27M16 70c3-14 13-21 24-21s21 7 24 21%27 fill=%27%239ca3af%27/%3E%3C/svg%3E' }}"
                 alt="{{ $staffMember->name }}"
                 class="w-20 h-20 rounded-full object-cover bg-gray-100 shrink-0"
             >

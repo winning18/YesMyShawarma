@@ -22,11 +22,11 @@ class SettingsController extends Controller
         Gate::authorize('settings.manage');
 
         return view('dashboard.settings.index', [
-            'posPrefix' => $settings->get(SettingsService::ORDER_REFERENCE_PREFIX_POS, 'YMGS-POS'),
-            'webPrefix' => $settings->get(SettingsService::ORDER_REFERENCE_PREFIX_WEB, 'YMGS-WEB'),
-            'boltFoodPrefix' => $settings->get(SettingsService::ORDER_REFERENCE_PREFIX_BOLT_FOOD, 'YMGS-BOLT'),
-            'whatsappPrefix' => $settings->get(SettingsService::ORDER_REFERENCE_PREFIX_WHATSAPP, 'YMGS-WA'),
-            'freebiePrefix' => $settings->get(SettingsService::ORDER_REFERENCE_PREFIX_FREEBIE, 'YMGS-FREE'),
+            'posPrefix' => $settings->prefix(SettingsService::ORDER_REFERENCE_PREFIX_POS),
+            'webPrefix' => $settings->prefix(SettingsService::ORDER_REFERENCE_PREFIX_WEB),
+            'boltFoodPrefix' => $settings->prefix(SettingsService::ORDER_REFERENCE_PREFIX_BOLT_FOOD),
+            'whatsappPrefix' => $settings->prefix(SettingsService::ORDER_REFERENCE_PREFIX_WHATSAPP),
+            'freebiePrefix' => $settings->prefix(SettingsService::ORDER_REFERENCE_PREFIX_FREEBIE),
             'whatsappReward' => number_format(((int) $settings->get(SettingsService::WHATSAPP_REWARD_AMOUNT, '1000')) / 100, 2, '.', ''),
             'paystackEnabled' => $settings->getBool(SettingsService::PAYSTACK_ENABLED),
         ]);

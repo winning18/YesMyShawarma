@@ -53,9 +53,38 @@ class SettingsService
      */
     public const DELIVERY_FEE_HAND_IN_STARTS_ON = 'delivery_fee_hand_in_starts_on';
 
+    /**
+     * What each order reference prefix is before a business sets its own
+     * (Express POS: neutral — Yes My Shawarma's YMGS-* values are stored
+     * settings, copied in by the business profile migration).
+     */
+    public const DEFAULT_PREFIXES = [
+        self::ORDER_REFERENCE_PREFIX_POS => 'POS',
+        self::ORDER_REFERENCE_PREFIX_WEB => 'WEB',
+        self::ORDER_REFERENCE_PREFIX_BOLT_FOOD => 'BOLT',
+        self::ORDER_REFERENCE_PREFIX_WHATSAPP => 'WA',
+        self::ORDER_REFERENCE_PREFIX_FREEBIE => 'FREE',
+    ];
+
+    public function prefix(string $key): string
+    {
+        return $this->get($key) ?: self::DEFAULT_PREFIXES[$key];
+    }
+
     public function get(string $key, ?string $default = null): ?string
     {
         return Setting::where('key', $key)->value('value') ?? $default;
+    }
+
+    /**
+     * Every setting in one query — for BusinessProfile, which reads a
+     * dozen keys on every page.
+     *
+     * @return array<string, ?string>
+     */
+    public function all(): array
+    {
+        return Setting::pluck('value', 'key')->all();
     }
 
     public function set(string $key, ?string $value): void

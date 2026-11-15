@@ -5,6 +5,7 @@ use App\Http\Controllers\AccountSuspensionController;
 use App\Http\Controllers\BranchesController;
 use App\Http\Controllers\BranchManagementController;
 use App\Http\Controllers\BranchSelectionController;
+use App\Http\Controllers\BusinessProfileController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CategoryManagementController;
 use App\Http\Controllers\CheckoutController;
@@ -26,6 +27,7 @@ use App\Http\Controllers\FaqController;
 use App\Http\Controllers\FreebieController;
 use App\Http\Controllers\HeroSliderController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\ManifestController;
 use App\Http\Controllers\MarketListController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\MenuItemManagementController;
@@ -73,6 +75,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 Route::get('/robots.txt', [RobotsController::class, 'index'])->name('robots');
+Route::get('/site.webmanifest', ManifestController::class)->name('manifest');
 
 // track.visit records an anonymous first-party-cookie visit for every
 // page in the actual browse-to-order funnel — home through tracking —
@@ -287,6 +290,8 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
 
     Route::get('/dashboard/stock/{stockItem}/history', [StockMovementController::class, 'history'])->name('dashboard.stock.history');
 
+    Route::get('/dashboard/business-profile', [BusinessProfileController::class, 'edit'])->name('dashboard.business-profile.edit');
+    Route::put('/dashboard/business-profile', [BusinessProfileController::class, 'update'])->name('dashboard.business-profile.update');
     Route::get('/dashboard/settings', [SettingsController::class, 'index'])->name('dashboard.settings.index');
     Route::put('/dashboard/settings', [SettingsController::class, 'update'])->name('dashboard.settings.update');
 

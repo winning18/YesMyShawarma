@@ -414,11 +414,11 @@ class OrderCreationService
         // order would be indistinguishable from a real in-house sale. Same
         // for freebies and WhatsApp group orders.
         $prefix = match (true) {
-            $paymentMethod === 'bolt_food' => $this->settings->get(SettingsService::ORDER_REFERENCE_PREFIX_BOLT_FOOD, 'YMGS-BOLT'),
-            $paymentMethod === Order::COMPLIMENTARY => $this->settings->get(SettingsService::ORDER_REFERENCE_PREFIX_FREEBIE, 'YMGS-FREE'),
-            $source === Order::SOURCE_WHATSAPP => $this->settings->get(SettingsService::ORDER_REFERENCE_PREFIX_WHATSAPP, 'YMGS-WA'),
-            $channel === 'pos' => $this->settings->get(SettingsService::ORDER_REFERENCE_PREFIX_POS, 'YMGS-POS'),
-            default => $this->settings->get(SettingsService::ORDER_REFERENCE_PREFIX_WEB, 'YMGS-WEB'),
+            $paymentMethod === 'bolt_food' => $this->settings->prefix(SettingsService::ORDER_REFERENCE_PREFIX_BOLT_FOOD),
+            $paymentMethod === Order::COMPLIMENTARY => $this->settings->prefix(SettingsService::ORDER_REFERENCE_PREFIX_FREEBIE),
+            $source === Order::SOURCE_WHATSAPP => $this->settings->prefix(SettingsService::ORDER_REFERENCE_PREFIX_WHATSAPP),
+            $channel === 'pos' => $this->settings->prefix(SettingsService::ORDER_REFERENCE_PREFIX_POS),
+            default => $this->settings->prefix(SettingsService::ORDER_REFERENCE_PREFIX_WEB),
         };
 
         do {

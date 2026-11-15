@@ -160,6 +160,8 @@ class PaystackPaymentService
      */
     private function placeholderEmail(Customer $customer): string
     {
-        return "customer-{$customer->id}@guests.yesmyshawarma.com";
+        $host = parse_url((string) config('app.url'), PHP_URL_HOST) ?: 'example.com';
+
+        return "customer-{$customer->id}@guests.{$host}";
     }
 }

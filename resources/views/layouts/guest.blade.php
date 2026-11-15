@@ -7,7 +7,7 @@
 
         <title>{{ config('app.name', 'Laravel') }}</title>
 
-        <link rel="icon" type="image/png" href="{{ asset('images/favicon.png') }}">
+        @include('partials.brand-head')
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
@@ -25,7 +25,7 @@
         <div class="min-h-screen flex flex-col sm:justify-center items-center pt-10 sm:pt-0 bg-brand-black">
             <div>
                 <a href="/">
-                    <img src="{{ asset('images/logo-web.png') }}" alt="{{ config('app.name') }}" class="h-14 w-auto">
+                    <x-brand-logo class="h-14 w-auto" text-class="font-bold text-2xl text-brand-white" />
                 </a>
             </div>
 

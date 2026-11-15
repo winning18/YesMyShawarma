@@ -3,12 +3,23 @@
 namespace Tests\Feature;
 
 use App\Mail\ContactMessageSubmitted;
+use App\Models\Setting;
+use App\Services\Settings\BusinessProfile;
+use App\Services\Spam\HoneypotGuard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class ContactFormTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Where contact-form messages go comes from the Business profile.
+        Setting::create(['key' => BusinessProfile::CONTACT_RECIPIENTS, 'value' => 'owner@example.com, manager@example.com']);
+    }
+
     use RefreshDatabase;
 
     /**
@@ -18,7 +29,7 @@ class ContactFormTest extends TestCase
      */
     private function honeypotPassing(array $data = []): array
     {
-        return array_merge(['form_rendered_at' => \App\Services\Spam\HoneypotGuard::stamp(now()->subSeconds(5)->timestamp)], $data);
+        return array_merge(['form_rendered_at' => HoneypotGuard::stamp(now()->subSeconds(5)->timestamp)], $data);
     }
 
     public function test_a_visitor_can_submit_the_contact_form_with_an_email(): void
@@ -31,9 +42,8 @@ class ContactFormTest extends TestCase
             'message' => 'Do you deliver to Adenta?',
         ]))->assertRedirect()->assertSessionHas('status');
 
-        Mail::assertQueued(ContactMessageSubmitted::class, fn ($mail) => $mail->hasTo('yesmyshawarma@gmail.com')
-            && $mail->hasTo('yesmygrill@gmail.com')
-            && $mail->hasTo('info@yesmyshawarma.com')
+        Mail::assertQueued(ContactMessageSubmitted::class, fn ($mail) => $mail->hasTo('owner@example.com')
+            && $mail->hasTo('manager@example.com')
             && $mail->name === 'Ama'
             && $mail->email === 'ama@example.com'
         );
@@ -89,7 +99,7 @@ class ContactFormTest extends TestCase
 
         $this->post(route('contact.submit'), [
             'name' => 'Bot', 'email' => 'bot@example.com', 'message' => 'spam',
-            'form_rendered_at' => \App\Services\Spam\HoneypotGuard::stamp(now()->timestamp),
+            'form_rendered_at' => HoneypotGuard::stamp(now()->timestamp),
         ])->assertRedirect()->assertSessionHas('status');
 
         Mail::assertNothingSent();
@@ -131,7 +141,7 @@ class ContactFormTest extends TestCase
 
         $this->post(route('contact.submit'), $this->honeypotPassing(['name' => 'Ama', 'email' => 'ama@example.com', 'message' => 'My order on yesmyshawarma.com was late']))
             ->assertSessionHas('status');
-        Mail::assertQueued(\App\Mail\ContactMessageSubmitted::class, 1);
+        Mail::assertQueued(ContactMessageSubmitted::class, 1);
     }
 
     public function test_an_address_is_capped_at_ten_messages_an_hour(): void
@@ -145,5 +155,17 @@ class ContactFormTest extends TestCase
 
         $this->travel(25)->seconds();
         $this->post(route('contact.submit'), $this->honeypotPassing(['name' => 'Ama', 'email' => 'ama@example.com', 'message' => 'One too many']))->assertStatus(429);
+    }
+
+    public function test_with_no_recipients_set_nothing_is_emailed(): void
+    {
+        Mail::fake();
+        Setting::where('key', BusinessProfile::CONTACT_RECIPIENTS)->delete();
+
+        $this->post(route('contact.submit'), $this->honeypotPassing([
+            'name' => 'Ama', 'email' => 'ama@example.com', 'message' => 'Hello',
+        ]))->assertRedirect()->assertSessionHas('status');
+
+        Mail::assertNothingQueued();
     }
 }

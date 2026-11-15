@@ -21,7 +21,7 @@
             awkward) snippet text from whatever it found on the page.
         --}}
         @php
-            $ogImageUrl = $ogImage ?? asset('images/logo-web.png');
+            $ogImageUrl = $ogImage ?? app(\App\Services\Settings\BusinessProfile::class)->logoUrl();
             $ogDescriptionText = $ogDescription ?? __('Shawarma, burgers and fresh juices in Accra. Order online for delivery or pickup.');
         @endphp
         <meta name="description" content="{{ $ogDescriptionText }}">
@@ -30,22 +30,25 @@
         <meta property="og:site_name" content="{{ config('app.name') }}">
         <meta property="og:title" content="{{ $title ?? config('app.name') }}">
         <meta property="og:description" content="{{ $ogDescriptionText }}">
-        <meta property="og:image" content="{{ $ogImageUrl }}">
+        @if ($ogImageUrl)
+            <meta property="og:image" content="{{ $ogImageUrl }}">
+        @endif
         <meta property="og:url" content="{{ url()->current() }}">
         <meta name="twitter:card" content="summary_large_image">
         <meta name="twitter:title" content="{{ $title ?? config('app.name') }}">
         <meta name="twitter:description" content="{{ $ogDescriptionText }}">
-        <meta name="twitter:image" content="{{ $ogImageUrl }}">
+        @if ($ogImageUrl)
+            <meta name="twitter:image" content="{{ $ogImageUrl }}">
+        @endif
 
-        <link rel="icon" type="image/png" href="{{ asset('images/favicon.png') }}">
-        <link rel="apple-touch-icon" href="{{ asset('images/apple-touch-icon.png') }}">
+        @include('partials.brand-head')
         {{--
             Icons + theme color only — this is not the full CLAUDE.md PWA
             requirement (that also needs a service worker for offline menu
             caching, a separate piece of work). Lets a phone add the site
             to its home screen with a real icon in the meantime.
         --}}
-        <link rel="manifest" href="{{ asset('site.webmanifest') }}">
+        <link rel="manifest" href="{{ route('manifest') }}">
 
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link
@@ -78,7 +81,7 @@
             x-transition:leave-end="opacity-0"
             class="fixed inset-0 z-50 bg-brand-black flex flex-col items-center justify-center gap-6"
         >
-            <img src="{{ asset('images/logo-web.png') }}" alt="{{ config('app.name') }}" class="h-16 w-auto">
+            <x-brand-logo class="h-16 w-auto" text-class="font-bold text-3xl text-brand-white" />
             <svg viewBox="0 0 24 24" fill="none" class="animate-spin w-8 h-8 text-brand-yellow">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4Z"></path>
@@ -96,7 +99,7 @@
         <header class="bg-brand-black sticky top-0 z-40">
             <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
                 <a href="{{ route('home') }}">
-                    <img src="{{ asset('images/logo-web.png') }}" alt="{{ config('app.name') }}" class="h-10 w-auto">
+                    <x-brand-logo class="h-10 w-auto" text-class="font-bold text-xl text-brand-white" />
                 </a>
 
                 <nav class="hidden md:flex items-center gap-6 text-sm text-brand-white">
@@ -202,7 +205,7 @@
                 >
                     <div class="h-16 flex items-center justify-between px-4 border-b border-brand-gray-700 shrink-0">
                         <a href="{{ route('home') }}">
-                            <img src="{{ asset('images/logo-web.png') }}" alt="{{ config('app.name') }}" class="h-8 w-auto">
+                            <x-brand-logo class="h-8 w-auto" text-class="font-bold text-lg text-brand-white" />
                         </a>
                         <button type="button" @click="open = false" aria-label="{{ __('Close menu') }}" class="p-2 -me-2 text-brand-white">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
@@ -326,10 +329,10 @@
         <footer class="mt-12 bg-brand-black border-t border-brand-yellow">
             <div class="max-w-5xl mx-auto px-4 py-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 text-sm text-brand-gray-300">
                 <div>
-                    <img src="{{ asset('images/logo-web.png') }}" alt="{{ config('app.name') }}" class="h-9 w-auto mb-4">
-                    <p class="text-brand-gray-300">
-                        {{ __('Shawarma, burgers and more. Order online for pickup from our Accra branches.') }}
-                    </p>
+                    <x-brand-logo class="h-9 w-auto mb-4" text-class="block font-bold text-lg text-brand-white mb-4" />
+                    @if ($footerTagline)
+                        <p class="text-brand-gray-300">{{ $footerTagline }}</p>
+                    @endif
                 </div>
 
                 <div>
@@ -357,16 +360,21 @@
                     </nav>
                 </div>
 
-                <div>
-                    <p class="font-semibold text-brand-yellow uppercase text-xs tracking-wide mb-4">{{ __('Follow us') }}</p>
-                    <x-social-links icon-class="text-brand-gray-300" />
-                </div>
+                @if ($footerHasSocialLinks)
+                    <div>
+                        <p class="font-semibold text-brand-yellow uppercase text-xs tracking-wide mb-4">{{ __('Follow us') }}</p>
+                        <x-social-links icon-class="text-brand-gray-300" />
+                    </div>
+                @endif
 
-                <div>
-                    <p class="font-semibold text-brand-yellow uppercase text-xs tracking-wide mb-4">{{ __('Call us') }}</p>
-                    <a href="tel:+233243635265" class="block hover:text-brand-yellow transition mb-2"><span class="font-bold text-brand-white">Ga Odumase</span><br>+233 (0) 243 635 265</a>
-                    <a href="tel:+233531907747" class="block hover:text-brand-yellow transition"><span class="font-bold text-brand-white">Pokuase</span><br>+233 (0) 531 907 747</a>
-                </div>
+                @if ($footerBranches !== [])
+                    <div>
+                        <p class="font-semibold text-brand-yellow uppercase text-xs tracking-wide mb-4">{{ __('Call us') }}</p>
+                        @foreach ($footerBranches as $branch)
+                            <a href="tel:{{ $branch['tel'] }}" class="block hover:text-brand-yellow transition mb-2"><span class="font-bold text-brand-white">{{ $branch['name'] }}</span><br>{{ $branch['display'] }}</a>
+                        @endforeach
+                    </div>
+                @endif
             </div>
             <div class="max-w-5xl mx-auto px-4 py-4 border-t border-brand-gray-700 text-sm text-brand-gray-300 text-center">
                 &copy; {{ now()->year }} {{ config('app.name') }}

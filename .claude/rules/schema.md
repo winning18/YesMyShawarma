@@ -600,6 +600,18 @@ Current keys:
   another value read off a screen or receipt and typed back in by hand. Changing a prefix only
   affects orders placed after the change; existing `orders.reference` values are never
   rewritten.
+- **Business profile** (Express POS step 2a, `BusinessProfile`, owner-only page): `business_name`
+  (also fed into `config('app.name')` at boot), `business_legal_name`, `business_tagline`,
+  `business_public_emails`, `business_contact_recipients` (comma lists), `business_instagram_url`
+  / `_facebook_url` / `_tiktok_url`, `business_logo_path` and `business_icon_path` (public disk,
+  `business/`), `business_main_branch_id` (heads all-branch reports; falls back to the first
+  branch), and six brand colours `brand_primary(_light|_dark)` / `brand_accent(_light|_dark)`
+  that the stylesheet reads as CSS variables (`partials/brand-head`, tailwind.config.js). A fresh
+  install starts neutral (no logo: the name shows as text); Yes My Shawarma's values were copied in
+  by `2026_11_15_100000_fill_business_profile`, which only fills an install that already has
+  orders and never overwrites an existing setting. Order reference prefixes default to neutral
+  POS / WEB / BOLT / WA / FREE (`SettingsService::DEFAULT_PREFIXES`); Yes My Shawarma's YMGS-*
+  are stored settings.
 - `paystack_enabled` — see payments.md's "Paystack on/off" section. Stored as the string `'1'`
   or `'0'`, read via `SettingsService::getBool()`/written via `setBool()` rather than `get()`/
   `set()` directly, so every caller agrees on the same string encoding. Off (missing row) by

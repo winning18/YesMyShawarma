@@ -10,7 +10,7 @@
     <table class="header" style="width: 100%;">
         <tr>
             <td>
-                @if (is_file($logoPath))
+                @if ($logoPath && is_file($logoPath))
                     <img src="{{ $logoPath }}" class="logo" alt="{{ config('app.name') }}">
                 @else
                     <span class="strong" style="font-size: 18px;">{{ config('app.name') }}</span>

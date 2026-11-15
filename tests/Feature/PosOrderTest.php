@@ -447,7 +447,7 @@ class PosOrderTest extends TestCase
         ])->assertOk();
 
         $order = Order::first();
-        $this->assertStringStartsWith('YMGS-BOLT-', $order->reference);
+        $this->assertStringStartsWith('BOLT-', $order->reference);
     }
 
     public function test_bolt_food_order_reference_uses_a_configured_custom_prefix(): void
@@ -481,7 +481,7 @@ class PosOrderTest extends TestCase
         ])->assertOk();
 
         $order = Order::first();
-        $this->assertStringStartsWith('YMGS-POS-', $order->reference);
+        $this->assertStringStartsWith('POS-', $order->reference);
     }
 
     public function test_bolt_food_order_cannot_be_placed_as_delivery(): void

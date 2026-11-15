@@ -3,24 +3,30 @@
 namespace App\Services\Contact;
 
 use App\Mail\ContactMessageSubmitted;
+use App\Services\Settings\BusinessProfile;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class ContactMessageService
 {
-    /**
-     * Business inboxes that receive every contact form submission.
-     *
-     * @var list<string>
-     */
-    private const RECIPIENTS = [
-        'yesmyshawarma@gmail.com',
-        'yesmygrill@gmail.com',
-        'info@yesmyshawarma.com',
-    ];
+    public function __construct(private readonly BusinessProfile $profile) {}
 
+    /**
+     * To the inboxes on the Business profile ("Contact form sends to").
+     * With none set the message is only logged, so a new install never
+     * mails a stranger.
+     */
     public function send(string $name, ?string $email, ?string $phone, string $message): void
     {
-        Mail::to(self::RECIPIENTS)->send(
+        $recipients = $this->profile->contactRecipients();
+
+        if ($recipients === []) {
+            Log::warning('Contact form message not emailed: no recipients on the Business profile', ['name' => $name]);
+
+            return;
+        }
+
+        Mail::to($recipients)->send(
             new ContactMessageSubmitted($name, $email, $phone, $message)
         );
     }

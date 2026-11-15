@@ -15,7 +15,7 @@
             <div>
                 <h3 class="font-semibold text-gray-800">{{ __('Order reference numbers') }}</h3>
                 <p class="text-sm text-gray-500">
-                    {{ __('The prefix shown on every order reference, e.g. :example. A random 6-character code is added automatically.', ['example' => 'YMGS-POS-4F8K2Q']) }}
+                    {{ __('The prefix shown on every order reference, e.g. :example. A random 6-character code is added automatically.', ['example' => $posPrefix.'-4F8K2Q']) }}
                 </p>
             </div>
 

@@ -7,9 +7,13 @@ use App\Models\BranchWorkingHour;
 use App\Models\Category;
 use App\Models\MenuItem;
 use App\Models\OptionGroup;
+use App\Models\Setting;
 use App\Models\StaffMember;
+use App\Services\Settings\BusinessProfile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Vite;
 use Tests\TestCase;
 
 class CustomerPagesTest extends TestCase
@@ -519,9 +523,11 @@ class CustomerPagesTest extends TestCase
         $this->branch->menuItems()->attach($item->id, ['is_available' => true]);
         $this->get(route('branches.pick', $this->branch));
 
+        Setting::create(['key' => BusinessProfile::LOGO, 'value' => 'business/logo.png']);
+
         $response = $this->get(route('menu.show', $item))->assertOk();
 
-        $response->assertSee('property="og:image" content="'.asset('images/logo-web.png').'"', false);
+        $response->assertSee('property="og:image" content="'.Storage::disk('public')->url('business/logo.png').'"', false);
     }
 
     // Same regression as the menu index: a crawler (or any first-time
@@ -613,8 +619,8 @@ class CustomerPagesTest extends TestCase
         // Alpine control on slow mobile data — the menu button included.
         $html = $this->get(route('home'))->assertOk()->getContent();
 
-        $this->assertStringContainsString(\Illuminate\Support\Facades\Vite::asset('resources/js/customer.js'), $html);
-        $this->assertStringNotContainsString(\Illuminate\Support\Facades\Vite::asset('resources/js/app.js'), $html);
-        $this->assertStringNotContainsString(\Illuminate\Support\Facades\Vite::asset('resources/js/echo.js'), $html);
+        $this->assertStringContainsString(Vite::asset('resources/js/customer.js'), $html);
+        $this->assertStringNotContainsString(Vite::asset('resources/js/app.js'), $html);
+        $this->assertStringNotContainsString(Vite::asset('resources/js/echo.js'), $html);
     }
 }

@@ -107,6 +107,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'freebies.approve',
         ],
         'owner' => [
+            'business.manage',
             'orders.view',
             'orders.accept',
             'orders.reject',

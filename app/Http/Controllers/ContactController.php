@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Services\Branches\WorkingHoursService;
 use App\Services\Contact\ContactMessageService;
 use App\Services\Customers\CustomerBranchSelection;
+use App\Services\Settings\BusinessProfile;
 use App\Services\Spam\HoneypotGuard;
 use App\Services\Spam\TurnstileVerifier;
 use Illuminate\Http\RedirectResponse;
@@ -14,7 +15,7 @@ use Illuminate\View\View;
 
 class ContactController extends Controller
 {
-    public function index(WorkingHoursService $workingHours, CustomerBranchSelection $selection): View
+    public function index(WorkingHoursService $workingHours, CustomerBranchSelection $selection, BusinessProfile $profile): View
     {
         $branches = Branch::where('is_active', true)->get()->each(function (Branch $branch) use ($workingHours) {
             // See BranchesController::index() — same reasoning.
@@ -32,6 +33,10 @@ class ContactController extends Controller
             // x-branch-card's "Currently selected" badge — same data source
             // as BranchesController, kept in sync here too.
             'selectedBranchId' => $selection->id(),
+            // From the Business profile and branches, not written into the page.
+            'branchPhones' => $profile->branchPhones(),
+            'publicEmails' => $profile->publicEmails(),
+            'hasSocialLinks' => $profile->socialLinks() !== [],
         ]);
     }
 

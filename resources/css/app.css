@@ -7,6 +7,20 @@
 }
 
 /*
+ * Brand colours as "r g b" channels (tailwind.config.js reads them). These
+ * are the defaults; each page's partials/brand-head overrides them with
+ * the business's own colours from its Business profile.
+ */
+:root {
+    --brand-primary: 255 250 0;
+    --brand-primary-light: 255 249 179;
+    --brand-primary-dark: 204 200 0;
+    --brand-accent: 255 0 0;
+    --brand-accent-light: 255 230 230;
+    --brand-accent-dark: 154 2 0;
+}
+
+/*
  * App-wide: highlight a field the moment it's shown to be invalid after the
  * user has actually interacted with it (left it empty on a failed native
  * submit, typed something malformed, etc.) — :user-invalid, unlike plain
@@ -53,7 +67,7 @@ textarea:user-invalid {
      * — fixed backgrounds are a known scroll-jank risk on mobile Safari.
      */
     .menu-hero-bg {
-        background-color: theme('colors.brand.yellow.DEFAULT');
+        background-color: rgb(var(--brand-primary));
         background-image:
             radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0) 55%),
             url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3e%3cpath d='M20 95 Q14 80 20 65 Q26 50 20 35' stroke='black' stroke-width='2.5' fill='none' stroke-linecap='round' opacity='0.06'/%3e%3cpath d='M75 105 Q69 90 75 75 Q81 60 75 45' stroke='black' stroke-width='2.5' fill='none' stroke-linecap='round' opacity='0.06'/%3e%3ccircle cx='95' cy='20' r='2' fill='black' opacity='0.1'/%3e%3ccircle cx='45' cy='15' r='1.5' fill='black' opacity='0.1'/%3e%3ccircle cx='105' cy='65' r='1.5' fill='black' opacity='0.1'/%3e%3c/svg%3e");
@@ -69,8 +83,8 @@ textarea:user-invalid {
      */
     .hero-slider-bg {
         background-color: theme('colors.brand.black');
-        background-image: radial-gradient(circle at 80% 15%, rgba(255, 250, 0, 0.16) 0%, rgba(255, 250, 0, 0) 55%),
-            radial-gradient(circle at 10% 90%, rgba(255, 250, 0, 0.08) 0%, rgba(255, 250, 0, 0) 50%);
+        background-image: radial-gradient(circle at 80% 15%, rgb(var(--brand-primary) / 0.16) 0%, rgb(var(--brand-primary) / 0) 55%),
+            radial-gradient(circle at 10% 90%, rgb(var(--brand-primary) / 0.08) 0%, rgb(var(--brand-primary) / 0) 50%);
     }
 
     /*
@@ -106,11 +120,11 @@ textarea:user-invalid {
         transform: translate(-50%, -50%);
         background: conic-gradient(
             from 0deg,
-            rgba(255, 250, 0, 0.22),
+            rgb(var(--brand-primary) / 0.22),
             rgba(0, 0, 0, 0) 25%,
-            rgba(255, 250, 0, 0.12) 55%,
+            rgb(var(--brand-primary) / 0.12) 55%,
             rgba(0, 0, 0, 0) 85%,
-            rgba(255, 250, 0, 0.22)
+            rgb(var(--brand-primary) / 0.22)
         );
         filter: blur(110px);
         will-change: transform;

@@ -91,7 +91,7 @@ class FreebieAndWhatsappOrderTest extends TestCase
         $order = $this->freebie($staff);
 
         $this->assertSame(['complimentary', 10000, 10000, 0, 'paid'], [$order->payment_method, $order->subtotal, $order->discount_total, $order->total, $order->status]);
-        $this->assertStringStartsWith('YMGS-FREE-', $order->reference);
+        $this->assertStringStartsWith('FREE-', $order->reference);
         $this->assertSame(['customer', 'Ama', 'Birthday', 'pending', 'staff'], [
             $order->complimentary->recipient_type, $order->complimentary->recipient_name, $order->complimentary->reason,
             $order->complimentary->status, $order->complimentary->recorder_role,
@@ -184,7 +184,7 @@ class FreebieAndWhatsappOrderTest extends TestCase
 
         $order = Order::latest('id')->first();
         $this->assertSame(['whatsapp', 5800, 1000, 4800], [$order->source, $order->subtotal, $order->discount_total, $order->total]);
-        $this->assertStringStartsWith('YMGS-WA-', $order->reference);
+        $this->assertStringStartsWith('WA-', $order->reference);
     }
 
     public function test_the_reward_never_exceeds_the_food_and_drinks_alone_get_nothing(): void

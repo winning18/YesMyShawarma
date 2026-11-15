@@ -6,7 +6,10 @@ use App\Models\Branch;
 use App\Models\BranchWorkingHour;
 use App\Models\Category;
 use App\Models\MenuItem;
+use App\Models\Setting;
+use App\Services\Settings\BusinessProfile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class SeoTest extends TestCase
@@ -178,10 +181,12 @@ class SeoTest extends TestCase
 
     public function test_home_page_head_has_manifest_and_apple_touch_icon_links(): void
     {
+        Setting::create(['key' => BusinessProfile::ICON, 'value' => 'business/icon.png']);
+
         $response = $this->get(route('home'))->assertOk();
 
-        $response->assertSee('<link rel="apple-touch-icon" href="'.asset('images/apple-touch-icon.png').'">', false);
-        $response->assertSee('<link rel="manifest" href="'.asset('site.webmanifest').'">', false);
+        $response->assertSee('<link rel="apple-touch-icon" href="'.Storage::disk('public')->url('business/icon.png').'">', false);
+        $response->assertSee('<link rel="manifest" href="'.route('manifest').'">', false);
     }
 
     // Regression: the branded 404 view needs session/auth (the customer

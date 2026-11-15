@@ -285,7 +285,7 @@ class OrderCreationServiceTest extends TestCase
             channel: 'web',
         ));
 
-        $this->assertMatchesRegularExpression('/^YMGS-WEB-[A-Z0-9]{6}$/', $order->reference);
+        $this->assertMatchesRegularExpression('/^WEB-[A-Z0-9]{6}$/', $order->reference);
     }
 
     public function test_pos_order_reference_uses_the_default_pos_prefix(): void
@@ -300,7 +300,7 @@ class OrderCreationServiceTest extends TestCase
             channel: 'pos',
         ));
 
-        $this->assertMatchesRegularExpression('/^YMGS-POS-[A-Z0-9]{6}$/', $order->reference);
+        $this->assertMatchesRegularExpression('/^POS-[A-Z0-9]{6}$/', $order->reference);
     }
 
     public function test_order_reference_uses_the_configured_prefix_once_settings_are_changed(): void

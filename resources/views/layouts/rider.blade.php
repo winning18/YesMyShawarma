@@ -7,7 +7,7 @@
 
         <title>{{ __('Rider') }} · {{ config('app.name', 'Laravel') }}</title>
 
-        <link rel="icon" type="image/png" href="{{ asset('images/favicon.png') }}">
+        @include('partials.brand-head')
 
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link

@@ -3,6 +3,7 @@
 namespace App\Services\Reports;
 
 use App\Models\Branch;
+use App\Services\Settings\BusinessProfile;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 /**
@@ -23,7 +24,7 @@ class ReportPdfRenderer
         $dompdf = Pdf::loadView($view, [
             ...$data,
             'address' => $branch ? $this->address($branch) : '',
-            'logoPath' => public_path('images/logo-web.png'),
+            'logoPath' => app(BusinessProfile::class)->logoFilePath(),
             'fontDir' => resource_path('fonts/figtree'),
         ])
             ->setPaper('a4', 'landscape')

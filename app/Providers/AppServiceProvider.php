@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Contracts\Notifier;
 use App\Contracts\PushNotifier;
+use App\Models\Branch;
 use App\Models\User;
 use App\Services\Branches\BranchContext;
 use App\Services\Cart\CartService;
@@ -14,6 +15,7 @@ use App\Services\Notifications\LogNotifier;
 use App\Services\Notifications\LogPushNotifier;
 use App\Services\Notifications\WebPushNotifier;
 use App\Services\Payments\PaystackClient;
+use App\Services\Settings\BusinessProfile;
 use App\Services\Shifts\ShiftService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -23,6 +25,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Throwable;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -57,6 +60,23 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // The business's name from its profile (Express POS: set per
+        // install), so the 40-odd places that read config('app.name') all
+        // follow it. Skipped quietly before the settings table exists (a
+        // fresh install's first migrate).
+        try {
+            config(['app.name' => app(BusinessProfile::class)->name()]);
+        } catch (Throwable) {
+            // keep APP_NAME
+        }
+
+        // Favicon, home-screen icon and brand colours on every layout.
+        View::composer('partials.brand-head', function ($view) {
+            $profile = app(BusinessProfile::class);
+            $view->with('brandIconUrl', $profile->iconUrl());
+            $view->with('brandCssVariables', $profile->cssVariables());
+        });
+
         // Public forms a bot can reach (contact, newsletter): per IP, three
         // windows at once — a per-minute limit alone still allowed 7,200
         // messages a day from one address. Each limit needs its own key.
@@ -96,6 +116,11 @@ class AppServiceProvider extends ServiceProvider
             // session simply means no cart.
             $view->with('cartItemCount', request()->hasSession() ? app(CartService::class)->count() : 0);
             $view->with('cookieConsentGiven', request()->cookie('cookie_consent') !== null);
+
+            // Footer: the business's own wording and phone numbers.
+            $view->with('footerTagline', app(BusinessProfile::class)->tagline());
+            $view->with('footerBranches', app(BusinessProfile::class)->branchPhones());
+            $view->with('footerHasSocialLinks', app(BusinessProfile::class)->socialLinks() !== []);
         });
 
         // Rendered on every staff-dashboard page regardless of which

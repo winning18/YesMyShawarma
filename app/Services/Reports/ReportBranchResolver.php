@@ -4,6 +4,7 @@ namespace App\Services\Reports;
 
 use App\Models\Branch;
 use App\Services\Branches\BranchContext;
+use App\Services\Settings\BusinessProfile;
 
 /**
  * Turns the report controllers' branch arguments (WeeklySalesReportService's
@@ -15,8 +16,6 @@ use App\Services\Branches\BranchContext;
  */
 class ReportBranchResolver
 {
-    public const MAIN_BRANCH_SLUG = 'ga-odumase';
-
     public function __construct(private readonly BranchContext $context) {}
 
     /**
@@ -73,6 +72,6 @@ class ReportBranchResolver
             return Branch::find($singleBranchId);
         }
 
-        return Branch::where('slug', self::MAIN_BRANCH_SLUG)->first() ?? Branch::orderBy('id')->first();
+        return app(BusinessProfile::class)->mainBranch();
     }
 }

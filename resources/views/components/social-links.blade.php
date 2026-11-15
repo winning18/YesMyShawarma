@@ -1,7 +1,11 @@
 @props(['iconClass' => 'text-brand-gray-500'])
 
+{{-- Only the networks filled in on the Business profile. --}}
+@php $links = app(\App\Services\Settings\BusinessProfile::class)->socialLinks(); @endphp
+
 <div {{ $attributes->merge(['class' => 'flex items-center gap-4']) }}>
-    <a href="https://www.instagram.com/yesmygrill_shawarma" target="_blank" rel="noopener"
+    @isset($links['instagram'])
+    <a href="{{ $links['instagram'] }}" target="_blank" rel="noopener"
         aria-label="Instagram" class="{{ $iconClass }} hover:text-brand-yellow transition">
         <svg viewBox="0 0 24 24" fill="none" class="w-6 h-6">
             <rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="1.5" />
@@ -10,7 +14,10 @@
         </svg>
     </a>
 
-    <a href="https://www.facebook.com/share/18ving6kE3/" target="_blank" rel="noopener"
+    @endisset
+
+    @isset($links['facebook'])
+    <a href="{{ $links['facebook'] }}" target="_blank" rel="noopener"
         aria-label="Facebook" class="{{ $iconClass }} hover:text-brand-yellow transition">
         <svg viewBox="0 0 24 24" fill="none" class="w-6 h-6">
             <rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="1.5" />
@@ -18,7 +25,10 @@
         </svg>
     </a>
 
-    <a href="https://www.tiktok.com/@ymgrillnshawarma" target="_blank" rel="noopener"
+    @endisset
+
+    @isset($links['tiktok'])
+    <a href="{{ $links['tiktok'] }}" target="_blank" rel="noopener"
         aria-label="TikTok" class="{{ $iconClass }} hover:text-brand-yellow transition">
         <svg viewBox="0 0 24 24" fill="none" class="w-6 h-6">
             <rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="1.5" />
@@ -28,4 +38,5 @@
             />
         </svg>
     </a>
+    @endisset
 </div>

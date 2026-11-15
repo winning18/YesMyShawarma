@@ -44,6 +44,7 @@ Roles: `staff`, `rider`, `manager`, `general_manager`, `owner`, `stock_manager`.
 | `users.create_operational` | — | — | — | ✓ | — | — |
 | `users.transfer_branch` | — | — | ✓ | ✓ | ✓ | — |
 | `branches.manage` | — | — | — | — | ✓ | — |
+| `business.manage` | — | — | — | — | ✓ | — |
 | `dashboard.performance` | — | — | ✓ | ✓ | ✓ | — |
 | `settings.manage` | — | — | ✓ | ✓ | ✓ | — |
 | `stock.manage` | — | — | — | — | ✓ | ✓ |
@@ -372,3 +373,10 @@ at the order's own branch, with the market list's tier rule (`FreebieService::ap
 owner 2026-11-14): nobody approves their own, a manager's or GM's freebie needs the owner, and the
 owner's own are approved automatically. Kept apart from the other money permissions so it can be
 audited on its own.
+
+## Business profile
+
+`business.manage` (owner only, owner decision 2026-11-15) — the Business profile page
+(`BusinessProfileController`): the business's name, wording, contact details, social links, logo,
+icon, brand colours and main branch (`BusinessProfile`). A manager or GM can't rename the business
+or swap its logo; the ordinary Settings page (`settings.manage`) stays theirs.

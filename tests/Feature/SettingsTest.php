@@ -48,9 +48,10 @@ class SettingsTest extends TestCase
 
         $this->actingAs($owner)->get(route('dashboard.settings.index'))
             ->assertOk()
-            ->assertSee('YMGS-POS')
-            ->assertSee('YMGS-WEB')
-            ->assertSee('YMGS-BOLT');
+            // A new install's neutral defaults (Yes My Shawarma's YMGS-* are stored settings).
+            ->assertSee('value="POS"', false)
+            ->assertSee('value="WEB"', false)
+            ->assertSee('value="BOLT"', false);
     }
 
     public function test_owner_can_update_the_order_reference_prefixes(): void

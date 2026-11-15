@@ -68,6 +68,7 @@
 
         {{-- Call, Email, Follow — stacked top to bottom --}}
         <div class="space-y-5">
+            @if ($branchPhones !== [])
             <div class="bg-brand-black rounded-xl p-6 text-brand-white">
                 <div class="flex items-center gap-3 mb-4">
                     <div class="w-10 h-10 rounded-full bg-brand-yellow flex items-center justify-center shrink-0">
@@ -78,17 +79,17 @@
                     <p class="font-semibold">{{ __('Call or WhatsApp') }}</p>
                 </div>
                 <ul class="space-y-1.5 text-sm text-brand-gray-100">
-                    <li class="flex justify-between gap-2">
-                        <span class="font-bold text-brand-white">{{ __('Ga Odumase') }}</span>
-                        <a href="tel:+233243635265" class="underline hover:text-brand-yellow">+233 (0) 243 635 265</a>
-                    </li>
-                    <li class="flex justify-between gap-2">
-                        <span class="font-bold text-brand-white">{{ __('Pokuase') }}</span>
-                        <a href="tel:+233531907747" class="underline hover:text-brand-yellow">+233 (0) 531 907 747</a>
-                    </li>
+                    @foreach ($branchPhones as $phone)
+                        <li class="flex justify-between gap-2">
+                            <span class="font-bold text-brand-white">{{ $phone['name'] }}</span>
+                            <a href="tel:{{ $phone['tel'] }}" class="underline hover:text-brand-yellow">{{ $phone['display'] }}</a>
+                        </li>
+                    @endforeach
                 </ul>
             </div>
+            @endif
 
+            @if ($publicEmails !== [])
             <div class="bg-brand-black rounded-xl p-6 text-brand-white">
                 <div class="flex items-center gap-3 mb-4">
                     <div class="w-10 h-10 rounded-full bg-brand-yellow flex items-center justify-center shrink-0">
@@ -100,11 +101,14 @@
                     <p class="font-semibold">{{ __('Email') }}</p>
                 </div>
                 <ul class="space-y-1.5 text-sm text-brand-gray-100">
-                    <li><a href="mailto:yesmyshawarma@gmail.com" class="underline hover:text-brand-yellow break-all">yesmyshawarma@gmail.com</a></li>
-                    <li><a href="mailto:yesmygrill@gmail.com" class="underline hover:text-brand-yellow break-all">yesmygrill@gmail.com</a></li>
+                    @foreach ($publicEmails as $email)
+                        <li><a href="mailto:{{ $email }}" class="underline hover:text-brand-yellow break-all">{{ $email }}</a></li>
+                    @endforeach
                 </ul>
             </div>
+            @endif
 
+            @if ($hasSocialLinks)
             <div class="bg-brand-black rounded-xl p-6 text-brand-white">
                 <div class="flex items-center gap-3 mb-4">
                     <div class="w-10 h-10 rounded-full bg-brand-yellow flex items-center justify-center shrink-0">
@@ -117,6 +121,7 @@
                 </div>
                 <x-social-links icon-class="text-brand-gray-100" />
             </div>
+            @endif
         </div>
     </div>
 </x-customer-layout>

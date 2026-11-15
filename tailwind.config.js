@@ -18,22 +18,23 @@ export default {
                 customer: ['Inter', ...defaultTheme.fontFamily.sans],
             },
             colors: {
-                // Brand palette as given, with light/dark shades added where
-                // hover states and subtle backgrounds need them. brand.red.dark
-                // is literally the given "Accent 3" maroon (#9a0200) doing
-                // double duty as red's dark/hover shade.
+                // Brand palette. yellow (the primary colour) and red (the
+                // accent) come from CSS variables set per business from its
+                // Business profile (partials/brand-head, BusinessProfile);
+                // the class names stay brand-yellow/brand-red so nothing
+                // else changes. Defaults live in app.css.
                 brand: {
                     yellow: {
-                        light: '#fff9b3',
-                        DEFAULT: '#fffa00',
-                        dark: '#ccc800',
+                        light: 'rgb(var(--brand-primary-light) / <alpha-value>)',
+                        DEFAULT: 'rgb(var(--brand-primary) / <alpha-value>)',
+                        dark: 'rgb(var(--brand-primary-dark) / <alpha-value>)',
                     },
                     black: '#000000',
                     white: '#ffffff',
                     red: {
-                        light: '#ffe6e6',
-                        DEFAULT: '#ff0000',
-                        dark: '#9a0200',
+                        light: 'rgb(var(--brand-accent-light) / <alpha-value>)',
+                        DEFAULT: 'rgb(var(--brand-accent) / <alpha-value>)',
+                        dark: 'rgb(var(--brand-accent-dark) / <alpha-value>)',
                     },
                     gray: {
                         50: '#fafafa',
