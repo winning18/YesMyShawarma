@@ -1,6 +1,7 @@
 # CLAUDE.md
 
-Multi-branch restaurant ordering platform. Read this fully before making any change.
+**Express POS** — a point-of-sale and ordering system for food businesses, sold by Solusys
+Digital. Read this fully before making any change.
 
 Detailed reference lives in `.claude/rules/` and loads automatically when you work on the
 matching files. Do not duplicate that content here.
@@ -9,18 +10,80 @@ matching files. Do not duplicate that content here.
 
 ## What this is
 
-Customers order from a mobile-first website. Orders land in a branch dashboard in real time.
-Riders claim and deliver them. Owners and managers run the business from an admin dashboard.
+Staff take orders at a counter POS; orders land on a live kitchen board in real time. Owners and
+managers run branches, staff, menu, stock and reports from an admin dashboard. Optional modules
+add a customer ordering website, delivery with riders, delivery platforms (Bolt Food), promotions,
+freebies, a market list with profit, SMS and more.
 
-Replaces an existing WhatsApp-group ordering process and becomes the profitable direct channel
-alongside Bolt Food.
+**One codebase, many businesses.** Every client runs this same code. What differs between them
+lives in settings and module switches, never in separate copies of the code. A change made here
+reaches every business on its next deploy.
 
-**Context:** Accra, Ghana. Three live branches: Ga Odumase (the main branch — its address heads
-general reports), Pokuase Y-Junction, and GIMPA (Gimpa Green Hill Campus, confirmed real by the
-owner on 2026-10-18). Mobile data is
-often slow — page weight is a product requirement, not polish.
+**Yes My Shawarma is install number one** — the restaurant this was built for, and still a live
+client: Accra, Ghana, three branches (Ga Odumase is the main branch — its address heads general
+reports; Pokuase Y-Junction; GIMPA, Gimpa Green Hill Campus). It has every module switched on and
+must keep working exactly as it does through every change. Its staff and customers should never
+notice the product work unless a change adds something to them on purpose.
+
+**Who it's for (MVP):** food and hospitality businesses in Ghana — restaurants, cafés, bars, food
+trucks, caterers. Mobile data is often slow, so page weight is a product requirement, not polish.
+
+**Product brief and MVP plan** (owner-approved, 2026-11-15):
+https://claude.ai/artifact/3mX21W2A3ZL9EYnRhu3Fpi (tab "MVP plan").
 
 **Future:** a React Native app will consume this backend. Assume a second client is coming.
+
+---
+
+## Product rules
+
+These come before everything else in this file.
+
+1. **No business is written into the code.** No business name, branch, menu item, category,
+   prefix, phone number, address or amount that belongs to one client appears in code, views,
+   seeders or tests' assumptions about production. It lives in settings or the database. Today's
+   known exceptions (the "Yes My Shawarma" name, YMGS prefixes, the free Chicken Shawarma in the
+   buy-2-get-1 offer, the "drinks" category slug, branch names in content pages) are being moved
+   into settings in MVP step 2 — don't add new ones.
+2. **Every feature is either core or a module.** Core is always on: counter POS, kitchen board,
+   menu with options and branch availability, branches, staff, roles and permissions, shifts and
+   cash-up, sales reports, order history. Everything else is a module a business switches on.
+   Decide which before building, and say so in the plan.
+3. **A module switched off disappears completely** — its routes, menu items, POS options, page
+   sections, report lines, scheduled jobs and notifications. Never a half-hidden feature that
+   still runs underneath. Test it switched off as well as on.
+4. **One client's request is built as a module or a setting**, never as a branch of the code or a
+   copy. If only Yes My Shawarma wants something, it goes behind a switch that's on for Yes My
+   Shawarma.
+5. **Settings start with today's values.** When something moves into settings, Yes My Shawarma's
+   current value is filled in automatically (a data migration), so nothing changes on the day.
+6. **Branding.** Inside the app, staff and customers see the business's own name, logo and
+   colours. The staff login page always shows EXPRESS POS, a Solusys Digital product. A
+   business's customers never see "Express POS".
+7. **Every change is safe for Yes My Shawarma.** Staging first, the owner checks it, the owner
+   pushes to production. All modules stay on for Yes My Shawarma; switching modules off is only
+   ever tested on staging and on other clients' installs.
+
+---
+
+## Installs and editions
+
+**One install per business** (owner decision, 2026-11-15): the same code, deployed separately
+for each client, each with its own database, settings and subdomain under Solusys Digital
+(`<client>.expresspos.solusysdigital.com`). One business can never see another's data. The same
+deploy updates every install. Moving to one shared system for all clients is a later decision,
+around ten clients — don't build for it now, but don't make it harder either (keep everything
+branch-scoped, keep settings in the database).
+
+**Editions:**
+
+- **Subscription** (the MVP): hosted by Solusys Digital, every module available, every update.
+  Will also work offline once offline mode is built (straight after the MVP).
+- **One-time** (later, not in the MVP): installed on the client's own computer, offline only,
+  limited features. A separate packaging job — don't design MVP work around it.
+
+Clients are set up by the owner (Solusys Digital) for now; there is no self sign-up. Billing for
+Express POS itself is done manually, outside the app.
 
 ---
 
@@ -29,16 +92,16 @@ often slow — page weight is a product requirement, not polish.
 | Layer | Choice |
 |---|---|
 | Backend | Laravel (PHP) |
-| Database | MySQL 8 |
+| Database | MySQL 8, one database per install |
 | Customer site + dashboards | Blade + Alpine.js, server-rendered |
 | Real-time | Laravel Reverb |
 | Auth (internal) | Laravel session guard |
 | Auth (API / future app) | Laravel Sanctum |
 | Permissions | spatie/laravel-permission, teams enabled, team = branch |
-| Payments | Paystack (cards + MoMo) |
+| Payments | Paystack (cards + MoMo) — a module |
 | Queue | Redis, or database driver until volume justifies Redis |
 | Images | Cloudinary or S3 behind Cloudflare |
-| SMS | Arkesel (`ArkeselNotifier`), behind the `Notifier` contract — falls back to log-only (`LogNotifier`) if `ARKESEL_API_KEY` is unset |
+| SMS | Arkesel (`ArkeselNotifier`), behind the `Notifier` contract — falls back to log-only (`LogNotifier`) if `ARKESEL_API_KEY` is unset. A module |
 | Browser push | Web Push (`minishlink/web-push`, `WebPushNotifier`), behind the `PushNotifier` contract — falls back to log-only (`LogPushNotifier`) if VAPID keys are unset. See realtime.md's "Web Push" section |
 | Error tracking | Sentry (`sentry/sentry-laravel`), wired into `bootstrap/app.php`'s `withExceptions()` — a no-op until `SENTRY_LARAVEL_DSN` is set (`config/sentry.php`). `send_default_pii` is off by default |
 
@@ -59,7 +122,7 @@ often slow — page weight is a product requirement, not polish.
 5. **Never generate large data tables inline** (currency lists, zone seeds, region lists).
    Put them in `database/seeders/data/` and reference them.
 6. **Money is integer minor units.** Store pesewas as `unsignedBigInteger`. Never floats.
-   Currency is GHS throughout v1.
+   Currency is GHS throughout (Ghana only for now).
 7. **Datetimes stored UTC**, displayed in `Africa/Accra`.
 8. **Every write that changes an order writes an `order_events` row.** No exceptions.
 9. **Ask before adding a dependency.** Prefer first-party Laravel and what is installed.
@@ -89,7 +152,7 @@ the check that gets forgotten once and leaks a branch's revenue to a customer ac
 
 ## API-first
 
-Only Blade consumes the API in v1. Build it anyway.
+Only Blade consumes the API so far. Build it anyway.
 
 - Every domain operation is a service class method callable from HTTP, console, or queue.
 - `Api\` controllers return JSON resources. `Web\` controllers return Blade views.
@@ -102,7 +165,7 @@ This is what makes the React Native app a client rather than a rewrite.
 
 ## Performance budget
 
-Customer-facing pages:
+Customer-facing pages (website module):
 
 - Under **2 seconds** to interactive on a throttled 3G Lighthouse profile
 - Menu images: WebP/AVIF, `srcset`, lazy-loaded below the fold
@@ -112,37 +175,46 @@ Customer-facing pages:
 
 ---
 
-## Build order
+## Build order: the MVP
 
-Do not start a phase before the previous one works.
+The restaurant platform (foundation, operations, riders, administration, growth, reporting) is
+built and live for Yes My Shawarma. The work now is turning it into Express POS. Do not start a
+step before the previous one is released.
 
-1. **Foundation** — branches, menu with modifiers, branch availability, guest checkout,
-   Paystack, staff dashboard with alarm and escalation. *This can go live.*
-2. **Operations** — full state machine, `order_events`, shifts, customer tracking page.
-3. **Riders** — rider auth, claim flow, real-time dispatch.
-4. **Administration** — owner dashboard, user onboarding, permissions UI, branch management.
-5. **Growth** — promotions v1, customer list with lifetime value and export.
-6. **Reporting** — operational and financial depth built on `order_events`.
+1. **Product rulebook** — this file.
+2. **Business settings** — name, logo, colours, contact, prefixes, receipt text, the promotion's
+   free item and the drinks category move into settings.
+3. **Module switches** — a Modules page; every module can be switched off completely.
+4. **POS-only mode** — with the website module off, the address opens the staff login.
+5. **Express POS identity** — the EXPRESS POS login page; business branding inside.
+6. **Installs per client** — a repeatable install per client on a Solusys Digital subdomain,
+   daily backups, one deploy updating every install, the owner's admin account on each.
+7. **Several cashiers** — a till per cashier or terminal, each with its own float and cash-up.
+8. **Direct printing** — receipts and kitchen tickets straight to Epson printers, cash drawer.
+9. **Optional tax** — VAT, NHIL and levies per business, off by default.
+10. **Food vendor pilot** — the first paying client set up, trained and live.
 
-**Current phase:** Foundation (1) and Operations (2) are complete and audited against this
-doc's scope. Riders (3), Administration (4), Growth (5), and Reporting (6) already have
-substantial working implementations (rider auth/dashboard/auto-assignment, user/branch/settings
-admin, promotions, customer management, reports) — not yet individually audited feature-by-
-feature against the scope below, so treat "done" claims there as provisional until checked.
-<!-- Update this line as phases complete. It is the fastest signal of where the project is. -->
+Straight after the MVP: offline mode for the subscription edition.
+
+**Current step:** 2 (business settings). Step 1, this rulebook, approved 2026-11-15.
+<!-- Update this line as steps complete. It is the fastest signal of where the project is. -->
 
 ---
 
-## Out of scope for v1
+## Out of scope for the MVP
 
 Do not build these. If a task seems to require one, stop and raise it.
 
-- Loyalty points or stamp cards
+- Loyalty points or stamp cards (the WhatsApp group reward is a flat discount, not loyalty)
 - Live rider GPS tracking on a map
-- Multi-currency
+- Multi-currency or countries outside Ghana
 - Table reservations
-- A lead pipeline with stages (v1 is a customer list, nothing more)
+- A lead pipeline with stages (the customer list stays a list)
 - Native mobile app
+- Retail or service businesses (barcodes, variants, appointments, commission)
+- The one-time, offline-only edition
+- Self sign-up for clients, and billing for Express POS inside the app
+- One shared system holding every client's data
 
 ---
 
@@ -150,19 +222,21 @@ Do not build these. If a task seems to require one, stop and raise it.
 
 Flag these rather than assuming an answer.
 
-- Whether rider payouts are tracked in-platform or handled offline — nothing built yet, no
-  `Rider` model, no earnings/payout table.
+- Prices: setup fee, one-time fee, monthly fee.
+- Exactly which features the one-time edition leaves out.
+- The food vendor's go-live date and first modules.
+- Client contract, terms of service and data protection registration.
+- Where client installs are hosted, and access to create subdomains on solusysdigital.com.
 
 Resolved, no longer open: SMS provider (Arkesel, see Stack table above). Delivery fee model is
-implemented as continuous distance pricing — haversine distance from branch × a flat rate per
-km (`App\Services\Delivery\DeliveryFeeCalculator`), not the flat-per-zone or discretely-banded
-options originally listed here. See `.claude/rules/schema.md` and `.claude/rules/orders.md`.
-"Inventory or stock depletion" (removed from the list above) was deliberately built, flagged
-and approved mid-project rather than assumed — recipe-driven, per-branch, tied to order
-acceptance/cancellation. See `.claude/rules/schema.md`'s "Recipes and stock deduction" section.
-"Promo types beyond percentage and fixed discount" (removed from the list above) was likewise
-flagged and approved mid-project: a `buy_x_get_y_free` type now exists alongside the original
-two, built for a recurring "every Wednesday" storewide promotion. See
+continuous distance pricing — haversine distance from branch × a flat rate per km
+(`App\Services\Delivery\DeliveryFeeCalculator`). See `.claude/rules/schema.md` and
+`.claude/rules/orders.md`. Riders hand in the cash delivery fees they collect from 2026-11-11
+(delivery fee collections, payments.md); rider pay itself is not tracked in the app, by choice.
+"Inventory or stock depletion" was deliberately built, flagged and approved mid-project —
+recipe-driven, per-branch, tied to order acceptance/cancellation. See `.claude/rules/schema.md`'s
+"Recipes and stock deduction" section. "Promo types beyond percentage and fixed discount" was
+likewise flagged and approved: a `buy_x_get_y_free` type exists alongside the original two. See
 `.claude/rules/schema.md`'s "Promotions" section.
 
 ---
