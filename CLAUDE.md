@@ -68,7 +68,9 @@ These come before everything else in this file.
    system — Midnight #101010, Kente Gold #FCD116, Forest Green #12A150, Signal Red #E23A3A
    (`xpos-*` Tailwind colours), Archivo Black Italic for the wordmark and headline (self-hosted,
    `public/fonts`), Figtree for text. Source: the owner's "Tap & Go · Logo system" and "POS
-   sign-in screen" designs (2026-11-15). Never use the `xpos-*` colours on a business's screens.
+   sign-in screen" designs (2026-11-15). The form side is headed by the business's own logo and
+   name (which install this is); the dark side carries Solusys Digital's social links
+   (`x-solusys-social-links`). Never use the `xpos-*` colours on a business's screens.
 7. **Every change is safe for Yes My Shawarma.** All modules stay on for Yes My Shawarma;
    switching modules off is only ever tested on staging and on other clients' installs.
 

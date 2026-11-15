@@ -42,24 +42,23 @@
             <aside class="bg-xpos-midnight text-white px-6 py-6 md:px-12 md:py-12 flex flex-col">
                 <div>
                     <x-express-pos-logo />
-                    <p class="mt-3 text-xs text-xpos-muted">{{ __('A Solusys Digital product') }}</p>
                 </div>
 
                 <div class="hidden md:block my-auto">
                     <p class="font-xpos-display italic font-black text-6xl leading-[0.95] tracking-tight">
                         {{ __('Tap.') }}<br>{{ __('Pay.') }}<br><span class="text-xpos-gold">{{ __('Go.') }}</span>
                     </p>
-                    <p class="mt-6 text-lg text-gray-300 max-w-xs">{{ __('Fast checkout for cash and mobile money.') }}</p>
+                    <p class="mt-6 text-lg text-gray-300 max-w-xs">{{ __('Fast checkout for cash, card and mobile money.') }}</p>
                 </div>
 
-                <p class="hidden md:block text-sm text-xpos-muted">{{ __('Signing in to :business', ['business' => config('app.name')]) }}</p>
+                <x-solusys-social-links class="hidden md:block" />
             </aside>
 
             <main class="flex flex-col items-center justify-center px-6 py-10 md:py-12">
                 <div class="w-full max-w-sm">
                     {{ $slot }}
                 </div>
-                <p class="md:hidden mt-10 text-sm text-xpos-muted">{{ __('Signing in to :business', ['business' => config('app.name')]) }}</p>
+                <x-solusys-social-links class="md:hidden mt-10 w-full max-w-sm" :on-light="true" />
             </main>
         </div>
     </body>

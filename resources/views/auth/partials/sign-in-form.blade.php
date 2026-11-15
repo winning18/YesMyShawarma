@@ -4,13 +4,20 @@
     button with Kente Gold text. Email/phone + password for now; staff ID
     and PIN come with tills per cashier (MVP step 7).
 
-    $action, $heading, $subheading, $loginName, $loginLabel, $loginType
+    The business's own logo and name head the form, so staff know which
+    install they're signing in to; Express POS is on the dark panel.
+
+    $action, $subheading, $loginName, $loginLabel, $loginType
 --}}
 @php
+    $business = app(\App\Services\Settings\BusinessProfile::class);
     $field = 'mt-1.5 block w-full h-12 rounded-lg border-xpos-line bg-white px-4 text-base text-xpos-midnight placeholder:text-xpos-muted focus:border-xpos-midnight focus:ring-2 focus:ring-xpos-gold';
 @endphp
 
-<h1 class="text-3xl font-extrabold tracking-tight">{{ $heading }}</h1>
+@if ($business->logoUrl())
+    <img src="{{ $business->logoUrl() }}" alt="" class="h-16 w-auto max-w-full mb-4">
+@endif
+<h1 class="text-3xl font-extrabold tracking-tight">{{ $business->name() }}</h1>
 <p class="mt-1 text-gray-600">{{ $subheading }}</p>
 
 <x-auth-session-status class="mt-6" :status="session('status')" />

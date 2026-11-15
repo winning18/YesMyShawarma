@@ -130,6 +130,6 @@ class CustomerAuthTest extends TestCase
 
     public function test_staff_login_route_is_unaffected_by_customer_auth_routes(): void
     {
-        $this->get('/login')->assertOk()->assertSee('Start your shift')->assertSee('Express POS');
+        $this->get('/login')->assertOk()->assertSee('Sign in with your staff email and password.')->assertSee('Express POS');
     }
 }
