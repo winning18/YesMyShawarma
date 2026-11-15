@@ -1,6 +1,6 @@
 <x-customer-layout
-    :title="__('Our Branches in Accra · :name', ['name' => config('app.name')])"
-    :og-description="__('Find :name near you: :branches. Opening hours, directions and online ordering for delivery or pickup.', ['name' => config('app.name'), 'branches' => $branches->pluck('name')->join(', ', ' and ')])"
+    :title="$meta['title']"
+    :og-description="$meta['description']"
     main-class="max-w-7xl"
 >
     <x-slot name="pageHeader">{{ __('Our branches') }}</x-slot>

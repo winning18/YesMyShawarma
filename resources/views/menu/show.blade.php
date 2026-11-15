@@ -1,5 +1,5 @@
 <x-customer-layout
-    :title="__(':item: Order Online in Accra · :name', ['item' => $item->name, 'name' => config('app.name')])"
+    :title="$metaTitle"
     :og-image="$item->imageUrl()"
     :og-description="$metaDescription"
 >

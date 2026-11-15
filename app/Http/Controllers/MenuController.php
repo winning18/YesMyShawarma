@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Branch;
 use App\Models\Category;
 use App\Models\MenuItem;
+use App\Services\Content\SitePageService;
 use App\Services\Customers\CustomerBranchSelection;
 use App\Services\Menu\PopularItemsService;
+use App\Services\Settings\BusinessProfile;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -14,7 +16,7 @@ use Illuminate\View\View;
 
 class MenuController extends Controller
 {
-    public function index(CustomerBranchSelection $selection, PopularItemsService $popular): View|RedirectResponse
+    public function index(CustomerBranchSelection $selection, PopularItemsService $popular, SitePageService $pages): View|RedirectResponse
     {
         $branch = $this->resolveBranch($selection);
 
@@ -44,6 +46,7 @@ class MenuController extends Controller
             ->values();
 
         return view('menu.index', [
+            'meta' => $pages->meta('menu'),
             'branch' => $branch,
             'categories' => $categories,
             'popularIds' => $popular->badged(),
@@ -53,7 +56,7 @@ class MenuController extends Controller
         ]);
     }
 
-    public function show(MenuItem $menuItem, CustomerBranchSelection $selection, PopularItemsService $popular): View|RedirectResponse
+    public function show(MenuItem $menuItem, CustomerBranchSelection $selection, PopularItemsService $popular, SitePageService $pages): View|RedirectResponse
     {
         $branch = $this->resolveBranch($selection);
 
@@ -92,6 +95,7 @@ class MenuController extends Controller
             : collect();
 
         return view('menu.show', [
+            'metaTitle' => $pages->meta('menu-item', [':item' => $item->name])['title'],
             'branch' => $branch,
             'item' => $item,
             'drinks' => $drinks,
@@ -116,7 +120,9 @@ class MenuController extends Controller
         $price = number_format($item->base_price / 100, 2);
 
         foreach ([
-            __(' GH₵:price, for delivery or pickup in Accra.', ['price' => $price]),
+            $this->city()
+                ? __(' GH₵:price, for delivery or pickup in :city.', ['price' => $price, 'city' => $this->city()])
+                : __(' GH₵:price, for delivery or pickup.', ['price' => $price]),
             __(' GH₵:price.', ['price' => $price]),
             '',
         ] as $suffix) {
@@ -145,7 +151,9 @@ class MenuController extends Controller
             // or brand — no item has a description yet, so fall back to
             // the same sentence the page's meta description uses.
             'description' => $item->description
-                ?: __('Order :item from :name, for delivery or pickup in Accra.', ['item' => $item->name, 'name' => config('app.name')]),
+                ?: ($this->city()
+                    ? __('Order :item from :name, for delivery or pickup in :city.', ['item' => $item->name, 'name' => config('app.name'), 'city' => $this->city()])
+                    : __('Order :item from :name, for delivery or pickup.', ['item' => $item->name, 'name' => config('app.name')])),
             'brand' => [
                 '@type' => 'Brand',
                 'name' => config('app.name'),
@@ -245,5 +253,10 @@ class MenuController extends Controller
         }
 
         return $branch;
+    }
+
+    private function city(): ?string
+    {
+        return app(BusinessProfile::class)->city();
     }
 }

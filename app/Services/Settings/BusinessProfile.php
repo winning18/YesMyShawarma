@@ -43,6 +43,14 @@ class BusinessProfile
 
     public const MAIN_BRANCH = 'business_main_branch_id';
 
+    /** Where the business is — search results and Google's restaurant data. */
+    public const CITY = 'business_city';
+
+    public const REGION = 'business_region';
+
+    /** What it serves, comma-separated ("Shawarma, Burgers, Fast food"). */
+    public const CUISINES = 'business_cuisines';
+
     /**
      * Two brand colours, each with the lighter and darker shade the
      * customer site uses for backgrounds and hovers. Defaults are the
@@ -101,6 +109,24 @@ class BusinessProfile
     public function tagline(): ?string
     {
         return $this->setting(self::TAGLINE) ?: null;
+    }
+
+    public function city(): ?string
+    {
+        return $this->setting(self::CITY) ?: null;
+    }
+
+    public function region(): ?string
+    {
+        return $this->setting(self::REGION) ?: null;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function cuisines(): array
+    {
+        return array_values(array_filter(array_map('trim', explode(',', (string) $this->setting(self::CUISINES)))));
     }
 
     /**
@@ -239,6 +265,9 @@ class BusinessProfile
             self::FACEBOOK => 'facebook_url',
             self::TIKTOK => 'tiktok_url',
             self::MAIN_BRANCH => 'main_branch_id',
+            self::CITY => 'city',
+            self::REGION => 'region',
+            self::CUISINES => 'cuisines',
         ];
 
         foreach ($text as $key => $field) {

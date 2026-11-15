@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Content\SitePageService;
 use App\Services\Customers\CustomerBranchSelection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -9,31 +10,43 @@ use Illuminate\Support\Facades\Cookie;
 use Illuminate\View\View;
 
 /**
- * The four static "Policy" footer pages — grouped under one controller
- * since each is a plain content view with no dynamic data, same as
- * FaqController/AboutController's simplicity, just four of them under
- * one footer nav group rather than four near-empty controller classes.
+ * The four "Policy" footer pages. Their text is written under Website
+ * content (SitePageService); a policy nobody has written yet answers 404
+ * and isn't linked.
  */
 class PolicyController extends Controller
 {
-    public function terms(): View
+    public function terms(SitePageService $pages): View
     {
-        return view('policy.terms');
+        return $this->show($pages, 'terms');
     }
 
-    public function refunds(): View
+    public function refunds(SitePageService $pages): View
     {
-        return view('policy.refunds');
+        return $this->show($pages, 'refunds');
     }
 
-    public function privacy(): View
+    public function privacy(SitePageService $pages): View
     {
-        return view('policy.privacy');
+        return $this->show($pages, 'privacy');
     }
 
-    public function cookies(): View
+    public function cookies(SitePageService $pages): View
     {
-        return view('policy.cookies');
+        return $this->show($pages, 'cookies');
+    }
+
+    private function show(SitePageService $pages, string $slug): View
+    {
+        $body = $pages->body($slug);
+
+        abort_unless($body, 404);
+
+        return view('policy.show', [
+            'meta' => $pages->meta($slug),
+            'heading' => $pages->heading($slug),
+            'body' => $body,
+        ]);
     }
 
     /**

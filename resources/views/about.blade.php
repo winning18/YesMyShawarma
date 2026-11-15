@@ -1,70 +1,79 @@
-<x-customer-layout title="About us · {{ config('app.name') }}" :og-description="__('The story behind :name, serving shawarma, burgers and fresh juices from our branches across Accra.', ['name' => config('app.name')])">
-    <x-slot name="pageHeader">{{ __('About us') }}</x-slot>
+<x-customer-layout :title="$meta['title']" :og-description="$meta['description']">
+    <x-slot name="pageHeader">{{ $heading }}</x-slot>
 
-    {{-- Mission and vision --}}
-    <section class="mb-14">
-        <div class="space-y-8 text-center">
-            <div>
-                <h2 class="text-lg font-bold mb-3">{{ __('Mission') }}</h2>
-                <p class="text-brand-black">{{ __("We're here to turn a simple craving into a reliable favourite, delivering bold, quality meals quickly and consistently across every neighbourhood we reach.") }}</p>
+    {{-- Written under Website content → About us; a part left empty doesn't show. --}}
+    @if ($mission || $vision)
+        <section class="mb-14">
+            <div class="space-y-8 text-center">
+                @if ($mission)
+                    <div>
+                        <h2 class="text-lg font-bold mb-3">{{ __('Mission') }}</h2>
+                        <p class="text-brand-black">{{ $mission }}</p>
+                    </div>
+                @endif
+                @if ($vision)
+                    <div>
+                        <h2 class="text-lg font-bold mb-3">{{ __('Vision') }}</h2>
+                        <p class="text-brand-black">{{ $vision }}</p>
+                    </div>
+                @endif
             </div>
-            <div>
-                <h2 class="text-lg font-bold mb-3">{{ __('Vision') }}</h2>
-                <p class="text-brand-black">{{ __('To be the first name Ghanaians think of when they crave quality authentic meals, growing from Accra across the country and beyond.') }}</p>
-            </div>
-        </div>
-    </section>
+        </section>
+    @endif
 
-    {{-- Our success story --}}
-    <section class="mb-14 pt-14 border-t border-brand-gray-100">
-        <h2 class="text-lg font-bold mb-6 text-center">{{ __('Our success story') }}</h2>
+    @if ($story)
+        {{-- Our success story --}}
+        <section class="mb-14 {{ $mission || $vision ? 'pt-14 border-t border-brand-gray-100' : '' }}">
+            <h2 class="text-lg font-bold mb-6 text-center">{{ __('Our success story') }}</h2>
 
-        <div class="text-brand-black leading-relaxed space-y-4 mb-10">
-            <p>{{ __('Yes! My Shawarma began as a bold idea inside Yes! My Grill to serve exceptional shawarma wraps built on two things too often missing from fast food: real health and true value for money.') }}</p>
-            <p>{{ __("We started small. One joint, one conviction: that a shawarma could be crafted, not just assembled. Our wraps tasted different, and at first, different drew questions. Some customers weren't sure what to make of a flavour that didn't copy everyone else. But we kept serving, kept explaining, and something began to shift. One bite at a time, people understood, this wasn't just another wrap. This was a recipe with a craft behind it, a quality they couldn't get anywhere else. The questions turned into cravings, and the first-timers turned into regulars.") }}</p>
-            <p>{{ __("Those returning customers gave us our first real hope, and they've carried us ever since. ") }}<span class="font-bold">{{ __('We served over 5,000 in-house orders before our second branch even opened') }}</span>{{ __(', launching in December and opening our second location by March. Today we run ') }}<span class="font-bold">{{ __('three branches') }}</span>{{ __(' and counting, with more strategic locations on the way to bring our wraps to even more of Accra.') }}</p>
-            <p>{{ __("Along the way, we've built more than a menu. ") }}<span class="font-bold">{{ __("We've created jobs for many Ghanaian youth") }}</span>{{ __(', and together we show up every day to deliver the same thing: the best service, aimed squarely at one goal, a customer who leaves satisfied and comes back for more.') }}</p>
-            <p>{{ __("We're famous for our recipe, and we're proud of it. We're not like every other food joint. Our craft is our own and that's exactly the point. We're just getting started.") }}</p>
-            <p class="font-semibold">{{ __("One bite, and you'll want more.") }}</p>
-        </div>
+            <div class="text-brand-black leading-relaxed space-y-4 mb-10 page-content-plain">{{ $story }}</div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
-            <div class="bg-brand-black rounded-xl p-6 text-brand-white text-center">
-                <div class="w-12 h-12 rounded-full bg-brand-yellow flex items-center justify-center mx-auto mb-4">
-                    <svg viewBox="0 0 24 24" fill="none" class="w-6 h-6 text-brand-black">
-                        <circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.5" />
-                        <path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-                        <circle cx="17" cy="9" r="2.3" stroke="currentColor" stroke-width="1.5" />
-                        <path d="M14.5 19c.3-2.3 2-4 4-4.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-                    </svg>
+            @php
+                $figures = array_filter(['customers' => $customerCountLabel, 'years' => $yearsOfOperation, 'branches' => $branchCount], fn ($value) => $value !== null && $value !== '');
+                $columns = [1 => 'sm:grid-cols-1', 2 => 'sm:grid-cols-2', 3 => 'sm:grid-cols-3'][count($figures)] ?? '';
+            @endphp
+            <div class="grid grid-cols-1 {{ $columns }} gap-5">
+                @isset($figures['customers'])
+                <div class="bg-brand-black rounded-xl p-6 text-brand-white text-center">
+                    <div class="w-12 h-12 rounded-full bg-brand-yellow flex items-center justify-center mx-auto mb-4">
+                        <svg viewBox="0 0 24 24" fill="none" class="w-6 h-6 text-brand-black">
+                            <circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.5" />
+                            <path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                            <circle cx="17" cy="9" r="2.3" stroke="currentColor" stroke-width="1.5" />
+                            <path d="M14.5 19c.3-2.3 2-4 4-4.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                        </svg>
+                    </div>
+                    <p class="text-2xl font-bold">{{ $customerCountLabel }}</p>
+                    <p class="text-sm text-brand-gray-300">{{ __('Happy customers') }}</p>
                 </div>
-                <p class="text-2xl font-bold">{{ $customerCountLabel }}</p>
-                <p class="text-sm text-brand-gray-300">{{ __('Happy customers') }}</p>
-            </div>
-
-            <div class="bg-brand-black rounded-xl p-6 text-brand-white text-center">
-                <div class="w-12 h-12 rounded-full bg-brand-yellow flex items-center justify-center mx-auto mb-4">
-                    <svg viewBox="0 0 24 24" fill="none" class="w-6 h-6 text-brand-black">
-                        <rect x="4" y="5" width="16" height="15" rx="2" stroke="currentColor" stroke-width="1.5" />
-                        <path d="M4 9h16M8 3v3M16 3v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-                    </svg>
+                @endisset
+                @isset($figures['years'])
+                <div class="bg-brand-black rounded-xl p-6 text-brand-white text-center">
+                    <div class="w-12 h-12 rounded-full bg-brand-yellow flex items-center justify-center mx-auto mb-4">
+                        <svg viewBox="0 0 24 24" fill="none" class="w-6 h-6 text-brand-black">
+                            <rect x="4" y="5" width="16" height="15" rx="2" stroke="currentColor" stroke-width="1.5" />
+                            <path d="M4 9h16M8 3v3M16 3v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                        </svg>
+                    </div>
+                    <p class="text-2xl font-bold">{{ $yearsOfOperation }}</p>
+                    <p class="text-sm text-brand-gray-300">{{ __('Years of operation') }}</p>
                 </div>
-                <p class="text-2xl font-bold">{{ $yearsOfOperation }}</p>
-                <p class="text-sm text-brand-gray-300">{{ __('Years of operation') }}</p>
-            </div>
-
-            <div class="bg-brand-black rounded-xl p-6 text-brand-white text-center">
-                <div class="w-12 h-12 rounded-full bg-brand-yellow flex items-center justify-center mx-auto mb-4">
-                    <svg viewBox="0 0 24 24" fill="none" class="w-6 h-6 text-brand-black">
-                        <path d="M12 21s7-6.5 7-11.5a7 7 0 1 0-14 0C5 14.5 12 21 12 21Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
-                        <circle cx="12" cy="9.5" r="2.5" stroke="currentColor" stroke-width="1.5" />
-                    </svg>
+                @endisset
+                @isset($figures['branches'])
+                <div class="bg-brand-black rounded-xl p-6 text-brand-white text-center">
+                    <div class="w-12 h-12 rounded-full bg-brand-yellow flex items-center justify-center mx-auto mb-4">
+                        <svg viewBox="0 0 24 24" fill="none" class="w-6 h-6 text-brand-black">
+                            <path d="M12 21s7-6.5 7-11.5a7 7 0 1 0-14 0C5 14.5 12 21 12 21Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+                            <circle cx="12" cy="9.5" r="2.5" stroke="currentColor" stroke-width="1.5" />
+                        </svg>
+                    </div>
+                    <p class="text-2xl font-bold">{{ $branchCount }}</p>
+                    <p class="text-sm text-brand-gray-300">{{ __('Branches') }}</p>
                 </div>
-                <p class="text-2xl font-bold">{{ $branchCount }}</p>
-                <p class="text-sm text-brand-gray-300">{{ __('Branches') }}</p>
+                @endisset
             </div>
-        </div>
-    </section>
+        </section>
+    @endif
 
     {{--
         Meet our staff — real roster (StaffMemberManagementController,

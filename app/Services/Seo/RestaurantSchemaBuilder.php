@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\MenuItem;
 use App\Services\Branches\WorkingHoursService;
 use App\Services\Customers\CustomerService;
+use App\Services\Settings\BusinessProfile;
 
 /**
  * Restaurant structured data (schema.org) for a branch — lets Google show
@@ -32,6 +33,7 @@ class RestaurantSchemaBuilder
     public function __construct(
         private readonly WorkingHoursService $workingHours,
         private readonly CustomerService $customers,
+        private readonly BusinessProfile $profile,
     ) {}
 
     /**
@@ -70,8 +72,8 @@ class RestaurantSchemaBuilder
             'address' => array_filter([
                 '@type' => 'PostalAddress',
                 'streetAddress' => $branch->address,
-                'addressLocality' => 'Accra',
-                'addressRegion' => 'Greater Accra',
+                'addressLocality' => $this->profile->city(),
+                'addressRegion' => $this->profile->region(),
                 'postalCode' => $branch->ghanapost_code,
                 'addressCountry' => 'GH',
             ]),
@@ -80,12 +82,16 @@ class RestaurantSchemaBuilder
                 'latitude' => (float) $branch->lat,
                 'longitude' => (float) $branch->lng,
             ],
-            'servesCuisine' => ['Shawarma', 'Burgers', 'Fast food'],
+            'servesCuisine' => $this->profile->cuisines(),
             'hasMenu' => route('menu.index'),
             'acceptsReservations' => false,
             'priceRange' => $this->priceRange(),
             'url' => route('branches.show', $branch),
         ];
+
+        if ($schema['servesCuisine'] === []) {
+            unset($schema['servesCuisine']);
+        }
 
         if ($branch->imageUrl()) {
             $schema['image'] = $branch->imageUrl();

@@ -8,6 +8,7 @@ use App\Models\Branch;
 use App\Models\User;
 use App\Services\Branches\BranchContext;
 use App\Services\Cart\CartService;
+use App\Services\Content\SitePageService;
 use App\Services\Freebies\FreebieService;
 use App\Services\MarketLists\MarketListService;
 use App\Services\Notifications\ArkeselNotifier;
@@ -121,6 +122,11 @@ class AppServiceProvider extends ServiceProvider
             $view->with('footerTagline', app(BusinessProfile::class)->tagline());
             $view->with('footerBranches', app(BusinessProfile::class)->branchPhones());
             $view->with('footerHasSocialLinks', app(BusinessProfile::class)->socialLinks() !== []);
+
+            // Only pages someone has written are linked (Website content).
+            $pages = app(SitePageService::class);
+            $view->with('publishedPages', $pages->published());
+            $view->with('defaultDescription', $pages->meta('default')['description']);
         });
 
         // Rendered on every staff-dashboard page regardless of which

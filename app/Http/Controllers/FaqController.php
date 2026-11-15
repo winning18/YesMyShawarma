@@ -2,53 +2,31 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\FaqItem;
+use App\Services\Content\FaqService;
+use App\Services\Content\SitePageService;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class FaqController extends Controller
 {
     /**
-     * The single source for both the visible <details>/<summary> accordion
-     * (faq.blade.php) and the FAQPage structured data below — one list so
-     * the two can never drift out of sync with each other.
-     *
-     * @var list<array{question: string, answer: string}>
+     * One list (FaqService, edited under Website content) feeds both the
+     * visible <details>/<summary> accordion and the FAQPage structured
+     * data below, so the two can never drift apart.
      */
-    private const ITEMS = [
-        [
-            'question' => 'Do I need an account to order?',
-            'answer' => 'No, check out as a guest with just your phone number. If you set a password later using that same number, your past orders are automatically linked to the new account.',
-        ],
-        [
-            'question' => 'How can I pay?',
-            'answer' => 'Cash on pickup or delivery, or pay online upfront with Paystack. Cards and Mobile Money (MoMo) are both supported.',
-        ],
-        [
-            'question' => 'Do you deliver, or is it pickup only?',
-            'answer' => 'Both. Pickup is always available at any branch. Delivery is offered where we have an active delivery area, with the fee worked out by distance from the branch at checkout.',
-        ],
-        [
-            'question' => 'How do I track my order?',
-            'answer' => 'Your order confirmation includes a tracking link. You can also look it up anytime from Track order using the phone number you ordered with.',
-        ],
-        [
-            'question' => 'Which branches can I order from?',
-            'answer' => 'Ga Odumase and Pokuase Y-Junction are open now, with another branch on the way. Opening hours for each are shown on the Branches page.',
-        ],
-        [
-            'question' => "Something's wrong with my order, what do I do?",
-            'answer' => 'Call or WhatsApp the branch you ordered from, or send a message through Contact us, and our team will sort out a refund or replacement.',
-        ],
-    ];
-
-    public function index(): View
+    public function index(FaqService $faq, SitePageService $pages): View
     {
-        $items = collect(self::ITEMS)->map(fn (array $item) => [
-            'question' => __($item['question']),
-            'answer' => __($item['answer']),
+        $items = $faq->items()->map(fn (FaqItem $item) => [
+            'question' => $item->question,
+            'answer' => $item->answer,
         ]);
 
+        abort_if($items->isEmpty(), 404);
+
         return view('faq', [
+            'meta' => $pages->meta('faq'),
+            'heading' => $pages->heading('faq'),
             'items' => $items,
             'faqSchema' => $this->faqSchema($items),
         ]);

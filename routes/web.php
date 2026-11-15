@@ -24,9 +24,11 @@ use App\Http\Controllers\DeliveryFeesReportController;
 use App\Http\Controllers\ExpenseKindController;
 use App\Http\Controllers\ExpensesReportController;
 use App\Http\Controllers\FaqController;
+use App\Http\Controllers\FaqItemManagementController;
 use App\Http\Controllers\FreebieController;
 use App\Http\Controllers\HeroSliderController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\LlmsController;
 use App\Http\Controllers\ManifestController;
 use App\Http\Controllers\MarketListController;
 use App\Http\Controllers\MenuController;
@@ -61,6 +63,7 @@ use App\Http\Controllers\RobotsController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\ShiftController;
 use App\Http\Controllers\SitemapController;
+use App\Http\Controllers\SitePageManagementController;
 use App\Http\Controllers\SmsBroadcastController;
 use App\Http\Controllers\SmsOptOutController;
 use App\Http\Controllers\StaffMemberManagementController;
@@ -76,6 +79,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 Route::get('/robots.txt', [RobotsController::class, 'index'])->name('robots');
 Route::get('/site.webmanifest', ManifestController::class)->name('manifest');
+Route::get('/llms.txt', LlmsController::class)->name('llms');
 
 // track.visit records an anonymous first-party-cookie visit for every
 // page in the actual browse-to-order funnel — home through tracking —
@@ -289,6 +293,16 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::post('/dashboard/stock/{stockItem}/restock', [StockItemController::class, 'restock'])->name('dashboard.stock.restock');
 
     Route::get('/dashboard/stock/{stockItem}/history', [StockMovementController::class, 'history'])->name('dashboard.stock.history');
+
+    // Website content (content.manage: owner, general manager) — the
+    // FAQ routes come first so /website/faq isn't read as a page slug.
+    Route::get('/dashboard/website', [SitePageManagementController::class, 'index'])->name('dashboard.site-pages.index');
+    Route::get('/dashboard/website/faq', [FaqItemManagementController::class, 'index'])->name('dashboard.faq-items.index');
+    Route::post('/dashboard/website/faq', [FaqItemManagementController::class, 'store'])->name('dashboard.faq-items.store');
+    Route::put('/dashboard/website/faq/{faqItem}', [FaqItemManagementController::class, 'update'])->name('dashboard.faq-items.update');
+    Route::delete('/dashboard/website/faq/{faqItem}', [FaqItemManagementController::class, 'destroy'])->name('dashboard.faq-items.destroy');
+    Route::get('/dashboard/website/{page}', [SitePageManagementController::class, 'edit'])->name('dashboard.site-pages.edit');
+    Route::put('/dashboard/website/{page}', [SitePageManagementController::class, 'update'])->name('dashboard.site-pages.update');
 
     Route::get('/dashboard/business-profile', [BusinessProfileController::class, 'edit'])->name('dashboard.business-profile.edit');
     Route::put('/dashboard/business-profile', [BusinessProfileController::class, 'update'])->name('dashboard.business-profile.update');

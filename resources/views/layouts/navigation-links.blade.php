@@ -305,7 +305,7 @@
 --}}
 @can('settings.manage')
     @php
-        $onSettingsSection = request()->routeIs('dashboard.settings.*', 'dashboard.staff-members.*', 'dashboard.business-profile.*');
+        $onSettingsSection = request()->routeIs('dashboard.settings.*', 'dashboard.staff-members.*', 'dashboard.business-profile.*', 'dashboard.site-pages.*', 'dashboard.faq-items.*');
     @endphp
     <div x-data="{ settingsOpen: {{ $onSettingsSection ? 'true' : 'false' }} }">
         <button
@@ -325,6 +325,12 @@
                     href="{{ route('dashboard.business-profile.edit') }}"
                     class="block px-3 py-1.5 rounded-md text-sm transition duration-150 ease-in-out {{ request()->routeIs('dashboard.business-profile.*') ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
                 >{{ __('Business profile') }}</a>
+            @endcan
+            @can('content.manage')
+                <a
+                    href="{{ route('dashboard.site-pages.index') }}"
+                    class="block px-3 py-1.5 rounded-md text-sm transition duration-150 ease-in-out {{ request()->routeIs('dashboard.site-pages.*', 'dashboard.faq-items.*') ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
+                >{{ __('Website content') }}</a>
             @endcan
             <a
                 href="{{ route('dashboard.settings.index') }}"

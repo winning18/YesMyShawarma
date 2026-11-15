@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Branch;
 use App\Services\Branches\WorkingHoursService;
 use App\Services\Contact\ContactMessageService;
+use App\Services\Content\SitePageService;
 use App\Services\Customers\CustomerBranchSelection;
 use App\Services\Settings\BusinessProfile;
 use App\Services\Spam\HoneypotGuard;
@@ -15,7 +16,7 @@ use Illuminate\View\View;
 
 class ContactController extends Controller
 {
-    public function index(WorkingHoursService $workingHours, CustomerBranchSelection $selection, BusinessProfile $profile): View
+    public function index(WorkingHoursService $workingHours, CustomerBranchSelection $selection, BusinessProfile $profile, SitePageService $pages): View
     {
         $branches = Branch::where('is_active', true)->get()->each(function (Branch $branch) use ($workingHours) {
             // See BranchesController::index() — same reasoning.
@@ -29,6 +30,7 @@ class ContactController extends Controller
         });
 
         return view('contact', [
+            'meta' => $pages->meta('contact'),
             'branches' => $branches,
             // x-branch-card's "Currently selected" badge — same data source
             // as BranchesController, kept in sync here too.

@@ -41,9 +41,8 @@ These come before everything else in this file.
 
 1. **No business is written into the code.** No business name, branch, menu item, category,
    prefix, phone number, address or amount that belongs to one client appears in code, views,
-   seeders or tests' assumptions about production. It lives in settings or the database. Today's
-   known exceptions (branch names and "Shawarma/Accra" wording in content pages, FAQ and
-   llms.txt) are being moved into the database in MVP step 2c — don't add new ones.
+   seeders or tests' assumptions about production. It lives in settings or the database. Step 2
+   moved the last of Yes My Shawarma's into settings and the database — don't add new ones.
 2. **Every feature is either core or a module.** Core is always on: counter POS, kitchen board,
    menu with options and branch availability, branches, staff, roles and permissions, shifts and
    cash-up, sales reports, order history. Everything else is a module a business switches on.
@@ -212,10 +211,9 @@ step before the previous one is released.
 
 Straight after the MVP: offline mode for the subscription edition.
 
-**Current step:** 2c (website content). Step 1, this rulebook, approved 2026-11-15;
-2a, the Business profile, and 2b, menu and branch rules, built 2026-11-15. Step 2 runs in three parts: 2a business profile,
-2b menu and branch rules (`categories.is_beverage`, `promotions.free_menu_item_id`,
-`branches.areas_served`), 2c website content (`site_pages`, `faq_items`) — schema approved.
+**Current step:** 3 (module switches). Step 1, this rulebook, approved 2026-11-15; step 2,
+business settings, built 2026-11-15 in three parts: 2a business profile, 2b menu and branch
+rules, 2c website content.
 <!-- Update this line as steps complete. It is the fastest signal of where the project is. -->
 
 ---

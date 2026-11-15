@@ -34,6 +34,29 @@
             </section>
 
             <section class="space-y-4 border-t border-gray-100 pt-6">
+                <h3 class="font-semibold text-gray-800">{{ __('Location and food') }}</h3>
+                <p class="text-xs text-gray-500">{{ __('Used in search results and the information Google shows about each branch. Page titles can use :city.') }}</p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <x-input-label for="city" :value="__('City (optional)')" />
+                        <x-text-input id="city" name="city" class="mt-1 block w-full" :value="old('city', $profile->city())" maxlength="80" placeholder="{{ __('e.g. Kumasi') }}" />
+                        <x-input-error class="mt-2" :messages="$errors->get('city')" />
+                    </div>
+                    <div>
+                        <x-input-label for="region" :value="__('Region (optional)')" />
+                        <x-text-input id="region" name="region" class="mt-1 block w-full" :value="old('region', $profile->region())" maxlength="80" placeholder="{{ __('e.g. Ashanti') }}" />
+                        <x-input-error class="mt-2" :messages="$errors->get('region')" />
+                    </div>
+                </div>
+                <div>
+                    <x-input-label for="cuisines" :value="__('What you serve (optional)')" />
+                    <x-text-input id="cuisines" name="cuisines" class="mt-1 block w-full" :value="old('cuisines', implode(', ', $profile->cuisines()))" maxlength="200" placeholder="{{ __('e.g. Ghanaian, Grills, Fast food') }}" />
+                    <p class="text-xs text-gray-500 mt-1">{{ __('Kinds of food, separated by commas.') }}</p>
+                    <x-input-error class="mt-2" :messages="$errors->get('cuisines')" />
+                </div>
+            </section>
+
+            <section class="space-y-4 border-t border-gray-100 pt-6">
                 <h3 class="font-semibold text-gray-800">{{ __('Contact') }}</h3>
                 <p class="text-xs text-gray-500">{{ __('Branch phone numbers come from each branch. Separate several email addresses with commas.') }}</p>
                 <div>

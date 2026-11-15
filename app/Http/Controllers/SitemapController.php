@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Branch;
 use App\Models\MenuItem;
+use App\Services\Content\SitePageService;
 use Illuminate\Http\Response;
 
 /**
@@ -20,21 +21,24 @@ class SitemapController extends Controller
      * of redirecting) makes indexable at all, so a crawler has no way to
      * discover them without this.
      */
-    public function index(): Response
+    public function index(SitePageService $pages): Response
     {
+        // About, FAQ and the policies only once something is written on them.
+        $published = $pages->published();
+
         $urls = collect([
             ['url' => route('home'), 'priority' => '1.0'],
             ['url' => route('menu.index'), 'priority' => '0.9'],
             ['url' => route('branches.index'), 'priority' => '0.8'],
-            ['url' => route('about'), 'priority' => '0.5'],
+            $published['about'] ? ['url' => route('about'), 'priority' => '0.5'] : null,
             ['url' => route('contact'), 'priority' => '0.5'],
-            ['url' => route('faq'), 'priority' => '0.4'],
+            $published['faq'] ? ['url' => route('faq'), 'priority' => '0.4'] : null,
             ['url' => route('reviews.index'), 'priority' => '0.4'],
-            ['url' => route('policy.terms'), 'priority' => '0.2'],
-            ['url' => route('policy.refunds'), 'priority' => '0.2'],
-            ['url' => route('policy.privacy'), 'priority' => '0.2'],
-            ['url' => route('policy.cookies'), 'priority' => '0.2'],
-        ]);
+            $published['terms'] ? ['url' => route('policy.terms'), 'priority' => '0.2'] : null,
+            $published['refunds'] ? ['url' => route('policy.refunds'), 'priority' => '0.2'] : null,
+            $published['privacy'] ? ['url' => route('policy.privacy'), 'priority' => '0.2'] : null,
+            $published['cookies'] ? ['url' => route('policy.cookies'), 'priority' => '0.2'] : null,
+        ])->filter()->values();
 
         Branch::where('is_active', true)->orderBy('id')->get()->each(
             fn (Branch $branch) => $urls->push([

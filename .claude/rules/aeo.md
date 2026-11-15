@@ -7,7 +7,8 @@ paths:
   - "resources/views/home.blade.php"
   - "resources/views/menu/**"
   - "resources/views/faq.blade.php"
-  - "public/llms.txt"
+  - "app/Http/Controllers/LlmsController.php"
+  - "app/Services/Content/**"
 ---
 
 # AEO (Answer Engine Optimization)
@@ -41,16 +42,23 @@ different things:
   crawling each item's own page.
 - **`MenuController::productSchema()`** — `Product`/`Offer` on each item's own `/menu/{item}`
   page.
-- **`FaqController::ITEMS`** — the single source for both the visible `<details>/<summary>`
-  accordion and the `FAQPage`/`Question`/`Answer` structured data; the controller builds both
-  from the same array, the Blade view never hardcodes question/answer text of its own.
+- **`FaqController`** — the FAQ questions (`faq_items`, edited under Website content,
+  `FaqService`) are the single source for both the visible `<details>/<summary>` accordion and
+  the `FAQPage`/`Question`/`Answer` structured data; the controller builds both from the same
+  list, the Blade view never hardcodes question/answer text of its own.
+
+Restaurant data's `addressLocality` / `addressRegion` / `servesCuisine` come from the Business
+profile (city, region, what you serve) and are left out when not filled in.
 
 Adding a new customer-facing page with citable facts (a new static page, a promotions page,
 etc.) should follow the same shape: build the schema from the same data the page renders, in
 the controller, and add it here.
 
-## `public/llms.txt`
+## `/llms.txt`
 
-A hand-written plain-text summary for AI crawlers, in the emerging `llms.txt` convention —
-served as a static file (same mechanism as `favicon.ico`, no controller). Keep its links current
-when a page in the "Ordering"/"About"/"Policies" sections is renamed or removed.
+A plain-text summary for AI crawlers, in the emerging `llms.txt` convention — served by
+`LlmsController` from `SitePageService::llmsText()` (Express POS step 2c; it used to be the
+static `public/llms.txt`, deleted — a static file would shadow the route on nginx). The business
+can write its own under Website content (the `llms` site page, `:url` filled with this
+install's address — Yes My Shawarma's was copied in); left empty, one is built from the profile
+and links only the pages that exist.

@@ -156,3 +156,47 @@ textarea:user-invalid {
         animation: blob-rotate-ccw 90s linear infinite;
     }
 }
+
+/*
+ * Page text written under Website content (Markdown, SitePageService):
+ * the policies use .page-content, which matches how they were laid out
+ * by hand before; the About story and a branch's introduction use
+ * .page-content-plain, where the surrounding classes do the styling.
+ */
+@layer components {
+    .page-content > p:first-child > em:only-child {
+        @apply not-italic text-sm text-brand-gray-500;
+    }
+    .page-content > p:first-child:has(> em:only-child) {
+        @apply mb-8 text-sm leading-5;
+    }
+    .page-content h2 {
+        @apply text-lg font-bold mt-8 mb-3;
+    }
+    .page-content h3 {
+        @apply font-semibold mt-6 mb-2;
+    }
+    .page-content p {
+        @apply leading-relaxed mb-4;
+    }
+    .page-content p:has(+ ul),
+    .page-content p:has(+ ol) {
+        @apply mb-2;
+    }
+    .page-content ul {
+        @apply list-disc pl-5 space-y-1 leading-relaxed mb-4;
+    }
+    .page-content ol {
+        @apply list-decimal pl-5 space-y-1 leading-relaxed mb-4;
+    }
+    .page-content a,
+    .page-content-plain a {
+        @apply underline hover:text-brand-yellow-dark;
+    }
+    .page-content-plain strong {
+        @apply font-bold;
+    }
+    .page-content-plain p > strong:only-child {
+        @apply font-semibold;
+    }
+}

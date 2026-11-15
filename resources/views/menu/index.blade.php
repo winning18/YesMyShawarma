@@ -1,6 +1,6 @@
 <x-customer-layout
-    :title="__('Menu: Shawarma, Burgers & Fresh Juices · :name', ['name' => config('app.name')])"
-    :og-description="__('The full :name menu: chicken and beef shawarma, burgers, hot dogs, loaded fries, sandwiches and fresh juices. Order online for delivery or pickup in Accra.', ['name' => config('app.name')])"
+    :title="$meta['title']"
+    :og-description="$meta['description']"
     body-class="menu-hero-bg"
     main-class="max-w-7xl"
 >

@@ -14,10 +14,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Vite;
+use Tests\Concerns\LoadsYesMyShawarmaContent;
 use Tests\TestCase;
 
 class CustomerPagesTest extends TestCase
 {
+    use LoadsYesMyShawarmaContent;
     use RefreshDatabase;
 
     private Branch $branch;
@@ -25,6 +27,7 @@ class CustomerPagesTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->loadYesMyShawarmaContent();
 
         $this->branch = Branch::create([
             'name' => 'Ga Odumase', 'slug' => 'ga-odumase', 'phone' => '+233243635265', 'address' => 'Ga Odumase, Accra',

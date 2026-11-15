@@ -5,17 +5,19 @@ namespace App\Http\Controllers;
 use App\Models\Branch;
 use App\Models\Category;
 use App\Models\MenuItem;
+use App\Services\Content\SitePageService;
 use App\Services\Customers\CustomerBranchSelection;
 use App\Services\Menu\PopularItemsService;
 use App\Services\Promotions\PromotionService;
 use App\Services\Seo\RestaurantSchemaBuilder;
 use App\Services\Settings\SettingsService;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class HomeController extends Controller
 {
-    public function index(CustomerBranchSelection $selection, RestaurantSchemaBuilder $restaurantSchema, PromotionService $promotions, PopularItemsService $popular, SettingsService $settings): View
+    public function index(CustomerBranchSelection $selection, RestaurantSchemaBuilder $restaurantSchema, PromotionService $promotions, PopularItemsService $popular, SettingsService $settings, SitePageService $pages): View
     {
         // Every category is hero-slide-eligible (Hero Slider dashboard
         // page), but only ones staff actually gave a photo appear on the
@@ -38,7 +40,12 @@ class HomeController extends Controller
         // promotion only shows once a branch is actually selected.
         $promotion = $promotions->findActiveAutomatic($selection->current());
 
+        $schema = $restaurantSchema->forActiveBranches();
+
         return view('home', [
+            'meta' => $pages->meta('home', [
+                ':branches' => collect($schema)->map(fn (array $branch) => Str::after($branch['name'], ': '))->join(', ', ' and '),
+            ]),
             'heroSlides' => $heroSlides,
             'promotionBanner' => $promotion ? [
                 'headline' => $promotion->banner_headline,
@@ -46,7 +53,7 @@ class HomeController extends Controller
             ] : null,
             'popularItems' => $this->popularItems($popular, $selection->current()),
             'menuSliders' => $this->menuSliders($selection->current(), $settings),
-            'restaurantSchema' => $restaurantSchema->forActiveBranches(),
+            'restaurantSchema' => $schema,
         ]);
     }
 

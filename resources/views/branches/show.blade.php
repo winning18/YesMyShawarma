@@ -1,15 +1,12 @@
 @php
-    // "GIMPA Branch" reads badly as "Shawarma in GIMPA Branch" — the area
-    // name alone is what people actually search for.
-    $area = trim(\Illuminate\Support\Str::replaceLast(' Branch', '', $branch->name));
     $dayNames = [1 => 'Monday', 2 => 'Tuesday', 3 => 'Wednesday', 4 => 'Thursday', 5 => 'Friday', 6 => 'Saturday', 7 => 'Sunday'];
     $today = now('Africa/Accra')->dayOfWeekIso;
     $formatTime = fn (string $time) => \Illuminate\Support\Carbon::createFromFormat('H:i', substr($time, 0, 5))->format('g:ia');
 @endphp
 <x-customer-layout
-    :title="__('Shawarma & Burgers in :area, Accra · :name', ['area' => $area, 'name' => config('app.name')])"
+    :title="$meta['title']"
     :og-image="$branch->imageUrl()"
-    :og-description="__(':name :branch, :address. Order shawarma, burgers and fresh juices online for delivery or pickup. Call :phone.', ['name' => config('app.name'), 'branch' => $branch->name, 'address' => $branch->address, 'phone' => $branch->phone])"
+    :og-description="$meta['description']"
     main-class="max-w-5xl"
 >
     {{-- JSON_HEX_TAG/JSON_HEX_AMP: admin-editable branch name/address are
@@ -24,12 +21,14 @@
         <x-branch-card :branch="$branch" :selected="$selected" :link-to-page="false" />
 
         <div class="space-y-8">
-            <section>
-                <h2 class="text-lg font-bold mb-2">{{ __('Shawarma in :area', ['area' => $area]) }}</h2>
-                <p class="text-brand-gray-500">
-                    {{ __('Fresh chicken and beef shawarma, burgers, loaded fries and fresh juices at our :branch branch, :address. Order online for delivery to your door or pickup from the branch, paying by mobile money, card or cash.', ['branch' => $branch->name, 'address' => $branch->address]) }}
-                </p>
-            </section>
+            @if ($intro)
+                <section>
+                    @if ($introHeading)
+                        <h2 class="text-lg font-bold mb-2">{{ $introHeading }}</h2>
+                    @endif
+                    <div class="text-brand-gray-500 page-content-plain">{{ $intro }}</div>
+                </section>
+            @endif
 
             @if ($deliveryAreas)
                 <section>

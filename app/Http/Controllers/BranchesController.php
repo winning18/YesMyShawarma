@@ -6,21 +6,24 @@ use App\Models\Branch;
 use App\Services\Branches\NearestBranchFinder;
 use App\Services\Branches\WorkingHoursService;
 use App\Services\Cart\CartService;
+use App\Services\Content\SitePageService;
 use App\Services\Customers\CustomerBranchSelection;
 use App\Services\Seo\RestaurantSchemaBuilder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class BranchesController extends Controller
 {
-    public function index(CustomerBranchSelection $selection, WorkingHoursService $workingHours): View
+    public function index(CustomerBranchSelection $selection, WorkingHoursService $workingHours, SitePageService $pages): View
     {
         $branches = Branch::where('is_active', true)->get()
             ->each(fn (Branch $branch) => $this->withStatus($branch, $workingHours));
 
         return view('branches.index', [
+            'meta' => $pages->meta('branches', [':branches' => $branches->pluck('name')->join(', ', ' and ')]),
             'branches' => $branches,
             'selectedBranchId' => $selection->id(),
         ]);
@@ -32,13 +35,25 @@ class BranchesController extends Controller
      * /branches listing can't target. Same card as the listing, plus the
      * full weekly hours and the branch's Restaurant structured data.
      */
-    public function show(Branch $branch, CustomerBranchSelection $selection, WorkingHoursService $workingHours, RestaurantSchemaBuilder $restaurantSchema): View
+    public function show(Branch $branch, CustomerBranchSelection $selection, WorkingHoursService $workingHours, RestaurantSchemaBuilder $restaurantSchema, SitePageService $pages): View
     {
         abort_unless($branch->is_active, 404);
 
         $this->withStatus($branch, $workingHours);
 
+        // "GIMPA Branch" reads badly as "Shawarma in GIMPA Branch" — the
+        // area name alone is what people actually search for.
+        $placeholders = [
+            ':branch' => $branch->name,
+            ':area' => trim(Str::replaceLast(' Branch', '', $branch->name)),
+            ':address' => (string) $branch->address,
+            ':phone' => (string) $branch->phone,
+        ];
+
         return view('branches.show', [
+            'meta' => $pages->meta('branch', $placeholders),
+            'introHeading' => $pages->heading('branch', $placeholders),
+            'intro' => $pages->body('branch', $placeholders),
             'branch' => $branch,
             'weeklyHours' => $workingHours->forBranch($branch->id),
             'deliveryAreas' => $branch->areas_served ?? [],

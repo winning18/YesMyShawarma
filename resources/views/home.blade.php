@@ -5,10 +5,10 @@
     the bare site name (CustomerLayout's default when $title is null).
 --}}
 <x-customer-layout
-    :title="__(':name: Shawarma, Burgers & More in Accra', ['name' => config('app.name')])"
+    :title="$meta['title']"
     body-class="bg-brand-black"
     :og-image="data_get($heroSlides->first(), 'imageUrl')"
-    :og-description="__('Order shawarma, burgers, loaded fries and fresh juices online from :name in :branches, Accra. Delivery or pickup, paid by mobile money, card or cash.', ['name' => config('app.name'), 'branches' => collect($restaurantSchema)->map(fn ($b) => \Illuminate\Support\Str::after($b['name'], ': '))->join(', ', ' and ')])"
+    :og-description="$meta['description']"
 >
     {{-- JSON_HEX_TAG/JSON_HEX_AMP: $branchSchema embeds staff-editable
          branch name/address verbatim (aeo.md) — without these, a literal

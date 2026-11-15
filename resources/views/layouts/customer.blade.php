@@ -22,7 +22,7 @@
         --}}
         @php
             $ogImageUrl = $ogImage ?? app(\App\Services\Settings\BusinessProfile::class)->logoUrl();
-            $ogDescriptionText = $ogDescription ?? __('Shawarma, burgers and fresh juices in Accra. Order online for delivery or pickup.');
+            $ogDescriptionText = $ogDescription ?? $defaultDescription;
         @endphp
         <meta name="description" content="{{ $ogDescriptionText }}">
         <link rel="canonical" href="{{ url()->current() }}">
@@ -107,7 +107,9 @@
                     <a href="{{ route('menu.index') }}" class="hover:text-brand-yellow {{ request()->routeIs('menu.index') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Menu') }}</a>
                     <a href="{{ route('branches.index') }}" class="hover:text-brand-yellow {{ request()->routeIs('branches.index') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Branches') }}</a>
                     <a href="{{ route('contact') }}" class="hover:text-brand-yellow {{ request()->routeIs('contact') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Contact us') }}</a>
+                    @if ($publishedPages['about'])
                     <a href="{{ route('about') }}" class="hover:text-brand-yellow {{ request()->routeIs('about') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('About us') }}</a>
+                    @endif
                     <a href="{{ route('tracking.lookup') }}" class="hover:text-brand-yellow {{ request()->routeIs('tracking.*') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Track order') }}</a>
                 </nav>
 
@@ -219,7 +221,9 @@
                         <a href="{{ route('menu.index') }}" class="block hover:text-brand-yellow {{ request()->routeIs('menu.index') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Menu') }}</a>
                         <a href="{{ route('branches.index') }}" class="block hover:text-brand-yellow {{ request()->routeIs('branches.index') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Branches') }}</a>
                         <a href="{{ route('contact') }}" class="block hover:text-brand-yellow {{ request()->routeIs('contact') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Contact us') }}</a>
+                        @if ($publishedPages['about'])
                         <a href="{{ route('about') }}" class="block hover:text-brand-yellow {{ request()->routeIs('about') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('About us') }}</a>
+                        @endif
                         <a href="{{ route('tracking.lookup') }}" class="block hover:text-brand-yellow {{ request()->routeIs('tracking.*') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Track order') }}</a>
                         <a href="{{ route('cart.show') }}" class="flex items-center gap-2 hover:text-brand-yellow">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 shrink-0">
@@ -310,7 +314,9 @@
         >
             <p>
                 {{ __('We use one first-party cookie to see how our site is used. The site works either way.') }}
-                <a href="{{ route('policy.cookies') }}" class="underline hover:text-brand-yellow">{{ __('Learn more') }}</a>
+                @if ($publishedPages['cookies'])
+                    <a href="{{ route('policy.cookies') }}" class="underline hover:text-brand-yellow">{{ __('Learn more') }}</a>
+                @endif
             </p>
             <div class="flex gap-2 mt-3">
                 <form method="POST" action="{{ route('cookie-consent.update') }}" class="flex-1">
@@ -342,9 +348,13 @@
                         <a href="{{ route('menu.index') }}" class="block hover:text-brand-yellow transition">{{ __('Menu') }}</a>
                         <a href="{{ route('branches.index') }}" class="block hover:text-brand-yellow transition">{{ __('Branches') }}</a>
                         <a href="{{ route('contact') }}" class="block hover:text-brand-yellow transition">{{ __('Contact us') }}</a>
+                        @if ($publishedPages['about'])
                         <a href="{{ route('about') }}" class="block hover:text-brand-yellow transition">{{ __('About us') }}</a>
+                        @endif
                         <a href="{{ route('tracking.lookup') }}" class="block hover:text-brand-yellow transition">{{ __('Track order') }}</a>
+                        @if ($publishedPages['faq'])
                         <a href="{{ route('faq') }}" class="block hover:text-brand-yellow transition">{{ __('FAQ') }}</a>
+                        @endif
                         <a href="{{ route('reviews.index') }}" class="block hover:text-brand-yellow transition">{{ __('Reviews') }}</a>
                     </nav>
                 </div>
@@ -352,10 +362,18 @@
                 <div>
                     <p class="font-semibold text-brand-yellow uppercase text-xs tracking-wide mb-4">{{ __('Policy') }}</p>
                     <nav class="space-y-2">
+                        @if ($publishedPages['terms'])
                         <a href="{{ route('policy.terms') }}" class="block hover:text-brand-yellow transition">{{ __('Terms & Conditions') }}</a>
+                        @endif
+                        @if ($publishedPages['refunds'])
                         <a href="{{ route('policy.refunds') }}" class="block hover:text-brand-yellow transition">{{ __('Refund Policy') }}</a>
+                        @endif
+                        @if ($publishedPages['privacy'])
                         <a href="{{ route('policy.privacy') }}" class="block hover:text-brand-yellow transition">{{ __('Privacy Policy') }}</a>
+                        @endif
+                        @if ($publishedPages['cookies'])
                         <a href="{{ route('policy.cookies') }}" class="block hover:text-brand-yellow transition">{{ __('Cookie Policy') }}</a>
+                        @endif
                         <button type="button" @click="$dispatch('open-cookie-banner')" class="block hover:text-brand-yellow transition text-left">{{ __('Cookie preferences') }}</button>
                     </nav>
                 </div>

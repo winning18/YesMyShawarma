@@ -10,11 +10,19 @@ use App\Models\Setting;
 use App\Services\Settings\BusinessProfile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
+use Tests\Concerns\LoadsYesMyShawarmaContent;
 use Tests\TestCase;
 
 class SeoTest extends TestCase
 {
+    use LoadsYesMyShawarmaContent;
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->loadYesMyShawarmaContent();
+    }
 
     public function test_robots_txt_allows_everything_and_points_to_the_sitemap_in_production(): void
     {

@@ -624,10 +624,40 @@ Current keys:
   orders and never overwrites an existing setting. Order reference prefixes default to neutral
   POS / WEB / BOLT / WA / FREE (`SettingsService::DEFAULT_PREFIXES`); Yes My Shawarma's YMGS-*
   are stored settings.
+- **Location and food** (Business profile, step 2c): `business_city`, `business_region`,
+  `business_cuisines` (comma list) — Google's Restaurant data, the `:city` placeholder, the
+  menu-item search snippet and the weekly sales report. Empty on a new install.
+- **About page** (Website content, step 2c): `about_mission`, `about_vision`,
+  `about_founded_year` (shows "years of operation"), `about_customers_label` ("5,000+").
 - `paystack_enabled` — see payments.md's "Paystack on/off" section. Stored as the string `'1'`
   or `'0'`, read via `SettingsService::getBool()`/written via `setBool()` rather than `get()`/
   `set()` directly, so every caller agrees on the same string encoding. Off (missing row) by
   default.
+
+## Website content
+
+```
+site_pages  id, slug (unique), title, meta_title, meta_description (500), body (longText,
+            Markdown), timestamps — all but slug nullable
+faq_items   id, question, answer (text), sort_order, timestamps
+```
+
+Express POS step 2c. The customer website's own words, edited under Settings → Website content
+(`SitePageManagementController`, `FaqItemManagementController`; `content.manage`, owner and
+general manager). `SitePageService::PAGES` lists the slugs — home, menu, menu-item, branches,
+branch, contact, reviews, faq, about, terms, refunds, privacy, cookies, default (the description
+for every page without its own) and llms — and the placeholders each fills in (`:name` and
+`:city` everywhere; `:branches`, `:branch`, `:area`, `:address`, `:phone`, `:item`, `:url` per
+page). A missing row or empty field falls back to plain wording built from the business name.
+Bodies are rendered by `Str::markdown` with raw HTML escaped and unsafe links dropped, plus
+league/commonmark's Attributes extension for `{#anchor}` heading ids; placeholder values typed
+elsewhere (a branch address) are escaped so they're never read as Markdown.
+
+About, FAQ and the four policies (`OPTIONAL_PAGES`) only exist once something is written —
+otherwise they answer 404 and the header, footer, cookie notice, sitemap and llms.txt don't link
+them. Yes My Shawarma's content (`database/seeders/data/site_content.php`) was copied in by
+`2026_11_15_120000_create_site_pages_and_faq_items`, only on an install with orders, never over
+existing rows.
 
 ## Push subscriptions
 

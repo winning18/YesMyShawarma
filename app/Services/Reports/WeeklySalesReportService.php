@@ -4,6 +4,7 @@ namespace App\Services\Reports;
 
 use App\Models\Order;
 use App\Models\Scopes\BranchScope;
+use App\Services\Settings\BusinessProfile;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -41,7 +42,7 @@ class WeeklySalesReportService
      * fine; this is not a high-cardinality table.
      *
      * @param  ?list<int>  $branchIds
-     * @return Collection<int, array{start: Carbon, end: Carbon, city: string, currency: string, orders_count: int, total: int}>
+     * @return Collection<int, array{start: Carbon, end: Carbon, city: ?string, currency: string, orders_count: int, total: int}>
      */
     public function weeklyHistory(bool $ignoreBranchScope = false, ?int $branchId = null, ?array $branchIds = null): Collection
     {
@@ -56,7 +57,7 @@ class WeeklySalesReportService
                 return [
                     'start' => $weekStart,
                     'end' => $weekStart->clone()->endOfWeek(),
-                    'city' => 'Accra',
+                    'city' => app(BusinessProfile::class)->city(),
                     'currency' => 'GHS',
                     'orders_count' => $orders->count(),
                     'total' => (int) $orders->sum(fn (Order $order) => $order->subtotal - $order->discount_total),

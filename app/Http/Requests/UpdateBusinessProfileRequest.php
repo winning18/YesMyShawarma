@@ -31,6 +31,9 @@ class UpdateBusinessProfileRequest extends FormRequest
             'facebook_url' => ['nullable', 'url:https', 'max:255'],
             'tiktok_url' => ['nullable', 'url:https', 'max:255'],
             'main_branch_id' => ['nullable', 'integer', 'exists:branches,id'],
+            'city' => ['nullable', 'string', 'max:80'],
+            'region' => ['nullable', 'string', 'max:80'],
+            'cuisines' => ['nullable', 'string', 'max:200'],
             'primary_colour' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'accent_colour' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
             // PNG/JPG/WebP only — an SVG upload can carry script.

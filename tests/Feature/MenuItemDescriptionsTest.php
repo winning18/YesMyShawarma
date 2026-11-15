@@ -6,11 +6,19 @@ use App\Models\Branch;
 use App\Models\MenuItem;
 use Database\Seeders\MenuSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\LoadsYesMyShawarmaContent;
 use Tests\TestCase;
 
 class MenuItemDescriptionsTest extends TestCase
 {
+    use LoadsYesMyShawarmaContent;
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->loadYesMyShawarmaContent();
+    }
 
     public function test_every_menu_item_has_owner_approved_copy_that_fits_a_search_snippet(): void
     {
