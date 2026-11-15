@@ -191,11 +191,37 @@ Same applies to `delivery_address_snapshot` — customers edit saved addresses.
 ## Shifts
 
 ```
-shifts  id, user_id, branch_id, started_at, ended_at, ended_by_user_id,
+shifts  id, user_id, branch_id, terminal_id (nullable), started_at, ended_at, ended_by_user_id,
         starting_cash, total_sales, system_sales, opening_note, closing_note, no_expenses
 
 shift_expenses  id, shift_id, description, amount, created_at
+
+terminals  id, branch_id, name (unique per branch), device_token_hash (unique, nullable),
+           paired_at, is_active, timestamps
+
+orders.shift_id  (nullable) the till that took the money
 ```
+
+**Counters (Express POS step 7a, owner 2026-11-15).** A branch with no counters (`terminals`)
+works exactly as below: one shared shift. Once it has counters, each counter has a till of its
+own — a shift with `terminal_id` set, its own float, sales and cash-up — and several are open at
+once. A device becomes a counter when a manager sets it up (Settings → Counters,
+`CounterController`, `settings.manage`): the device keeps a random secret in the long-lived
+`express_counter` cookie, the counter keeps only its SHA-256. `CounterService::current()` reads
+it per request. With counters:
+
+- POS sales are taken only on a counter (`CounterService::canTakeSalesHere()`, checked in
+  `PosController` and `OrderCreationService`); other devices see "This device isn't a counter".
+- `ShiftService::activeForBranch()` means "this device's counter's till" — none on a non-counter
+  device or in a queued job — so every caller (order events, the forced shift start, the branch
+  lock) follows without knowing about counters.
+- `orders.shift_id`: a POS order gets its counter's till at placement; a web order gets the till
+  that accepts it (`OrderStateMachine`, owner's choice), or none if accepted on a non-counter
+  device. Set in shared mode too (the shared shift).
+- A till's system sales are `OrderReportService::tillSales()` — its own orders, net of refunds —
+  not the branch's sales since it opened.
+- The first counter can't be added while the branch's shared shift is open; a counter with an
+  open till can't be switched off.
 
 One open shift per branch at a time, not one per staff member — `user_id` is who opened it,
 `ended_by_user_id` who closed it, and they may well be different people. A second staff member

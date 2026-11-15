@@ -21,6 +21,7 @@ use App\Services\Orders\Data\PlaceOrderItemData;
 use App\Services\Orders\OrderCreationService;
 use App\Services\Promotions\PromotionService;
 use App\Services\Settings\SettingsService;
+use App\Services\Shifts\CounterService;
 use App\Services\Shifts\ShiftService;
 use Closure;
 use Illuminate\Http\JsonResponse;
@@ -101,6 +102,15 @@ class PosController extends Controller
         // confirmed).
         if ($isStaff && ! $shifts->activeForBranch($branch->id) && $context->branchIdsFor($user)->count() > 1 && ! $request->session()->get('branch_just_confirmed')) {
             return redirect()->route('branches.select');
+        }
+
+        // A branch with counters takes POS sales only on one of them
+        // (CounterService, Express POS step 7a).
+        if (! app(CounterService::class)->canTakeSalesHere($branch->id)) {
+            return view('pos.not-a-counter', [
+                'branch' => $branch,
+                'canSetUp' => $user->can('settings.manage'),
+            ]);
         }
 
         return view('pos.index', [

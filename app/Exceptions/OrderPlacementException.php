@@ -17,6 +17,12 @@ class OrderPlacementException extends Exception
         return new self(__(':what isn\'t available.', ['what' => $what]));
     }
 
+    /** A branch with counters takes POS sales only on one of them (CounterService). */
+    public static function notACounter(): self
+    {
+        return new self(__('This device isn\'t set up as one of this branch\'s counters. Ask a manager to set it up.'));
+    }
+
     public static function pickupOnly(): self
     {
         return new self(__('Freebies and WhatsApp group orders can only be pickup orders placed at the POS.'));

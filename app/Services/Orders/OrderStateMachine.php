@@ -190,6 +190,12 @@ class OrderStateMachine
                 $this->recipeStock->deductForOrder($order, $actorId, $shiftId);
             }
 
+            // A web order's money goes in the till that accepts it (owner,
+            // 2026-11-15) — a POS order already has its own.
+            if ($to === 'accepted' && $shiftId !== null && $order->shift_id === null) {
+                $order->forceFill(['shift_id' => $shiftId])->save();
+            }
+
             // Only reversed when cancelled while still 'accepted' — once
             // 'preparing' has started the food was likely actually made,
             // so a later cancellation leaves stock deducted on purpose

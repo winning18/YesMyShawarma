@@ -1,3 +1,4 @@
+@php $tillCounter = app(\App\Services\Shifts\CounterService::class)->currentAt((int) app(\App\Services\Branches\BranchContext::class)->id()); @endphp
 {{--
     Start/end shift modals — the markup half of shiftWidget() (see
     partials/shift-widget-script.blade.php). Included once, inside
@@ -15,7 +16,7 @@
     <div class="fixed inset-0 bg-black/50" @click="closeStartModal()"></div>
 
     <div class="relative bg-white rounded-lg shadow-lg max-w-sm w-full p-6">
-        <h3 class="font-semibold text-gray-800 mb-1">{{ __('Start your shift') }}</h3>
+        <h3 class="font-semibold text-gray-800 mb-1">{{ $tillCounter ? __('Open :counter\'s till', ['counter' => $tillCounter->name]) : __('Start your shift') }}</h3>
         <p class="text-sm text-gray-500 mb-4" x-show="forceStart">
             {{ __('Starting a shift is required before you can use the dashboard.') }}
         </p>
@@ -65,7 +66,7 @@
     <div class="fixed inset-0 bg-black/50" @click="closeEndModal()"></div>
 
     <div class="relative bg-white rounded-lg shadow-lg max-w-sm w-full p-6 max-h-[90vh] overflow-y-auto">
-        <h3 class="font-semibold text-gray-800 mb-4">{{ __('End your shift') }}</h3>
+        <h3 class="font-semibold text-gray-800 mb-4">{{ $tillCounter ? __('Close :counter\'s till', ['counter' => $tillCounter->name]) : __('End your shift') }}</h3>
 
         <div x-show="error" x-cloak class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3 mb-3" x-text="error"></div>
 

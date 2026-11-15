@@ -19,7 +19,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 // it's open join that single shift rather than each getting their own row
 // (orders.md's "Shifts" section). starting_cash/total_sales/system_sales
 // are therefore branch-wide figures for that session, not any one person's.
-#[Fillable(['user_id', 'branch_id', 'started_at', 'ended_at', 'ended_by_user_id', 'starting_cash', 'total_sales', 'system_sales', 'opening_note', 'closing_note', 'no_expenses'])]
+//
+// Express POS step 7a: a branch with counters (terminals) has one till
+// session per counter instead — terminal_id set, its figures that
+// counter's alone. terminal_id null is the branch's shared shift.
+#[Fillable(['user_id', 'branch_id', 'terminal_id', 'started_at', 'ended_at', 'ended_by_user_id', 'starting_cash', 'total_sales', 'system_sales', 'opening_note', 'closing_note', 'no_expenses'])]
 class Shift extends Model
 {
     use HasFactory;
@@ -36,6 +40,11 @@ class Shift extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function terminal(): BelongsTo
+    {
+        return $this->belongsTo(Terminal::class);
     }
 
     public function endedBy(): BelongsTo

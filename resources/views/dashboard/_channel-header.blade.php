@@ -1,3 +1,4 @@
+@php $tillCounter = app(\App\Services\Shifts\CounterService::class)->currentAt((int) app(\App\Services\Branches\BranchContext::class)->id()); @endphp
 {{--
     Shared by orders/dashboard.blade.php, pos/index.blade.php, and
     orders/history.blade.php — the dashboard now serves two live purposes
@@ -82,13 +83,13 @@
                 x-show="!active"
                 @click="openStartModal()"
                 class="px-3 py-1.5 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-900"
-            >{{ __('Start shift') }}</button>
+            >{{ $tillCounter ? __('Open till') : __('Start shift') }}</button>
             <button
                 type="button"
                 x-show="active"
                 @click="openEndModal()"
                 class="px-3 py-1.5 bg-gray-200 text-gray-800 text-sm font-semibold rounded-md hover:bg-gray-300"
-            >{{ __('End shift') }}</button>
+            >{{ $tillCounter ? __('Close till') : __('End shift') }}</button>
         </div>
 
         @include('partials.shift-modals')

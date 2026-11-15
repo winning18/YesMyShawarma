@@ -2,6 +2,7 @@
 
 namespace App\Services\Shifts;
 
+use App\Exceptions\CounterException;
 use App\Models\Branch;
 use App\Models\Shift;
 use App\Models\User;
@@ -9,6 +10,8 @@ use App\Services\MarketLists\MarketListService;
 
 class ShiftService
 {
+    public function __construct(private readonly CounterService $counters) {}
+
     /**
      * One open shift per branch, not per person — if $branch already has
      * one running (started by this user earlier, or by someone else
@@ -36,9 +39,17 @@ class ShiftService
             return $existing;
         }
 
+        // A branch with counters opens one till per counter, only on a
+        // device set up as one (CounterService).
+        $counter = null;
+        if ($this->counters->branchHasCounters($branch->id)) {
+            $counter = $this->counters->currentAt($branch->id) ?? throw CounterException::notACounter();
+        }
+
         return Shift::create([
             'user_id' => $user->id,
             'branch_id' => $branch->id,
+            'terminal_id' => $counter?->id,
             'started_at' => now(),
             'starting_cash' => $startingCash,
             'opening_note' => $openingNote,
@@ -96,7 +107,16 @@ class ShiftService
      */
     public function activeForBranch(int $branchId): ?Shift
     {
-        return Shift::where('branch_id', $branchId)->whereNull('ended_at')->latest('started_at')->first();
+        // With counters, "the open shift" is this device's counter's till —
+        // none on a device that isn't one of the branch's counters (a
+        // manager's phone), and none from a queued job (no device at all).
+        if ($this->counters->branchHasCounters($branchId)) {
+            $counter = $this->counters->currentAt($branchId);
+
+            return $counter ? $this->counters->openTill($counter) : null;
+        }
+
+        return Shift::where('branch_id', $branchId)->whereNull('terminal_id')->whereNull('ended_at')->latest('started_at')->first();
     }
 
     /**

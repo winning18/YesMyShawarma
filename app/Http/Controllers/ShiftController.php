@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\CounterException;
 use App\Models\Branch;
 use App\Models\Shift;
 use App\Services\Branches\BranchContext;
@@ -20,7 +21,7 @@ class ShiftController extends Controller
         return response()->json([
             'active' => (bool) $shift,
             'started_at' => $shift?->started_at?->toIso8601String(),
-            'branch' => $shift?->branch?->name,
+            'branch' => $shift ? $shift->branch?->name.($shift->terminal ? ' · '.$shift->terminal->name : '') : null,
             // Shown in the end-shift modal so whoever's about to end a
             // shift sees the figure they're about to be checked against
             // before they type anything — total_sales is required and
@@ -49,12 +50,16 @@ class ShiftController extends Controller
             'starting_cash' => ['nullable', 'numeric', 'min:0'],
         ]);
 
-        $shifts->start(
-            $request->user(),
-            Branch::findOrFail($branchId),
-            isset($validated['starting_cash']) ? Money::toPesewas($validated['starting_cash']) : null,
-            $validated['opening_note'] ?? null,
-        );
+        try {
+            $shifts->start(
+                $request->user(),
+                Branch::findOrFail($branchId),
+                isset($validated['starting_cash']) ? Money::toPesewas($validated['starting_cash']) : null,
+                $validated['opening_note'] ?? null,
+            );
+        } catch (CounterException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
 
         return response()->json(['message' => 'Shift started.']);
     }
@@ -134,6 +139,12 @@ class ShiftController extends Controller
      */
     private function systemSalesForShift(Shift $shift, OrderReportService $reports): int
     {
+        // A counter's till counts only the orders it took; several are
+        // open at once, so the branch's sales since it opened would be wrong.
+        if ($shift->terminal_id) {
+            return $reports->tillSales($shift);
+        }
+
         $summary = $reports->financialSummary($shift->started_at, now());
 
         return $summary['revenue_total'];

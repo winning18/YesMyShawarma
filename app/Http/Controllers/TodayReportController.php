@@ -151,14 +151,14 @@ class TodayReportController extends Controller
             // real shifts/expenses existing that day shouldn't disappear
             // just because nobody switched to one specific branch.
             'shifts' => match (true) {
-                $isCalendarMode => Shift::with(['user', 'endedBy', 'expenses'])
+                $isCalendarMode => Shift::with(['user', 'endedBy', 'expenses', 'terminal'])
                     ->when($branchId, fn ($query, $id) => $query->where('branch_id', $id))
                     ->when($scopeIds !== null, fn ($query) => $query->whereIn('branch_id', $scopeIds))
                     ->whereBetween('started_at', [$rangeStart->clone()->utc(), $rangeEnd->clone()->utc()])
                     ->orderByDesc('started_at')
                     ->get(),
-                $shift !== null => collect([$shift]),
-                $branchId === null => Shift::with(['user', 'endedBy', 'expenses'])
+                $shift !== null => collect([$shift->loadMissing('terminal')]),
+                $branchId === null => Shift::with(['user', 'endedBy', 'expenses', 'terminal'])
                     ->when($scopeIds !== null, fn ($query) => $query->whereIn('branch_id', $scopeIds))
                     ->whereBetween('started_at', [$rangeStart->clone()->utc(), $rangeEnd->clone()->utc()])
                     ->orderByDesc('started_at')

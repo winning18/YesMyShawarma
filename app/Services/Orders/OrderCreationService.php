@@ -19,6 +19,8 @@ use App\Services\Notifications\NewOrderPushNotifier;
 use App\Services\Orders\Data\PlaceOrderData;
 use App\Services\Promotions\PromotionService;
 use App\Services\Settings\SettingsService;
+use App\Services\Shifts\CounterService;
+use App\Services\Shifts\ShiftService;
 use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -128,6 +130,12 @@ class OrderCreationService
 
         if (! $branch->is_active || ! $branch->is_accepting_orders) {
             throw OrderPlacementException::branchNotAccepting();
+        }
+
+        // A branch with counters takes POS sales only on a counter, and
+        // each sale goes in that counter's till (Express POS step 7a).
+        if ($data->channel === 'pos' && ! app(CounterService::class)->canTakeSalesHere($branch->id)) {
+            throw OrderPlacementException::notACounter();
         }
 
         // provider_reference is unique across payments — catch a reused or
@@ -273,6 +281,10 @@ class OrderCreationService
             ]);
             $order->status = $initialStatus;
             $order->placed_at = now();
+            // The till that took the money: the POS's own (the counter's,
+            // or the branch's shared shift). A web order gets the till
+            // that accepts it (OrderStateMachine).
+            $order->shift_id = $data->channel === 'pos' ? app(ShiftService::class)->activeForBranch($branch->id)?->id : null;
             $order->save();
 
             if ($promotion) {

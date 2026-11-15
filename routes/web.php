@@ -10,6 +10,7 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\CategoryManagementController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\CounterController;
 use App\Http\Controllers\Customer\Account\AddressesController as AccountAddressesController;
 use App\Http\Controllers\Customer\Account\DetailsController as AccountDetailsController;
 use App\Http\Controllers\Customer\Account\OrdersController as AccountOrdersController;
@@ -312,6 +313,13 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::delete('/dashboard/website/faq/{faqItem}', [FaqItemManagementController::class, 'destroy'])->middleware('module:website')->name('dashboard.faq-items.destroy');
     Route::get('/dashboard/website/{page}', [SitePageManagementController::class, 'edit'])->middleware('module:website')->name('dashboard.site-pages.edit');
     Route::put('/dashboard/website/{page}', [SitePageManagementController::class, 'update'])->middleware('module:website')->name('dashboard.site-pages.update');
+
+    Route::get('/dashboard/counters', [CounterController::class, 'index'])->name('dashboard.counters.index');
+    Route::post('/dashboard/counters', [CounterController::class, 'store'])->name('dashboard.counters.store');
+    Route::post('/dashboard/counters/forget-this-device', [CounterController::class, 'forget'])->name('dashboard.counters.forget');
+    Route::put('/dashboard/counters/{counter}', [CounterController::class, 'update'])->whereNumber('counter')->name('dashboard.counters.update');
+    Route::post('/dashboard/counters/{counter}/pair', [CounterController::class, 'pair'])->whereNumber('counter')->name('dashboard.counters.pair');
+    Route::post('/dashboard/counters/{counter}/unpair', [CounterController::class, 'unpair'])->whereNumber('counter')->name('dashboard.counters.unpair');
 
     Route::get('/dashboard/modules', [ModuleController::class, 'edit'])->name('dashboard.modules.edit');
     Route::put('/dashboard/modules', [ModuleController::class, 'update'])->name('dashboard.modules.update');

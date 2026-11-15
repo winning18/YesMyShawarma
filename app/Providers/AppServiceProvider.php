@@ -20,6 +20,7 @@ use App\Services\Notifications\WebPushNotifier;
 use App\Services\Payments\PaystackClient;
 use App\Services\Settings\BusinessProfile;
 use App\Services\Settings\SettingsService;
+use App\Services\Shifts\CounterService;
 use App\Services\Shifts\ShiftService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -42,6 +43,8 @@ class AppServiceProvider extends ServiceProvider
         // One per request (or queued job): its switches are read once and
         // reused by every check on the page.
         $this->app->scoped(ModuleService::class);
+        // Which counter this device is, read once per request.
+        $this->app->scoped(CounterService::class);
 
         // Its settings are optional only so unit tests can build it bare;
         // the app always gives it the business's delivery fee settings.

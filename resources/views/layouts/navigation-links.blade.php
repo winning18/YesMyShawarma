@@ -325,7 +325,7 @@
 --}}
 @can('settings.manage')
     @php
-        $onSettingsSection = request()->routeIs('dashboard.settings.*', 'dashboard.staff-members.*', 'dashboard.business-profile.*', 'dashboard.site-pages.*', 'dashboard.faq-items.*', 'dashboard.home-strips.*', 'dashboard.modules.*');
+        $onSettingsSection = request()->routeIs('dashboard.settings.*', 'dashboard.staff-members.*', 'dashboard.business-profile.*', 'dashboard.site-pages.*', 'dashboard.faq-items.*', 'dashboard.home-strips.*', 'dashboard.modules.*', 'dashboard.counters.*');
     @endphp
     <div x-data="{ settingsOpen: {{ $onSettingsSection ? 'true' : 'false' }} }">
         <button
@@ -358,6 +358,10 @@
                 >{{ __('Website content') }}</a>
             @endcan
             @endmodule
+            <a
+                href="{{ route('dashboard.counters.index') }}"
+                class="block px-3 py-1.5 rounded-md text-sm transition duration-150 ease-in-out {{ request()->routeIs('dashboard.counters.*') ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
+            >{{ __('Counters') }}</a>
             <a
                 href="{{ route('dashboard.settings.index') }}"
                 class="block px-3 py-1.5 rounded-md text-sm transition duration-150 ease-in-out {{ request()->routeIs('dashboard.settings.*') ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"

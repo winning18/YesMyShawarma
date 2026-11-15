@@ -224,8 +224,11 @@ step before the previous one is released.
 
 Straight after the MVP: offline mode for the subscription edition.
 
-**Current step:** 6 (installs per client). Step 5, Express POS identity, built 2026-11-15
-(sign-in pages; email + password kept until staff ID + PIN in step 7). Step 1, this rulebook, approved 2026-11-15; step 2,
+**Current step:** 7b (staff ID + PIN sign-in on counters: `users.staff_code` auto like
+YMS-0042, `users.pin` hashed, till staff only, only on set-up counters, lock after 5 wrong
+tries — schema approved 2026-11-15). 7a, counters with a till each, built 2026-11-15 (schema.md's
+Shifts section). Step 6 (installs per client) waits on hosting and DNS decisions. Step 5, Express
+POS identity, built 2026-11-15. Step 1, this rulebook, approved 2026-11-15; step 2,
 business settings, built 2026-11-15 (2a business profile, 2b menu and branch rules, 2c website
 content); step 3, module switches, built 2026-11-15 in three parts (3a the switches, the Modules
 page and seven modules; 3b promotions, customer SMS, Paystack, delivery and riders; 3c website);

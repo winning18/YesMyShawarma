@@ -7,6 +7,7 @@ use App\Models\OrderEvent;
 use App\Models\PromotionRedemption;
 use App\Models\Refund;
 use App\Models\Scopes\BranchScope;
+use App\Models\Shift;
 use Carbon\CarbonPeriod;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -155,6 +156,33 @@ class OrderReportService
             'refund_total' => $refundTotal,
             'average_order_value' => $revenueOrders->isNotEmpty() ? (int) round($grossRevenueTotal / $revenueOrders->count()) : 0,
         ];
+    }
+
+    /**
+     * A counter's till (Express POS step 7a): the sales of the orders that
+     * till took (orders.shift_id), less what was refunded on them — the
+     * same food-only, net-of-refunds measure as financialSummary(), but by
+     * till rather than by time, since several tills are open at once.
+     */
+    public function tillSales(Shift $shift): int
+    {
+        $orders = Order::withoutGlobalScope(BranchScope::class)
+            ->where('shift_id', $shift->id)
+            ->whereNotIn('status', Order::NON_REVENUE_STATUSES)
+            ->whereNotIn('payment_method', Order::EXCLUDED_FROM_SALES_PAYMENT_METHODS)
+            ->get(['id', 'total', 'delivery_fee']);
+
+        $sales = (int) $orders->sum(fn (Order $order) => (int) $order->total - (int) $order->delivery_fee);
+
+        $refunded = (int) Refund::where('status', Refund::STATUS_COMPLETED)
+            ->whereIn('order_id', Order::withoutGlobalScope(BranchScope::class)->where('shift_id', $shift->id)->select('id'))
+            ->with(['order' => fn ($q) => $q->withoutGlobalScope(BranchScope::class)->select('id', 'total', 'delivery_fee')])
+            ->get()
+            ->sum(fn (Refund $refund) => $refund->order
+                ? min((int) $refund->amount, max(0, (int) $refund->order->total - (int) $refund->order->delivery_fee))
+                : (int) $refund->amount);
+
+        return $sales - $refunded;
     }
 
     /**
