@@ -372,6 +372,7 @@ class PosController extends Controller
 
         return response()->json([
             'order' => [
+                'id' => $order->id,
                 'reference' => $order->reference,
                 'total' => $order->total,
                 'tracking_url' => $modules->enabled(ModuleService::WEBSITE) ? route('tracking.show', $order) : null,

@@ -27,6 +27,12 @@
                     <x-input-error class="mt-2" :messages="$errors->get('legal_name')" />
                 </div>
                 <div>
+                    <x-input-label for="receipt_message" :value="__('Receipt message (optional)')" />
+                    <x-text-input id="receipt_message" name="receipt_message" class="mt-1 block w-full" :value="old('receipt_message', $profile->receiptMessage())" maxlength="200" placeholder="{{ __('e.g. Thank you, come again!') }}" />
+                    <p class="text-xs text-gray-500 mt-1">{{ __('Printed at the bottom of every receipt.') }}</p>
+                    <x-input-error class="mt-2" :messages="$errors->get('receipt_message')" />
+                </div>
+                <div>
                     <x-input-label for="tagline" :value="__('Tagline (website footer, optional)')" />
                     <x-text-input id="tagline" name="tagline" class="mt-1 block w-full" :value="old('tagline', $profile->tagline())" maxlength="200" />
                     <x-input-error class="mt-2" :messages="$errors->get('tagline')" />

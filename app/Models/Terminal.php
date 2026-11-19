@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * A counter at a branch ("Counter 1") — a till of its own once a device
  * is set up as it (CounterService). Express POS step 7a.
  */
-#[Fillable(['branch_id', 'name', 'device_token_hash', 'paired_at', 'is_active'])]
+#[Fillable(['branch_id', 'name', 'receipt_printer_id', 'device_token_hash', 'paired_at', 'is_active'])]
 #[Hidden(['device_token_hash'])]
 class Terminal extends Model
 {
@@ -20,6 +20,7 @@ class Terminal extends Model
     {
         return [
             'branch_id' => 'integer',
+            'receipt_printer_id' => 'integer',
             'paired_at' => 'datetime',
             'is_active' => 'boolean',
         ];
@@ -28,6 +29,12 @@ class Terminal extends Model
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
+    }
+
+    /** The receipt printer this counter prints to (step 8a). */
+    public function receiptPrinter(): BelongsTo
+    {
+        return $this->belongsTo(Printer::class, 'receipt_printer_id');
     }
 
     public function shifts(): HasMany

@@ -46,6 +46,8 @@ use App\Http\Controllers\PageViewController;
 use App\Http\Controllers\PerformanceController;
 use App\Http\Controllers\PolicyController;
 use App\Http\Controllers\PosController;
+use App\Http\Controllers\PrintController;
+use App\Http\Controllers\PrinterController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProfitReportController;
 use App\Http\Controllers\PromotionManagementController;
@@ -208,6 +210,7 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::get('/dashboard/orders/history', [OrderHistoryController::class, 'index'])->name('dashboard.orders.history');
     Route::get('/dashboard/orders/live', [OrderDashboardController::class, 'live'])->name('dashboard.orders.live');
     Route::get('/dashboard/orders/{order}', [OrderHistoryController::class, 'show'])->name('dashboard.orders.show');
+    Route::get('/dashboard/orders/{order}/print/{kind}', [PrintController::class, 'show'])->whereIn('kind', ['receipt', 'kitchen'])->name('dashboard.orders.print');
 
     Route::get('/dashboard/pos', [PosController::class, 'index'])->name('dashboard.pos.index');
     Route::post('/dashboard/pos/cart/add', [PosController::class, 'addItem'])->name('dashboard.pos.cart.add');
@@ -315,6 +318,10 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::delete('/dashboard/website/faq/{faqItem}', [FaqItemManagementController::class, 'destroy'])->middleware('module:website')->name('dashboard.faq-items.destroy');
     Route::get('/dashboard/website/{page}', [SitePageManagementController::class, 'edit'])->middleware('module:website')->name('dashboard.site-pages.edit');
     Route::put('/dashboard/website/{page}', [SitePageManagementController::class, 'update'])->middleware('module:website')->name('dashboard.site-pages.update');
+
+    Route::get('/dashboard/printers', [PrinterController::class, 'index'])->name('dashboard.printers.index');
+    Route::post('/dashboard/printers', [PrinterController::class, 'store'])->name('dashboard.printers.store');
+    Route::put('/dashboard/printers/{printer}', [PrinterController::class, 'update'])->whereNumber('printer')->name('dashboard.printers.update');
 
     Route::get('/dashboard/counters', [CounterController::class, 'index'])->name('dashboard.counters.index');
     Route::post('/dashboard/counters', [CounterController::class, 'store'])->name('dashboard.counters.store');

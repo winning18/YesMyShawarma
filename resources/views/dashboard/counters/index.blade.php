@@ -37,6 +37,17 @@
                         <label class="block text-xs font-medium text-gray-500" for="counter-{{ $counter->id }}">{{ __('Name') }}</label>
                         <input id="counter-{{ $counter->id }}" name="name" value="{{ $counter->name }}" maxlength="40" required class="mt-1 block w-full rounded-md border-gray-300 text-sm">
                     </div>
+                    @if ($receiptPrinters->isNotEmpty())
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500" for="counter-printer-{{ $counter->id }}">{{ __('Receipt printer') }}</label>
+                            <select id="counter-printer-{{ $counter->id }}" name="receipt_printer_id" class="mt-1 block rounded-md border-gray-300 text-sm">
+                                <option value="">{{ __('Branch\'s first receipt printer') }}</option>
+                                @foreach ($receiptPrinters as $receiptPrinter)
+                                    <option value="{{ $receiptPrinter->id }}" @selected($counter->receipt_printer_id === $receiptPrinter->id)>{{ $receiptPrinter->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endif
                     <label class="flex items-center gap-2 text-sm pb-2">
                         <input type="checkbox" name="is_active" value="1" @checked($counter->is_active) class="rounded border-gray-300">
                         {{ __('In use') }}

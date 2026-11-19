@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\CounterException;
+use App\Models\Printer;
 use App\Models\Terminal;
 use App\Services\Branches\BranchContext;
 use App\Services\Shifts\CounterService;
@@ -32,6 +33,7 @@ class CounterController extends Controller
                     'till' => $counters->openTill($counter),
                 ]),
             'thisDevice' => $counters->current(),
+            'receiptPrinters' => Printer::where('branch_id', $branch->id)->where('role', Printer::RECEIPT)->where('is_active', true)->orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -60,10 +62,11 @@ class CounterController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:40', Rule::unique('terminals', 'name')->where('branch_id', $counter->branch_id)->ignore($counter->id)],
             'is_active' => ['nullable', 'boolean'],
+            'receipt_printer_id' => ['nullable', 'integer', Rule::exists('printers', 'id')->where('branch_id', $counter->branch_id)->where('role', 'receipt')],
         ]);
 
         try {
-            $counters->update($counter, $validated['name'], $request->boolean('is_active'));
+            $counters->update($counter, $validated['name'], $request->boolean('is_active'), $validated['receipt_printer_id'] ?? null);
         } catch (CounterException $e) {
             return back()->withErrors(['counter' => $e->getMessage()]);
         }

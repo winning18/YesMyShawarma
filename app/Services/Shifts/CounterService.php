@@ -94,13 +94,13 @@ class CounterService
     /**
      * @throws CounterException while the counter's till is open
      */
-    public function update(Terminal $counter, string $name, bool $active): Terminal
+    public function update(Terminal $counter, string $name, bool $active, ?int $receiptPrinterId = null): Terminal
     {
         if (! $active && $counter->is_active && $this->openTill($counter)) {
             throw CounterException::tillOpen($counter->name);
         }
 
-        $counter->update(['name' => trim($name), 'is_active' => $active]);
+        $counter->update(['name' => trim($name), 'is_active' => $active, 'receipt_printer_id' => $receiptPrinterId]);
 
         return $counter;
     }

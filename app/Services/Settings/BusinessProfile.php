@@ -51,6 +51,9 @@ class BusinessProfile
     /** What it serves, comma-separated ("Shawarma, Burgers, Fast food"). */
     public const CUISINES = 'business_cuisines';
 
+    /** A line or two at the bottom of every printed receipt (step 8a). */
+    public const RECEIPT_MESSAGE = 'business_receipt_message';
+
     /**
      * Two brand colours, each with the lighter and darker shade the
      * customer site uses for backgrounds and hovers. Defaults are the
@@ -109,6 +112,11 @@ class BusinessProfile
     public function tagline(): ?string
     {
         return $this->setting(self::TAGLINE) ?: null;
+    }
+
+    public function receiptMessage(): ?string
+    {
+        return $this->setting(self::RECEIPT_MESSAGE) ?: null;
     }
 
     public function city(): ?string
@@ -268,6 +276,7 @@ class BusinessProfile
             self::CITY => 'city',
             self::REGION => 'region',
             self::CUISINES => 'cuisines',
+            self::RECEIPT_MESSAGE => 'receipt_message',
         ];
 
         foreach ($text as $key => $field) {

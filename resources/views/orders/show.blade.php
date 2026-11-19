@@ -14,7 +14,14 @@
                     default => 'bg-gray-100 text-gray-600',
                 };
             @endphp
-            <span class="text-sm font-medium px-3 py-1.5 rounded-md capitalize {{ $badgeClass }}">{{ str_replace('_', ' ', $order->status) }}</span>
+            <div class="flex items-center gap-3">
+                {{-- Step 8a: print or reprint, when the branch has printers. --}}
+                @if (app(\App\Services\Printing\PrinterService::class)->hasPrinters($order->branch_id))
+                    <button type="button" onclick="window.expressPrint(window.expressPrintUrl({{ $order->id }}, 'receipt'))" class="px-3 py-1.5 text-sm font-semibold border border-gray-300 rounded-md hover:bg-gray-50">{{ __('Print receipt') }}</button>
+                    <button type="button" onclick="window.expressPrint(window.expressPrintUrl({{ $order->id }}, 'kitchen'))" class="px-3 py-1.5 text-sm font-semibold border border-gray-300 rounded-md hover:bg-gray-50">{{ __('Print kitchen ticket') }}</button>
+                @endif
+                <span class="text-sm font-medium px-3 py-1.5 rounded-md capitalize {{ $badgeClass }}">{{ str_replace('_', ' ', $order->status) }}</span>
+            </div>
         </div>
     </x-slot>
 
@@ -347,4 +354,5 @@
             </div>
         </div>
     </div>
+    @include('partials.print-script', ['printBranchId' => $order->branch_id])
 </x-app-layout>

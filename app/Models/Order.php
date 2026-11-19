@@ -116,6 +116,12 @@ class Order extends Model
         return $this->belongsTo(Branch::class);
     }
 
+    /** The till that took the money (step 7a) — a counter's, or the shared shift. */
+    public function shift(): BelongsTo
+    {
+        return $this->belongsTo(Shift::class);
+    }
+
     public function rider(): BelongsTo
     {
         return $this->belongsTo(User::class, 'rider_id');

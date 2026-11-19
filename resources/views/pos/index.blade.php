@@ -612,6 +612,10 @@
                             reference: payload.order.reference,
                             total: payload.order.total,
                         };
+
+                        // Step 8a: the receipt and the kitchen ticket, when the branch has those printers.
+                        if (window.expressPrinting?.receipt) window.expressPrint(window.expressPrintUrl(payload.order.id, 'receipt'));
+                        if (window.expressPrinting?.kitchen) window.expressPrint(window.expressPrintUrl(payload.order.id, 'kitchen'));
                         this.resetForm();
                     } catch (e) {
                         this.error = '{{ __('Could not place the order.') }}';
@@ -682,4 +686,5 @@
     </script>
 
     @include('partials.phone-input-script')
+    @include('partials.print-script')
 </x-app-layout>

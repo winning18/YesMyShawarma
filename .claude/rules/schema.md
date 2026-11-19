@@ -201,6 +201,11 @@ terminals  id, branch_id, name (unique per branch), device_token_hash (unique, n
 
 orders.shift_id  (nullable) the till that took the money
 
+printers  id, branch_id, name (unique per branch), role (receipt|kitchen), paper_width (58|80),
+          connection (network|usb), address (IP[:port] or Windows printer name), opens_drawer,
+          is_active, timestamps
+terminals.receipt_printer_id  (nullable) a counter's receipt printer
+
 users.staff_code  (nullable, unique) "YMS-0042" — till staff's counter sign-in ID (step 7b)
 users.pin         (nullable) hashed like a password; set by a manager
 ```
@@ -225,6 +230,18 @@ it per request. With counters:
   not the branch's sales since it opened.
 - The first counter can't be added while the branch's shared shift is open; a counter with an
   open till can't be switched off.
+
+**Printing (Express POS step 8a, owner 2026-11-15).** Settings → Printers (`PrinterController`,
+`settings.manage`) lists a branch's receipt and kitchen printers. `PrinterService` decides which:
+a counter's own receipt printer, else the branch's first; every active kitchen printer.
+`ReceiptService` builds what a receipt and a kitchen ticket say (business name and logo, branch,
+items, totals, payment, the Business profile's receipt message; the ticket leads with the
+reference's short code and has no prices) — for the browser print pages (`print/receipt`,
+`print/kitchen`, `PrintController`, sized to 58 or 80 mm) now and the print agent's ESC/POS in 8b.
+In 8a printing goes through the acting device's browser (`partials/print-script`, a hidden
+frame): the receipt and kitchen ticket after a POS sale, the kitchen ticket on accept, and Print
+buttons on the order page and board cards for reprints. A branch with no printers prints nothing
+and shows no buttons. The cash drawer waits for the agent.
 
 One open shift per branch at a time, not one per staff member — `user_id` is who opened it,
 `ended_by_user_id` who closed it, and they may well be different people. A second staff member
