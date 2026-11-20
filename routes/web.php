@@ -27,6 +27,7 @@ use App\Http\Controllers\ExpensesReportController;
 use App\Http\Controllers\FaqController;
 use App\Http\Controllers\FaqItemManagementController;
 use App\Http\Controllers\FreebieController;
+use App\Http\Controllers\HelpController;
 use App\Http\Controllers\HeroSliderController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\HomeStripController;
@@ -210,6 +211,8 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::get('/dashboard/performance', [PerformanceController::class, 'index'])->name('dashboard.performance');
     Route::get('/dashboard/orders', [OrderDashboardController::class, 'data'])->name('dashboard.orders.data');
     Route::get('/dashboard/orders/history', [OrderHistoryController::class, 'index'])->name('dashboard.orders.history');
+    Route::get('/dashboard/help', [HelpController::class, 'index'])->name('dashboard.help.index');
+    Route::get('/dashboard/help/{guide}', [HelpController::class, 'show'])->where('guide', 'staff|owner|go-live')->name('dashboard.help.show');
     Route::get('/dashboard/orders/live', [OrderDashboardController::class, 'live'])->name('dashboard.orders.live');
     Route::get('/dashboard/orders/{order}', [OrderHistoryController::class, 'show'])->name('dashboard.orders.show');
     Route::get('/dashboard/orders/{order}/print/{kind}', [PrintController::class, 'show'])->whereIn('kind', ['receipt', 'kitchen'])->name('dashboard.orders.print');

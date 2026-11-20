@@ -133,3 +133,36 @@ jobs:
             sudo systemctl restart yes-my-shawarma-staging-reverb.service
             sudo systemctl reload php8.3-fpm
           '
+
+      # Client installs on the staging code until the MVP release (step 10's
+      # pilot), set up with deploy/new-install.sh. The repository variable
+      # EXPRESSPOS_EXTRA_INSTALLS lists them, space-separated (e.g.
+      # "expresspos-mamaput"); empty means none. Each gets the same build,
+      # code and migrations as staging, and restarts its own services.
+      - name: Update client installs on the staging code
+        if: ${{ vars.EXPRESSPOS_EXTRA_INSTALLS != '' }}
+        env:
+          INSTALLS: ${{ vars.EXPRESSPOS_EXTRA_INSTALLS }}
+        run: |
+          for install in $INSTALLS; do
+            [[ "$install" =~ ^expresspos-[a-z0-9]+$ ]] || { echo "Skipping odd install name: $install"; continue; }
+            echo "==> $install"
+            for part in vendor public/build public/downloads; do
+              rsync -az --delete -e "ssh -i ~/.ssh/deploy_key" "$part/" \
+                ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/var/www/$install/$part/
+            done
+            ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "
+              set -e
+              cd /var/www/$install
+              git fetch origin
+              git reset --hard origin/staging
+              php artisan package:discover --ansi
+              php artisan migrate --force
+              php artisan config:cache
+              php artisan route:cache
+              php artisan view:cache
+              sudo systemctl restart $install-queue.service
+              sudo systemctl restart $install-reverb.service
+            "
+          done
+          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} 'sudo systemctl reload php8.3-fpm'

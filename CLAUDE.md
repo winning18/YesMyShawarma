@@ -61,6 +61,9 @@ These come before everything else in this file.
    Shawarma.
 5. **Settings start with today's values.** When something moves into settings, Yes My Shawarma's
    current value is filled in automatically (a data migration), so nothing changes on the day.
+   Such a migration must skip a client install: one with the `client_setup_at` setting
+   (`ClientSetupService::SETUP_MARKER`, stored by `expresspos:new-client`). "The install has
+   orders" alone no longer means Yes My Shawarma once a client is live.
 6. **Branding.** Inside the app, staff and customers see the business's own name, logo and
    colours. The staff login page always shows EXPRESS POS, a Solusys Digital product. A
    business's customers never see "Express POS". The sign-in pages (`layouts/guest`, the
@@ -224,7 +227,7 @@ step before the previous one is released.
 
 Straight after the MVP: offline mode for the subscription edition.
 
-**Current step:** 10 (food vendor pilot). Step 9, optional tax, built 2026-11-20 (the `tax` module: Settings → Tax, inclusive or added on top, food only (delivery fees never taxed), `order_taxes` kept as at sale, Reports → Tax, TIN on receipts — schema.md's Orders → Tax). Step 8, direct printing, built 2026-11-15/20: 8a printers,
+**Current step:** 10 (food vendor pilot): tools built 2026-11-20 — `expresspos:new-client` (`ClientSetupService`), Help guides (staff quick-start, owner guide, go-live checklist), `deploy/new-install.sh` for a hand-set install on the staging code (updated by the staging deploy via the `EXPRESSPOS_EXTRA_INSTALLS` repo variable), nightly backups (`deploy/backup-databases.sh`), Reverb settings read at run time (`partials/reverb-config`) so one build serves every install; see `deploy/README.md`. Waiting on the vendor's details. Step 9, optional tax, built 2026-11-20 (the `tax` module: Settings → Tax, inclusive or added on top, food only (delivery fees never taxed), `order_taxes` kept as at sale, Reports → Tax, TIN on receipts — schema.md's Orders → Tax). Step 8, direct printing, built 2026-11-15/20: 8a printers,
 receipts, kitchen tickets and browser printing; 8b the Express POS Print Agent for Windows
 (`print-agent/`, Go, unsigned for the pilot) — schema.md's Printing notes. Step 6 (installs per client) is the last step, after the
 pilot (owner, 2026-11-15). Step 7, several cashiers, built 2026-11-15: 7a named

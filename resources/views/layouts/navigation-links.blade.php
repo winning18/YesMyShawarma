@@ -385,3 +385,9 @@
         </div>
     </div>
 @endcan
+
+{{-- Help (step 10): the guides, for everyone signed in. --}}
+<a
+    href="{{ route('dashboard.help.index') }}"
+    class="flex items-center px-3 py-2 rounded-md rounded-l-none border-l-4 text-sm font-medium transition duration-150 ease-in-out {{ request()->routeIs('dashboard.help.*') ? 'border-indigo-400 bg-indigo-50 text-indigo-700 font-semibold' : 'border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
+>{{ __('Help') }}</a>

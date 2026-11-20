@@ -1,0 +1,129 @@
+<?php
+
+namespace App\Console\Commands;
+
+use App\Services\Modules\ModuleService;
+use App\Services\Setup\ClientSetupService;
+use Illuminate\Console\Attributes\Description;
+use Illuminate\Console\Attributes\Signature;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Validator;
+use RuntimeException;
+
+use function Laravel\Prompts\multiselect;
+use function Laravel\Prompts\text;
+
+#[Signature('expresspos:new-client
+    {--business= : Business name, as customers and staff see it}
+    {--branch= : First branch name}
+    {--branch-phone= : Branch phone, e.g. +233241234567}
+    {--address= : Branch address}
+    {--lat= : Branch latitude}
+    {--lng= : Branch longitude}
+    {--opens=08:00 : Opening time (HH:MM)}
+    {--closes=22:00 : Closing time (HH:MM)}
+    {--owner-name= : Owner\'s name}
+    {--owner-email= : Owner\'s email (their sign-in)}
+    {--owner-phone= : Owner\'s phone (optional)}
+    {--support-email= : Solusys Digital support account email (optional)}
+    {--modules= : Modules to switch on, comma-separated keys (none = POS only)}')]
+#[Description('Set up a fresh Express POS install for a new client: business, first branch, owner account and modules')]
+class NewClient extends Command
+{
+    public function handle(ClientSetupService $setup): int
+    {
+        if (! $setup->isFreshInstall()) {
+            $this->error('This install already has branches, users or orders. Run this only on a new, empty install.');
+
+            return self::FAILURE;
+        }
+
+        $ask = fn (string $option, string $label, string $placeholder = '', bool $required = true) => $this->option($option)
+            ?? ($this->input->isInteractive() ? text($label, placeholder: $placeholder, required: $required) : null);
+
+        $input = [
+            'business' => $ask('business', 'Business name'),
+            'branch' => [
+                'name' => $ask('branch', 'First branch name', 'e.g. Osu'),
+                'phone' => $ask('branch-phone', 'Branch phone', '+233241234567'),
+                'address' => $ask('address', 'Branch address'),
+                'lat' => $ask('lat', 'Branch latitude', '5.5560'),
+                'lng' => $ask('lng', 'Branch longitude', '-0.1969'),
+                'opens_at' => $this->option('opens'),
+                'closes_at' => $this->option('closes'),
+            ],
+            'owner' => [
+                'name' => $ask('owner-name', 'Owner\'s name'),
+                'email' => $ask('owner-email', 'Owner\'s email (their sign-in)'),
+                'phone' => $ask('owner-phone', 'Owner\'s phone (optional)', required: false) ?: null,
+            ],
+            'support_email' => $ask('support-email', 'Solusys Digital support email (optional)', required: false) ?: null,
+            'modules' => $this->modules(),
+        ];
+
+        $validator = Validator::make($input, [
+            'business' => ['required', 'string', 'max:80'],
+            'branch.name' => ['required', 'string', 'max:255'],
+            'branch.phone' => ['required', 'string', 'max:255'],
+            'branch.address' => ['required', 'string', 'max:255'],
+            'branch.lat' => ['required', 'numeric', 'between:-90,90'],
+            'branch.lng' => ['required', 'numeric', 'between:-180,180'],
+            'branch.opens_at' => ['required', 'date_format:H:i'],
+            'branch.closes_at' => ['required', 'date_format:H:i'],
+            'owner.name' => ['required', 'string', 'max:255'],
+            'owner.email' => ['required', 'email', 'max:255'],
+            'owner.phone' => ['nullable', 'string', 'max:30'],
+            'support_email' => ['nullable', 'email', 'max:255'],
+        ]);
+
+        if ($validator->fails()) {
+            foreach ($validator->errors()->all() as $message) {
+                $this->error($message);
+            }
+
+            return self::FAILURE;
+        }
+
+        $input['branch']['lat'] = (float) $input['branch']['lat'];
+        $input['branch']['lng'] = (float) $input['branch']['lng'];
+
+        try {
+            $result = $setup->setUp($input);
+        } catch (RuntimeException $e) {
+            $this->error($e->getMessage());
+
+            return self::FAILURE;
+        }
+
+        $this->info("{$input['business']} is set up, with {$result['branch']->name} as its first branch.");
+        $this->line('Modules on: '.($input['modules'] ? implode(', ', array_map(fn ($m) => ModuleService::MODULES[$m]['label'], $input['modules'])) : 'none (POS only)'));
+        $this->newLine();
+        $this->line('Sign-in details (shown once; each must set a new password on first sign-in):');
+        $this->table(['Account', 'Email', 'Temporary password'], array_values(array_filter([
+            ['Owner', $result['owner']['user']->email, $result['owner']['temporary_password']],
+            $result['support'] ? ['Solusys Digital support', $result['support']['user']->email, $result['support']['temporary_password']] : null,
+        ])));
+
+        return self::SUCCESS;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function modules(): array
+    {
+        if ($this->option('modules') !== null) {
+            return array_values(array_filter(array_map('trim', explode(',', (string) $this->option('modules')))));
+        }
+
+        if (! $this->input->isInteractive()) {
+            return [];
+        }
+
+        return array_values(multiselect(
+            'Modules to switch on (none = POS only)',
+            collect(ModuleService::MODULES)->mapWithKeys(fn (array $module, string $key) => [$key => $module['label']])->all(),
+            hint: 'Space to tick, Enter to finish. All can be changed later on the Modules page.',
+        ));
+    }
+}
