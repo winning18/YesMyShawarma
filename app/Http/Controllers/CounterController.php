@@ -20,10 +20,15 @@ use Illuminate\View\View;
  */
 class CounterController extends Controller
 {
-    public function index(BranchContext $context, CounterService $counters): View
+    public function index(BranchContext $context, CounterService $counters): View|RedirectResponse
     {
         Gate::authorize('settings.manage');
-        $branch = $context->branch() ?? abort(404);
+        $branch = $context->branch();
+        // Printers and counters belong to one branch. An owner viewing
+        // every branch picks one first, then comes back here (as the POS does).
+        if (! $branch) {
+            return redirect()->guest(route('branches.select'))->with('status', __('Select a branch to set up its counters.'));
+        }
 
         return view('dashboard.counters.index', [
             'branch' => $branch,

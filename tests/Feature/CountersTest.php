@@ -239,4 +239,16 @@ class CountersTest extends TestCase
             ->assertOk()
             ->assertViewHas('summary', fn (array $summary) => $summary['total_sales'] === 3000 && $summary['orders_count'] === 1);
     }
+
+    public function test_an_owner_viewing_every_branch_picks_one_before_counters_and_printers(): void
+    {
+        $owner = $this->userWithRole('owner');
+
+        // Signed in, no single branch chosen yet: sent to pick one, then back.
+        foreach (['dashboard.counters.index', 'dashboard.printers.index'] as $page) {
+            $this->actingAs($owner)->withSession(['current_branch_id' => null])
+                ->get(route($page))->assertRedirect(route('branches.select'));
+            $this->as($owner)->get(route($page))->assertOk();
+        }
+    }
 }

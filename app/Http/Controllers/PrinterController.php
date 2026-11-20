@@ -24,10 +24,15 @@ use Illuminate\View\View;
  */
 class PrinterController extends Controller
 {
-    public function index(BranchContext $context, PrintAgentService $agents, PrintJobService $jobs): View
+    public function index(BranchContext $context, PrintAgentService $agents, PrintJobService $jobs): View|RedirectResponse
     {
         Gate::authorize('settings.manage');
-        $branch = $context->branch() ?? abort(404);
+        $branch = $context->branch();
+        // Printers and counters belong to one branch. An owner viewing
+        // every branch picks one first, then comes back here (as the POS does).
+        if (! $branch) {
+            return redirect()->guest(route('branches.select'))->with('status', __('Select a branch to set up its printers.'));
+        }
 
         return view('dashboard.printers.index', [
             'branch' => $branch,
