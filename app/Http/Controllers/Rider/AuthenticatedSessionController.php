@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Rider\LoginRequest;
 use App\Services\Branches\BranchContext;
 use App\Services\Customers\CustomerService;
+use App\Services\Orders\RiderAssignmentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -53,9 +54,16 @@ class AuthenticatedSessionController extends Controller
      * staff member logged in in the same browser must survive a rider
      * logout (and vice versa) — that coexistence is this guard's whole
      * reason for existing.
+     *
+     * markLoggedOut() first: off the assign dropdown and auto-assignment
+     * straight away (RiderAssignmentService::loggedInRiderIds()).
      */
-    public function destroy(Request $request): RedirectResponse
+    public function destroy(Request $request, RiderAssignmentService $riders): RedirectResponse
     {
+        if ($rider = $request->user('rider')) {
+            $riders->markLoggedOut($rider);
+        }
+
         Auth::guard('rider')->logout();
 
         $request->session()->regenerate();

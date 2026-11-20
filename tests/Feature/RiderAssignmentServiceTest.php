@@ -9,8 +9,6 @@ use App\Models\User;
 use App\Services\Orders\RiderAssignmentService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -61,8 +59,8 @@ class RiderAssignmentServiceTest extends TestCase
 
     /**
      * "Available" = holds the role at this branch, currently at this
-     * branch (users.current_branch_id), and logged in (a live session
-     * row) — see RiderAssignmentService::loggedInRiderIds(). No shift
+     * branch (users.current_branch_id), and logged in
+     * (users.rider_last_seen_at) — see RiderAssignmentService::loggedInRiderIds(). No shift
      * involved at all now.
      */
     private function onShift(?string $name = null): User
@@ -78,16 +76,8 @@ class RiderAssignmentServiceTest extends TestCase
     private function logIn(User $user, int $branchId): void
     {
         $user->current_branch_id = $branchId;
+        $user->rider_last_seen_at = now();
         $user->save();
-
-        DB::table('sessions')->insert([
-            'id' => Str::random(40),
-            'user_id' => $user->id,
-            'ip_address' => '127.0.0.1',
-            'user_agent' => 'test',
-            'payload' => base64_encode(serialize([])),
-            'last_activity' => now()->getTimestamp(),
-        ]);
     }
 
     public function test_auto_assign_picks_the_only_eligible_rider(): void

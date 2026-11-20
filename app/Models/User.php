@@ -59,6 +59,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'must_change_password' => 'boolean',
             'suspended_at' => 'datetime',
+            'rider_last_seen_at' => 'datetime',
         ];
     }
 }

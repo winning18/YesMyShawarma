@@ -104,10 +104,17 @@ class RiderAssignmentService
      * currently AT this branch (`users.current_branch_id`, set by
      * BranchContext::setCurrent() whenever the branch switcher is used —
      * see that method's own docblock for why this can't just be read off
-     * a session), and are they actually logged in right now (a session
-     * row for them, active within the configured session lifetime — the
-     * same window Laravel itself already treats as "still authenticated",
-     * not an arbitrary shorter one).
+     * a session), and are they actually logged in right now
+     * (`users.rider_last_seen_at` within the configured session lifetime —
+     * the same window Laravel itself already treats as "still
+     * authenticated", not an arbitrary shorter one).
+     *
+     * Not sessions.user_id: Laravel fills that from whichever guard a
+     * request happens to default to, so the rider's own Echo subscription
+     * (/broadcasting/auth runs under the default 'web' guard) blanked it a
+     * second after their dashboard loaded, a staff login in the same
+     * browser overwrote it, and a logged-out rider's old row stayed behind.
+     * See markSeen()/markLoggedOut() and orders.md.
      *
      * Public — RiderAvailabilityController's manual-assign dropdown uses
      * this same rule, so the two never drift apart on what "available"
@@ -122,15 +129,59 @@ class RiderAssignmentService
             return $riderIds;
         }
 
-        $activeSince = now()->subMinutes((int) config('session.lifetime'))->getTimestamp();
-
         return User::whereIn('id', $riderIds)
             ->where('current_branch_id', $branchId)
             ->whereNull('suspended_at')
-            ->whereIn('id', function ($query) use ($activeSince) {
-                $query->select('user_id')->from('sessions')->where('last_activity', '>=', $activeSince);
-            })
+            ->where('rider_last_seen_at', '>=', now()->subMinutes((int) config('session.lifetime')))
             ->pluck('id');
+    }
+
+    /**
+     * Available riders at each of $branchIds, for the manual-assign
+     * dropdown — each one's current_branch_id is the branch they're
+     * available at (loggedInRiderIds() requires it), so the dashboard can
+     * list only the riders at an order's own branch. Several branches at
+     * once for an owner's all-branches view, which has no single current
+     * branch.
+     *
+     * @param  Collection<int, int>  $branchIds
+     * @return Collection<int, User>
+     */
+    public function availableRiders(Collection $branchIds): Collection
+    {
+        $ids = $branchIds->flatMap(fn (int $branchId) => $this->loggedInRiderIds(
+            $this->branchContext->usersWithRole('rider', $branchId)->pluck('id'),
+            $branchId,
+        ));
+
+        return User::whereIn('id', $ids->unique())->get();
+    }
+
+    /**
+     * Every request a rider makes in the rider app (MarkRiderSeen
+     * middleware). Written at most once a minute — the rider dashboard
+     * refreshes every minute, and a write per request buys nothing over
+     * a window measured in hours. A query update, not save(), so it never
+     * bumps updated_at or fires model events.
+     */
+    public function markSeen(User $rider): void
+    {
+        if ($rider->rider_last_seen_at?->gt(now()->subMinute())) {
+            return;
+        }
+
+        $rider->rider_last_seen_at = now();
+        User::whereKey($rider->id)->toBase()->update(['rider_last_seen_at' => $rider->rider_last_seen_at]);
+    }
+
+    /**
+     * Rider logout, and suspension (which ends every session) — gone from
+     * the dropdown and auto-assignment at once, not up to two hours later.
+     */
+    public function markLoggedOut(User $rider): void
+    {
+        $rider->rider_last_seen_at = null;
+        User::whereKey($rider->id)->toBase()->update(['rider_last_seen_at' => null]);
     }
 
     private function isCarryingAnOrder(User $rider): bool

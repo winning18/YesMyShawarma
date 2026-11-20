@@ -394,7 +394,9 @@ Route::middleware('guest:rider')->prefix('rider')->name('rider.')->group(functio
         ->middleware('throttle:20,1');
 });
 
-Route::middleware(['auth:rider', 'verified', 'branch', 'password.change_required'])->prefix('rider')->name('rider.')->group(function () {
+// 'rider.seen' last — see MarkRiderSeen: what makes a rider "logged in" for
+// assignment, only once they're through branch and password checks.
+Route::middleware(['auth:rider', 'verified', 'branch', 'password.change_required', 'rider.seen'])->prefix('rider')->name('rider.')->group(function () {
     Route::get('/', [RiderDashboardController::class, 'index'])->name('dashboard');
     Route::get('/orders', [RiderDashboardController::class, 'data'])->name('orders.data');
     Route::get('/history', [RiderDeliveryHistoryController::class, 'index'])->name('history');

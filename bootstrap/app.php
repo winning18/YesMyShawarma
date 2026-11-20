@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureAccountNotSuspended;
 use App\Http\Middleware\EnsurePasswordIsChanged;
+use App\Http\Middleware\MarkRiderSeen;
 use App\Http\Middleware\RedirectStaffToUnacceptedWebOrders;
 use App\Http\Middleware\ResolveCurrentBranch;
 use App\Http\Middleware\SecurityHeaders;
@@ -31,6 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'track.visit' => TrackVisitorSession::class,
             'password.change_required' => EnsurePasswordIsChanged::class,
             'staff.web_orders_check' => RedirectStaffToUnacceptedWebOrders::class,
+            'rider.seen' => MarkRiderSeen::class,
         ]);
 
         // Laravel's default "guest" redirect target is a hardcoded

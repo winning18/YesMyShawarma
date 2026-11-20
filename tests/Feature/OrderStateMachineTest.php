@@ -12,8 +12,6 @@ use App\Services\Delivery\DeliveryFeeCalculator;
 use App\Services\Orders\OrderStateMachine;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -265,16 +263,8 @@ class OrderStateMachineTest extends TestCase
     private function logIn(User $user, int $branchId): void
     {
         $user->current_branch_id = $branchId;
+        $user->rider_last_seen_at = now();
         $user->save();
-
-        DB::table('sessions')->insert([
-            'id' => Str::random(40),
-            'user_id' => $user->id,
-            'ip_address' => '127.0.0.1',
-            'user_agent' => 'test',
-            'payload' => base64_encode(serialize([])),
-            'last_activity' => now()->getTimestamp(),
-        ]);
     }
 
     public function test_paystack_order_reaching_paid_from_pending_payment_sends_the_customer_a_placed_sms(): void

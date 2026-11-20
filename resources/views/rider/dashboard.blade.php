@@ -229,6 +229,12 @@
                 init() {
                     this.fetchData();
 
+                    // Once a minute as well as on every broadcast: keeps
+                    // this rider "logged in" for assignment (MarkRiderSeen)
+                    // while the page is open, and still shows a new order
+                    // if the live connection drops.
+                    setInterval(() => this.fetchData(), 60000);
+
                     // Assignment always targets this one rider — no
                     // branch-wide channel needed for that half. Status
                     // changes on orders already assigned still come via

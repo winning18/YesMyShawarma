@@ -79,6 +79,10 @@ class AccountSuspensionService
 
             if ($account instanceof User) {
                 DB::table(config('session.table', 'sessions'))->where('user_id', $account->id)->delete();
+                // Signed out everywhere, so no longer an available rider
+                // either — not even once the suspension is lifted, until
+                // they log in again (RiderAssignmentService::loggedInRiderIds()).
+                $account->forceFill(['rider_last_seen_at' => null])->save();
             }
         });
     }

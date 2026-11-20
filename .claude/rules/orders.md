@@ -91,21 +91,23 @@ resolve on its own.
 
 **Eligibility** for auto-assignment: no shift required — starting one was never an important
 part of a rider's day (see permissions.md). Instead, a rider is "available" when they're
-**logged in** (a live session row, active within `config('session.lifetime')` — the same window
+**logged in** (`users.rider_last_seen_at` within `config('session.lifetime')` — the same window
 Laravel itself already treats as "still authenticated") **and currently at the order's branch**
 (`users.current_branch_id`, set by `BranchContext::setCurrent()` whenever the branch switcher is
 used — see that method's own docblock for why this can't just be read off a session), and not
 already carrying another order (`rider_id` on any `ready`/`dispatched` order). See
 `RiderAssignmentService::loggedInRiderIds()`.
 
-Riders authenticate via their own `rider` guard (permissions.md's "Guards" section), but
-`sessions.user_id` is populated from whichever guard is *current* at the moment a given
-request's session gets written, not tied to a specific guard name — so this only reliably
-reflects a rider the moment one of *their own* (`auth:rider`) requests actually runs, not
-necessarily the login request itself (which authenticates the `rider` guard without making it
-the request's default). In practice this closes itself immediately: `rider.login`'s own
-redirect lands them straight on `rider.dashboard`, which does run under `auth:rider` and writes
-the correct id before anything would ever check their availability.
+`users.rider_last_seen_at` is written by the `rider.seen` middleware (`MarkRiderSeen`, last on
+the `auth:rider` route group, at most once a minute) and cleared by rider logout and by
+suspension. The rider dashboard refreshes its orders every 60 seconds, which keeps an open
+dashboard "seen" and also shows a new assignment if the live connection drops. Never read
+`sessions.user_id` for this (it was, until 2026-11-20): Laravel fills it from whichever guard is
+the request's *default*, not from the `rider` guard, so the rider's own Echo subscription
+(`/broadcasting/auth`, default `web` guard) blanked it a second after the dashboard loaded, a
+staff login in the same browser overwrote it on every poll, and a logged-out rider's old row
+kept them "available" for up to two hours. It would also never see the future app's Sanctum
+riders, who have no session row at all.
 
 Among eligible riders, the one least recently assigned goes next (round robin) —
 `MAX(orders.claimed_at)` per rider, nulls (never assigned) sorting first.
@@ -159,7 +161,9 @@ for free, no separate "rider logged in" event needed. `dashboard.riders`
 (`RiderAvailabilityController`) is what backs both the dropdown and this — it's filtered to the
 `rider` role specifically and to `RiderAssignmentService::loggedInRiderIds()`, the same
 eligibility rule auto-assignment itself uses, so the two can never disagree about who counts as
-available.
+available. Each rider comes back with their `branch_id`, and an order's dropdown lists only the
+riders at that order's branch — an owner's all-branches view has no current branch, so it gets
+every branch's riders (`RiderAssignmentService::availableRiders()`).
 
 Manual assignment (staff/manager/owner) does not re-check the "not already carrying an order"
 eligibility rule — it's a deliberate human override, trusted to know better than the algorithm
