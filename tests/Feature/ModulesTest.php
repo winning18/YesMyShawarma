@@ -329,6 +329,7 @@ class ModulesTest extends TestCase
         $broadcast = SmsBroadcast::create(['message' => 'Hi', 'status' => SmsBroadcast::STATUS_SENT, 'scheduled_at' => now(), 'failed_count' => 1, 'created_by' => $owner->id]);
         $this->as($owner)->post(route('dashboard.customers.broadcasts.retry', $broadcast))->assertNotFound();
         $this->as($owner)->post(route('dashboard.customers.broadcasts.resend', $broadcast))->assertNotFound();
+        $this->as($owner)->getJson(route('dashboard.customers.broadcasts.audience', ['all' => 1]))->assertNotFound();
         $this->assertSame(SmsBroadcast::STATUS_SENT, $broadcast->fresh()->status);
         $this->as($owner)->get(route('dashboard.customers.index'))->assertOk()->assertDontSee(route('dashboard.customers.broadcasts.index'), false);
     }

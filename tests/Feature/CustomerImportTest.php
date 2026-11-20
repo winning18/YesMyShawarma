@@ -89,11 +89,16 @@ class CustomerImportTest extends TestCase
         $this->assertSame('Ama', Customer::where('phone', '+233241234567')->value('name'));
     }
 
-    public function test_imported_leads_join_all_customer_broadcasts(): void
+    /**
+     * Owner, 2026-11-20: uploaded contacts are their own "Send to" list,
+     * apart from real customers (they used to join "All customers").
+     */
+    public function test_imported_leads_are_the_uploaded_contacts_list_not_all_customers(): void
     {
         $this->upload("Phone\n0241234567\n");
 
-        $this->assertSame(['+233241234567'], array_values(app(SmsBroadcastService::class)->audience(null)['recipients']));
+        $this->assertSame(['+233241234567'], array_values(app(SmsBroadcastService::class)->audience(['uploaded' => true])['recipients']));
+        $this->assertSame([], app(SmsBroadcastService::class)->audience(['all' => true])['recipients']);
     }
 
     public function test_only_owner_and_general_manager_can_import(): void
@@ -115,5 +120,27 @@ class CustomerImportTest extends TestCase
         $this->actingAs($this->userWithRole('owner'))
             ->post(route('dashboard.customers.import.store'), ['file' => UploadedFile::fake()->create('leads.pdf', 10, 'application/pdf')])
             ->assertSessionHasErrors('file');
+    }
+
+    public function test_every_number_in_the_file_joins_the_uploaded_contacts_list(): void
+    {
+        $existing = Customer::create(['phone' => '+233241111111', 'name' => 'Ama']);
+
+        $this->upload("phone,name\n0241111111,Someone else\n0242222222,Kofi\n")->assertSessionHasNoErrors();
+
+        $this->assertNotNull($existing->fresh()->imported_at);
+        $this->assertSame('Ama', $existing->fresh()->name);
+        $this->assertNotNull(Customer::where('phone', '+233242222222')->sole()->imported_at);
+    }
+
+    public function test_a_second_upload_keeps_when_a_number_first_arrived(): void
+    {
+        $this->upload("phone\n0242222222\n");
+        $first = Customer::where('phone', '+233242222222')->sole()->imported_at;
+
+        $this->travel(2)->days();
+        $this->upload("phone\n0242222222\n");
+
+        $this->assertTrue(Customer::where('phone', '+233242222222')->sole()->imported_at->equalTo($first));
     }
 }

@@ -96,7 +96,7 @@ Price is always `menu_items.base_price` — no per-branch override.
 ```
 customers           id, phone (unique, nullable), name, email, password,
                     phone_verified_at, marketing_opt_in, marketing_opted_out_at,
-                    suspended_at, suspended_by, suspension_reason
+                    imported_at (nullable), suspended_at, suspended_by, suspension_reason
 customer_addresses  id, customer_id, label, delivery_area_id (nullable), area_other (nullable),
                     ghanapost_code (nullable), landmark, lat, lng, is_default
 ```
@@ -113,6 +113,9 @@ index change alongside the nullable column.
 outside contacts from a CSV become ordinary `customers` rows with no orders — no separate leads
 table (owner, 2026-10-21). If one orders later, `findOrCreateByPhone()` finds the same row, so
 their history joins up. An import never changes an existing row except to fill a missing name.
+Every number in an uploaded file gets `imported_at` (first upload only): that's the **Uploaded
+contacts** list in SMS broadcasts. Uploads before 2026-11-20 weren't recorded; the migration
+filled them in as customers with a phone, no account and no orders.
 
 Free-text `landmark` is required on delivery orders; `ghanapost_code` is optional. Riders use both.
 
@@ -564,7 +567,7 @@ today counts.
 ## SMS broadcasts
 
 ```
-sms_broadcasts            id, message, branch_id (nullable = all customers), status,
+sms_broadcasts            id, message, branch_id (nullable; older broadcasts), audience (json), status,
                           scheduled_at, recipient_count, sent_count, failed_count,
                           created_by, started_at, completed_at
 sms_broadcast_recipients  id, sms_broadcast_id, customer_id, phone, opt_out_code (unique),
@@ -578,8 +581,16 @@ ends with a personal `/stop/{opt_out_code}` link; the GET only asks, the POST op
 previews fetch GETs). Order SMS ignore the opt-out.
 
 No stored contact list: `SmsBroadcastService::audience()` reads `customers` live when a broadcast
-starts, normalising and de-duplicating numbers then. `branch_id` narrows it to customers with an
-order at that branch. Status: `scheduled -> sending -> sent`, or `scheduled -> cancelled`. "Send
+starts, normalising and de-duplicating numbers then. **"Send to" is ticks** (owner, 2026-11-20),
+stored in `audience` as `{all, branches, uploaded}` and combined into one list, so a number on
+two lists gets one SMS:
+- **All customers**: anyone who has ordered or has an account. Uploaded contacts who have done
+  neither are left out. Before 2026-11-20 they were included; the owner reversed that.
+- **Customers who ordered from (branch)**: one tick per branch.
+- **Uploaded contacts**: `customers.imported_at` set.
+A broadcast from before the ticks has `audience` null. `SmsBroadcast::selection()` reads its
+`branch_id` as one branch, or with none, as all customers plus uploaded contacts (what it meant
+then). Status: `scheduled -> sending -> sent`, or `scheduled -> cancelled`. "Send
 now" is just `scheduled_at = now`. `sms:send-due-broadcasts` (every minute) claims due rows,
 snapshots recipients, and queues `SendSmsBroadcastBatch` for every broadcast still sending; each
 job sends for up to 40s, so only `pending` recipients are ever texted and a dead job resumes.
@@ -593,8 +604,8 @@ three automatic tries (`SendSms`):
   anyone opted out since, and sets the broadcast back to `sending`. The next minute's run sends
   them like any broadcast still sending.
 - **Resend** (`resend()`, sent broadcasts only) is a new broadcast with the same message and
-  `branch_id`, sent now to today's audience with new codes.
-- **Copy** only puts the message and branch back in the compose form.
+  ticked lists, sent now to today's audience with new codes.
+- **Copy** only puts the message and ticked lists back in the compose form.
 
 ## Visitor tracking
 

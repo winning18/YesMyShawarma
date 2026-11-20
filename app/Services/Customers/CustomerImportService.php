@@ -14,7 +14,9 @@ use Illuminate\Support\Facades\DB;
  *
  * Numbers already in the list are never changed, except to fill a missing
  * name — an imported row must never overwrite what a real customer told
- * us, nor clear their broadcast opt-out.
+ * us, nor clear their broadcast opt-out. Every number in the file gets
+ * customers.imported_at (first upload only), which is the Uploaded
+ * contacts list in SMS broadcasts' "Send to".
  */
 class CustomerImportService
 {
@@ -73,13 +75,20 @@ class CustomerImportService
                     $customer = $existing->get($phone);
 
                     if (! $customer) {
-                        Customer::create(['phone' => $phone, 'name' => $name]);
+                        (new Customer(['phone' => $phone, 'name' => $name]))->forceFill(['imported_at' => now()])->save();
                         $result['added']++;
 
                         continue;
                     }
 
                     $result['existing']++;
+
+                    // On the Uploaded contacts list from now on too, even
+                    // if they're already a customer (SmsBroadcastService::
+                    // audience()). Nothing else about them changes.
+                    if ($customer->imported_at === null) {
+                        $customer->forceFill(['imported_at' => now()])->save();
+                    }
 
                     if ($name !== null && blank($customer->name)) {
                         $customer->update(['name' => $name]);

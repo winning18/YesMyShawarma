@@ -12,6 +12,7 @@ use App\Services\Sms\SmsBroadcastService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Schema;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -79,11 +80,11 @@ class SmsBroadcastTest extends TestCase
     {
         $this->fakeFlakySms();
         foreach (['+233241111111', '+233242222222', '+233243333333'] as $phone) {
-            Customer::create(['phone' => $phone]);
+            $this->customer($phone);
         }
         $this->rejecting = ['+233242222222', '+233243333333'];
 
-        $this->broadcasts()->schedule('Shawarma Wednesday!', null, null, $owner);
+        $this->broadcasts()->schedule('Shawarma Wednesday!', ['all' => true], null, $owner);
         $this->artisan('sms:send-due-broadcasts');
 
         $broadcast = SmsBroadcast::sole();
@@ -101,6 +102,16 @@ class SmsBroadcastTest extends TestCase
         $user->assignRole($role);
 
         return $user;
+    }
+
+    /**
+     * A real customer — they have an account — so they're on the "All
+     * customers" list. A bare phone-only row with no orders is what an
+     * old upload left behind, and isn't (SmsBroadcastService::audience()).
+     */
+    private function customer(?string $phone, array $attributes = []): Customer
+    {
+        return Customer::create(['phone' => $phone, 'password' => 'secret-pass', ...$attributes]);
     }
 
     private function orderFor(Customer $customer, Branch $branch): void
@@ -139,13 +150,13 @@ class SmsBroadcastTest extends TestCase
 
     public function test_audience_skips_opted_out_phoneless_and_invalid_numbers_and_removes_duplicates(): void
     {
-        Customer::create(['phone' => '+233241111111']);
-        Customer::create(['phone' => '0241111111']); // legacy, un-normalised copy of the same number
-        Customer::create(['phone' => '+233242222222', 'marketing_opted_out_at' => now()]);
-        Customer::create(['phone' => null]);
-        Customer::create(['phone' => '12345']);
+        $this->customer('+233241111111');
+        $this->customer('0241111111'); // legacy, un-normalised copy of the same number
+        $this->customer('+233242222222', ['marketing_opted_out_at' => now()]);
+        $this->customer(null);
+        $this->customer('12345');
 
-        $audience = $this->broadcasts()->audience(null);
+        $audience = $this->broadcasts()->audience(['all' => true]);
 
         $this->assertSame(['+233241111111'], array_values($audience['recipients']));
         $this->assertSame(1, $audience['duplicates']);
@@ -159,23 +170,23 @@ class SmsBroadcastTest extends TestCase
             'name' => 'Pokuase', 'slug' => 'pokuase', 'phone' => '+233200000002', 'address' => 'B',
             'lat' => 5.6, 'lng' => -0.2, 'opens_at' => '10:00', 'closes_at' => '22:00',
         ]);
-        $osuCustomer = Customer::create(['phone' => '+233241111111']);
-        $pokuaseCustomer = Customer::create(['phone' => '+233242222222']);
+        $osuCustomer = $this->customer('+233241111111');
+        $pokuaseCustomer = $this->customer('+233242222222');
         $this->orderFor($osuCustomer, $this->branch);
         $this->orderFor($pokuaseCustomer, $other);
 
-        $this->assertSame([$osuCustomer->id => '+233241111111'], $this->broadcasts()->audience($this->branch->id)['recipients']);
-        $this->assertCount(2, $this->broadcasts()->audience(null)['recipients']);
+        $this->assertSame([$osuCustomer->id => '+233241111111'], $this->broadcasts()->audience(['branches' => [$this->branch->id]])['recipients']);
+        $this->assertCount(2, $this->broadcasts()->audience(['all' => true])['recipients']);
     }
 
     public function test_send_now_texts_every_recipient_with_their_own_opt_out_link_and_marks_it_sent(): void
     {
         $this->fakeSms();
-        Customer::create(['phone' => '+233241111111']);
-        Customer::create(['phone' => '+233242222222']);
+        $this->customer('+233241111111');
+        $this->customer('+233242222222');
 
         $this->actingAs($this->userWithRole('general_manager'))
-            ->post(route('dashboard.customers.broadcasts.store'), ['message' => 'Shawarma Wednesday!', 'send_mode' => 'now'])
+            ->post(route('dashboard.customers.broadcasts.store'), ['message' => 'Shawarma Wednesday!', 'all' => '1', 'send_mode' => 'now'])
             ->assertRedirect(route('dashboard.customers.broadcasts.index'));
 
         $this->artisan('sms:send-due-broadcasts')->assertSuccessful();
@@ -196,8 +207,8 @@ class SmsBroadcastTest extends TestCase
     public function test_a_rejected_send_is_recorded_as_failed(): void
     {
         $this->fakeSms(accept: false);
-        Customer::create(['phone' => '+233241111111']);
-        $this->broadcasts()->schedule('Hello', null, null, $this->userWithRole('owner'));
+        $this->customer('+233241111111');
+        $this->broadcasts()->schedule('Hello', ['all' => true], null, $this->userWithRole('owner'));
 
         $this->artisan('sms:send-due-broadcasts');
 
@@ -211,10 +222,10 @@ class SmsBroadcastTest extends TestCase
     {
         $this->fakeSms();
         Carbon::setTestNow('2026-10-20 09:00:00');
-        Customer::create(['phone' => '+233241111111']);
+        $this->customer('+233241111111');
 
         $this->actingAs($this->userWithRole('owner'))->post(route('dashboard.customers.broadcasts.store'), [
-            'message' => 'Lunch deal', 'send_mode' => 'later', 'scheduled_at' => '2026-10-21T12:30',
+            'message' => 'Lunch deal', 'all' => '1', 'send_mode' => 'later', 'scheduled_at' => '2026-10-21T12:30',
         ])->assertSessionHasNoErrors();
 
         $this->assertSame('2026-10-21 12:30:00', SmsBroadcast::sole()->scheduled_at->utc()->format('Y-m-d H:i:s'));
@@ -231,10 +242,10 @@ class SmsBroadcastTest extends TestCase
 
     public function test_scheduling_in_the_past_is_rejected(): void
     {
-        Customer::create(['phone' => '+233241111111']);
+        $this->customer('+233241111111');
 
         $this->actingAs($this->userWithRole('owner'))->post(route('dashboard.customers.broadcasts.store'), [
-            'message' => 'Late', 'send_mode' => 'later', 'scheduled_at' => now('Africa/Accra')->subHour()->format('Y-m-d\TH:i'),
+            'message' => 'Late', 'all' => '1', 'send_mode' => 'later', 'scheduled_at' => now('Africa/Accra')->subHour()->format('Y-m-d\TH:i'),
         ])->assertSessionHasErrors('scheduled_at');
 
         $this->assertSame(0, SmsBroadcast::count());
@@ -242,11 +253,11 @@ class SmsBroadcastTest extends TestCase
 
     public function test_broadcasts_can_be_sent_back_to_back_with_no_frequency_limit(): void
     {
-        Customer::create(['phone' => '+233241111111']);
+        $this->customer('+233241111111');
         $owner = $this->userWithRole('owner');
-        $this->broadcasts()->schedule('First', null, null, $owner);
+        $this->broadcasts()->schedule('First', ['all' => true], null, $owner);
 
-        $this->actingAs($owner)->post(route('dashboard.customers.broadcasts.store'), ['message' => 'Second', 'send_mode' => 'now'])
+        $this->actingAs($owner)->post(route('dashboard.customers.broadcasts.store'), ['message' => 'Second', 'all' => '1', 'send_mode' => 'now'])
             ->assertSessionHasNoErrors();
 
         $this->assertSame(2, SmsBroadcast::count());
@@ -255,9 +266,9 @@ class SmsBroadcastTest extends TestCase
     public function test_a_cancelled_broadcast_never_sends(): void
     {
         $this->fakeSms();
-        Customer::create(['phone' => '+233241111111']);
+        $this->customer('+233241111111');
         $owner = $this->userWithRole('owner');
-        $broadcast = $this->broadcasts()->schedule('Oops', null, now()->addHour(), $owner);
+        $broadcast = $this->broadcasts()->schedule('Oops', ['all' => true], now()->addHour(), $owner);
 
         $this->actingAs($owner)->post(route('dashboard.customers.broadcasts.cancel', $broadcast))->assertSessionHasNoErrors();
 
@@ -271,7 +282,7 @@ class SmsBroadcastTest extends TestCase
     public function test_a_broadcast_with_nobody_to_send_to_is_rejected(): void
     {
         $this->actingAs($this->userWithRole('owner'))
-            ->post(route('dashboard.customers.broadcasts.store'), ['message' => 'Hi', 'send_mode' => 'now'])
+            ->post(route('dashboard.customers.broadcasts.store'), ['message' => 'Hi', 'all' => '1', 'send_mode' => 'now'])
             ->assertSessionHasErrors('message');
     }
 
@@ -279,9 +290,9 @@ class SmsBroadcastTest extends TestCase
     {
         $this->fakeSms();
         foreach (range(1, 3) as $i) {
-            Customer::create(['phone' => '+23324000000'.$i]);
+            $this->customer('+23324000000'.$i);
         }
-        $broadcast = $this->broadcasts()->schedule('Hi', null, null, $this->userWithRole('owner'));
+        $broadcast = $this->broadcasts()->schedule('Hi', ['all' => true], null, $this->userWithRole('owner'));
         SmsBroadcast::whereKey($broadcast->id)->update(['status' => 'sending']);
         (fn () => $this->buildRecipients($broadcast))->call($this->broadcasts());
         $broadcast->recipients()->orderBy('id')->first()->update(['status' => 'sent']);
@@ -296,8 +307,8 @@ class SmsBroadcastTest extends TestCase
     public function test_opt_out_link_asks_first_then_opts_the_customer_out_of_later_broadcasts(): void
     {
         $this->fakeSms();
-        $customer = Customer::create(['phone' => '+233241111111']);
-        $this->broadcasts()->schedule('Hi', null, null, $this->userWithRole('owner'));
+        $customer = $this->customer('+233241111111');
+        $this->broadcasts()->schedule('Hi', ['all' => true], null, $this->userWithRole('owner'));
         $this->artisan('sms:send-due-broadcasts');
         $code = SmsBroadcast::sole()->recipients()->sole()->opt_out_code;
 
@@ -307,7 +318,7 @@ class SmsBroadcastTest extends TestCase
 
         $this->post(route('sms.opt-out.store', $code))->assertOk()->assertSee('any more promotional SMS');
         $this->assertNotNull($customer->fresh()->marketing_opted_out_at);
-        $this->assertSame([], $this->broadcasts()->audience(null)['recipients']);
+        $this->assertSame([], $this->broadcasts()->audience(['all' => true])['recipients']);
     }
 
     public function test_unknown_opt_out_code_is_not_found(): void
@@ -400,10 +411,10 @@ class SmsBroadcastTest extends TestCase
     public function test_only_a_sent_broadcast_with_failures_can_be_retried(): void
     {
         $this->fakeSms();
-        Customer::create(['phone' => '+233241111111']);
+        $this->customer('+233241111111');
         $owner = $this->userWithRole('owner');
-        $scheduled = $this->broadcasts()->schedule('Later', null, now()->addHour(), $owner);
-        $clean = $this->broadcasts()->schedule('Now', null, null, $owner);
+        $scheduled = $this->broadcasts()->schedule('Later', ['all' => true], now()->addHour(), $owner);
+        $clean = $this->broadcasts()->schedule('Now', ['all' => true], null, $owner);
         $this->artisan('sms:send-due-broadcasts');
         $this->assertSame('sent', $clean->fresh()->status);
 
@@ -416,11 +427,11 @@ class SmsBroadcastTest extends TestCase
     public function test_resend_sends_the_same_message_again_to_todays_audience_with_new_opt_out_links(): void
     {
         $this->fakeSms();
-        Customer::create(['phone' => '+233241111111']);
+        $this->customer('+233241111111');
         $owner = $this->userWithRole('owner');
-        $first = $this->broadcasts()->schedule('Shawarma Wednesday!', null, null, $owner);
+        $first = $this->broadcasts()->schedule('Shawarma Wednesday!', ['all' => true], null, $owner);
         $this->artisan('sms:send-due-broadcasts');
-        Customer::create(['phone' => '+233242222222']);
+        $this->customer('+233242222222');
         $this->sent = [];
 
         $this->actingAs($owner)->post(route('dashboard.customers.broadcasts.resend', $first))
@@ -430,7 +441,7 @@ class SmsBroadcastTest extends TestCase
 
         $again = SmsBroadcast::whereKeyNot($first->id)->sole();
         $this->assertSame('Shawarma Wednesday!', $again->message);
-        $this->assertNull($again->branch_id);
+        $this->assertSame(['all' => true, 'branches' => [], 'uploaded' => false], $again->selection());
         $this->assertSame('sent', $again->status);
         $this->assertSame(2, $again->sent_count);
         $this->assertCount(2, $this->sent);
@@ -447,26 +458,26 @@ class SmsBroadcastTest extends TestCase
             'name' => 'Pokuase', 'slug' => 'pokuase', 'phone' => '+233200000002', 'address' => 'B',
             'lat' => 5.6, 'lng' => -0.2, 'opens_at' => '10:00', 'closes_at' => '22:00',
         ]);
-        $this->orderFor(Customer::create(['phone' => '+233241111111']), $this->branch);
-        $this->orderFor(Customer::create(['phone' => '+233242222222']), $other);
+        $this->orderFor($this->customer('+233241111111'), $this->branch);
+        $this->orderFor($this->customer('+233242222222'), $other);
         $owner = $this->userWithRole('owner');
-        $first = $this->broadcasts()->schedule('Osu only', $this->branch->id, null, $owner);
+        $first = $this->broadcasts()->schedule('Osu only', ['branches' => [$this->branch->id]], null, $owner);
         $this->artisan('sms:send-due-broadcasts');
         $this->sent = [];
 
         $again = $this->broadcasts()->resend($first->fresh(), $owner);
         $this->artisan('sms:send-due-broadcasts');
 
-        $this->assertSame($this->branch->id, $again->branch_id);
+        $this->assertSame([$this->branch->id], $again->selection()['branches']);
         $this->assertSame(['+233241111111'], array_column($this->sent, 'phone'));
     }
 
     public function test_only_a_sent_broadcast_can_be_resent(): void
     {
-        Customer::create(['phone' => '+233241111111']);
+        $this->customer('+233241111111');
         $owner = $this->userWithRole('owner');
-        $scheduled = $this->broadcasts()->schedule('Later', null, now()->addHour(), $owner);
-        $cancelled = $this->broadcasts()->schedule('Oops', null, now()->addHour(), $owner);
+        $scheduled = $this->broadcasts()->schedule('Later', ['all' => true], now()->addHour(), $owner);
+        $cancelled = $this->broadcasts()->schedule('Oops', ['all' => true], now()->addHour(), $owner);
         $this->broadcasts()->cancel($cancelled);
 
         $this->actingAs($owner)->post(route('dashboard.customers.broadcasts.resend', $scheduled))->assertSessionHasErrors('broadcast');
@@ -490,7 +501,7 @@ class SmsBroadcastTest extends TestCase
     {
         $owner = $this->userWithRole('owner');
         $failed = $this->sentBroadcastWithTwoFailures($owner);
-        $this->broadcasts()->schedule('Later on', null, now()->addHour(), $owner);
+        $this->broadcasts()->schedule('Later on', ['all' => true], now()->addHour(), $owner);
 
         $response = $this->actingAs($owner)->get(route('dashboard.customers.broadcasts.index'))->assertOk();
 
@@ -500,5 +511,133 @@ class SmsBroadcastTest extends TestCase
         $response->assertSee('Retry the 2 numbers this broadcast could not reach?');
         $this->assertSame(2, substr_count($response->getContent(), "\$dispatch('copy-broadcast'"));
         $this->assertSame(1, substr_count($response->getContent(), 'broadcasts/'.$failed->id.'/resend'));
+    }
+
+    private function uploadedContact(string $phone): Customer
+    {
+        return tap(Customer::create(['phone' => $phone]), fn (Customer $customer) => $customer->forceFill(['imported_at' => now()])->save());
+    }
+
+    public function test_all_customers_is_real_customers_and_leaves_out_uploaded_contacts(): void
+    {
+        $ordered = Customer::create(['phone' => '+233241111111']);
+        $this->orderFor($ordered, $this->branch);
+        $this->customer('+233242222222');
+        $this->uploadedContact('+233243333333');
+
+        $this->assertEqualsCanonicalizing(['+233241111111', '+233242222222'], array_values($this->broadcasts()->audience(['all' => true])['recipients']));
+        $this->assertSame(['+233243333333'], array_values($this->broadcasts()->audience(['uploaded' => true])['recipients']));
+        $this->assertSame([], $this->broadcasts()->audience([])['recipients']);
+    }
+
+    public function test_an_uploaded_contact_who_later_orders_is_on_both_lists(): void
+    {
+        $contact = $this->uploadedContact('+233243333333');
+        $this->orderFor($contact, $this->branch);
+
+        $this->assertSame([$contact->id => '+233243333333'], $this->broadcasts()->audience(['all' => true])['recipients']);
+        $this->assertSame([$contact->id => '+233243333333'], $this->broadcasts()->audience(['uploaded' => true])['recipients']);
+        $this->assertSame([$contact->id => '+233243333333'], $this->broadcasts()->audience(['branches' => [$this->branch->id]])['recipients']);
+    }
+
+    public function test_several_ticked_lists_send_one_sms_per_number(): void
+    {
+        $this->fakeSms();
+        $other = Branch::create([
+            'name' => 'Pokuase', 'slug' => 'pokuase', 'phone' => '+233200000002', 'address' => 'B',
+            'lat' => 5.6, 'lng' => -0.2, 'opens_at' => '10:00', 'closes_at' => '22:00',
+        ]);
+        $osu = Customer::create(['phone' => '+233241111111']);
+        $this->orderFor($osu, $this->branch);
+        $both = $this->uploadedContact('+233242222222');
+        $this->orderFor($both, $this->branch);
+        $this->uploadedContact('+233243333333');
+        $this->orderFor(Customer::create(['phone' => '+233244444444']), $other);
+
+        $this->actingAs($this->userWithRole('owner'))->post(route('dashboard.customers.broadcasts.store'), [
+            'message' => 'Osu and uploads', 'branches' => [$this->branch->id], 'uploaded' => '1', 'send_mode' => 'now',
+        ])->assertSessionHasNoErrors();
+        $this->artisan('sms:send-due-broadcasts');
+
+        $broadcast = SmsBroadcast::sole();
+        $this->assertSame(['all' => false, 'branches' => [$this->branch->id], 'uploaded' => true], $broadcast->selection());
+        $this->assertNull($broadcast->branch_id);
+        $this->assertEqualsCanonicalizing(['+233241111111', '+233242222222', '+233243333333'], array_column($this->sent, 'phone'));
+    }
+
+    public function test_a_broadcast_needs_at_least_one_list_ticked(): void
+    {
+        $this->customer('+233241111111');
+
+        $this->actingAs($this->userWithRole('owner'))
+            ->post(route('dashboard.customers.broadcasts.store'), ['message' => 'Hi', 'send_mode' => 'now'])
+            ->assertSessionHasErrors('send_to');
+
+        $this->assertSame(0, SmsBroadcast::count());
+    }
+
+    public function test_the_form_counts_ticked_lists_together_with_duplicates_removed(): void
+    {
+        $this->customer('+233241111111');
+        $this->customer('+233242222222');
+        $this->uploadedContact('+233243333333');
+        $this->uploadedContact('0241111111'); // the same number as the first customer
+
+        $this->actingAs($this->userWithRole('owner'))
+            ->getJson(route('dashboard.customers.broadcasts.audience', ['all' => 1, 'uploaded' => 1]))
+            ->assertOk()
+            ->assertJson(['recipients' => 3, 'duplicates' => 1]);
+
+        $this->actingAs($this->userWithRole('manager'))
+            ->getJson(route('dashboard.customers.broadcasts.audience', ['all' => 1]))
+            ->assertForbidden();
+    }
+
+    public function test_a_broadcast_scheduled_before_the_lists_still_reaches_uploaded_contacts(): void
+    {
+        $this->fakeSms();
+        $this->customer('+233241111111');
+        $this->uploadedContact('+233243333333');
+        $owner = $this->userWithRole('owner');
+        SmsBroadcast::create(['message' => 'Old', 'branch_id' => null, 'status' => SmsBroadcast::STATUS_SCHEDULED, 'scheduled_at' => now(), 'created_by' => $owner->id]);
+
+        $this->artisan('sms:send-due-broadcasts');
+
+        $this->assertEqualsCanonicalizing(['+233241111111', '+233243333333'], array_column($this->sent, 'phone'));
+    }
+
+    public function test_resend_and_copy_keep_the_ticked_lists(): void
+    {
+        $this->fakeSms();
+        $this->customer('+233241111111');
+        $this->uploadedContact('+233243333333');
+        $owner = $this->userWithRole('owner');
+        $first = $this->broadcasts()->schedule('Both', ['all' => true, 'uploaded' => true], null, $owner);
+        $this->artisan('sms:send-due-broadcasts');
+
+        $page = $this->actingAs($owner)->get(route('dashboard.customers.broadcasts.index'))->assertOk();
+        $page->assertSee('All customers + Uploaded contacts');
+        $page->assertSee('Send this SMS again to 2 people?');
+
+        $again = $this->broadcasts()->resend($first->fresh(), $owner);
+        $this->assertSame(['all' => true, 'branches' => [], 'uploaded' => true], $again->selection());
+    }
+
+    public function test_the_migration_files_earlier_uploads_as_uploaded_contacts(): void
+    {
+        $lead = Customer::create(['phone' => '+233243333333']);
+        $ordered = Customer::create(['phone' => '+233241111111']);
+        $this->orderFor($ordered, $this->branch);
+        $registered = $this->customer('+233242222222');
+        $walkIn = Customer::create(['phone' => null]);
+
+        Schema::table('sms_broadcasts', fn ($table) => $table->dropColumn('audience'));
+        Schema::table('customers', fn ($table) => $table->dropColumn('imported_at'));
+        (require database_path('migrations/2026_11_20_150000_add_sms_send_to_lists.php'))->up();
+
+        $this->assertNotNull($lead->fresh()->imported_at);
+        $this->assertNull($ordered->fresh()->imported_at);
+        $this->assertNull($registered->fresh()->imported_at);
+        $this->assertNull($walkIn->fresh()->imported_at);
     }
 }
