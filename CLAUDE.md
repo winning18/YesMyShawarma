@@ -224,7 +224,7 @@ step before the previous one is released.
 
 Straight after the MVP: offline mode for the subscription edition.
 
-**Current step:** 10 (food vendor pilot). Step 9, optional tax, built 2026-11-20 (the `tax` module: Settings → Tax, inclusive or added on top, delivery fee optional, `order_taxes` kept as at sale, Reports → Tax, TIN on receipts — schema.md's Orders → Tax). Step 8, direct printing, built 2026-11-15/20: 8a printers,
+**Current step:** 10 (food vendor pilot). Step 9, optional tax, built 2026-11-20 (the `tax` module: Settings → Tax, inclusive or added on top, food only (delivery fees never taxed), `order_taxes` kept as at sale, Reports → Tax, TIN on receipts — schema.md's Orders → Tax). Step 8, direct printing, built 2026-11-15/20: 8a printers,
 receipts, kitchen tickets and browser printing; 8b the Express POS Print Agent for Windows
 (`print-agent/`, Go, unsigned for the pilot) — schema.md's Printing notes. Step 6 (installs per client) is the last step, after the
 pilot (owner, 2026-11-15). Step 7, several cashiers, built 2026-11-15: 7a named

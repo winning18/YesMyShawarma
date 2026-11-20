@@ -22,7 +22,7 @@
 
         <div>
             <h3 class="font-semibold text-lg text-gray-800">{{ __('Tax') }}</h3>
-            <p class="text-sm text-gray-500">{{ __('The tax charged on orders placed in these dates, less the tax on refunds completed in them. Bolt Food orders and freebies carry no tax.') }}</p>
+            <p class="text-sm text-gray-500">{{ __('The tax charged on orders placed in these dates, less the tax on refunds completed in them. Only food is taxed: delivery fees, Bolt Food orders and freebies carry no tax.') }}</p>
         </div>
 
         <div class="bg-white shadow rounded-lg p-4">
@@ -82,11 +82,7 @@
                     <tr>
                         <th class="px-4 py-2">{{ __('Tax') }}</th>
                         <th class="px-4 py-2">{{ __('Prices') }}</th>
-                        <th class="px-4 py-2 text-right">{{ __('On food') }}</th>
-                        @module('delivery')
-                        <th class="px-4 py-2 text-right">{{ __('On delivery') }}</th>
-                        @endmodule
-                        <th class="px-4 py-2 text-right">{{ __('Total') }}</th>
+                        <th class="px-4 py-2 text-right">{{ __('Tax charged') }}</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
@@ -94,14 +90,10 @@
                         <tr>
                             <td class="px-4 py-2 text-gray-800">{{ $line['label'] }}</td>
                             <td class="px-4 py-2 text-gray-500">{{ $line['inclusive'] ? __('Included in prices') : __('Added on top') }}</td>
-                            <td class="px-4 py-2 text-right whitespace-nowrap">{{ $money($line['food']) }}</td>
-                            @module('delivery')
-                            <td class="px-4 py-2 text-right whitespace-nowrap">{{ $money($line['delivery']) }}</td>
-                            @endmodule
                             <td class="px-4 py-2 text-right whitespace-nowrap font-semibold">{{ $money($line['total']) }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="5" class="px-4 py-6 text-center text-gray-500">{{ __('No tax charged in these dates.') }}</td></tr>
+                        <tr><td colspan="3" class="px-4 py-6 text-center text-gray-500">{{ __('No tax charged in these dates.') }}</td></tr>
                     @endforelse
                 </tbody>
             </table>

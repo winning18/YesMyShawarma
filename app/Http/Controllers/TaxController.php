@@ -36,7 +36,6 @@ class TaxController extends Controller
 
         $tax->save(
             (bool) $validated['inclusive'],
-            (bool) $validated['delivery_taxed'],
             collect($validated['lines'] ?? [])
                 ->map(fn (array $line) => ['name' => trim($line['name']), 'rate_basis_points' => (int) round(((float) $line['rate']) * 100)])
                 ->all(),

@@ -170,23 +170,22 @@ order_taxes
 
 `TaxService`. The business sets its taxes under Settings → Tax (owner only, `business.manage`):
 lines of name + rate (Ghana preset VAT 15%, NHIL 2.5%, GETFund 2.5%, all on the same base),
-whether prices include the tax (`inclusive`) or it's added on top, and whether the delivery fee
-is taxed. Stored as the `tax_config` setting (JSON). Charged only with the module on **and** at
+and whether prices include the tax (`inclusive`) or it's added on top. Only food is taxed, never
+the delivery fee (owner, 2026-11-20); `order_taxes.delivery_amount` stays 0. Stored as the
+`tax_config` setting (JSON). Charged only with the module on **and** at
 least one line; Bolt Food and freebies are never taxed.
 
-- **At the sale** (`OrderCreationService`): `quote()` taxes the food after discounts and, if set,
-  the delivery fee. Added on top: each line is `round(base × rate)`, added to `total`. Inclusive:
+- **At the sale** (`OrderCreationService`): `quote()` taxes the food after discounts. Added on top: each line is `round(base × rate)`, added to `total`. Inclusive:
   the tax inside the base at the combined rate, shared by rate (the last line takes the
   rounding); `total` is unchanged. `order_taxes` keeps each line as it was; `tax_total` is all of
   it either way. Later rate changes never touch a placed order.
-- **Fee changes** (adjust, arrival, transfer, delivered recompute) call `retotal()`: food tax
-  stays frozen; the delivery tax follows the new fee at the order's own rates (whether the fee is
-  taxed is read from today's setting).
+- **Fee changes** (adjust, arrival, transfer, delivered recompute) call `retotal()`: the new
+  fee goes on untaxed; the food tax stays as it was.
 - **Reports**: sales are always before tax (`netFood` = subtotal − discount − tax inside the
   prices). `financialSummary()` also returns `till_total` (food with its tax, what a till holds:
-  shift cash-up and `tillSales()`) and `tax_total`. A rider's delivery fee includes any tax added
-  to it (`DeliveryFeeReportService::split`). Reports → Tax lists tax per line and per day, less
-  tax on refunds completed in the period (refund amount × order tax ÷ order total).
+  shift cash-up and `tillSales()`) and `tax_total`. A refund's tax share (`refundTax()`: refund
+  amount × order tax ÷ order total) comes off tax, not sales, in the Sales statement and Profit.
+  Reports → Tax lists tax per line and per day, less tax on refunds completed in the period.
 - **Shown on** receipts (browser and ESC/POS, with the business TIN `business_tin`), the order
   page, confirmation, tracking, the POS and checkout running totals (`partials/tax-script`
   mirrors `split()`; the server's figure is the one charged). Added tax shows as lines above

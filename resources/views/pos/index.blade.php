@@ -448,10 +448,9 @@
                     return Math.min(this.whatsappReward, this.foodSubtotal);
                 },
 
-                // Tax on the food (step 9) — the delivery fee is priced
-                // later at the POS, so its tax follows then.
+                // Tax on the food (step 9); the delivery fee is never taxed.
                 tax() {
-                    return window.expressTax(this.subtotal - this.displayedDiscount(), 0, this.paymentMethod);
+                    return window.expressTax(this.subtotal - this.displayedDiscount(), this.paymentMethod);
                 },
 
                 pickupOnly() {

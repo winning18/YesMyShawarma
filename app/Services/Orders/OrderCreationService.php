@@ -232,10 +232,10 @@ class OrderCreationService
                 ? $this->resolveDelivery($branch, $data, $subtotal)
                 : [0, null];
 
-            // Tax (step 9): on the food after discounts and, if the
-            // business taxes it, the delivery fee. Only tax added on top
-            // changes the total; tax inside the prices is already in it.
-            $tax = $this->tax->quote($subtotal - $discountTotal, $deliveryFee, $data->paymentMethod);
+            // Tax (step 9): on the food after discounts, never the
+            // delivery fee. Only tax added on top changes the total; tax
+            // inside the prices is already in it.
+            $tax = $this->tax->quote($subtotal - $discountTotal, $data->paymentMethod);
             $total = $subtotal - $discountTotal + $deliveryFee + $tax['added'];
 
             $manuallySettled = in_array($data->paymentMethod, Order::MANUALLY_SETTLED_PAYMENT_METHODS, true);

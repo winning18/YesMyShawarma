@@ -4,6 +4,7 @@ namespace App\Services\Tax;
 
 use App\Models\Order;
 use App\Models\OrderTax;
+use App\Models\Refund;
 use App\Services\Modules\ModuleService;
 use App\Services\Settings\SettingsService;
 use Illuminate\Support\Collection;
@@ -15,17 +16,18 @@ use Illuminate\Support\Collection;
  * The business chooses:
  *  - inclusive: menu prices already include the tax (the tax is worked out
  *    of the price), or the tax is added on top at the till;
- *  - delivery_taxed: whether the delivery fee is taxed too;
  *  - lines: each tax's name and rate, all on the same base (Ghana since
  *    2026: VAT 15%, NHIL 2.5%, GETFund 2.5% on the value of the sale).
+ *
+ * Only the food is taxed, never the delivery fee (owner, 2026-11-20);
+ * order_taxes.delivery_amount stays 0.
  *
  * Every order keeps its tax as it was at the sale (order_taxes): a rate
  * changed later never touches it. Bolt Food orders (Bolt's prices, kept
  * out of sales) and freebies (nothing charged) carry no tax.
  *
  * What the business keeps is never the tax: reports count sales before
- * tax (netFood()); a till expects the food money with its tax (grossFood());
- * a rider hands in the delivery fee with any tax added to it.
+ * tax (netFood()); a till expects the food money with its tax (grossFood()).
  */
 class TaxService
 {
@@ -43,7 +45,7 @@ class TaxService
         ['name' => 'GETFund', 'rate_basis_points' => 250],
     ];
 
-    /** @var array{inclusive: bool, delivery_taxed: bool, lines: list<array{name: string, rate_basis_points: int}>}|null */
+    /** @var array{inclusive: bool, lines: list<array{name: string, rate_basis_points: int}>}|null */
     private ?array $config = null;
 
     public function __construct(
@@ -52,7 +54,7 @@ class TaxService
     ) {}
 
     /**
-     * @return array{inclusive: bool, delivery_taxed: bool, lines: list<array{name: string, rate_basis_points: int}>}
+     * @return array{inclusive: bool, lines: list<array{name: string, rate_basis_points: int}>}
      */
     public function config(): array
     {
@@ -65,7 +67,6 @@ class TaxService
 
         return $this->config = [
             'inclusive' => (bool) ($stored['inclusive'] ?? true),
-            'delivery_taxed' => (bool) ($stored['delivery_taxed'] ?? false),
             'lines' => collect($stored['lines'] ?? [])
                 ->filter(fn ($line) => is_array($line) && trim((string) ($line['name'] ?? '')) !== '' && (int) ($line['rate_basis_points'] ?? 0) > 0)
                 ->map(fn (array $line) => ['name' => trim((string) $line['name']), 'rate_basis_points' => (int) $line['rate_basis_points']])
@@ -78,11 +79,10 @@ class TaxService
     /**
      * @param  list<array{name: string, rate_basis_points: int}>  $lines
      */
-    public function save(bool $inclusive, bool $deliveryTaxed, array $lines): void
+    public function save(bool $inclusive, array $lines): void
     {
         $this->settings->set(self::SETTING, json_encode([
             'inclusive' => $inclusive,
-            'delivery_taxed' => $deliveryTaxed,
             'lines' => array_values($lines),
         ]));
         $this->config = null;
@@ -106,13 +106,12 @@ class TaxService
     }
 
     /**
-     * The tax on a new order: $food is the food after discounts, $fee the
-     * delivery fee. `added` is what goes on top of the total (0 when the
-     * prices include the tax).
+     * The tax on a new order's food after discounts. `added` is what goes
+     * on top of the total (0 when the prices include the tax).
      *
      * @return array{lines: list<array{name: string, rate_basis_points: int, inclusive: bool, food_amount: int, delivery_amount: int}>, tax_total: int, added: int}
      */
-    public function quote(int $food, int $fee, ?string $paymentMethod): array
+    public function quote(int $food, ?string $paymentMethod): array
     {
         if (! $this->appliesTo($paymentMethod)) {
             return ['lines' => [], 'tax_total' => 0, 'added' => 0];
@@ -121,7 +120,6 @@ class TaxService
         $config = $this->config();
         $rates = array_column($config['lines'], 'rate_basis_points');
         $foodTax = $this->split(max(0, $food), $rates, $config['inclusive']);
-        $deliveryTax = $this->split($config['delivery_taxed'] ? max(0, $fee) : 0, $rates, $config['inclusive']);
 
         $lines = [];
         foreach ($config['lines'] as $i => $line) {
@@ -130,11 +128,11 @@ class TaxService
                 'rate_basis_points' => $line['rate_basis_points'],
                 'inclusive' => $config['inclusive'],
                 'food_amount' => $foodTax[$i],
-                'delivery_amount' => $deliveryTax[$i],
+                'delivery_amount' => 0,
             ];
         }
 
-        $total = array_sum($foodTax) + array_sum($deliveryTax);
+        $total = array_sum($foodTax);
 
         return ['lines' => $lines, 'tax_total' => $total, 'added' => $config['inclusive'] ? 0 : $total];
     }
@@ -182,34 +180,33 @@ class TaxService
 
     /**
      * Works the order's total out again after its delivery fee changed
-     * (adjusted, set on arrival, branch transfer): the tax on the food
-     * stays as it was at the sale; the tax on the fee follows the new fee
-     * at the order's own rates. Doesn't save the order.
+     * (adjusted, set on arrival, branch transfer): the fee isn't taxed, and
+     * the tax on the food stays as it was at the sale. Doesn't save the
+     * order.
      */
     public function retotal(Order $order): void
     {
-        $food = (int) $order->subtotal - (int) $order->discount_total;
-        $fee = (int) $order->delivery_fee;
+        $added = (int) $order->tax_total > 0
+            ? (int) $order->taxes()->where('inclusive', false)->sum('food_amount')
+            : 0;
 
-        if ((int) $order->tax_total === 0 && ! $order->taxes()->exists()) {
-            $order->total = $food + $fee;
+        $order->total = (int) $order->subtotal - (int) $order->discount_total + (int) $order->delivery_fee + $added;
+    }
 
-            return;
+    /**
+     * The tax share of a refund: the refunded part of what the customer
+     * paid, times the order's tax over its total. Needs the refund's order
+     * with tax_total and total. 0 for an order without tax.
+     */
+    public function refundTax(Refund $refund): int
+    {
+        $order = $refund->order;
+
+        if (! $order || (int) $order->tax_total === 0 || (int) $order->total <= 0) {
+            return 0;
         }
 
-        $taxes = $order->taxes()->orderBy('id')->get();
-        $inclusive = (bool) $taxes->first()?->inclusive;
-        $deliveryTax = $this->split($this->config()['delivery_taxed'] ? $fee : 0, $taxes->pluck('rate_basis_points')->all(), $inclusive);
-
-        foreach ($taxes->values() as $i => $tax) {
-            if ($tax->delivery_amount !== $deliveryTax[$i]) {
-                $tax->update(['delivery_amount' => $deliveryTax[$i]]);
-            }
-        }
-
-        $taxTotal = (int) $taxes->sum('food_amount') + array_sum($deliveryTax);
-        $order->tax_total = $taxTotal;
-        $order->total = $food + $fee + ($inclusive ? 0 : $taxTotal);
+        return (int) round(min((int) $refund->amount, (int) $order->total) * (int) $order->tax_total / (int) $order->total);
     }
 
     /**
@@ -280,7 +277,7 @@ class TaxService
      * (partials/tax-script mirrors split()), or null when no tax is
      * charged.
      *
-     * @return array{inclusive: bool, delivery_taxed: bool, untaxed: list<string>, lines: list<array{label: string, rate_basis_points: int}>}|null
+     * @return array{inclusive: bool, untaxed: list<string>, lines: list<array{label: string, rate_basis_points: int}>}|null
      */
     public function clientConfig(): ?array
     {
@@ -292,7 +289,6 @@ class TaxService
 
         return [
             'inclusive' => $config['inclusive'],
-            'delivery_taxed' => $config['delivery_taxed'],
             'untaxed' => self::UNTAXED_PAYMENT_METHODS,
             'lines' => array_map(fn (array $line) => ['label' => self::label($line['name'], $line['rate_basis_points']), 'rate_basis_points' => $line['rate_basis_points']], $config['lines']),
         ];

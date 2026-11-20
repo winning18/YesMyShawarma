@@ -18,6 +18,7 @@ use App\Services\Orders\OrderCreationService;
 use App\Services\Printing\EscPosRenderer;
 use App\Services\Printing\ReceiptService;
 use App\Services\Reports\OrderReportService;
+use App\Services\Reports\SalesStatementService;
 use App\Services\Reports\TaxReportService;
 use App\Services\Settings\BusinessProfile;
 use App\Services\Settings\SettingsService;
@@ -57,9 +58,9 @@ class TaxTest extends TestCase
         $this->branch->menuItems()->attach($this->item->id, ['is_available' => true]);
     }
 
-    private function ghana(bool $inclusive, bool $deliveryTaxed = false): void
+    private function ghana(bool $inclusive): void
     {
-        app(TaxService::class)->save($inclusive, $deliveryTaxed, TaxService::GHANA_PRESET);
+        app(TaxService::class)->save($inclusive, TaxService::GHANA_PRESET);
     }
 
     private function order(string $paymentMethod = 'cash', int $quantity = 2, string $fulfilment = 'pickup'): Order
@@ -136,15 +137,15 @@ class TaxTest extends TestCase
         $this->ghana(inclusive: false);
         $order = $this->order();
 
-        app(TaxService::class)->save(false, false, [['name' => 'VAT', 'rate_basis_points' => 2500]]);
+        app(TaxService::class)->save(false, [['name' => 'VAT', 'rate_basis_points' => 2500]]);
 
         $this->assertSame(12000, (int) $order->fresh()->total);
         $this->assertSame(3, $order->taxes()->count());
     }
 
-    public function test_a_taxed_delivery_fee_is_taxed_again_when_it_changes(): void
+    public function test_the_delivery_fee_is_never_taxed(): void
     {
-        $this->ghana(inclusive: false, deliveryTaxed: true);
+        $this->ghana(inclusive: false);
         $order = $this->order(fulfilment: 'delivery')->fresh(); // no location: fee priced later
 
         $this->assertSame(12000, (int) $order->total);
@@ -153,10 +154,28 @@ class TaxTest extends TestCase
         app(TaxService::class)->retotal($order);
         $order->save();
 
-        // Food 10000 + fee 1000 + 20% tax on both.
-        $this->assertSame(2200, (int) $order->fresh()->tax_total);
-        $this->assertSame(13200, (int) $order->fresh()->total);
-        $this->assertSame([150, 25, 25], $order->taxes()->orderBy('id')->pluck('delivery_amount')->all());
+        // Food 10000 + 20% tax on the food + the fee untaxed.
+        $this->assertSame(2000, (int) $order->fresh()->tax_total);
+        $this->assertSame(13000, (int) $order->fresh()->total);
+        $this->assertSame([0, 0, 0], $order->taxes()->orderBy('id')->pluck('delivery_amount')->all());
+    }
+
+    public function test_the_sales_report_takes_a_refunds_tax_off_the_tax_not_the_sales(): void
+    {
+        $this->ghana(inclusive: false);
+        $order = $this->order(); // 12000: 10000 sales + 2000 tax
+
+        Refund::create([
+            'order_id' => $order->id, 'branch_id' => $this->branch->id, 'amount' => 6000, 'reason' => 'Wrong item',
+            'status' => Refund::STATUS_COMPLETED, 'requested_by' => $owner = $this->owner()->id, 'completed_by' => $owner, 'completed_at' => now(),
+        ]);
+
+        $report = app(SalesStatementService::class)->build('sales', Carbon::now('Africa/Accra')->startOfDay(), Carbon::now('Africa/Accra')->endOfDay(), ignoreBranchScope: true);
+
+        $this->assertSame(10000, $report['sales_total']);
+        $this->assertSame(5000, $report['refunds_total']);
+        $this->assertSame(5000, $report['net_total']);
+        $this->assertContains(['label' => 'Tax collected (not sales)', 'value' => 'GHS 10.00'], $report['memo_lines']);
     }
 
     public function test_reports_count_sales_before_tax_and_tills_expect_the_tax(): void
@@ -215,16 +234,15 @@ class TaxTest extends TestCase
         $this->actingAs($owner)->withSession(['current_branch_id' => $this->branch->id])
             ->put(route('dashboard.tax.update'), [
                 'inclusive' => '0',
-                'delivery_taxed' => '1',
                 'lines' => [['name' => 'VAT', 'rate' => '15'], ['name' => '', 'rate' => ''], ['name' => 'NHIL', 'rate' => '2.5']],
             ])->assertSessionHasNoErrors();
 
-        $this->assertSame(['inclusive' => false, 'delivery_taxed' => true, 'lines' => [
+        $this->assertSame(['inclusive' => false, 'lines' => [
             ['name' => 'VAT', 'rate_basis_points' => 1500], ['name' => 'NHIL', 'rate_basis_points' => 250],
         ]], app(TaxService::class)->config());
 
         $this->actingAs($owner)->withSession(['current_branch_id' => $this->branch->id])
-            ->put(route('dashboard.tax.update'), ['inclusive' => '1', 'delivery_taxed' => '0', 'lines' => [['name' => 'VAT', 'rate' => '150']]])
+            ->put(route('dashboard.tax.update'), ['inclusive' => '1', 'lines' => [['name' => 'VAT', 'rate' => '150']]])
             ->assertSessionHasErrors('lines.0.rate');
     }
 

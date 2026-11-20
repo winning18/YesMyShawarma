@@ -26,7 +26,6 @@ class UpdateTaxSettingsRequest extends FormRequest
     {
         return [
             'inclusive' => ['required', 'boolean'],
-            'delivery_taxed' => ['required', 'boolean'],
             'lines' => ['array', 'max:'.TaxService::MAX_LINES],
             'lines.*.name' => ['required', 'string', 'max:40', 'distinct:ignore_case'],
             'lines.*.rate' => ['required', 'numeric', 'min:0.01', 'max:100', 'decimal:0,2'],

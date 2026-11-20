@@ -90,21 +90,6 @@
                 <x-input-error :messages="$errors->get('inclusive')" />
             </section>
 
-            @module('delivery')
-            <section class="space-y-3">
-                <h3 class="font-semibold text-gray-800">{{ __('Delivery fee') }}</h3>
-                <input type="hidden" name="delivery_taxed" value="0">
-                <label class="flex items-start gap-3">
-                    <input type="checkbox" name="delivery_taxed" value="1" @checked(old('delivery_taxed', $config['delivery_taxed'])) class="mt-1 rounded border-gray-300">
-                    <span>
-                        <span class="block text-sm font-semibold text-gray-800">{{ __('Tax the delivery fee too') }}</span>
-                        <span class="block text-xs text-gray-500">{{ __('Same taxes, same way as your prices. Any tax added to the fee is collected and handed in with it.') }}</span>
-                    </span>
-                </label>
-            </section>
-            @else
-                <input type="hidden" name="delivery_taxed" value="{{ $config['delivery_taxed'] ? '1' : '0' }}">
-            @endmodule
 
             <section class="space-y-1">
                 <h3 class="font-semibold text-gray-800">{{ __('On receipts') }}</h3>
@@ -116,7 +101,7 @@
                     @endif
                     <a href="{{ route('dashboard.business-profile.edit') }}" class="text-indigo-700 font-semibold hover:underline">{{ $tin ? __('Change it in Business profile') : __('Add it in Business profile') }}</a>
                 </p>
-                <p class="text-xs text-gray-500">{{ __('Bolt Food orders and freebies carry no tax.') }}</p>
+                <p class="text-xs text-gray-500">{{ __('Only food is taxed: delivery fees, Bolt Food orders and freebies carry no tax.') }}</p>
             </section>
 
             <div class="flex justify-end">

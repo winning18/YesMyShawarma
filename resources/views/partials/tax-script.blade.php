@@ -1,7 +1,8 @@
 {{--
-    window.expressTax(food, fee, paymentMethod) for the POS and checkout
+    window.expressTax(food, paymentMethod) for the POS and checkout
     running totals (Express POS step 9) — the same sums as
-    TaxService::quote()/split(), which stays the one that's charged.
+    TaxService::quote()/split(), which stays the one that's charged. Only
+    the food is taxed, never the delivery fee.
     Returns { lines: [{ label, amount, inclusive }], added } where `added`
     goes on top of the total (0 when prices include the tax). $taxConfig
     is TaxService::clientConfig() (null: no tax, nothing to show).
@@ -21,12 +22,11 @@
             });
         };
 
-        return function (food, fee, paymentMethod) {
+        return function (food, paymentMethod) {
             if (!config || config.untaxed.includes(paymentMethod)) return { lines: [], added: 0 };
             const rates = config.lines.map((line) => line.rate_basis_points);
             const onFood = split(Math.max(0, food), rates, config.inclusive);
-            const onFee = split(config.delivery_taxed ? Math.max(0, fee || 0) : 0, rates, config.inclusive);
-            const lines = config.lines.map((line, i) => ({ label: line.label, amount: onFood[i] + onFee[i], inclusive: config.inclusive }));
+            const lines = config.lines.map((line, i) => ({ label: line.label, amount: onFood[i], inclusive: config.inclusive }));
             const total = lines.reduce((sum, line) => sum + line.amount, 0);
 
             return { lines, added: config.inclusive ? 0 : total };

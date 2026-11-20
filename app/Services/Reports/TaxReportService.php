@@ -26,7 +26,7 @@ class TaxReportService
 
     /**
      * @param  ?list<int>  $branchIds
-     * @return array{lines: list<array{label: string, inclusive: bool, food: int, delivery: int, total: int}>, days: list<array{date: string, orders: int, sales: int, tax: int}>, orders_count: int, taxable: int, tax_total: int, refunded_tax: int, due: int}
+     * @return array{lines: list<array{label: string, inclusive: bool, total: int}>, days: list<array{date: string, orders: int, sales: int, tax: int}>, orders_count: int, taxable: int, tax_total: int, refunded_tax: int, due: int}
      */
     public function build(Carbon $from, Carbon $to, bool $ignoreBranchScope = false, ?int $branchId = null, ?array $branchIds = null): array
     {
@@ -37,7 +37,7 @@ class TaxReportService
         $breakdown = $this->tax->breakdown($orders);
 
         $lines = OrderTax::whereIn('order_id', $this->orders($from, $to, $scopeIds)->select('id'))
-            ->selectRaw('name, rate_basis_points, inclusive, sum(food_amount) as food, sum(delivery_amount) as delivery')
+            ->selectRaw('name, rate_basis_points, inclusive, sum(food_amount) as total')
             ->groupBy('name', 'rate_basis_points', 'inclusive')
             ->orderByDesc('rate_basis_points')
             ->orderBy('name')
@@ -45,19 +45,13 @@ class TaxReportService
             ->map(fn ($row) => [
                 'label' => TaxService::label($row->name, (int) $row->rate_basis_points),
                 'inclusive' => (bool) $row->inclusive,
-                'food' => (int) $row->food,
-                'delivery' => (int) $row->delivery,
-                'total' => (int) $row->food + (int) $row->delivery,
+                'total' => (int) $row->total,
             ])
             ->values()
             ->all();
 
-        // Sales before tax on these orders: the food, and the delivery
-        // fee where it was taxed.
-        $taxable = fn (Order $order) => $this->tax->netFood($order, $breakdown)
-            + ($this->tax->of($order, $breakdown)['delivery'] > 0
-                ? (int) $order->delivery_fee - ($this->tax->of($order, $breakdown)['delivery'] - $this->tax->of($order, $breakdown)['delivery_added'])
-                : 0);
+        // Sales before tax on these orders (only food is taxed).
+        $taxable = fn (Order $order) => $this->tax->netFood($order, $breakdown);
 
         $days = $orders
             ->groupBy(fn (Order $order) => $order->placed_at->clone()->timezone('Africa/Accra')->toDateString())
@@ -77,9 +71,7 @@ class TaxReportService
                 ->when($scopeIds !== null, fn (Builder $q) => $q->whereIn('branch_id', $scopeIds)))
             ->with(['order' => fn ($q) => $q->withoutGlobalScope(BranchScope::class)->select('id', 'tax_total', 'total')])
             ->get()
-            ->sum(fn (Refund $refund) => (int) $refund->order->total > 0
-                ? (int) round(min((int) $refund->amount, (int) $refund->order->total) * (int) $refund->order->tax_total / (int) $refund->order->total)
-                : 0);
+            ->sum(fn (Refund $refund) => $this->tax->refundTax($refund));
 
         $taxTotal = (int) $orders->sum('tax_total');
 

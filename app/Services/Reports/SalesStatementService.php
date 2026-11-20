@@ -131,7 +131,7 @@ class SalesStatementService
 
         $expenses = $isSales ? $this->expenses($from, $to, $scopeIds) : [];
         $expensesTotal = (int) collect($expenses)->sum('amount');
-        $refunds = $isSales ? $this->refunds($from, $to, $scopeIds) : ['total' => 0, 'count' => 0];
+        $refunds = $isSales ? $this->refunds($from, $to, $scopeIds) : ['total' => 0, 'count' => 0, 'tax' => 0];
 
         $salesTotal = $totals[$isSales ? 'sales' : 'total'];
         $net = $salesTotal - $refunds['total'] - $expensesTotal;
@@ -152,7 +152,7 @@ class SalesStatementService
                 ['label' => 'Orders', 'value' => (string) count($allRows)],
                 ['label' => 'Discounts given', 'value' => $this->money($totals['discount'])],
                 ['label' => 'Delivery fees (not sales)', 'value' => $this->money($totals['delivery_fee'])],
-                ...($hasTax ? [['label' => 'Tax collected (not sales)', 'value' => $this->money($totals['tax'])]] : []),
+                ...($hasTax || $refunds['tax'] ? [['label' => 'Tax collected (not sales)', 'value' => $this->money(($totals['tax'] ?? 0) - $refunds['tax'])]] : []),
                 ['label' => 'Refunds completed', 'value' => (string) $refunds['count']],
             ]
             : [
@@ -327,7 +327,9 @@ class SalesStatementService
 
     /**
      * @param  ?list<int>  $scopeIds
-     * @return array{total: int, count: int}
+     *                                total is the sales part of the refunds (step 9: their tax share is
+     *                                in tax, off the tax line rather than sales).
+     * @return array{total: int, count: int, tax: int}
      */
     private function refunds(Carbon $from, Carbon $to, ?array $scopeIds): array
     {
@@ -343,9 +345,15 @@ class SalesStatementService
             $query->whereIn('branch_id', $scopeIds);
         }
 
+        $refunds = (clone $query)
+            ->with(['order' => fn ($q) => $q->withoutGlobalScope(BranchScope::class)->select('id', 'tax_total', 'total')])
+            ->get(['id', 'order_id', 'amount']);
+        $tax = (int) $refunds->sum(fn (Refund $refund) => app(TaxService::class)->refundTax($refund));
+
         return [
-            'total' => (int) (clone $query)->sum('amount'),
-            'count' => (clone $query)->count(),
+            'total' => (int) $refunds->sum('amount') - $tax,
+            'count' => $refunds->count(),
+            'tax' => $tax,
         ];
     }
 

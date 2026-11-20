@@ -47,9 +47,9 @@ class TaxReportController extends Controller
 
         return response()->streamDownload(function () use ($report, $money) {
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['Tax', 'Prices', 'On food', 'On delivery', 'Total'], escape: '');
+            fputcsv($out, ['Tax', 'Prices', 'Tax charged'], escape: '');
             foreach ($report['lines'] as $line) {
-                fputcsv($out, [$line['label'], $line['inclusive'] ? 'Included' : 'Added', $money($line['food']), $money($line['delivery']), $money($line['total'])], escape: '');
+                fputcsv($out, [$line['label'], $line['inclusive'] ? 'Included' : 'Added', $money($line['total'])], escape: '');
             }
             fputcsv($out, [], escape: '');
             fputcsv($out, ['Sales before tax', $money($report['taxable'])], escape: '');

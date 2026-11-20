@@ -7,6 +7,7 @@ use App\Models\MarketListItem;
 use App\Models\Order;
 use App\Models\Refund;
 use App\Models\Scopes\BranchScope;
+use App\Services\Tax\TaxService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -19,7 +20,8 @@ use Illuminate\Support\Collection;
  *  - Sales: exactly SalesStatementService's 'sales' figure — every order
  *    except Bolt Food, subtotal − discount (the delivery fee goes to the
  *    rider), paid-onwards statuses only, by placed_at.
- *  - Refunds: completed refunds, by completed_at, same as the statement.
+ *  - Refunds: completed refunds, by completed_at, same as the statement
+ *    (less their tax share, step 9).
  *  - Purchases: approved market lists, by purchase date. Pending and
  *    sent-back lists are reported separately and never counted.
  *  - Bolt Food is its own line, added only into "profit incl. Bolt Food"
@@ -176,9 +178,11 @@ class ProfitReportService
                 ->withoutGlobalScope(BranchScope::class)
                 ->whereNotIn('payment_method', Order::EXCLUDED_FROM_SALES_PAYMENT_METHODS))
             ->when($scopeIds !== null, fn (Builder $query) => $query->whereIn('branch_id', $scopeIds))
-            ->get(['completed_at', 'amount'])
+            ->with(['order' => fn ($q) => $q->withoutGlobalScope(BranchScope::class)->select('id', 'tax_total', 'total')])
+            ->get(['id', 'order_id', 'completed_at', 'amount'])
             ->groupBy(fn (Refund $refund) => $periodOf($refund->completed_at->clone()->timezone('Africa/Accra')))
-            ->map(fn (Collection $refunds) => (int) $refunds->sum('amount'))
+            // Sales before tax (step 9): a refund's tax share isn't sales.
+            ->map(fn (Collection $refunds) => (int) $refunds->sum(fn (Refund $refund) => (int) $refund->amount - app(TaxService::class)->refundTax($refund)))
             ->all();
     }
 

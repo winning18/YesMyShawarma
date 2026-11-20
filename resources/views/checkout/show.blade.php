@@ -237,9 +237,9 @@
             estimatedFeeOrZero() {
                 return (this.fulfilmentType === 'delivery' && this.estimatedFee !== null) ? this.estimatedFee : 0;
             },
-            // Tax (step 9), the same sums the order is charged with.
+            // Tax on the food (step 9), the same sums the order is charged with.
             tax() {
-                return window.expressTax(Math.max(0, this.subtotalPesewas - this.discountAmount), this.estimatedFeeOrZero(), this.paymentMethod);
+                return window.expressTax(Math.max(0, this.subtotalPesewas - this.discountAmount), this.paymentMethod);
             },
         }"
         x-effect="if (fulfilmentType !== 'delivery') { estimatedFee = null; locationStatus = ''; locationFailed = false; locationOptOut = false; closerBranch = null; }"
