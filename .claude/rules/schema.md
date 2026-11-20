@@ -187,6 +187,10 @@ Same applies to `delivery_address_snapshot` — customers edit saved addresses.
   shows distinctly on the receipt/kitchen ticket; `unit_price_snapshot`/`line_total` are both 0
   on that row, but `quantity` is a real count — stock deduction treats it like any other row,
   with no `is_free` check of its own (a free shawarma still consumes real ingredients).
+- `users.rider_last_seen_at` (nullable, UTC) is when a rider last used the rider app. It's what
+  "logged in" means for rider availability: within `session.lifetime` and at
+  `users.current_branch_id`. Written by `MarkRiderSeen`, cleared by rider logout and suspension.
+  It replaced reading `sessions.user_id` (2026-11-20). See orders.md's rider assignment section.
 
 ## Shifts
 

@@ -22,19 +22,25 @@ class RiderAvailabilityController extends Controller
      * RiderAssignmentService::loggedInRiderIds() for what "logged in at
      * this branch" actually means — same rule auto-assignment uses, so
      * the two never disagree about who counts as available.
+     *
+     * An owner's all-branches view has no current branch: every branch's
+     * riders come back instead, each with its branch_id, and the dashboard
+     * lists only the ones at an order's own branch.
      */
     public function index(Request $request, BranchContext $context, RiderAssignmentService $riders): JsonResponse
     {
         abort_unless($request->user()->can('orders.assign_rider'), 403);
 
-        $riderIds = $context->usersWithRole('rider', $context->id())->pluck('id');
-        $availableIds = $riders->loggedInRiderIds($riderIds, $context->id());
+        $branchIds = $context->id() !== null
+            ? collect([$context->id()])
+            : $context->selectableBranchIdsFor($request->user());
 
         return response()->json([
-            'data' => User::whereIn('id', $availableIds)->get()->map(fn (User $user) => [
+            'data' => $riders->availableRiders($branchIds)->map(fn (User $user) => [
                 'id' => $user->id,
                 'name' => $user->name,
-            ]),
+                'branch_id' => $user->current_branch_id,
+            ])->values(),
         ]);
     }
 }

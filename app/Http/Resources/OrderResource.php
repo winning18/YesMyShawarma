@@ -25,6 +25,9 @@ class OrderResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            // The staff dashboard's assign dropdown lists only riders at
+            // the order's own branch (RiderAvailabilityController).
+            'branch_id' => $this->branch_id,
             'reference' => $this->reference,
             'status' => $this->status,
             'fulfilment_type' => $this->fulfilment_type,

@@ -236,15 +236,15 @@
 
                                     <select
                                         class="block mt-1 text-sm rounded-md border-gray-300"
-                                        x-show="riders.length > 0"
+                                        x-show="ridersFor(order).length > 0"
                                         @change="assignRider(order.id, $event.target.value); $event.target.value = ''"
                                     >
                                         <option value="" x-text="order.rider_name ? @js(__('Reassign to…')) : @js(__('Assign to…'))"></option>
-                                        <template x-for="rider in riders" :key="rider.id">
+                                        <template x-for="rider in ridersFor(order)" :key="rider.id">
                                             <option :value="rider.id" x-text="rider.name"></option>
                                         </template>
                                     </select>
-                                    <p class="mt-1 text-xs text-red-600 font-medium" x-show="riders.length === 0">
+                                    <p class="mt-1 text-xs text-red-600 font-medium" x-show="ridersFor(order).length === 0">
                                         {{ __('No riders available') }}
                                     </p>
                                 </div>
@@ -354,15 +354,16 @@
                     }
                 },
 
-                // On-shift riders for the assign-rider dropdown — refreshed
+                // Logged-in riders for the assign-rider dropdown — refreshed
                 // alongside order data so it doesn't go stale as riders
-                // start/end shifts during the session. Only ever holds
-                // riders, never staff.
+                // log in and out during the session. Only ever holds
+                // riders, never staff. Each carries its branch_id: an
+                // owner's all-branches view gets every branch's riders.
                 async fetchRiders() {
                     // No riders while Delivery and riders is switched off (ModuleService).
                     if (! @js(app(\App\Services\Modules\ModuleService::class)->enabled('delivery'))) return;
 
-                    const wasEmpty = this.riders.length === 0;
+                    const waiting = this.inProgress.filter(order => this.needsRiderControl(order) && !order.rider_name && this.ridersFor(order).length === 0);
 
                     try {
                         const response = await fetch('{{ route('dashboard.riders') }}', {
@@ -376,10 +377,10 @@
 
                         // A rider going from none-available to available
                         // only matters if there's actually an order sitting
-                        // there waiting for one — otherwise this fires every
-                        // time the first rider of the day clocks in with
-                        // nothing to assign them to.
-                        if (wasEmpty && this.riders.length > 0 && this.hasUnassignedDelivery()) {
+                        // there waiting for one at their branch — otherwise
+                        // this fires every time the first rider of the day
+                        // logs in with nothing to assign them to.
+                        if (waiting.some(order => this.ridersFor(order).length > 0)) {
                             this.riderAvailableChime();
                         }
                     } catch (e) {
@@ -391,8 +392,8 @@
                     return order.fulfilment_type === 'delivery' && ['ready', 'dispatched'].includes(order.status);
                 },
 
-                hasUnassignedDelivery() {
-                    return this.inProgress.some(order => this.needsRiderControl(order) && !order.rider_name);
+                ridersFor(order) {
+                    return this.riders.filter(rider => Number(rider.branch_id) === Number(order.branch_id));
                 },
 
                 // Seconds left in the 15-minute cooking window — negative
