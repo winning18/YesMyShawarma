@@ -5,8 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\Printer;
 use App\Services\Printing\PrinterService;
+use App\Services\Printing\PrintJobService;
 use App\Services\Printing\ReceiptService;
 use App\Services\Shifts\CounterService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
@@ -17,6 +20,19 @@ use Illuminate\View\View;
  */
 class PrintController extends Controller
 {
+    /**
+     * A Print button (step 8b): queues a reprint for the print agent.
+     * queued 0 means there's no agent on, and the page prints through the
+     * browser instead.
+     */
+    public function queue(Request $request, Order $order, string $kind, PrintJobService $jobs): JsonResponse
+    {
+        Gate::authorize('view', $order);
+        abort_unless(in_array($kind, Printer::ROLES, true), 404);
+
+        return response()->json(['queued' => $jobs->reprint($order, $kind, $request->user())]);
+    }
+
     public function show(Order $order, string $kind, PrinterService $printers, ReceiptService $receipts, CounterService $counters): View
     {
         Gate::authorize('view', $order);

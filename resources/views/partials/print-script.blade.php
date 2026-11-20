@@ -1,8 +1,9 @@
 {{--
-    Browser printing (Express POS step 8a): loads a receipt or kitchen
-    ticket into a hidden frame and prints it, one at a time. On Windows with
-    Chrome's kiosk printing on, it prints straight to the default printer
-    with no dialog; the print agent (8b) will take over automatic printing.
+    Printing from the staff screens. With the branch's Express POS Print
+    Agent on (step 8b), the server queues receipts and tickets and the
+    agent prints them with no dialog; Print buttons queue a reprint. With
+    no agent, the browser prints (step 8a): a hidden frame, one at a time —
+    silent on Windows with Chrome's kiosk printing.
     $printBranchId: the branch whose printers decide what prints.
 --}}
 @php
@@ -12,6 +13,7 @@
         'enabled' => $printBranch && $printers->hasPrinters($printBranch),
         'receipt' => $printBranch && (bool) $printers->receiptPrinterFor($printBranch, app(\App\Services\Shifts\CounterService::class)->currentAt($printBranch)),
         'kitchen' => $printBranch && $printers->kitchenPrinters($printBranch)->isNotEmpty(),
+        'agent' => $printBranch && app(\App\Services\Printing\PrintAgentService::class)->isOnline($printBranch),
     ];
 @endphp
 <script>
@@ -49,4 +51,22 @@
             return queue;
         };
     })();
+
+    // A Print button: the agent if it's on, otherwise the browser.
+    window.expressReprint = async (orderId, kind) => {
+        if (window.expressPrinting.agent) {
+            try {
+                const response = await fetch(window.expressPrintUrl(orderId, kind), {
+                    method: 'POST',
+                    headers: { Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
+                });
+                const payload = await response.json();
+                if (response.ok && payload.queued > 0) return;
+            } catch (e) {
+                // fall through to the browser
+            }
+        }
+
+        window.expressPrint(window.expressPrintUrl(orderId, kind));
+    };
 </script>

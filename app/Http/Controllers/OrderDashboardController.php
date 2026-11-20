@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
+use App\Models\PrintJob;
 use App\Models\User;
 use App\Services\Branches\BranchContext;
 use App\Services\Modules\ModuleService;
 use App\Services\Orders\OrderTransferService;
+use App\Services\Printing\PrintJobService;
 use App\Services\Shifts\CounterService;
 use App\Services\Shifts\ShiftService;
 use Illuminate\Http\RedirectResponse;
@@ -137,6 +139,18 @@ class OrderDashboardController extends Controller
             ->orderBy('placed_at')
             ->get();
 
-        return OrderResource::collection($orders);
+        // Step 8b: receipts and tickets the print agent couldn't print, so
+        // staff can reprint them.
+        $branchId = app(BranchContext::class)->id();
+        $failures = $branchId ? app(PrintJobService::class)->recentFailures($branchId)->map(fn (PrintJob $job) => [
+            'id' => $job->id,
+            'order_id' => $job->order_id,
+            'reference' => $job->order?->reference,
+            'kind' => $job->kind,
+            'printer' => $job->printer?->name,
+            'error' => $job->error,
+        ])->values() : [];
+
+        return OrderResource::collection($orders)->additional(['print_failures' => $failures]);
     }
 }

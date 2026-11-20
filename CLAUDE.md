@@ -224,10 +224,9 @@ step before the previous one is released.
 
 Straight after the MVP: offline mode for the subscription edition.
 
-**Current step:** 8b (the Express POS Print Agent for Windows: prints automatically with no dialog
-to any ESC/POS printer over network or USB, opens the cash drawer on cash sales, reports failed
-prints; needs a print queue — schema to propose). 8a, printers and browser printing, built
-2026-11-15 (schema.md's Printing note). Step 6 (installs per client) is the last step, after the
+**Current step:** 9 (optional tax). Step 8, direct printing, built 2026-11-15/20: 8a printers,
+receipts, kitchen tickets and browser printing; 8b the Express POS Print Agent for Windows
+(`print-agent/`, Go, unsigned for the pilot) — schema.md's Printing notes. Step 6 (installs per client) is the last step, after the
 pilot (owner, 2026-11-15). Step 7, several cashiers, built 2026-11-15: 7a named
 counters with a till each (schema.md's Shifts section), 7b Staff ID + PIN sign-in on counters
 (`users.staff_code` like YMS-0042 from the business's initials, `users.pin` hashed; till staff

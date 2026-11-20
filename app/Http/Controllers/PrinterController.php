@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\PrintAgent;
 use App\Models\Printer;
 use App\Models\Terminal;
 use App\Services\Branches\BranchContext;
+use App\Services\Printing\PrintAgentService;
 use App\Services\Printing\PrinterService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,7 +30,37 @@ class PrinterController extends Controller
             'branch' => $branch,
             'printers' => Printer::where('branch_id', $branch->id)->orderBy('role')->orderBy('name')->get(),
             'counters' => Terminal::where('branch_id', $branch->id)->where('is_active', true)->orderBy('name')->get(),
+            'agents' => PrintAgent::where('branch_id', $branch->id)->orderBy('name')->get(),
         ]);
+    }
+
+    /**
+     * A one-time code for connecting a print agent (step 8b), shown once.
+     * The same agent asking again (reinstalled PC) gets a fresh code.
+     */
+    public function connectAgent(Request $request, BranchContext $context, PrintAgentService $agents): RedirectResponse
+    {
+        Gate::authorize('settings.manage');
+        $branch = $context->branch() ?? abort(404);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:60'],
+            'agent_id' => ['nullable', 'integer', Rule::exists('print_agents', 'id')->where('branch_id', $branch->id)],
+        ]);
+
+        [$agent, $code] = $agents->startConnecting($branch, $validated['name'], isset($validated['agent_id']) ? PrintAgent::find($validated['agent_id']) : null);
+
+        return back()->with('agentCode', ['agent' => $agent->name, 'code' => $code, 'minutes' => PrintAgentService::CODE_MINUTES]);
+    }
+
+    public function disconnectAgent(PrintAgent $agent, PrintAgentService $agents): RedirectResponse
+    {
+        Gate::authorize('settings.manage');
+        abort_unless($agent->branch_id === (int) app(BranchContext::class)->id(), 404);
+
+        $agents->disconnect($agent);
+
+        return back()->with('status', __(':name is disconnected and can no longer print.', ['name' => $agent->name]));
     }
 
     public function store(Request $request, BranchContext $context, PrinterService $printers): RedirectResponse

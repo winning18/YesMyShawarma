@@ -211,6 +211,7 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::get('/dashboard/orders/live', [OrderDashboardController::class, 'live'])->name('dashboard.orders.live');
     Route::get('/dashboard/orders/{order}', [OrderHistoryController::class, 'show'])->name('dashboard.orders.show');
     Route::get('/dashboard/orders/{order}/print/{kind}', [PrintController::class, 'show'])->whereIn('kind', ['receipt', 'kitchen'])->name('dashboard.orders.print');
+    Route::post('/dashboard/orders/{order}/print/{kind}', [PrintController::class, 'queue'])->whereIn('kind', ['receipt', 'kitchen'])->middleware('throttle:60,1')->name('dashboard.orders.print.queue');
 
     Route::get('/dashboard/pos', [PosController::class, 'index'])->name('dashboard.pos.index');
     Route::post('/dashboard/pos/cart/add', [PosController::class, 'addItem'])->name('dashboard.pos.cart.add');
@@ -322,6 +323,8 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::get('/dashboard/printers', [PrinterController::class, 'index'])->name('dashboard.printers.index');
     Route::post('/dashboard/printers', [PrinterController::class, 'store'])->name('dashboard.printers.store');
     Route::put('/dashboard/printers/{printer}', [PrinterController::class, 'update'])->whereNumber('printer')->name('dashboard.printers.update');
+    Route::post('/dashboard/printers/agents', [PrinterController::class, 'connectAgent'])->middleware('throttle:10,1')->name('dashboard.printers.agents.connect');
+    Route::delete('/dashboard/printers/agents/{agent}', [PrinterController::class, 'disconnectAgent'])->whereNumber('agent')->name('dashboard.printers.agents.disconnect');
 
     Route::get('/dashboard/counters', [CounterController::class, 'index'])->name('dashboard.counters.index');
     Route::post('/dashboard/counters', [CounterController::class, 'store'])->name('dashboard.counters.store');

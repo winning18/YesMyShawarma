@@ -19,6 +19,7 @@ use App\Services\Orders\Data\DeliveryAddressData;
 use App\Services\Orders\Data\PlaceOrderData;
 use App\Services\Orders\Data\PlaceOrderItemData;
 use App\Services\Orders\OrderCreationService;
+use App\Services\Printing\PrintJobService;
 use App\Services\Promotions\PromotionService;
 use App\Services\Settings\SettingsService;
 use App\Services\Shifts\CounterService;
@@ -370,7 +371,12 @@ class PosController extends Controller
 
         $cart->clear();
 
+        // Step 8b: receipt, kitchen ticket and cash drawer through the print
+        // agent when it's on; otherwise the POS prints through the browser.
+        $printedByAgent = app(PrintJobService::class)->forPosSale($order->fresh(['shift.terminal']), $request->user());
+
         return response()->json([
+            'printed_by_agent' => $printedByAgent,
             'order' => [
                 'id' => $order->id,
                 'reference' => $order->reference,

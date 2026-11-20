@@ -38,6 +38,16 @@ jobs:
       - name: Run tests
         run: php artisan test
 
+      # The Express POS Print Agent (Windows program, step 8b).
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Test the print agent
+        working-directory: print-agent
+        run: go test ./...
+
   deploy:
     needs: test
     runs-on: ubuntu-latest
@@ -76,6 +86,21 @@ jobs:
           echo "VITE_REVERB_SCHEME=${VITE_REVERB_SCHEME}" >> .env
           npm run build
 
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Build the print agent for Windows
+        working-directory: print-agent
+        env:
+          GOOS: windows
+          GOARCH: amd64
+          CGO_ENABLED: '0'
+        run: |
+          mkdir -p ../public/downloads
+          go build -trimpath -ldflags "-s -w -X main.version=1.0.0+${GITHUB_SHA::7}" -o ../public/downloads/ExpressPOSPrintAgent.exe .
+
       - name: Set up deploy SSH key
         run: |
           mkdir -p ~/.ssh
@@ -83,12 +108,14 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Sync vendor/ and public/build/ to server
+      - name: Sync vendor/, public/build/ and public/downloads/ to server
         run: |
           rsync -az --delete -e "ssh -i ~/.ssh/deploy_key" vendor/ \
             ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/var/www/yes-my-shawarma/vendor/
           rsync -az --delete -e "ssh -i ~/.ssh/deploy_key" public/build/ \
             ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/var/www/yes-my-shawarma/public/build/
+          rsync -az --delete -e "ssh -i ~/.ssh/deploy_key" public/downloads/ \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/var/www/yes-my-shawarma/public/downloads/
 
       - name: Update source code and restart services
         run: |

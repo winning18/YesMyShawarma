@@ -22,6 +22,7 @@ use App\Services\Orders\OrderStateMachine;
 use App\Services\Orders\OrderTransferService;
 use App\Services\Orders\RiderAssignmentService;
 use App\Services\Payments\PaymentConfirmationService;
+use App\Services\Printing\PrintJobService;
 use App\Services\Shifts\ShiftService;
 use App\Support\Money;
 use Closure;
@@ -60,7 +61,11 @@ class OrderActionController extends Controller
             shiftId: $shift?->id,
         );
 
-        return new OrderResource($order->fresh(['items.options', 'customer']));
+        // Step 8b: the print agent prints the kitchen ticket, when it's on;
+        // otherwise the board prints it through the browser.
+        $printedByAgent = app(PrintJobService::class)->forAccepted($order->fresh(), $request->user());
+
+        return (new OrderResource($order->fresh(['items.options', 'customer'])))->additional(['printed_by_agent' => $printedByAgent]);
     }
 
     public function reject(Order $order, OrderStateMachine $stateMachine, BranchContext $context, ShiftService $shifts, Request $request): OrderResource

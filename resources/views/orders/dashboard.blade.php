@@ -44,6 +44,19 @@
                 flashing and disappearing the instant the follow-up board
                 refresh succeeded, before staff had a chance to read it.
             --}}
+            {{-- Step 8b: what the print agent couldn't print, with a reprint. --}}
+            <template x-for="failure in printFailures" :key="failure.id">
+                <div class="bg-amber-50 border border-amber-200 text-amber-900 text-sm rounded-lg p-3 flex items-center justify-between gap-3">
+                    <span>
+                        <strong x-text="failure.kind === 'receipt' ? @js(__('Receipt')) : @js(__('Kitchen ticket'))"></strong>
+                        {{ __('for') }} <span x-text="failure.reference"></span> {{ __('didn\'t print') }}<span x-show="failure.printer"> {{ __('on') }} <span x-text="failure.printer"></span></span>.
+                        <span class="text-amber-700" x-text="failure.error"></span>
+                    </span>
+                    <button type="button" class="shrink-0 px-3 py-1.5 bg-amber-600 text-white text-xs font-semibold rounded-md hover:bg-amber-700"
+                        @click="window.expressReprint(failure.order_id, failure.kind).then(() => setTimeout(() => fetchData(), 1500))">{{ __('Reprint') }}</button>
+                </div>
+            </template>
+
             <template x-if="actionError">
                 <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-4 flex items-start justify-between gap-3">
                     <span x-text="actionError"></span>
@@ -142,8 +155,8 @@
                                     <p class="font-semibold text-gray-900 truncate" x-text="order.reference"></p>
                                     {{-- Step 8a: reprint when an automatic print didn't come out. --}}
                                     <div x-show="window.expressPrinting?.enabled" x-cloak class="flex gap-3 mt-0.5 text-xs">
-                                        <button type="button" class="text-indigo-600 hover:underline" @click="window.expressPrint(window.expressPrintUrl(order.id, 'receipt'))">{{ __('Print receipt') }}</button>
-                                        <button type="button" class="text-indigo-600 hover:underline" @click="window.expressPrint(window.expressPrintUrl(order.id, 'kitchen'))">{{ __('Print ticket') }}</button>
+                                        <button type="button" class="text-indigo-600 hover:underline" @click="window.expressReprint(order.id, 'receipt')">{{ __('Print receipt') }}</button>
+                                        <button type="button" class="text-indigo-600 hover:underline" @click="window.expressReprint(order.id, 'kitchen')">{{ __('Print ticket') }}</button>
                                     </div>
                                     <div class="flex items-center gap-1.5 mt-1 flex-wrap">
                                         <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 capitalize" x-text="order.status"></span>
@@ -281,6 +294,7 @@
                 needsAcknowledgement: [],
                 inProgress: [],
                 riders: [],
+                printFailures: [],
                 canTransfer,
                 branches,
                 canAdjustFee,
@@ -328,7 +342,8 @@
 
                         if (!response.ok) throw new Error('Failed to load orders');
 
-                        const { data } = await response.json();
+                        const { data, print_failures } = await response.json();
+                        this.printFailures = print_failures || [];
 
                         this.needsAcknowledgement = data.filter(o => o.status === 'paid');
                         this.inProgress = data.filter(o => o.status !== 'paid');
@@ -459,8 +474,9 @@
                 async act(orderId, action) {
                     const done = await this.post(`/dashboard/orders/${orderId}/${action}`);
 
-                    // Step 8a: the kitchen ticket prints when an order is accepted.
-                    if (done && action === 'accept' && window.expressPrinting?.kitchen) {
+                    // The kitchen ticket prints when an order is accepted —
+                    // by the print agent when it's on (8b), else the browser (8a).
+                    if (done && action === 'accept' && window.expressPrinting?.kitchen && ! done.printed_by_agent) {
                         window.expressPrint(window.expressPrintUrl(orderId, 'kitchen'));
                     }
                 },
@@ -547,7 +563,7 @@
                             throw new Error(payload?.message || 'Action failed');
                         }
 
-                        return true;
+                        return await response.json().catch(() => ({}));
                     } catch (e) {
                         this.actionError = e.message;
 

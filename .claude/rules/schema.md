@@ -238,6 +238,19 @@ a counter's own receipt printer, else the branch's first; every active kitchen p
 items, totals, payment, the Business profile's receipt message; the ticket leads with the
 reference's short code and has no prices) — for the browser print pages (`print/receipt`,
 `print/kitchen`, `PrintController`, sized to 58 or 80 mm) now and the print agent's ESC/POS in 8b.
+**Print agent (step 8b).** `print_agents` (branch, name, `token_hash`, a one-time
+`pairing_code_hash` + `pairing_expires_at`, `last_seen_at`) and `print_jobs` (branch, printer,
+order, kind receipt|kitchen|drawer, status pending|sent|printed|failed, attempts, error,
+requested_by, claimed_at, printed_at). The agent (`print-agent/`, Go, Windows) connects with a
+code from the Printers page (`PrintAgentService`, `/api/print-agent/connect`), then every two
+seconds collects jobs (`PrintJobService::claim()`, ESC/POS from `EscPosRenderer`) and reports each
+(`/api/print-agent/jobs/{id}`); a job never confirmed is offered again after two minutes, up to
+three tries. Jobs are queued only while the branch's agent is online (seen in the last 60 s) — a
+POS sale queues receipt, kitchen ticket(s) and, for cash with a drawer printer, a drawer kick;
+accepting queues kitchen tickets; Print buttons queue reprints — and the response's
+`printed_by_agent` / `queued` tells the page whether to print through the browser instead.
+Failed receipts and tickets show on the order board (`print_failures`) until reprinted.
+
 In 8a printing goes through the acting device's browser (`partials/print-script`, a hidden
 frame): the receipt and kitchen ticket after a POS sale, the kitchen ticket on accept, and Print
 buttons on the order page and board cards for reprints. A branch with no printers prints nothing
