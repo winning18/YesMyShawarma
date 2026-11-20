@@ -371,6 +371,8 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::get('/dashboard/customers/broadcasts', [SmsBroadcastController::class, 'index'])->middleware('module:sms')->name('dashboard.customers.broadcasts.index');
     Route::post('/dashboard/customers/broadcasts', [SmsBroadcastController::class, 'store'])->middleware('module:sms')->name('dashboard.customers.broadcasts.store');
     Route::post('/dashboard/customers/broadcasts/{broadcast}/cancel', [SmsBroadcastController::class, 'cancel'])->middleware('module:sms')->name('dashboard.customers.broadcasts.cancel');
+    Route::post('/dashboard/customers/broadcasts/{broadcast}/retry', [SmsBroadcastController::class, 'retry'])->middleware('module:sms')->name('dashboard.customers.broadcasts.retry');
+    Route::post('/dashboard/customers/broadcasts/{broadcast}/resend', [SmsBroadcastController::class, 'resend'])->middleware('module:sms')->name('dashboard.customers.broadcasts.resend');
 
     Route::get('/dashboard/reports', [ReportsController::class, 'index'])->name('dashboard.reports.index');
 

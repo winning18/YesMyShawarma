@@ -10,6 +10,7 @@ use App\Models\Order;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -456,5 +457,89 @@ class OrderHistoryTest extends TestCase
         // rider's session branch — the rider holds no role at otherBranch,
         // so this is blocked regardless of BranchScope's own filtering.
         $this->actingAs($rider)->get(route('dashboard.orders.show', $otherOrder))->assertForbidden();
+    }
+
+    private function otherBranch(): Branch
+    {
+        return Branch::create([
+            'name' => 'Pokuase', 'slug' => 'pokuase', 'phone' => '+233200000002', 'address' => 'B',
+            'lat' => 5.6, 'lng' => -0.2, 'opens_at' => '10:00', 'closes_at' => '22:00',
+        ]);
+    }
+
+    private function orderAt(Branch $branch, string $channel): Order
+    {
+        $order = $this->makeOrder('delivered', $channel);
+        $order->branch_id = $branch->id;
+        $order->save();
+
+        return $order;
+    }
+
+    private function historyIds(User $user, array $query = []): Collection
+    {
+        return collect($this->actingAs($user)->get(route('dashboard.orders.history', $query))->assertOk()->viewData('orders')->items())->pluck('id');
+    }
+
+    public function test_owner_viewing_all_branches_can_filter_web_pos_and_all_history_by_branch(): void
+    {
+        $owner = User::factory()->create();
+        $this->assignRoleAt($owner, 'owner', $this->branch);
+        $other = $this->otherBranch();
+
+        $osuWeb = $this->orderAt($this->branch, 'web');
+        $osuPos = $this->orderAt($this->branch, 'pos');
+        $otherWeb = $this->orderAt($other, 'web');
+        $otherPos = $this->orderAt($other, 'pos');
+
+        $this->assertEqualsCanonicalizing([$osuWeb->id, $osuPos->id, $otherWeb->id, $otherPos->id], $this->historyIds($owner)->all());
+        $this->assertEqualsCanonicalizing([$otherWeb->id, $otherPos->id], $this->historyIds($owner, ['branch' => $other->id])->all());
+        $this->assertEqualsCanonicalizing([$osuWeb->id], $this->historyIds($owner, ['channel' => 'web', 'branch' => $this->branch->id])->all());
+        $this->assertEqualsCanonicalizing([$otherPos->id], $this->historyIds($owner, ['channel' => 'pos', 'branch' => $other->id])->all());
+    }
+
+    public function test_owner_viewing_all_branches_sees_the_branch_filter_and_column(): void
+    {
+        $owner = User::factory()->create();
+        $this->assignRoleAt($owner, 'owner', $this->branch);
+        $other = $this->otherBranch();
+        $this->orderAt($other, 'pos');
+
+        $this->actingAs($owner)->get(route('dashboard.orders.history', ['channel' => 'pos', 'branch' => $other->id]))
+            ->assertOk()
+            ->assertSee('All branches')
+            ->assertSee('<option value="'.$other->id.'" selected', false)
+            ->assertSeeInOrder(['<th class="px-4 py-2">Branch</th>', 'Pokuase'], false);
+    }
+
+    public function test_owner_who_picked_one_branch_gets_no_branch_filter(): void
+    {
+        $owner = User::factory()->create();
+        $this->assignRoleAt($owner, 'owner', $this->branch);
+        $other = $this->otherBranch();
+        $osu = $this->orderAt($this->branch, 'web');
+        $this->orderAt($other, 'web');
+
+        $response = $this->actingAs($owner)->withSession(['current_branch_id' => $this->branch->id])
+            ->get(route('dashboard.orders.history', ['branch' => $other->id]))
+            ->assertOk()
+            ->assertDontSee('All branches');
+
+        $this->assertSame([$osu->id], collect($response->viewData('orders')->items())->pluck('id')->all());
+    }
+
+    public function test_branch_staff_get_no_branch_filter_and_cannot_use_it_to_see_another_branch(): void
+    {
+        $other = $this->otherBranch();
+        $osu = $this->orderAt($this->branch, 'web');
+        $this->orderAt($other, 'web');
+
+        foreach (['staff', 'manager', 'general_manager'] as $role) {
+            $user = User::factory()->create();
+            $this->assignRoleAt($user, $role, $this->branch);
+
+            $this->actingAs($user)->get(route('dashboard.orders.history'))->assertOk()->assertDontSee('All branches');
+            $this->assertSame([$osu->id], $this->historyIds($user, ['branch' => $other->id])->all(), $role);
+        }
     }
 }

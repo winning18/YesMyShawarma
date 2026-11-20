@@ -174,6 +174,61 @@ class SmsBroadcastService
     }
 
     /**
+     * Texts a sent broadcast's failed numbers again, with the same
+     * personal opt-out links; anyone who has opted out since is left out.
+     * Back to "sending", so the next sms:send-due-broadcasts run queues it
+     * like any broadcast still sending, and send() marks it sent again.
+     * Returns how many numbers will be retried.
+     *
+     * @throws SmsBroadcastException
+     */
+    public function retryFailed(SmsBroadcast $broadcast): int
+    {
+        return DB::transaction(function () use ($broadcast) {
+            // Claimed atomically, same as startDue(): a double click can't
+            // reset the same failures twice.
+            $claimed = SmsBroadcast::whereKey($broadcast->id)
+                ->where('status', SmsBroadcast::STATUS_SENT)
+                ->where('failed_count', '>', 0)
+                ->update(['status' => SmsBroadcast::STATUS_SENDING, 'completed_at' => null]);
+
+            if (! $claimed) {
+                throw SmsBroadcastException::notRetryable();
+            }
+
+            $retrying = $broadcast->recipients()
+                ->where('status', 'failed')
+                ->whereHas('customer', fn ($query) => $query->whereNull('marketing_opted_out_at'))
+                ->update(['status' => 'pending', 'error' => null]);
+
+            if ($retrying === 0) {
+                throw SmsBroadcastException::nothingToRetry();
+            }
+
+            $broadcast->update(['failed_count' => $broadcast->recipients()->where('status', 'failed')->count()]);
+
+            return $retrying;
+        });
+    }
+
+    /**
+     * The same message to the same audience again, as a new broadcast sent
+     * now. The audience is read live like any other broadcast's, so it
+     * reaches today's customers, with new opt-out links, and skips anyone
+     * who has opted out since.
+     *
+     * @throws SmsBroadcastException
+     */
+    public function resend(SmsBroadcast $broadcast, User $by): SmsBroadcast
+    {
+        if ($broadcast->status !== SmsBroadcast::STATUS_SENT) {
+            throw SmsBroadcastException::notResendable($broadcast->status);
+        }
+
+        return $this->schedule($broadcast->message, $broadcast->branch_id, null, $by);
+    }
+
+    /**
      * Starts every broadcast whose time has come. Called every minute by
      * sms:send-due-broadcasts. Returns how many were started.
      */

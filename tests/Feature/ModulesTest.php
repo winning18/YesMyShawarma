@@ -12,6 +12,7 @@ use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\Promotion;
 use App\Models\Setting;
+use App\Models\SmsBroadcast;
 use App\Models\User;
 use App\Services\Modules\ModuleService;
 use App\Services\Notifications\CustomerOrderNotifier;
@@ -325,6 +326,10 @@ class ModulesTest extends TestCase
 
         $owner = $this->userWithRole('owner');
         $this->as($owner)->get(route('dashboard.customers.broadcasts.index'))->assertNotFound();
+        $broadcast = SmsBroadcast::create(['message' => 'Hi', 'status' => SmsBroadcast::STATUS_SENT, 'scheduled_at' => now(), 'failed_count' => 1, 'created_by' => $owner->id]);
+        $this->as($owner)->post(route('dashboard.customers.broadcasts.retry', $broadcast))->assertNotFound();
+        $this->as($owner)->post(route('dashboard.customers.broadcasts.resend', $broadcast))->assertNotFound();
+        $this->assertSame(SmsBroadcast::STATUS_SENT, $broadcast->fresh()->status);
         $this->as($owner)->get(route('dashboard.customers.index'))->assertOk()->assertDontSee(route('dashboard.customers.broadcasts.index'), false);
     }
 

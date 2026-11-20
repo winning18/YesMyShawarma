@@ -103,6 +103,19 @@
                     @endphp
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+                        {{-- Owner's all-branches view only (OrderHistoryController). --}}
+                        @if ($branchOptions)
+                            <div>
+                                <label for="branch" class="block text-xs font-medium text-gray-500 mb-1">{{ __('Branch') }}</label>
+                                <select id="branch" name="branch" class="w-full rounded-md border-gray-300 text-sm">
+                                    <option value="">{{ __('All branches') }}</option>
+                                    @foreach ($branchOptions as $branchOption)
+                                        <option value="{{ $branchOption->id }}" @selected((int) ($filters['branch'] ?? 0) === $branchOption->id)>{{ $branchOption->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @endif
+
                         <div>
                             <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('When') }}</label>
                             <x-date-range-picker
@@ -134,6 +147,9 @@
                     <thead class="bg-gray-50 text-left text-gray-500">
                         <tr>
                             <th class="px-4 py-2">{{ __('Reference') }}</th>
+                            @if ($branchOptions)
+                                <th class="px-4 py-2">{{ __('Branch') }}</th>
+                            @endif
                             <th class="px-4 py-2">{{ __('Customer') }}</th>
                             <th class="px-4 py-2">{{ __('Location') }}</th>
                             <th class="px-4 py-2">{{ __('Status') }}</th>
@@ -162,6 +178,9 @@
                                 <td class="px-4 py-2 font-medium">
                                     <a href="{{ route('dashboard.orders.show', $order) }}" class="text-indigo-600 hover:underline">{{ $order->reference }}</a>
                                 </td>
+                                @if ($branchOptions)
+                                    <td class="px-4 py-2 text-gray-500">{{ $order->branch?->name }}</td>
+                                @endif
                                 <td class="px-4 py-2 text-gray-500">{{ $order->customer?->name ?? $order->customer?->phone ?? __('N/A') }}</td>
                                 <td class="px-4 py-2 text-gray-500">{{ $order->delivery_address_snapshot['area_name'] ?? 'N/A' }}</td>
                                 <td class="px-4 py-2">
@@ -177,7 +196,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ $channel ? 8 : 9 }}" class="px-4 py-6 text-center text-gray-500">{{ __('No orders match these filters.') }}</td>
+                                <td colspan="{{ ($channel ? 8 : 9) + ($branchOptions ? 1 : 0) }}" class="px-4 py-6 text-center text-gray-500">{{ __('No orders match these filters.') }}</td>
                             </tr>
                         @endforelse
                     </tbody>

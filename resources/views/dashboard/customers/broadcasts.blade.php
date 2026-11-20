@@ -20,12 +20,13 @@
                 branch: @js((string) old('branch_id', '')),
                 mode: @js(old('send_mode', 'now')),
             })"
+            x-on:copy-broadcast.window="useBroadcast($event.detail)"
         >
             @csrf
 
             <div>
                 <x-input-label for="message" :value="__('Message')" required />
-                <textarea id="message" name="message" rows="4" maxlength="560" x-model="message" required
+                <textarea id="message" name="message" rows="4" maxlength="560" x-model="message" x-ref="message" required
                     class="mt-1 block w-full rounded-md border-gray-300 text-sm"
                     placeholder="{{ __('e.g. It\'s Shawarma Wednesday! Buy 2, get 1 free at every branch today. Order: yesmyshawarma.com') }}"></textarea>
                 <p class="text-xs text-gray-500 mt-1">
@@ -83,7 +84,7 @@
             </div>
         </form>
 
-        <div class="bg-white shadow rounded-lg overflow-hidden overflow-x-auto">
+        <div class="bg-white shadow rounded-lg overflow-hidden overflow-x-auto" x-data>
             <table class="w-full text-sm">
                 <thead class="bg-gray-50 text-left text-gray-500">
                     <tr>
@@ -115,13 +116,36 @@
                             </td>
                             <td class="px-4 py-2 text-right text-gray-500">{{ $broadcast->sent_count }}@if ($broadcast->recipient_count) / {{ $broadcast->recipient_count }}@endif</td>
                             <td class="px-4 py-2 text-right text-gray-500">{{ $broadcast->failed_count }}</td>
-                            <td class="px-4 py-2 text-right">
-                                @if ($broadcast->status === 'scheduled')
-                                    <form method="POST" action="{{ route('dashboard.customers.broadcasts.cancel', $broadcast) }}" onsubmit="return confirm(@js(__('Cancel this broadcast?')))">
-                                        @csrf
-                                        <button class="text-sm text-red-600 hover:underline">{{ __('Cancel') }}</button>
-                                    </form>
-                                @endif
+                            <td class="px-4 py-2">
+                                <div class="flex items-center justify-end gap-3 whitespace-nowrap">
+                                    {{-- Puts the message (and who it went to) back in the form above, to edit or schedule. --}}
+                                    <button type="button" class="text-sm text-gray-600 hover:underline"
+                                        x-on:click="$dispatch('copy-broadcast', { message: @js($broadcast->message), branch: @js((string) ($broadcast->branch_id ?? '')) })">{{ __('Copy') }}</button>
+
+                                    @if ($broadcast->status === 'sent')
+                                        @php($resendTo = $audiences->get($broadcast->branch_id ?? '')['recipients'] ?? null)
+                                        <form method="POST" action="{{ route('dashboard.customers.broadcasts.resend', $broadcast) }}"
+                                            onsubmit="return confirm(@js($resendTo !== null ? __('Send this SMS again to :count people?', ['count' => $resendTo]) : __('Send this SMS again?')))">
+                                            @csrf
+                                            <button class="text-sm text-indigo-600 hover:underline">{{ __('Resend') }}</button>
+                                        </form>
+
+                                        @if ($broadcast->failed_count > 0)
+                                            <form method="POST" action="{{ route('dashboard.customers.broadcasts.retry', $broadcast) }}"
+                                                onsubmit="return confirm(@js(trans_choice('Retry the :count number this broadcast could not reach?|Retry the :count numbers this broadcast could not reach?', $broadcast->failed_count)))">
+                                                @csrf
+                                                <button class="text-sm text-amber-700 hover:underline">{{ __('Retry failed') }}</button>
+                                            </form>
+                                        @endif
+                                    @endif
+
+                                    @if ($broadcast->status === 'scheduled')
+                                        <form method="POST" action="{{ route('dashboard.customers.broadcasts.cancel', $broadcast) }}" onsubmit="return confirm(@js(__('Cancel this broadcast?')))">
+                                            @csrf
+                                            <button class="text-sm text-red-600 hover:underline">{{ __('Cancel') }}</button>
+                                        </form>
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                     @empty
@@ -157,6 +181,16 @@
                         : (this.length <= 160 ? 1 : Math.ceil(this.length / 153));
                 },
                 get audience() { return this.audiences[this.branch] ?? this.audiences['']; },
+
+                // A past broadcast's Copy button. A branch no longer in
+                // the dropdown (deactivated) falls back to everyone.
+                useBroadcast({ message, branch }) {
+                    this.message = message;
+                    this.branch = branch in this.audiences ? branch : '';
+                    this.mode = 'now';
+                    this.$refs.message.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    this.$refs.message.focus({ preventScroll: true });
+                },
             };
         }
     </script>
