@@ -24,6 +24,7 @@ use App\Services\Promotions\PromotionService;
 use App\Services\Settings\SettingsService;
 use App\Services\Shifts\CounterService;
 use App\Services\Shifts\ShiftService;
+use App\Services\Tax\TaxService;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -121,6 +122,7 @@ class PosController extends Controller
             'deliveryAvailable' => $deliveryAreas->isNotEmpty(),
             'ratePerKmPesewas' => app(DeliveryFeeCalculator::class)->ratePerKm(),
             'cart' => $this->cartPayload($cart, $promotions),
+            'taxConfig' => app(TaxService::class)->clientConfig(),
             'whatsappReward' => (int) app(SettingsService::class)->get(SettingsService::WHATSAPP_REWARD_AMOUNT, '1000'),
             'freebieStaff' => $this->staffForFreebies(app(BranchContext::class)),
             'isStaff' => $isStaff,

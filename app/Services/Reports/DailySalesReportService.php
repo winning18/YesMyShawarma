@@ -122,6 +122,7 @@ class DailySalesReportService
             'categories' => $categories,
             'modifiers' => ['items' => $modifierLines, 'subtotal' => (int) $modifierLines->sum('total')],
             'total_sales' => $financial['revenue_total'],
+            'tax_total' => $financial['tax_total'],
             'orders_count' => $orders->count(),
             'by_payment_method' => $financial['revenue_by_payment_method'],
         ];

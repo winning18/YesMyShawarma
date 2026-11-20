@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Services\Tax\TaxService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -20,6 +21,12 @@ class OrderTrackingResource extends JsonResource
             'discount_total' => $this->discount_total,
             'delivery_fee' => $this->delivery_fee,
             'total' => $this->total,
+            // Tax as it was at the sale (step 9); empty for an order without tax.
+            'taxes' => $this->tax_total > 0 ? $this->taxes->sortBy('id')->map(fn ($tax) => [
+                'label' => TaxService::label($tax->name, $tax->rate_basis_points),
+                'amount' => $tax->food_amount + $tax->delivery_amount,
+                'inclusive' => $tax->inclusive,
+            ])->values()->all() : [],
             'payment_method' => $this->payment_method,
             'delivery_address' => $this->fulfilment_type === 'delivery' ? [
                 'area_name' => $this->delivery_address_snapshot['area_name'] ?? null,

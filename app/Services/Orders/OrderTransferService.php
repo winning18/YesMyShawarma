@@ -11,6 +11,7 @@ use App\Models\Scopes\BranchScope;
 use App\Models\User;
 use App\Services\Delivery\DeliveryFeeCalculator;
 use App\Services\Notifications\NewOrderPushNotifier;
+use App\Services\Tax\TaxService;
 use App\Support\SafeBroadcast;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -137,7 +138,8 @@ class OrderTransferService
                 // amount. Mirrors OrderStateMachine's own delivered-transition
                 // fee reconciliation for manually-settled methods.
                 $order->delivery_fee = $newFee;
-                $order->total = $order->subtotal - $order->discount_total + $newFee;
+                // The total again, with any tax on the new fee (step 9).
+                app(TaxService::class)->retotal($order);
                 $order->payments()->whereIn('provider', Order::MANUALLY_SETTLED_PAYMENT_METHODS)->update(['amount' => $order->total]);
             }
 

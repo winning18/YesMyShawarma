@@ -21,6 +21,7 @@ use App\Services\Promotions\PromotionService;
 use App\Services\Settings\SettingsService;
 use App\Services\Shifts\CounterService;
 use App\Services\Shifts\ShiftService;
+use App\Services\Tax\TaxService;
 use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -45,6 +46,7 @@ class OrderCreationService
         private readonly NewOrderPushNotifier $pushNotifier,
         private readonly FreebieService $freebies,
         private readonly ModuleService $modules,
+        private readonly TaxService $tax,
     ) {}
 
     /**
@@ -230,7 +232,11 @@ class OrderCreationService
                 ? $this->resolveDelivery($branch, $data, $subtotal)
                 : [0, null];
 
-            $total = $subtotal - $discountTotal + $deliveryFee;
+            // Tax (step 9): on the food after discounts and, if the
+            // business taxes it, the delivery fee. Only tax added on top
+            // changes the total; tax inside the prices is already in it.
+            $tax = $this->tax->quote($subtotal - $discountTotal, $deliveryFee, $data->paymentMethod);
+            $total = $subtotal - $discountTotal + $deliveryFee + $tax['added'];
 
             $manuallySettled = in_array($data->paymentMethod, Order::MANUALLY_SETTLED_PAYMENT_METHODS, true);
             $initialStatus = $manuallySettled ? 'paid' : 'pending_payment';
@@ -266,6 +272,7 @@ class OrderCreationService
                 'subtotal' => $subtotal,
                 'discount_total' => $discountTotal,
                 'delivery_fee' => $deliveryFee,
+                'tax_total' => $tax['tax_total'],
                 'promotion_id' => $promotion?->id,
                 'total' => $total,
                 'payment_method' => $data->paymentMethod,
@@ -286,6 +293,8 @@ class OrderCreationService
             // that accepts it (OrderStateMachine).
             $order->shift_id = $data->channel === 'pos' ? app(ShiftService::class)->activeForBranch($branch->id)?->id : null;
             $order->save();
+
+            $this->tax->record($order, $tax);
 
             if ($promotion) {
                 $this->promotions->redeem($promotion, $order, $customer, $redemptionValue);

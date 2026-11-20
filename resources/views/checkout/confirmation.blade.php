@@ -109,10 +109,12 @@
             </div>
         @endif
 
+        @include('partials.order-taxes', ['order' => $order, 'position' => 'before', 'rowClass' => 'text-sm mt-2'])
         <div class="flex justify-between font-semibold border-t border-brand-gray-100 pt-3 mt-2">
             <span>{{ __('Total') }}</span>
             <span>GH₵{{ number_format($order->total / 100, 2) }}</span>
         </div>
+        @include('partials.order-taxes', ['order' => $order, 'position' => 'after', 'rowClass' => 'mt-1'])
 
         <div class="border-t border-brand-gray-100 mt-4 pt-4 text-sm text-brand-gray-500 space-y-1">
             <div class="flex justify-between">

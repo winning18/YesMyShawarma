@@ -35,7 +35,7 @@ class EscPosRenderer
         }
         $this->bold(true)->size(2, 2)->text($data['business'])->size(1, 1)->bold(false);
         $this->text($data['branch']);
-        foreach (array_filter([$data['address'], $data['phone'] ? 'Tel '.$data['phone'] : null]) as $line) {
+        foreach (array_filter([$data['address'], $data['phone'] ? 'Tel '.$data['phone'] : null, ($data['tin'] ?? null) ? __('TIN').' '.$data['tin'] : null]) as $line) {
             $this->text($line);
         }
         $this->align(0)->rule();
@@ -56,7 +56,9 @@ class EscPosRenderer
         }
         $this->rule();
 
-        if ($data['discount'] || $data['delivery_fee']) {
+        $taxes = $data['taxes'] ?? [];
+        $taxesAdded = $taxes && ! ($data['tax_inclusive'] ?? false);
+        if ($data['discount'] || $data['delivery_fee'] || $taxesAdded) {
             $this->row(__('Subtotal'), $money($data['subtotal']));
             if ($data['discount']) {
                 $this->row(__('Discount'), '-'.$money($data['discount']));
@@ -64,8 +66,14 @@ class EscPosRenderer
             if ($data['delivery_fee']) {
                 $this->row(__('Delivery fee'), $money($data['delivery_fee']));
             }
+            foreach ($taxesAdded ? $taxes : [] as $tax) {
+                $this->row($tax['label'], $money($tax['amount']));
+            }
         }
         $this->bold(true)->size(1, 2)->row(__('Total'), 'GHS '.$money($data['total']))->size(1, 1)->bold(false);
+        foreach ($taxes && ! $taxesAdded ? $taxes : [] as $tax) {
+            $this->row(__('Includes :tax', ['tax' => $tax['label']]), $money($tax['amount']));
+        }
         $this->text(__('Paid by :method', ['method' => $data['payment']]));
 
         if ($data['message']) {

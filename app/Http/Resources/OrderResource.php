@@ -34,6 +34,7 @@ class OrderResource extends JsonResource
             'payment_method' => $this->payment_method,
             'payment_status' => $this->payment_status,
             'total' => $this->total,
+            'tax_total' => $this->tax_total,
             'delivery_fee' => $this->fulfilment_type === 'delivery' ? $this->delivery_fee : null,
             // What's still owed in cash at the door — 0 for a fully
             // prepaid order, the full total for cash. When the customer

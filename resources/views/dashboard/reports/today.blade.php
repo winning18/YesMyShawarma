@@ -256,7 +256,7 @@
         <div class="bg-white shadow rounded-lg p-4">
             <p class="text-xs text-gray-500">{{ __('Total sales') }} ({{ $channel === 'bolt_food' ? __('BOLT FOOD') : strtoupper($channel) }})</p>
             <p class="text-2xl font-bold text-gray-800">GH₵{{ number_format($summary['total_sales'] / 100, 2) }}</p>
-            <p class="text-xs text-gray-500 mt-1">{{ __(':count orders', ['count' => $summary['orders_count']]) }}</p>
+            <p class="text-xs text-gray-500 mt-1">{{ __(':count orders', ['count' => $summary['orders_count']]) }}@if (($summary['tax_total'] ?? 0) > 0) · {{ __('before tax; tax charged GH₵:amount', ['amount' => number_format($summary['tax_total'] / 100, 2)]) }}@endif</p>
 
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 mt-3 border-t border-gray-100">
                 @forelse ($summary['by_payment_method'] as $method => $amount)

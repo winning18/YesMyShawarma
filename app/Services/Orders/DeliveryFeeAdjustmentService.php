@@ -6,6 +6,7 @@ use App\Exceptions\DeliveryFeeAdjustmentException;
 use App\Models\Order;
 use App\Models\Scopes\BranchScope;
 use App\Models\User;
+use App\Services\Tax\TaxService;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -55,7 +56,8 @@ class DeliveryFeeAdjustmentService
             $oldFee = $order->delivery_fee;
 
             $order->delivery_fee = $newFeePesewas;
-            $order->total = $order->subtotal - $order->discount_total + $newFeePesewas;
+            // The total again, with any tax on the new fee (step 9).
+            app(TaxService::class)->retotal($order);
 
             // Never touches a 'paystack' payments row — that already
             // correctly reflects only the subtotal actually charged

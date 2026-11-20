@@ -7,6 +7,7 @@ use App\Models\OrderItem;
 use App\Models\OrderItemOption;
 use App\Models\User;
 use App\Services\Settings\BusinessProfile;
+use App\Services\Tax\TaxService;
 
 /**
  * What a receipt and a kitchen ticket say (Express POS step 8a) — built
@@ -15,7 +16,10 @@ use App\Services\Settings\BusinessProfile;
  */
 class ReceiptService
 {
-    public function __construct(private readonly BusinessProfile $profile) {}
+    public function __construct(
+        private readonly BusinessProfile $profile,
+        private readonly TaxService $tax,
+    ) {}
 
     /**
      * @return array<string, mixed>
@@ -23,6 +27,8 @@ class ReceiptService
     public function receipt(Order $order): array
     {
         $order->loadMissing(['items.options', 'branch', 'customer', 'shift.terminal', 'events']);
+        // Tax as it was at the sale (step 9): each line's food and delivery parts together.
+        $taxes = $this->tax->linesFor($order);
 
         return [
             'business' => $this->profile->name(),
@@ -41,6 +47,12 @@ class ReceiptService
             'discount' => (int) $order->discount_total,
             'delivery_fee' => (int) $order->delivery_fee,
             'total' => (int) $order->total,
+            'taxes' => $taxes->map(fn ($tax) => [
+                'label' => TaxService::label($tax->name, $tax->rate_basis_points),
+                'amount' => $tax->food_amount + $tax->delivery_amount,
+            ])->all(),
+            'tax_inclusive' => (bool) $taxes->first()?->inclusive,
+            'tin' => $taxes->isNotEmpty() ? $this->profile->tin() : null,
             'payment' => $this->paymentLabel($order),
             'message' => $this->profile->receiptMessage(),
         ];

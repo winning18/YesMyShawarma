@@ -10,6 +10,7 @@ use App\Services\Delivery\DeliveryFeeCalculator;
 use App\Services\Notifications\CustomerOrderNotifier;
 use App\Services\Notifications\NewOrderPushNotifier;
 use App\Services\Stock\RecipeStockService;
+use App\Services\Tax\TaxService;
 use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
 
@@ -151,7 +152,8 @@ class OrderStateMachine
 
                 if ($lat !== null && $lng !== null) {
                     $order->delivery_fee = $this->feeCalculator->calculate($order->branch, (float) $lat, (float) $lng);
-                    $order->total = $order->subtotal - $order->discount_total + $order->delivery_fee;
+                    // The total again, with any tax on the new fee (step 9).
+                    app(TaxService::class)->retotal($order);
 
                     // Keeps the cash/momo payment row's amount in sync with
                     // whatever total this recompute lands on — a no-op in

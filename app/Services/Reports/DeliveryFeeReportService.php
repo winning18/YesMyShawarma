@@ -146,6 +146,7 @@ class DeliveryFeeReportService
                 'feeCollection.collection.collectedBy:id,name',
             ])
             ->withSum(['payments as paystack_paid' => fn ($q) => $q->where('provider', 'paystack')->where('status', 'paid')], 'amount')
+            ->withSum(['taxes as delivery_tax_added' => fn ($q) => $q->where('inclusive', false)], 'delivery_amount')
             ->withSum(['refunds as refunded_total' => fn ($q) => $q->withoutGlobalScope(BranchScope::class)->where('status', Refund::STATUS_COMPLETED)], 'amount');
     }
 
@@ -191,7 +192,11 @@ class DeliveryFeeReportService
      */
     public function split(Order $order): array
     {
-        $fee = (int) $order->delivery_fee;
+        // With any tax added on top of the fee (step 9): the rider collects
+        // that too, and hands it in with the fee.
+        $fee = (int) $order->delivery_fee + (array_key_exists('delivery_tax_added', $order->getAttributes())
+            ? (int) $order->delivery_tax_added
+            : ((int) $order->tax_total > 0 ? (int) $order->taxes()->where('inclusive', false)->sum('delivery_amount') : 0));
 
         // Callers that list many orders preload this with withSum(); null
         // there just means no Paystack payment.

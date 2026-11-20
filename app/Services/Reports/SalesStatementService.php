@@ -7,6 +7,7 @@ use App\Models\MarketListItem;
 use App\Models\Order;
 use App\Models\Refund;
 use App\Models\Scopes\BranchScope;
+use App\Services\Tax\TaxService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -77,6 +78,9 @@ class SalesStatementService
         'bolt_food' => 'Bolt Food',
     ];
 
+    /** @var array<int, array{food: int, food_added: int, delivery: int, delivery_added: int}> this build's order taxes */
+    private array $tax = [];
+
     public function __construct(private readonly ReportBranchResolver $branches) {}
 
     /**
@@ -90,15 +94,19 @@ class SalesStatementService
         $general = $singleBranchId === null;
         $isSales = $type === self::TYPE_SALES;
 
-        $columns = $this->columns($type, $general);
-        $moneyKeys = collect($columns)->where('money', true)->pluck('key')->all();
-
         $orders = $this->ordersQuery($type, $from, $to, $scopeIds)
             ->whereNotIn('status', self::NON_SALES_STATUSES)
             ->with('branch:id,name')
             ->orderBy('placed_at')
             ->orderBy('id')
             ->get();
+
+        // Sales are before tax (step 9); a Tax column only when some order carries tax.
+        $this->tax = app(TaxService::class)->breakdown($orders);
+        $hasTax = $isSales && $this->tax !== [];
+
+        $columns = $this->columns($type, $general, $hasTax);
+        $moneyKeys = collect($columns)->where('money', true)->pluck('key')->all();
 
         $number = 0;
         $days = $orders
@@ -144,6 +152,7 @@ class SalesStatementService
                 ['label' => 'Orders', 'value' => (string) count($allRows)],
                 ['label' => 'Discounts given', 'value' => $this->money($totals['discount'])],
                 ['label' => 'Delivery fees (not sales)', 'value' => $this->money($totals['delivery_fee'])],
+                ...($hasTax ? [['label' => 'Tax collected (not sales)', 'value' => $this->money($totals['tax'])]] : []),
                 ['label' => 'Refunds completed', 'value' => (string) $refunds['count']],
             ]
             : [
@@ -177,7 +186,7 @@ class SalesStatementService
     /**
      * @return list<array{key: string, label: string, money: bool}>
      */
-    private function columns(string $type, bool $general): array
+    private function columns(string $type, bool $general, bool $hasTax = false): array
     {
         $columns = [
             ['key' => 'no', 'label' => 'No', 'money' => false],
@@ -205,7 +214,8 @@ class SalesStatementService
             ['key' => 'payment', 'label' => 'Payment', 'money' => false],
             ['key' => 'subtotal', 'label' => 'Subtotal', 'money' => true],
             ['key' => 'discount', 'label' => 'Discount', 'money' => true],
-            ['key' => 'sales', 'label' => 'Sales', 'money' => true],
+            ['key' => 'sales', 'label' => $hasTax ? 'Sales before tax' : 'Sales', 'money' => true],
+            ...($hasTax ? [['key' => 'tax', 'label' => 'Tax', 'money' => true]] : []),
             ['key' => 'delivery_fee', 'label' => 'Delivery fee (rider)', 'money' => true],
             ['key' => 'total', 'label' => 'Customer paid', 'money' => true],
         ];
@@ -228,7 +238,8 @@ class SalesStatementService
             'payment' => self::PAYMENT_LABELS[$order->payment_method] ?? Str::headline($order->payment_method),
             'subtotal' => (int) $order->subtotal,
             'discount' => (int) $order->discount_total,
-            'sales' => (int) $order->subtotal - (int) $order->discount_total,
+            'sales' => app(TaxService::class)->netFood($order, $this->tax),
+            'tax' => (int) $order->tax_total,
             'delivery_fee' => (int) $order->delivery_fee,
             'total' => (int) $order->total,
         ];

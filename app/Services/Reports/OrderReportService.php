@@ -8,6 +8,7 @@ use App\Models\PromotionRedemption;
 use App\Models\Refund;
 use App\Models\Scopes\BranchScope;
 use App\Models\Shift;
+use App\Services\Tax\TaxService;
 use Carbon\CarbonPeriod;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -128,18 +129,33 @@ class OrderReportService
             );
         // Delivery fees are the rider's, never sales (payments.md's
         // "Delivery fee audit") — every figure here is food after
-        // discounts. A refund only takes back sales up to that same food
-        // value, so refunding a whole order can't push sales below zero.
-        $salesValue = fn (Order $order) => (int) $order->total - (int) $order->delivery_fee;
-        $salesRefunded = fn (Refund $refund) => $refund->order
-            ? min((int) $refund->amount, max(0, $salesValue($refund->order)))
+        // discounts, and before tax (step 9): tax is owed, not earned.
+        // till_total is the same food with its tax, what a till holds. A
+        // refund only takes back food up to what was paid for it, so
+        // refunding a whole order can't push sales below zero; its tax
+        // share comes off tax_total.
+        $refunds = $this->refundsInRange($from, $to, $ignoreBranchScope, $branchId, $branchIds, $channel, $paymentMethod, $shiftId);
+        $taxService = app(TaxService::class);
+        $tax = $taxService->breakdown($revenueOrders->concat($refunds->pluck('order')->filter()));
+
+        $salesValue = fn (Order $order) => $taxService->netFood($order, $tax);
+        $tillValue = fn (Order $order) => $taxService->grossFood($order, $tax);
+        $tillRefunded = fn (Refund $refund) => $refund->order
+            ? min((int) $refund->amount, max(0, $tillValue($refund->order)))
             : (int) $refund->amount;
+        $salesRefunded = function (Refund $refund) use ($tillRefunded, $tillValue, $salesValue) {
+            $refunded = $tillRefunded($refund);
+            $gross = $refund->order ? $tillValue($refund->order) : 0;
+
+            return $gross > 0 ? (int) round($refunded * $salesValue($refund->order) / $gross) : $refunded;
+        };
 
         $grossRevenueTotal = (int) $revenueOrders->sum($salesValue);
+        $tillTotal = (int) $revenueOrders->sum($tillValue);
 
-        $refunds = $this->refundsInRange($from, $to, $ignoreBranchScope, $branchId, $branchIds, $channel, $paymentMethod, $shiftId);
         $refundTotal = (int) $refunds->sum('amount');
         $salesRefundedTotal = (int) $refunds->sum($salesRefunded);
+        $tillRefundedTotal = (int) $refunds->sum($tillRefunded);
         $refundsByDay = $this->groupByAccraDay($refunds, 'completed_at')->map(fn (Collection $day) => $day->sum($salesRefunded));
 
         $discountTotal = PromotionRedemption::whereIn('order_id', $orders->pluck('id'))->sum('amount_discounted');
@@ -149,6 +165,8 @@ class OrderReportService
 
         return [
             'revenue_total' => $grossRevenueTotal - $salesRefundedTotal,
+            'till_total' => $tillTotal - $tillRefundedTotal,
+            'tax_total' => ($tillTotal - $tillRefundedTotal) - ($grossRevenueTotal - $salesRefundedTotal),
             'revenue_by_day' => $revenueByDay,
             'revenue_by_payment_method' => $revenueOrders->groupBy('payment_method')->map(fn (Collection $orders) => $orders->sum($salesValue)),
             'revenue_by_channel' => $revenueOrders->groupBy('channel')->map(fn (Collection $orders) => $orders->sum($salesValue)),
@@ -163,10 +181,11 @@ class OrderReportService
      * till took (orders.shift_id), less what was refunded on them — the
      * same food-only, net-of-refunds measure as financialSummary(), but by
      * till rather than by time, since several tills are open at once.
+     * With any tax the food was sold with (step 9): what the till holds.
      */
     public function tillSales(Shift $shift): int
     {
-        return $this->financialSummary($shift->started_at, now(), shiftId: $shift->id)['revenue_total'];
+        return $this->financialSummary($shift->started_at, now(), shiftId: $shift->id)['till_total'];
     }
 
     /**
@@ -190,12 +209,12 @@ class OrderReportService
                     ->when($channel, fn ($query) => $query->where('channel', $channel))
                     ->when($paymentMethod, fn ($query) => $query->where('payment_method', $paymentMethod))
                     ->select('id'))
-                ->with(['order' => fn ($q) => $q->withoutGlobalScope(BranchScope::class)->select('id', 'total', 'delivery_fee')])
+                ->with(['order' => fn ($q) => $q->withoutGlobalScope(BranchScope::class)->select('id', 'subtotal', 'discount_total', 'tax_total', 'total', 'delivery_fee')])
                 ->get();
         }
 
         $query = Refund::where('status', Refund::STATUS_COMPLETED)
-            ->with(['order' => fn ($q) => $q->withoutGlobalScope(BranchScope::class)->select('id', 'total', 'delivery_fee')])
+            ->with(['order' => fn ($q) => $q->withoutGlobalScope(BranchScope::class)->select('id', 'subtotal', 'discount_total', 'tax_total', 'total', 'delivery_fee')])
             ->whereBetween('completed_at', [$from, $to])
             ->when(
                 $channel || $paymentMethod,
@@ -245,7 +264,7 @@ class OrderReportService
             return Order::withoutGlobalScope(BranchScope::class)->where('shift_id', $shiftId)
                 ->when($channel, fn ($query) => $query->where('channel', $channel))
                 ->when($paymentMethod, fn ($query) => $query->where('payment_method', $paymentMethod))
-                ->get(['id', 'status', 'fulfilment_type', 'payment_method', 'channel', 'total', 'delivery_fee', 'placed_at', 'accepted_at', 'ready_at', 'dispatched_at', 'delivered_at']);
+                ->get(['id', 'status', 'fulfilment_type', 'payment_method', 'channel', 'subtotal', 'discount_total', 'tax_total', 'total', 'delivery_fee', 'placed_at', 'accepted_at', 'ready_at', 'dispatched_at', 'delivered_at']);
         }
 
         $query = Order::whereBetween('placed_at', [$from, $to])
@@ -260,7 +279,7 @@ class OrderReportService
             $query->withoutGlobalScope(BranchScope::class)->where('branch_id', $branchId);
         }
 
-        return $query->get(['id', 'status', 'fulfilment_type', 'payment_method', 'channel', 'total', 'delivery_fee', 'placed_at', 'accepted_at', 'ready_at', 'dispatched_at', 'delivered_at']);
+        return $query->get(['id', 'status', 'fulfilment_type', 'payment_method', 'channel', 'subtotal', 'discount_total', 'tax_total', 'total', 'delivery_fee', 'placed_at', 'accepted_at', 'ready_at', 'dispatched_at', 'delivered_at']);
     }
 
     /**

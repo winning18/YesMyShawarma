@@ -33,6 +33,12 @@
                     <x-input-error class="mt-2" :messages="$errors->get('receipt_message')" />
                 </div>
                 <div>
+                    <x-input-label for="tin" :value="__('Tax identification number (TIN, optional)')" />
+                    <x-text-input id="tin" name="tin" class="mt-1 block w-full" :value="old('tin', $profile->tin())" maxlength="20" placeholder="{{ __('e.g. C0012345678') }}" />
+                    <p class="text-xs text-gray-500 mt-1">{{ __('Your GRA TIN. Printed on receipts when you charge tax.') }}</p>
+                    <x-input-error class="mt-2" :messages="$errors->get('tin')" />
+                </div>
+                <div>
                     <x-input-label for="tagline" :value="__('Tagline (website footer, optional)')" />
                     <x-text-input id="tagline" name="tagline" class="mt-1 block w-full" :value="old('tagline', $profile->tagline())" maxlength="200" />
                     <x-input-error class="mt-2" :messages="$errors->get('tagline')" />

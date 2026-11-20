@@ -74,6 +74,8 @@ use App\Http\Controllers\SmsOptOutController;
 use App\Http\Controllers\StaffMemberManagementController;
 use App\Http\Controllers\StockItemController;
 use App\Http\Controllers\StockMovementController;
+use App\Http\Controllers\TaxController;
+use App\Http\Controllers\TaxReportController;
 use App\Http\Controllers\TodayReportController;
 use App\Http\Controllers\TrackingController;
 use App\Http\Controllers\UserManagementController;
@@ -339,6 +341,9 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::get('/dashboard/modules', [ModuleController::class, 'edit'])->name('dashboard.modules.edit');
     Route::put('/dashboard/modules', [ModuleController::class, 'update'])->name('dashboard.modules.update');
 
+    Route::get('/dashboard/tax', [TaxController::class, 'edit'])->middleware('module:tax')->name('dashboard.tax.edit');
+    Route::put('/dashboard/tax', [TaxController::class, 'update'])->middleware('module:tax')->name('dashboard.tax.update');
+
     Route::get('/dashboard/business-profile', [BusinessProfileController::class, 'edit'])->name('dashboard.business-profile.edit');
     Route::put('/dashboard/business-profile', [BusinessProfileController::class, 'update'])->name('dashboard.business-profile.update');
     Route::get('/dashboard/settings', [SettingsController::class, 'index'])->name('dashboard.settings.index');
@@ -392,6 +397,9 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::get('/dashboard/reports/delivery-fees/collections', [DeliveryFeeCollectionController::class, 'index'])->middleware('module:delivery')->name('dashboard.reports.delivery-fees.collections.index');
     Route::post('/dashboard/reports/delivery-fees/collections', [DeliveryFeeCollectionController::class, 'store'])->middleware('module:delivery')->name('dashboard.reports.delivery-fees.collections.store');
     Route::post('/dashboard/reports/delivery-fees/collections/{collection}/void', [DeliveryFeeCollectionController::class, 'void'])->middleware('module:delivery')->name('dashboard.reports.delivery-fees.collections.void');
+
+    Route::get('/dashboard/reports/tax', [TaxReportController::class, 'index'])->middleware('module:tax')->name('dashboard.reports.tax.index');
+    Route::get('/dashboard/reports/tax/download', [TaxReportController::class, 'download'])->middleware('module:tax')->name('dashboard.reports.tax.download');
 
     Route::get('/dashboard/reports/today', [TodayReportController::class, 'index'])->name('dashboard.reports.today.index');
 

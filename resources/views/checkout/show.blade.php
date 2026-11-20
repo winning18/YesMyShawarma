@@ -22,6 +22,8 @@
         </div>
     @endunless
 
+    @include('partials.tax-script')
+
     {{--
         One shared Alpine scope for the whole page (not just the form) —
         the Order Summary column needs to react to fulfilmentType and
@@ -228,9 +230,16 @@
             // combine — see orders.md's totals order (subtotal - discount +
             // delivery fee), never below zero.
             estimatedTotal() {
-                const fee = (this.fulfilmentType === 'delivery' && this.estimatedFee !== null) ? this.estimatedFee : 0;
+                const fee = this.estimatedFeeOrZero();
 
-                return Math.max(0, this.subtotalPesewas - this.discountAmount + fee);
+                return Math.max(0, this.subtotalPesewas - this.discountAmount + fee + this.tax().added);
+            },
+            estimatedFeeOrZero() {
+                return (this.fulfilmentType === 'delivery' && this.estimatedFee !== null) ? this.estimatedFee : 0;
+            },
+            // Tax (step 9), the same sums the order is charged with.
+            tax() {
+                return window.expressTax(Math.max(0, this.subtotalPesewas - this.discountAmount), this.estimatedFeeOrZero(), this.paymentMethod);
             },
         }"
         x-effect="if (fulfilmentType !== 'delivery') { estimatedFee = null; locationStatus = ''; locationFailed = false; locationOptOut = false; closerBranch = null; }"
@@ -554,10 +563,24 @@
                 </div>
             @endif
 
+            <template x-for="line in tax().lines.filter((line) => !line.inclusive)" :key="line.label">
+                <div class="flex justify-between text-sm mt-2">
+                    <span x-text="line.label"></span>
+                    <span x-text="'GH₵' + (line.amount / 100).toFixed(2)"></span>
+                </div>
+            </template>
+
             <div class="flex justify-between font-semibold border-t border-brand-gray-100 pt-3 mt-2">
                 <span>{{ __('Total') }}</span>
                 <span x-text="'GH₵' + (estimatedTotal() / 100).toFixed(2)"></span>
             </div>
+
+            <template x-for="line in tax().lines.filter((line) => line.inclusive)" :key="line.label">
+                <div class="flex justify-between text-xs text-brand-gray-500 mt-1">
+                    <span x-text="@js(__('Includes')) + ' ' + line.label"></span>
+                    <span x-text="'GH₵' + (line.amount / 100).toFixed(2)"></span>
+                </div>
+            </template>
 
             @if ($deliveryAvailable)
                 <p x-show="fulfilmentType === 'delivery' && estimatedFee === null" class="text-xs text-brand-gray-500 mt-2">

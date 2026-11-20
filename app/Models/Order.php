@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 #[Fillable([
     'reference', 'track_token', 'customer_id', 'branch_id',
     'fulfilment_type',
-    'subtotal', 'discount_total', 'delivery_fee', 'total',
+    'subtotal', 'discount_total', 'delivery_fee', 'tax_total', 'total',
     'promotion_id', 'payment_method', 'delivery_fee_paid_by', 'payment_status', 'channel', 'source', 'delivery_address_snapshot',
     'instructions', 'scheduled_for',
 ])]
@@ -151,6 +151,12 @@ class Order extends Model
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    /** The tax lines as they were at the sale (Express POS step 9). */
+    public function taxes(): HasMany
+    {
+        return $this->hasMany(OrderTax::class);
     }
 
     public function events(): HasMany

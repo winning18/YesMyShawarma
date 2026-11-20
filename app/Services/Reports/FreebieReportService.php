@@ -5,6 +5,7 @@ namespace App\Services\Reports;
 use App\Models\ComplimentaryOrder;
 use App\Models\Order;
 use App\Models\Scopes\BranchScope;
+use App\Services\Tax\TaxService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -74,12 +75,13 @@ class FreebieReportService
             ->whereNotNull('placed_at')
             ->whereBetween('placed_at', [$from->clone()->utc(), $to->clone()->utc()])
             ->when($branchIds !== null, fn (Builder $query) => $query->whereIn('branch_id', $branchIds))
-            ->get(['subtotal', 'discount_total', 'promotion_id']);
+            ->get(['id', 'subtotal', 'discount_total', 'tax_total', 'promotion_id']);
+        $tax = app(TaxService::class)->breakdown($orders);
 
         return [
             'count' => $orders->count(),
             'rewards' => (int) $orders->whereNull('promotion_id')->sum('discount_total'),
-            'sales' => (int) $orders->sum(fn (Order $order) => $order->subtotal - $order->discount_total),
+            'sales' => (int) $orders->sum(fn (Order $order) => app(TaxService::class)->netFood($order, $tax)),
         ];
     }
 

@@ -186,10 +186,22 @@
                                 <span>{{ __('Delivery fee') }}</span>
                                 <span x-text="order.delivery_fee > 0 ? formatMoney(order.delivery_fee) : '{{ __('Calculated on arrival') }}'"></span>
                             </div>
+                            <template x-for="tax in (order.taxes || []).filter((tax) => !tax.inclusive)" :key="tax.label">
+                                <div class="flex justify-between">
+                                    <span x-text="tax.label"></span>
+                                    <span x-text="formatMoney(tax.amount)"></span>
+                                </div>
+                            </template>
                             <div class="flex justify-between font-semibold border-t border-brand-gray-100 pt-2 mt-1">
                                 <span>{{ __('Total') }}</span>
                                 <span x-text="formatMoney(order.total)"></span>
                             </div>
+                            <template x-for="tax in (order.taxes || []).filter((tax) => tax.inclusive)" :key="tax.label">
+                                <div class="flex justify-between text-xs text-brand-gray-500">
+                                    <span x-text="@js(__('Includes')) + ' ' + tax.label"></span>
+                                    <span x-text="formatMoney(tax.amount)"></span>
+                                </div>
+                            </template>
                         </div>
 
                         <div class="border-t border-brand-gray-100 pt-4 text-sm text-brand-gray-500 space-y-1">

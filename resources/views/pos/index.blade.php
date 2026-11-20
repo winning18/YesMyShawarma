@@ -168,10 +168,27 @@
                     <span x-text="'-' + formatMoney(displayedDiscount())"></span>
                 </div>
 
-                <div class="flex justify-between font-semibold border-t border-gray-100 pt-3 mt-2 mb-4">
+                <template x-for="line in tax().lines.filter((line) => !line.inclusive)" :key="line.label">
+                    <div class="flex justify-between text-sm mt-2">
+                        <span x-text="line.label"></span>
+                        <span x-text="formatMoney(line.amount)"></span>
+                    </div>
+                </template>
+
+                <div class="flex justify-between font-semibold border-t border-gray-100 pt-3 mt-2" :class="tax().lines.some((line) => line.inclusive) ? 'mb-1' : 'mb-4'">
                     <span>{{ __('Total') }}</span>
-                    <span x-text="formatMoney(subtotal - displayedDiscount())"></span>
+                    <span x-text="formatMoney(subtotal - displayedDiscount() + tax().added)"></span>
                 </div>
+                <template x-if="tax().lines.some((line) => line.inclusive)">
+                    <div class="mb-4">
+                        <template x-for="line in tax().lines" :key="line.label">
+                            <div class="flex justify-between text-xs text-gray-500">
+                                <span x-text="@js(__('Includes')) + ' ' + line.label"></span>
+                                <span x-text="formatMoney(line.amount)"></span>
+                            </div>
+                        </template>
+                    </div>
+                </template>
 
                 <div class="space-y-3 border-t border-gray-100 pt-4">
                     <div>
@@ -373,6 +390,7 @@
         </div>
     </div>
 
+    @include('partials.tax-script')
     <script>
         function posTerminal() {
             return {
@@ -428,6 +446,12 @@
                     if (this.discount > 0 || this.lines.some((line) => line.is_free)) return 0;
 
                     return Math.min(this.whatsappReward, this.foodSubtotal);
+                },
+
+                // Tax on the food (step 9) — the delivery fee is priced
+                // later at the POS, so its tax follows then.
+                tax() {
+                    return window.expressTax(this.subtotal - this.displayedDiscount(), 0, this.paymentMethod);
                 },
 
                 pickupOnly() {

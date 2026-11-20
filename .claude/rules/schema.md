@@ -143,7 +143,7 @@ snapshot. This is enforced in the resource, not just hidden in the UI.
 orders
   id, reference, track_token, customer_id, branch_id,
   fulfilment_type (delivery|pickup), status,
-  subtotal, discount_total, delivery_fee, total,
+  subtotal, discount_total, delivery_fee, tax_total, total,
   payment_method (paystack|cash|momo), payment_status, channel (web|pos),
   promotion_id, delivery_address_snapshot (json),
   rider_id, claimed_at, scheduled_for,
@@ -160,7 +160,38 @@ order_item_options
 order_events
   id, order_id, from_status, to_status,
   actor_type, actor_id, shift_id, meta (json), created_at
+
+order_taxes
+  id, order_id, name, rate_basis_points, inclusive (bool),
+  food_amount, delivery_amount (pesewas)
 ```
+
+### Tax (Express POS step 9, the `tax` module)
+
+`TaxService`. The business sets its taxes under Settings → Tax (owner only, `business.manage`):
+lines of name + rate (Ghana preset VAT 15%, NHIL 2.5%, GETFund 2.5%, all on the same base),
+whether prices include the tax (`inclusive`) or it's added on top, and whether the delivery fee
+is taxed. Stored as the `tax_config` setting (JSON). Charged only with the module on **and** at
+least one line; Bolt Food and freebies are never taxed.
+
+- **At the sale** (`OrderCreationService`): `quote()` taxes the food after discounts and, if set,
+  the delivery fee. Added on top: each line is `round(base × rate)`, added to `total`. Inclusive:
+  the tax inside the base at the combined rate, shared by rate (the last line takes the
+  rounding); `total` is unchanged. `order_taxes` keeps each line as it was; `tax_total` is all of
+  it either way. Later rate changes never touch a placed order.
+- **Fee changes** (adjust, arrival, transfer, delivered recompute) call `retotal()`: food tax
+  stays frozen; the delivery tax follows the new fee at the order's own rates (whether the fee is
+  taxed is read from today's setting).
+- **Reports**: sales are always before tax (`netFood` = subtotal − discount − tax inside the
+  prices). `financialSummary()` also returns `till_total` (food with its tax, what a till holds:
+  shift cash-up and `tillSales()`) and `tax_total`. A rider's delivery fee includes any tax added
+  to it (`DeliveryFeeReportService::split`). Reports → Tax lists tax per line and per day, less
+  tax on refunds completed in the period (refund amount × order tax ÷ order total).
+- **Shown on** receipts (browser and ESC/POS, with the business TIN `business_tin`), the order
+  page, confirmation, tracking, the POS and checkout running totals (`partials/tax-script`
+  mirrors `split()`; the server's figure is the one charged). Added tax shows as lines above
+  Total; included tax as "Includes VAT 15%" under it. YMS has the module on but no lines, so
+  nothing changes there.
 
 ### Snapshotting is non-negotiable
 
@@ -707,7 +738,7 @@ Current keys:
   content → Home page strips (`HomeStripService`); unset = one strip per active category.
 - **Module switches** (Express POS step 3, `ModuleService`, owner-only Modules page):
   `module_<key>` = `'1'` / `'0'` for website, paystack, delivery, bolt_food, promotions,
-  whatsapp_reward, freebies, market_list, stock, sms, refunds, reviews. No row = off on a real
+  whatsapp_reward, freebies, market_list, stock, sms, refunds, reviews, tax. No row = off on a real
   install (`config/modules.php`); Yes My Shawarma's are all stored on by
   `2026_11_15_130000_switch_on_every_module` (installs with orders only). Data belonging to a
   switched-off module is kept, never deleted.
@@ -716,6 +747,7 @@ Current keys:
   menu-item search snippet and the weekly sales report. Empty on a new install.
 - **About page** (Website content, step 2c): `about_mission`, `about_vision`,
   `about_founded_year` (shows "years of operation"), `about_customers_label` ("5,000+").
+- **Tax** (step 9): `tax_config` (see Orders → Tax) and `business_tin` (Business profile).
 - `paystack_enabled` — removed in Express POS step 3b; now the Paystack module switch
   (`module_paystack`, payments.md's "Paystack on/off" section).
 

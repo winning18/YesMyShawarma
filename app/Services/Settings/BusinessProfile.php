@@ -54,6 +54,9 @@ class BusinessProfile
     /** A line or two at the bottom of every printed receipt (step 8a). */
     public const RECEIPT_MESSAGE = 'business_receipt_message';
 
+    /** GRA Taxpayer Identification Number, printed on receipts (step 9). */
+    public const TIN = 'business_tin';
+
     /**
      * Two brand colours, each with the lighter and darker shade the
      * customer site uses for backgrounds and hovers. Defaults are the
@@ -117,6 +120,11 @@ class BusinessProfile
     public function receiptMessage(): ?string
     {
         return $this->setting(self::RECEIPT_MESSAGE) ?: null;
+    }
+
+    public function tin(): ?string
+    {
+        return $this->setting(self::TIN) ?: null;
     }
 
     public function city(): ?string
@@ -277,6 +285,7 @@ class BusinessProfile
             self::REGION => 'region',
             self::CUISINES => 'cuisines',
             self::RECEIPT_MESSAGE => 'receipt_message',
+            self::TIN => 'tin',
         ];
 
         foreach ($text as $key => $field) {

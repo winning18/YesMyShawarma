@@ -325,7 +325,7 @@
 --}}
 @can('settings.manage')
     @php
-        $onSettingsSection = request()->routeIs('dashboard.settings.*', 'dashboard.staff-members.*', 'dashboard.business-profile.*', 'dashboard.site-pages.*', 'dashboard.faq-items.*', 'dashboard.home-strips.*', 'dashboard.modules.*', 'dashboard.counters.*', 'dashboard.printers.*');
+        $onSettingsSection = request()->routeIs('dashboard.settings.*', 'dashboard.staff-members.*', 'dashboard.business-profile.*', 'dashboard.site-pages.*', 'dashboard.faq-items.*', 'dashboard.home-strips.*', 'dashboard.modules.*', 'dashboard.counters.*', 'dashboard.printers.*', 'dashboard.tax.*');
     @endphp
     <div x-data="{ settingsOpen: {{ $onSettingsSection ? 'true' : 'false' }} }">
         <button
@@ -349,6 +349,12 @@
                     href="{{ route('dashboard.modules.edit') }}"
                     class="block px-3 py-1.5 rounded-md text-sm transition duration-150 ease-in-out {{ request()->routeIs('dashboard.modules.*') ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
                 >{{ __('Modules') }}</a>
+                @module('tax')
+                <a
+                    href="{{ route('dashboard.tax.edit') }}"
+                    class="block px-3 py-1.5 rounded-md text-sm transition duration-150 ease-in-out {{ request()->routeIs('dashboard.tax.*') ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
+                >{{ __('Tax') }}</a>
+                @endmodule
             @endcan
             @module('website')
             @can('content.manage')

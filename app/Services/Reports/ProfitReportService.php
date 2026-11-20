@@ -150,11 +150,13 @@ class ProfitReportService
             ->when($scopeIds !== null, fn (Builder $query) => $query->whereIn('branch_id', $scopeIds))
             ->toBase()
             ->select(['placed_at', 'subtotal', 'discount_total'])
+            // Sales before tax (step 9): less any tax inside the prices.
+            ->selectSub(fn ($q) => $q->from('order_taxes')->whereColumn('order_taxes.order_id', 'orders.id')->where('inclusive', true)->selectRaw('coalesce(sum(food_amount), 0)'), 'food_tax_included')
             ->orderBy('id')
             ->lazy()
             ->each(function (object $order) use (&$totals, $periodOf) {
                 $key = $periodOf(Carbon::parse($order->placed_at, 'UTC')->timezone('Africa/Accra'));
-                $totals[$key] = ($totals[$key] ?? 0) + (int) $order->subtotal - (int) $order->discount_total;
+                $totals[$key] = ($totals[$key] ?? 0) + (int) $order->subtotal - (int) $order->discount_total - (int) $order->food_tax_included;
             });
 
         return $totals;

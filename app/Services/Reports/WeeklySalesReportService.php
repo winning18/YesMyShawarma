@@ -5,6 +5,7 @@ namespace App\Services\Reports;
 use App\Models\Order;
 use App\Models\Scopes\BranchScope;
 use App\Services\Settings\BusinessProfile;
+use App\Services\Tax\TaxService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -24,6 +25,9 @@ use Illuminate\Support\Collection;
  */
 class WeeklySalesReportService
 {
+    /** @var array<int, array{food: int, food_added: int, delivery: int, delivery_added: int}> */
+    private array $tax = [];
+
     /**
      * One row per ISO week that has at least one sale, most recent
      * first. Counted exactly as SalesStatementService counts sales —
@@ -49,7 +53,13 @@ class WeeklySalesReportService
         return $this->scopedQuery($ignoreBranchScope, $branchId, $branchIds)
             ->whereNotIn('status', SalesStatementService::NON_SALES_STATUSES)
             ->whereNotIn('payment_method', Order::EXCLUDED_FROM_SALES_PAYMENT_METHODS)
-            ->get(['id', 'placed_at', 'subtotal', 'discount_total'])
+            ->get(['id', 'placed_at', 'subtotal', 'discount_total', 'tax_total'])
+            ->pipe(function (Collection $orders) {
+                // Sales before tax (step 9).
+                $this->tax = app(TaxService::class)->breakdown($orders);
+
+                return $orders;
+            })
             ->groupBy(fn (Order $order) => $order->placed_at->clone()->timezone('Africa/Accra')->startOfWeek()->toDateString())
             ->map(function (Collection $orders, string $weekStartDate) {
                 $weekStart = Carbon::parse($weekStartDate, 'Africa/Accra')->startOfWeek();
@@ -60,7 +70,7 @@ class WeeklySalesReportService
                     'city' => app(BusinessProfile::class)->city(),
                     'currency' => 'GHS',
                     'orders_count' => $orders->count(),
-                    'total' => (int) $orders->sum(fn (Order $order) => $order->subtotal - $order->discount_total),
+                    'total' => (int) $orders->sum(fn (Order $order) => app(TaxService::class)->netFood($order, $this->tax)),
                 ];
             })
             ->sortByDesc(fn (array $week) => $week['start'])

@@ -94,10 +94,12 @@
                                 <span class="text-gray-800">{{ $order->delivery_fee > 0 ? 'GH₵'.number_format($order->delivery_fee / 100, 2) : __('Not yet priced') }}</span>
                             </div>
                         @endif
+                        @include('partials.order-taxes', ['order' => $order, 'position' => 'before', 'labelClass' => 'text-gray-500'])
                         <div class="flex justify-between font-semibold border-t border-gray-100 pt-2">
                             <span>{{ __('Total') }}</span>
                             <span>GH₵{{ number_format($order->total / 100, 2) }}</span>
                         </div>
+                        @include('partials.order-taxes', ['order' => $order, 'position' => 'after'])
                     </div>
                 </div>
 

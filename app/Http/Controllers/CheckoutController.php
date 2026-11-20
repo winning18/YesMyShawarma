@@ -20,6 +20,7 @@ use App\Services\Payments\PaystackClient;
 use App\Services\Payments\PaystackPaymentService;
 use App\Services\Promotions\PromotionService;
 use App\Services\Settings\SettingsService;
+use App\Services\Tax\TaxService;
 use App\Services\Visitors\VisitorSessionService;
 use Closure;
 use Illuminate\Http\JsonResponse;
@@ -62,6 +63,7 @@ class CheckoutController extends Controller
                 : 0,
             'deliveryAvailable' => $deliveryAreas->isNotEmpty(),
             'deliveryAreas' => $deliveryAreas,
+            'taxConfig' => app(TaxService::class)->clientConfig(),
             'customer' => Auth::guard('customer')->user(),
             // My account's saved addresses (CustomerAddressService) —
             // picking one fills the delivery fields, location included.

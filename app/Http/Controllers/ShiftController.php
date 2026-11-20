@@ -147,6 +147,7 @@ class ShiftController extends Controller
 
         $summary = $reports->financialSummary($shift->started_at, now());
 
-        return $summary['revenue_total'];
+        // With any tax the food was sold with (step 9): what the till holds.
+        return $summary['till_total'];
     }
 }
