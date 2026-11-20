@@ -250,4 +250,20 @@ class TablesTest extends TestCase
         app(SettingsService::class)->set('pos_mode', 'quick');
         $this->as()->postJson(route('dashboard.pos.orders.store'), ['fulfilment_type' => 'pickup', 'payment_method' => 'cash'])->assertOk();
     }
+
+    public function test_a_table_with_unsent_items_is_in_use_and_quick_sale_never_sees_them(): void
+    {
+        $one = $this->table('1');
+        $this->as()->postJson(route('dashboard.pos.cart.add').'?table_id='.$one->id, ['menu_item_id' => $this->item->id, 'quantity' => 1, 'option_ids' => []]);
+
+        $this->as()->getJson(route('dashboard.tables.index'))
+            ->assertJsonPath('tables.0.unsent', 1)
+            ->assertJsonPath('tables.0.tab', null);
+        $this->as()->getJson(route('dashboard.pos.cart.show'))->assertJsonPath('lines', []);
+
+        // A quick sale can't send the table's items.
+        $this->as()->postJson(route('dashboard.pos.orders.store'), ['fulfilment_type' => 'pickup', 'payment_method' => 'cash'])
+            ->assertStatus(422)->assertJsonPath('message', 'The cart is empty.');
+        $this->assertSame(1, $this->as()->getJson(route('dashboard.tables.index'))->json('tables.0.unsent'));
+    }
 }

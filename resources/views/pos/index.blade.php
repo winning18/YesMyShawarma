@@ -44,19 +44,20 @@
                     <div x-show="tableError" x-cloak class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3" x-text="tableError"></div>
                     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                         <template x-for="t in tables" :key="t.id">
-                            <div class="aspect-square rounded-xl border-2 p-3 flex flex-col" :class="t.tab ? 'bg-amber-50 border-amber-400' : 'bg-white border-gray-200'">
+                            <div class="aspect-square rounded-xl border-2 p-3 flex flex-col" :class="inUse(t) ? 'bg-amber-50 border-amber-400' : 'bg-white border-gray-200'">
                                 <div class="flex items-start justify-between gap-1">
                                     <p class="text-2xl font-bold text-gray-900 leading-tight break-words" x-text="t.name"></p>
                                     <div class="flex gap-1 shrink-0">
                                         <button type="button" @click="renameTable(t)" class="p-1 text-gray-400 hover:text-gray-700" title="{{ __('Rename') }}" aria-label="{{ __('Rename') }}">
                                             <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg>
                                         </button>
-                                        <button type="button" x-show="!t.tab" @click="deleteTable(t)" class="p-1 text-gray-400 hover:text-red-600" title="{{ __('Delete') }}" aria-label="{{ __('Delete') }}">
+                                        <button type="button" x-show="!inUse(t)" @click="deleteTable(t)" class="p-1 text-gray-400 hover:text-red-600" title="{{ __('Delete') }}" aria-label="{{ __('Delete') }}">
                                             <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
                                         </button>
                                     </div>
                                 </div>
-                                <span class="mt-1 inline-flex w-fit rounded-full px-2 py-0.5 text-xs font-semibold" :class="t.tab ? 'bg-amber-200 text-amber-900' : 'bg-green-100 text-green-800'" x-text="t.tab ? @js(__('In use')) : @js(__('Free'))"></span>
+                                <span class="mt-1 inline-flex w-fit rounded-full px-2 py-0.5 text-xs font-semibold" :class="inUse(t) ? 'bg-amber-200 text-amber-900' : 'bg-green-100 text-green-800'" x-text="inUse(t) ? @js(__('In use')) : @js(__('Free'))"></span>
+                                <p x-show="t.unsent > 0" class="mt-1 text-xs font-semibold text-amber-800" x-text="@js(__('Not sent yet:')) + ' ' + t.unsent + ' ' + (t.unsent === 1 ? @js(__('item')) : @js(__('items')))"></p>
                                 <template x-if="t.tab">
                                     <div class="mt-2 text-sm space-y-0.5">
                                         <p class="font-semibold text-red-700" x-text="@js(__('Not paid')) + ' ' + formatMoney(t.tab.total)"></p>
@@ -65,7 +66,7 @@
                                     </div>
                                 </template>
                                 <div class="flex gap-2 mt-auto pt-2">
-                                    <button type="button" @click="chooseTable(t)" class="flex-1 px-2 py-2 text-xs font-semibold rounded-md bg-gray-800 text-white hover:bg-gray-900" x-text="t.tab ? @js(__('Add a round')) : @js(__('Order'))"></button>
+                                    <button type="button" @click="chooseTable(t)" class="flex-1 px-2 py-2 text-xs font-semibold rounded-md bg-gray-800 text-white hover:bg-gray-900" x-text="t.unsent > 0 ? @js(__('Continue')) : (t.tab ? @js(__('Add a round')) : @js(__('Order')))"></button>
                                     <button type="button" x-show="t.tab" @click="openBill(t)" class="flex-1 px-2 py-2 text-xs font-semibold rounded-md bg-green-600 text-white hover:bg-green-700">{{ __('Bill') }}</button>
                                 </div>
                             </div>
@@ -128,7 +129,7 @@
                 @module('tables')
                 <div x-show="table" x-cloak class="mb-4 rounded-md bg-amber-50 border border-amber-300 px-3 py-2 text-sm flex items-center justify-between gap-2">
                     <span><span class="font-semibold" x-text="@js(__('Table')) + ' ' + (table?.name ?? '')"></span> · {{ __('a round, paid on the bill') }}</span>
-                    <button type="button" @click="clearTable()" class="text-xs text-gray-600 underline" x-text="posMode === 'tables' ? @js(__('Back to tables')) : @js(__('Not a table'))"></button>
+                    <button type="button" @click="clearTable()" class="text-xs text-gray-600 underline">{{ __('Back to tables') }}</button>
                 </div>
                 @endmodule
 
@@ -569,20 +570,27 @@
                     if (this.view === 'tables') this.loadTables();
                 },
 
-                showTables() {
+                // Tables and Quick sale never mix (owner, 2026-11-20): going to either lets go of the table.
+                async showTables() {
+                    if (this.table) await this.leaveTable();
                     this.view = 'tables';
                     this.loadTables();
                 },
 
-                // Quick sale: the counter's own order, no table.
+                // Quick sale: the counter's own order, never a table's.
                 async quickSale() {
-                    if (this.table) {
-                        this.table = null;
-                        this.phone = phoneField('');
-                        this.name = '';
-                        await this.loadCart();
-                    }
+                    if (this.table) await this.leaveTable();
                     this.view = 'menu';
+                },
+
+                // The table's order stays on the table (its own cart); the panel goes back to Quick sale's own.
+                async leaveTable() {
+                    this.table = null;
+                    this.phone = phoneField('');
+                    this.name = '';
+                    this.instructions = '';
+                    this.error = null;
+                    await this.loadCart();
                 },
 
                 // Each table keeps its own unsent items (server, per table) and customer (on its bill).
@@ -664,15 +672,16 @@
                 },
 
                 async clearTable() {
-                    this.table = null;
-                    this.phone = phoneField('');
-                    this.name = '';
-                    await this.loadCart();
-                    if (this.posMode === 'tables') this.showTables();
+                    await this.showTables();
+                },
+
+                // In use: a bill not yet paid, or an order in progress on this till.
+                inUse(t) {
+                    return !!t.tab || t.unsent > 0;
                 },
 
                 freeTables() {
-                    return this.tables.filter((t) => !t.tab);
+                    return this.tables.filter((t) => !this.inUse(t));
                 },
 
                 async openBill(t) {

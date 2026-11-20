@@ -169,6 +169,12 @@ class CartService
         return array_values(array_unique($removed));
     }
 
+    /** How many lines are in the cart, without pricing them. */
+    public function itemCount(): int
+    {
+        return count($this->raw()['items']);
+    }
+
     public function clear(): void
     {
         $this->request->session()->forget($this->sessionKey());

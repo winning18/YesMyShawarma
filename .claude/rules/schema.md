@@ -195,7 +195,8 @@ bill can move to a free table. A till can't close while an open bill holds round
 Owner's follow-ups, 2026-11-20: a branch gets tables 1, 2, 3 the first time it uses tables; tables
 can be renamed, and deleted when free (`is_active` false: past bills keep their table; adding the
 name again brings it back). Each table keeps its own unsent items (the POS cart is per table,
-`PosCartService::forTable()`, session key `pos_cart_table_<id>`) and its customer
+`PosCartService::forTable()`, session key `pos_cart_table_<id>`; a table with unsent items is
+"In use"; going to Tables or Quick sale always lets go of the table, so the two never mix) and its customer
 (`table_tabs.customer_*`, saved from a round and used for the next ones). The owner's setting
 `pos_mode` (Settings → General, "How the POS works"; `SettingsService::posMode()`): `both`
 (default: opens on Tables, Quick sale a tap away), `tables` (every cash/MoMo POS order needs a

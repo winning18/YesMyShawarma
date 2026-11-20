@@ -7,6 +7,7 @@ use App\Exceptions\TableTabException;
 use App\Models\DiningTable;
 use App\Models\TableTab;
 use App\Services\Branches\BranchContext;
+use App\Services\Cart\PosCartService;
 use App\Services\Customers\CustomerService;
 use App\Services\Printing\PrinterService;
 use App\Services\Printing\PrintJobService;
@@ -16,6 +17,7 @@ use App\Services\Shifts\ShiftService;
 use App\Services\Tables\TableTabService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -37,7 +39,7 @@ class TableController extends Controller
     {
         Gate::authorize('orders.create');
 
-        return response()->json(['tables' => $this->tabs->tablesFor($this->branchId())]);
+        return response()->json(['tables' => $this->withUnsent($this->tabs->tablesFor($this->branchId()))]);
     }
 
     public function store(Request $request): JsonResponse
@@ -47,7 +49,7 @@ class TableController extends Controller
 
         $table = $this->tabs->createTable($this->branchId(), $validated['name']);
 
-        return response()->json(['table' => ['id' => $table->id, 'name' => $table->name], 'tables' => $this->tabs->tablesFor($this->branchId())], 201);
+        return response()->json(['table' => ['id' => $table->id, 'name' => $table->name], 'tables' => $this->withUnsent($this->tabs->tablesFor($this->branchId()))], 201);
     }
 
     public function update(Request $request, DiningTable $table): JsonResponse
@@ -61,7 +63,7 @@ class TableController extends Controller
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        return response()->json(['tables' => $this->tabs->tablesFor($table->branch_id)]);
+        return response()->json(['tables' => $this->withUnsent($this->tabs->tablesFor($table->branch_id))]);
     }
 
     public function destroy(DiningTable $table): JsonResponse
@@ -70,11 +72,12 @@ class TableController extends Controller
 
         try {
             $this->tabs->delete($table);
+            app(PosCartService::class)->forTable($table->id)->clear();
         } catch (TableTabException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        return response()->json(['tables' => $this->tabs->tablesFor($table->branch_id)]);
+        return response()->json(['tables' => $this->withUnsent($this->tabs->tablesFor($table->branch_id))]);
     }
 
     /** The table's customer, kept with its bill. */
@@ -86,7 +89,7 @@ class TableController extends Controller
 
         $this->tabs->setCustomer($tab, $validated['name'] ?? null, $phone);
 
-        return response()->json(['tables' => $this->tabs->tablesFor($tab->branch_id)]);
+        return response()->json(['tables' => $this->withUnsent($this->tabs->tablesFor($tab->branch_id))]);
     }
 
     /** One bill: its rounds and total. */
@@ -136,7 +139,7 @@ class TableController extends Controller
             'total' => $tab->total,
             'printed_by_agent' => $tab->total > 0 && $jobs->forBill($tab, $counters->currentAt($tab->branch_id), $request->user()),
             'print_url' => route('dashboard.tables.bill', $tab),
-            'tables' => $this->tabs->tablesFor($tab->branch_id),
+            'tables' => $this->withUnsent($this->tabs->tablesFor($tab->branch_id)),
         ]);
     }
 
@@ -146,13 +149,19 @@ class TableController extends Controller
         $validated = $request->validate(['table_id' => ['required', 'integer']]);
         $to = DiningTable::where('branch_id', $tab->branch_id)->findOrFail($validated['table_id']);
 
+        $from = $tab->dining_table_id;
         try {
             $this->tabs->move($tab, $to);
         } catch (TableTabException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        return response()->json(['tables' => $this->tabs->tablesFor($tab->branch_id)]);
+        // Its unsent items on this till go with it.
+        if ($request->session()->has('pos_cart_table_'.$from)) {
+            $request->session()->put('pos_cart_table_'.$to->id, $request->session()->pull('pos_cart_table_'.$from));
+        }
+
+        return response()->json(['tables' => $this->withUnsent($this->tabs->tablesFor($tab->branch_id))]);
     }
 
     /** The bill through the browser's print dialog (no print agent on). */
@@ -172,6 +181,20 @@ class TableController extends Controller
         $this->authorizeTab($tab);
 
         return response()->json(['queued' => $jobs->forBill($tab, $counters->currentAt($tab->branch_id), $request->user()) ? 1 : 0, 'print_url' => route('dashboard.tables.bill', $tab)]);
+    }
+
+    /**
+     * Each table's unsent items on this till (its own POS cart): a table
+     * with an order in progress is in use even before anything is sent.
+     *
+     * @param  Collection<int, array<string, mixed>>  $tables
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function withUnsent($tables)
+    {
+        $cart = app(PosCartService::class);
+
+        return $tables->map(fn (array $table) => [...$table, 'unsent' => $cart->forTable($table['id'])->itemCount()]);
     }
 
     private function branchId(): int
