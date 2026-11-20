@@ -124,6 +124,7 @@ class PosController extends Controller
             'deliveryAvailable' => $deliveryAreas->isNotEmpty(),
             'ratePerKmPesewas' => app(DeliveryFeeCalculator::class)->ratePerKm(),
             'cart' => $this->cartPayload($cart, $promotions),
+            'posMode' => app(SettingsService::class)->posMode(),
             'taxConfig' => app(TaxService::class)->clientConfig(),
             'whatsappReward' => (int) app(SettingsService::class)->get(SettingsService::WHATSAPP_REWARD_AMOUNT, '1000'),
             'freebieStaff' => $this->staffForFreebies(app(BranchContext::class)),
@@ -138,6 +139,7 @@ class PosController extends Controller
 
     public function addItem(Request $request, PosCartService $cart, MenuPricingService $pricing, BranchContext $context, PromotionService $promotions): JsonResponse
     {
+        $cart->forTable(request()->integer('table_id'));
         Gate::authorize('orders.create');
 
         $branch = $context->branch();
@@ -180,6 +182,7 @@ class PosController extends Controller
 
     public function updateQuantity(Request $request, string $line, PosCartService $cart, PromotionService $promotions): JsonResponse
     {
+        $cart->forTable(request()->integer('table_id'));
         Gate::authorize('orders.create');
 
         $validated = $request->validate([
@@ -193,6 +196,7 @@ class PosController extends Controller
 
     public function updateOptionQuantity(Request $request, string $line, int $option, PosCartService $cart, PromotionService $promotions): JsonResponse
     {
+        $cart->forTable(request()->integer('table_id'));
         Gate::authorize('orders.create');
 
         $validated = $request->validate([
@@ -219,11 +223,20 @@ class PosController extends Controller
 
     public function removeItem(string $line, PosCartService $cart, PromotionService $promotions): JsonResponse
     {
+        $cart->forTable(request()->integer('table_id'));
         Gate::authorize('orders.create');
 
         $cart->remove($line);
 
         return response()->json($this->cartPayload($cart, $promotions));
+    }
+
+    /** One cart's lines and totals: the quick-sale cart, or a table's (?table_id=). */
+    public function cart(Request $request, PosCartService $cart, PromotionService $promotions): JsonResponse
+    {
+        Gate::authorize('orders.create');
+
+        return response()->json($this->cartPayload($cart->forTable($request->integer('table_id')), $promotions));
     }
 
     public function store(
@@ -236,6 +249,8 @@ class PosController extends Controller
     ): JsonResponse {
         Gate::authorize('orders.create');
 
+        // A table's round comes from that table's own items (2026-11-20).
+        $cart->forTable($request->integer('table_id'));
         $summary = $cart->summary();
 
         if (! $summary['branch'] || empty($summary['lines'])) {
@@ -357,15 +372,31 @@ class PosController extends Controller
             )
             : null;
 
+        // Tables only (owner's setting): a cash or MoMo order belongs to a table.
+        if (! isset($validated['table_id']) && in_array($validated['payment_method'], ['cash', 'momo'], true) && app(SettingsService::class)->posMode() === 'tables') {
+            return response()->json(['message' => __('Choose a table for this order.'), 'errors' => ['table_id' => [__('Choose a table for this order.')]]], 422);
+        }
+
         $user = $request->user();
         $tab = isset($validated['table_id'])
             ? app(TableTabService::class)->openTabFor(DiningTable::findOrFail($validated['table_id']), $user)
             : null;
 
+        $customerPhone = ! empty($validated['phone']) ? $customers->normalizeGhanaPhone($validated['phone']) : null;
+        $customerName = $validated['name'] ?? null;
+        // A table keeps its customer (2026-11-20): new details are saved on its bill; none given, the bill's are used.
+        if ($tab) {
+            if ($customerPhone || filled($customerName)) {
+                app(TableTabService::class)->setCustomer($tab, $customerName ?? $tab->customer_name, $customerPhone ?? $tab->customer_phone);
+            }
+            $customerPhone ??= $tab->customer_phone;
+            $customerName = filled($customerName) ? $customerName : $tab->customer_name;
+        }
+
         try {
             $order = $orders->create(new PlaceOrderData(
-                customerPhone: ! empty($validated['phone']) ? $customers->normalizeGhanaPhone($validated['phone']) : null,
-                customerName: $validated['name'] ?? null,
+                customerPhone: $customerPhone,
+                customerName: $customerName,
                 branchId: $branch->id,
                 fulfilmentType: $validated['fulfilment_type'],
                 paymentMethod: $validated['payment_method'],

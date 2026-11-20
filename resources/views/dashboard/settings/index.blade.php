@@ -92,6 +92,30 @@
             </div>
             @endmodule
 
+            @module('tables')
+            @can('business.manage')
+            <div class="border-t border-gray-100 pt-6">
+                <h3 class="font-semibold text-gray-800">{{ __('How the POS works') }}</h3>
+                <p class="text-sm text-gray-500 mb-3">{{ __('Eat-in tables, quick counter sales, or both.') }}</p>
+                @php $mode = old('pos_mode', $posMode); @endphp
+                @foreach ([
+                    'both' => [__('Tables and quick sale'), __('The POS opens on the tables, with Quick sale for takeaway a tap away.')],
+                    'tables' => [__('Tables only'), __('Every order belongs to a table. (Bolt Food orders and freebies need Quick sale.)')],
+                    'quick' => [__('Quick sale only'), __('The menu and a single order, no tables.')],
+                ] as $value => [$label, $hint])
+                    <label class="flex items-start gap-3 mb-2">
+                        <input type="radio" name="pos_mode" value="{{ $value }}" @checked($mode === $value) class="mt-1">
+                        <span>
+                            <span class="block text-sm font-medium text-gray-800">{{ $label }}</span>
+                            <span class="block text-xs text-gray-500">{{ $hint }}</span>
+                        </span>
+                    </label>
+                @endforeach
+                <x-input-error class="mt-2" :messages="$errors->get('pos_mode')" />
+            </div>
+            @endcan
+            @endmodule
+
             @module('delivery')
             <div class="border-t border-gray-100 pt-6">
                 <h3 class="font-semibold text-gray-800">{{ __('Delivery fees') }}</h3>

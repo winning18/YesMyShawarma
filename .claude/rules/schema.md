@@ -173,7 +173,8 @@ order_taxes
 
 ```
 dining_tables  id, branch_id, name (unique per branch), is_active
-table_tabs     id, branch_id, dining_table_id, opened_by, opened_at, settled_at, settled_by,
+table_tabs     id, branch_id, dining_table_id, opened_by, opened_at, customer_name, customer_phone,
+               settled_at, settled_by,
                shift_id (the till that settled it), payment_method (cash|momo),
                payment_reference, total (pesewas, as settled)
 orders.table_tab_id      the bill a round is on
@@ -190,6 +191,15 @@ paid by that method, moves to that till (`orders.shift_id`), and gets an `order_
 rejected rounds are left off the bill; a bill with nothing left on it just frees the table. A
 bill can move to a free table. A till can't close while an open bill holds rounds it took
 (shared till: any open bill at the branch). Yes My Shawarma has the switch on.
+
+Owner's follow-ups, 2026-11-20: a branch gets tables 1, 2, 3 the first time it uses tables; tables
+can be renamed, and deleted when free (`is_active` false: past bills keep their table; adding the
+name again brings it back). Each table keeps its own unsent items (the POS cart is per table,
+`PosCartService::forTable()`, session key `pos_cart_table_<id>`) and its customer
+(`table_tabs.customer_*`, saved from a round and used for the next ones). The owner's setting
+`pos_mode` (Settings → General, "How the POS works"; `SettingsService::posMode()`): `both`
+(default: opens on Tables, Quick sale a tap away), `tables` (every cash/MoMo POS order needs a
+table; Bolt Food and freebies need Quick sale) or `quick` (no tables; always, without the module).
 
 ### Tax (Express POS step 9, the `tax` module)
 

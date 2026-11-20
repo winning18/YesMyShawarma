@@ -9,8 +9,18 @@ namespace App\Services\Cart;
  */
 class PosCartService extends CartService
 {
+    /** Tables (2026-11-20): each table keeps its own unsent items. */
+    private ?int $tableId = null;
+
+    public function forTable(?int $tableId): static
+    {
+        $this->tableId = $tableId ?: null;
+
+        return $this;
+    }
+
     protected function sessionKey(): string
     {
-        return 'pos_cart';
+        return $this->tableId ? 'pos_cart_table_'.$this->tableId : 'pos_cart';
     }
 }

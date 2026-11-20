@@ -20,45 +20,58 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-3 gap-8 lg:h-[calc(100vh-6rem)]">
             {{-- Menu picker --}}
             <div class="lg:col-span-2 lg:h-full lg:overflow-y-auto lg:pr-2 space-y-8">
-                <div class="flex items-center justify-between gap-3">
+                {{-- One line: branch, the Tables / Quick sale switch, and Add table (owner's "How the POS works" setting). --}}
+                <div class="flex flex-wrap items-center justify-between gap-3">
                     <p class="text-sm text-gray-500">{{ $branch->name }}</p>
                     @module('tables')
-                    <div class="inline-flex rounded-md border border-gray-200 bg-white p-0.5 text-sm">
-                        <button type="button" @click="view = 'menu'" class="px-3 py-1 rounded" :class="view === 'menu' ? 'bg-gray-800 text-white' : 'text-gray-600'">{{ __('Menu') }}</button>
-                        <button type="button" @click="view = 'tables'; loadTables()" class="px-3 py-1 rounded" :class="view === 'tables' ? 'bg-gray-800 text-white' : 'text-gray-600'">{{ __('Tables') }}</button>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <form x-show="view === 'tables'" @submit.prevent="addTable()" class="flex gap-2">
+                            <input type="text" x-model="newTableName" maxlength="40" placeholder="{{ __('New table, e.g. 7') }}" class="w-36 rounded-md border-gray-300 text-sm py-1.5">
+                            <button type="submit" class="px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-800 text-white hover:bg-gray-900">{{ __('Add table') }}</button>
+                        </form>
+                        <div x-show="posMode !== 'quick'" class="inline-flex rounded-md border border-gray-200 bg-white p-0.5 text-sm">
+                            <button type="button" @click="showTables()" class="px-3 py-1 rounded" :class="view === 'tables' ? 'bg-gray-800 text-white' : 'text-gray-600'">{{ __('Tables') }}</button>
+                            <button type="button" x-show="posMode === 'both'" @click="quickSale()" class="px-3 py-1 rounded" :class="view === 'menu' && !table ? 'bg-gray-800 text-white' : 'text-gray-600'">{{ __('Quick sale') }}</button>
+                            <button type="button" x-show="table" x-cloak class="px-3 py-1 rounded bg-amber-500 text-white" x-text="@js(__('Table')) + ' ' + (table?.name ?? '')"></button>
+                        </div>
                     </div>
                     @endmodule
                 </div>
 
                 @module('tables')
-                {{-- Tables (2026-11-20): one card per table, free or with its open bill. --}}
+                {{-- Tables (2026-11-20): square cards, free or in use with what's not yet paid. --}}
                 <section x-show="view === 'tables'" x-cloak class="space-y-4">
                     <div x-show="tableError" x-cloak class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3" x-text="tableError"></div>
                     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                         <template x-for="t in tables" :key="t.id">
-                            <div class="rounded-lg border p-3 flex flex-col gap-2" :class="t.tab ? 'bg-amber-50 border-amber-300' : 'bg-white border-gray-200'">
-                                <div class="flex items-baseline justify-between gap-2">
-                                    <p class="font-semibold text-gray-800 truncate" x-text="t.name"></p>
-                                    <span class="text-xs font-semibold" :class="t.tab ? 'text-amber-800' : 'text-green-700'" x-text="t.tab ? @js(__('Open')) : @js(__('Free'))"></span>
+                            <div class="aspect-square rounded-xl border-2 p-3 flex flex-col" :class="t.tab ? 'bg-amber-50 border-amber-400' : 'bg-white border-gray-200'">
+                                <div class="flex items-start justify-between gap-1">
+                                    <p class="text-2xl font-bold text-gray-900 leading-tight break-words" x-text="t.name"></p>
+                                    <div class="flex gap-1 shrink-0">
+                                        <button type="button" @click="renameTable(t)" class="p-1 text-gray-400 hover:text-gray-700" title="{{ __('Rename') }}" aria-label="{{ __('Rename') }}">
+                                            <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg>
+                                        </button>
+                                        <button type="button" x-show="!t.tab" @click="deleteTable(t)" class="p-1 text-gray-400 hover:text-red-600" title="{{ __('Delete') }}" aria-label="{{ __('Delete') }}">
+                                            <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                                        </button>
+                                    </div>
                                 </div>
+                                <span class="mt-1 inline-flex w-fit rounded-full px-2 py-0.5 text-xs font-semibold" :class="t.tab ? 'bg-amber-200 text-amber-900' : 'bg-green-100 text-green-800'" x-text="t.tab ? @js(__('In use')) : @js(__('Free'))"></span>
                                 <template x-if="t.tab">
-                                    <div class="text-sm">
-                                        <p class="font-semibold text-gray-900" x-text="formatMoney(t.tab.total)"></p>
+                                    <div class="mt-2 text-sm space-y-0.5">
+                                        <p class="font-semibold text-red-700" x-text="@js(__('Not paid')) + ' ' + formatMoney(t.tab.total)"></p>
+                                        <p class="text-xs text-gray-600 truncate" x-show="t.tab.customer_name" x-text="t.tab.customer_name"></p>
                                         <p class="text-xs text-gray-500" x-text="t.tab.rounds + ' ' + (t.tab.rounds === 1 ? @js(__('round')) : @js(__('rounds'))) + ' · ' + @js(__('since')) + ' ' + t.tab.opened_at"></p>
                                     </div>
                                 </template>
-                                <div class="flex flex-wrap gap-2 mt-auto">
-                                    <button type="button" @click="chooseTable(t)" class="flex-1 px-2 py-1.5 text-xs font-semibold rounded-md bg-gray-800 text-white hover:bg-gray-900" x-text="t.tab ? @js(__('Add a round')) : @js(__('Order'))"></button>
-                                    <button type="button" x-show="t.tab" @click="openBill(t)" class="flex-1 px-2 py-1.5 text-xs font-semibold rounded-md bg-green-600 text-white hover:bg-green-700">{{ __('Bill') }}</button>
+                                <div class="flex gap-2 mt-auto pt-2">
+                                    <button type="button" @click="chooseTable(t)" class="flex-1 px-2 py-2 text-xs font-semibold rounded-md bg-gray-800 text-white hover:bg-gray-900" x-text="t.tab ? @js(__('Add a round')) : @js(__('Order'))"></button>
+                                    <button type="button" x-show="t.tab" @click="openBill(t)" class="flex-1 px-2 py-2 text-xs font-semibold rounded-md bg-green-600 text-white hover:bg-green-700">{{ __('Bill') }}</button>
                                 </div>
                             </div>
                         </template>
                     </div>
-                    <p class="text-sm text-gray-500" x-show="tables.length === 0">{{ __('No tables yet. Add one: a number or a name.') }}</p>
-                    <form @submit.prevent="addTable()" class="flex gap-2 max-w-sm">
-                        <input type="text" x-model="newTableName" maxlength="40" placeholder="{{ __('e.g. 7 or Terrace 2') }}" class="flex-1 rounded-md border-gray-300 text-sm">
-                        <button type="submit" class="px-3 py-2 text-sm font-semibold rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50">{{ __('Add table') }}</button>
-                    </form>
+                    <p class="text-sm text-gray-500" x-show="tables.length === 0">{{ __('No tables yet. Add one at the top: a number or a name.') }}</p>
                 </section>
                 @endmodule
 
@@ -106,10 +119,16 @@
             <div class="bg-white shadow rounded-lg p-4 lg:h-full lg:overflow-y-auto">
                 <h3 class="font-semibold text-gray-800 mb-3">{{ __('Order') }}</h3>
 
+                {{-- On the Tables screen with no table chosen: point to the tables, not a quick-sale form. --}}
+                <p x-show="!table && view === 'tables'" x-cloak class="text-sm text-gray-500"
+                    x-text="posMode === 'both' ? @js(__('Choose a table to take its order, or Quick sale for a takeaway.')) : @js(__('Choose a table to take its order.'))"></p>
+
+                <div x-show="table || view === 'menu'">
+
                 @module('tables')
                 <div x-show="table" x-cloak class="mb-4 rounded-md bg-amber-50 border border-amber-300 px-3 py-2 text-sm flex items-center justify-between gap-2">
                     <span><span class="font-semibold" x-text="@js(__('Table')) + ' ' + (table?.name ?? '')"></span> · {{ __('a round, paid on the bill') }}</span>
-                    <button type="button" @click="clearTable()" class="text-xs text-gray-600 underline">{{ __('Not a table') }}</button>
+                    <button type="button" @click="clearTable()" class="text-xs text-gray-600 underline" x-text="posMode === 'tables' ? @js(__('Back to tables')) : @js(__('Not a table'))"></button>
                 </div>
                 @endmodule
 
@@ -359,6 +378,7 @@
                         class="w-full px-4 py-2.5 bg-green-600 text-white text-sm font-semibold rounded-md hover:bg-green-700 disabled:opacity-50"
                     ><span x-text="submitting ? '{{ __('Placing…') }}' : (table ? @js(__('Send round to the kitchen')) : '{{ __('Place order') }}')"></span></button>
                 </div>
+                </div>
             </div>
         </div>
 
@@ -372,6 +392,7 @@
                             <h3 class="font-semibold text-gray-800" x-text="@js(__('Table')) + ' ' + bill.table"></h3>
                             <span class="text-xs text-gray-500" x-text="@js(__('since')) + ' ' + bill.opened_at"></span>
                         </div>
+                        <p class="text-sm text-gray-600 mt-1" x-show="bill.customer_name || bill.customer_phone" x-text="[bill.customer_name, bill.customer_phone].filter(Boolean).join(' · ')"></p>
 
                         <ul class="mt-3 divide-y divide-gray-100 text-sm">
                             <template x-for="round in bill.orders" :key="round.id">
@@ -530,8 +551,9 @@
                 itemQuantity: 1,
                 invalidGroups: {},
                 confirmation: null,
-                // Tables (2026-11-20)
-                view: 'menu',
+                // Tables (2026-11-20). The owner's "How the POS works": tables, quick or both (opens on Tables).
+                posMode: @js($posMode),
+                view: @js($posMode === 'quick' ? 'menu' : 'tables'),
                 tables: [],
                 table: null,
                 newTableName: '',
@@ -543,7 +565,63 @@
                 settleReference: '',
                 moveTo: '',
 
-                init() {},
+                init() {
+                    if (this.view === 'tables') this.loadTables();
+                },
+
+                showTables() {
+                    this.view = 'tables';
+                    this.loadTables();
+                },
+
+                // Quick sale: the counter's own order, no table.
+                async quickSale() {
+                    if (this.table) {
+                        this.table = null;
+                        this.phone = phoneField('');
+                        this.name = '';
+                        await this.loadCart();
+                    }
+                    this.view = 'menu';
+                },
+
+                // Each table keeps its own unsent items (server, per table) and customer (on its bill).
+                async loadCart() {
+                    try {
+                        const url = @js(route('dashboard.pos.cart.show')) + (this.table ? '?table_id=' + this.table.id : '');
+                        const payload = await this.tablesRequest(url);
+                        this.lines = payload.lines;
+                        this.subtotal = payload.subtotal;
+                        this.foodSubtotal = payload.foodSubtotal;
+                        this.discount = payload.discount;
+                        this.promotionBanner = payload.promotionBanner;
+                    } catch (e) {
+                        this.error = e.message;
+                    }
+                },
+
+                async renameTable(t) {
+                    const name = prompt(@js(__('New name for this table:')), t.name);
+                    if (!name || name.trim() === t.name) return;
+                    try {
+                        this.tables = (await this.tablesRequest(@js(url('/dashboard/tables')) + '/' + t.id, { method: 'PUT', body: JSON.stringify({ name }) })).tables;
+                        if (this.table?.id === t.id) this.table.name = name.trim();
+                        this.tableError = null;
+                    } catch (e) {
+                        this.tableError = e.message;
+                    }
+                },
+
+                async deleteTable(t) {
+                    if (!confirm(@js(__('Delete table')) + ' ' + t.name + '?\n\n' + @js(__('It disappears from the POS. Its past bills stay in reports and order history. This can\'t be undone here (you can add a table with the same name again).')))) return;
+                    try {
+                        this.tables = (await this.tablesRequest(@js(url('/dashboard/tables')) + '/' + t.id, { method: 'DELETE' })).tables;
+                        if (this.table?.id === t.id) this.clearTable();
+                        this.tableError = null;
+                    } catch (e) {
+                        this.tableError = e.message;
+                    }
+                },
 
                 async tablesRequest(url, options = {}) {
                     const response = await fetch(url, { headers: this.headers(), ...options });
@@ -572,16 +650,25 @@
                     }
                 },
 
-                chooseTable(t) {
+                async chooseTable(t) {
                     this.table = { id: t.id, name: t.name };
                     this.paymentMethod = 'cash';
                     this.fulfilmentType = 'pickup';
                     this.whatsapp = false;
+                    // This table's own customer and unsent items, never another table's.
+                    this.phone = phoneField(t.tab?.customer_phone ? '0' + t.tab.customer_phone.replace(/^\+233/, '') : '');
+                    this.name = t.tab?.customer_name ?? '';
+                    this.error = null;
+                    await this.loadCart();
                     this.view = 'menu';
                 },
 
-                clearTable() {
+                async clearTable() {
                     this.table = null;
+                    this.phone = phoneField('');
+                    this.name = '';
+                    await this.loadCart();
+                    if (this.posMode === 'tables') this.showTables();
                 },
 
                 freeTables() {
@@ -780,6 +867,8 @@
                 },
 
                 async mutateCart(url, method, body = null) {
+                    // A table's items go to that table's own cart.
+                    if (this.table) url += (url.includes('?') ? '&' : '?') + 'table_id=' + this.table.id;
                     try {
                         const response = await fetch(url, {
                             method,
@@ -865,9 +954,12 @@
                         if (payload.order.table) {
                             this.confirmation.table = payload.order.table;
                             this.table = null;
-                            this.loadTables();
+                            this.resetForm();
+                            await this.loadCart();
+                            this.showTables();
+                        } else {
+                            this.resetForm();
                         }
-                        this.resetForm();
                     } catch (e) {
                         this.error = '{{ __('Could not place the order.') }}';
                     } finally {

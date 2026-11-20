@@ -11,6 +11,7 @@ use App\Models\Shift;
 use App\Models\TableTab;
 use App\Models\User;
 use App\Services\Modules\ModuleService;
+use App\Services\Settings\SettingsService;
 use App\Services\Tables\TableTabService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -69,7 +70,8 @@ class TablesTest extends TestCase
 
     private function round(DiningTable $table, int $quantity = 1)
     {
-        $this->as()->postJson(route('dashboard.pos.cart.add'), ['menu_item_id' => $this->item->id, 'quantity' => $quantity, 'option_ids' => []]);
+        // Each table has its own cart.
+        $this->as()->postJson(route('dashboard.pos.cart.add').'?table_id='.$table->id, ['menu_item_id' => $this->item->id, 'quantity' => $quantity, 'option_ids' => []]);
 
         return $this->as()->postJson(route('dashboard.pos.orders.store'), [
             'fulfilment_type' => 'pickup', 'payment_method' => 'cash', 'table_id' => $table->id,
@@ -178,5 +180,74 @@ class TablesTest extends TestCase
         $this->as()->getJson(route('dashboard.tables.index'))->assertNotFound();
         $this->round($table)->assertStatus(422)->assertJsonValidationErrors('table_id');
         $this->as()->get(route('dashboard.pos.index'))->assertDontSee('Add table');
+    }
+
+    public function test_a_branch_starts_with_three_tables_and_the_pos_opens_on_them(): void
+    {
+        $this->as()->getJson(route('dashboard.tables.index'))->assertOk()
+            ->assertJsonPath('tables.*.name', ['1', '2', '3']);
+
+        $this->as()->get(route('dashboard.pos.index'))->assertOk()->assertViewHas('posMode', 'both');
+    }
+
+    public function test_each_table_keeps_its_own_items_and_customer(): void
+    {
+        $one = $this->table('1');
+        $two = $this->table('2');
+
+        $this->as()->postJson(route('dashboard.pos.cart.add').'?table_id='.$one->id, ['menu_item_id' => $this->item->id, 'quantity' => 2, 'option_ids' => []]);
+        $this->as()->getJson(route('dashboard.pos.cart.show', ['table_id' => $two->id]))->assertJsonPath('lines', []);
+        $this->as()->getJson(route('dashboard.pos.cart.show'))->assertJsonPath('lines', []);
+        $this->as()->getJson(route('dashboard.pos.cart.show', ['table_id' => $one->id]))->assertJsonPath('subtotal', 10000);
+
+        $this->as()->postJson(route('dashboard.pos.orders.store'), [
+            'fulfilment_type' => 'pickup', 'payment_method' => 'cash', 'table_id' => $one->id, 'name' => 'Kwesi', 'phone' => '0241112222',
+        ])->assertOk();
+
+        $tab = $one->openTab;
+        $this->assertSame(['Kwesi', '+233241112222'], [$tab->customer_name, $tab->customer_phone]);
+
+        // The next round takes the table's customer without retyping it.
+        $this->round($one)->assertOk();
+        $this->assertSame(['Kwesi', 'Kwesi'], $tab->orders()->with('customer')->get()->pluck('customer.name')->all());
+    }
+
+    public function test_tables_can_be_renamed_and_free_ones_deleted(): void
+    {
+        $five = $this->table('5');
+        $six = $this->table('6');
+        $this->round($six);
+
+        $this->as()->putJson(route('dashboard.tables.update', $five), ['name' => '6'])->assertStatus(422);
+        $this->as()->putJson(route('dashboard.tables.update', $five), ['name' => 'Terrace'])->assertOk();
+        $this->assertSame('Terrace', $five->fresh()->name);
+
+        $this->as()->deleteJson(route('dashboard.tables.destroy', $six))->assertStatus(422);
+        $this->as()->deleteJson(route('dashboard.tables.destroy', $five))->assertOk()->assertJsonMissing(['name' => 'Terrace']);
+        $this->assertFalse($five->fresh()->is_active, 'kept for its past bills');
+
+        // Adding a table by that name again brings the same table back.
+        $this->table('Terrace');
+        $this->assertTrue($five->fresh()->is_active);
+        $this->assertSame(1, DiningTable::where('name', 'like', 'Terrace%')->count());
+    }
+
+    public function test_tables_only_means_every_cash_or_momo_order_has_a_table_and_only_the_owner_chooses(): void
+    {
+        $owner = User::factory()->create();
+        app(PermissionRegistrar::class)->setPermissionsTeamId($this->branch->id);
+        $owner->assignRole('owner');
+        $this->as($owner)->get(route('dashboard.settings.index'))->assertSee('How the POS works');
+        $manager = User::factory()->create();
+        $manager->assignRole('manager');
+        $this->as($manager)->get(route('dashboard.settings.index'))->assertDontSee('How the POS works');
+
+        app(SettingsService::class)->set('pos_mode', 'tables');
+        $this->as()->postJson(route('dashboard.pos.cart.add'), ['menu_item_id' => $this->item->id, 'quantity' => 1, 'option_ids' => []]);
+        $this->as()->postJson(route('dashboard.pos.orders.store'), ['fulfilment_type' => 'pickup', 'payment_method' => 'cash'])
+            ->assertStatus(422)->assertJsonValidationErrors('table_id');
+
+        app(SettingsService::class)->set('pos_mode', 'quick');
+        $this->as()->postJson(route('dashboard.pos.orders.store'), ['fulfilment_type' => 'pickup', 'payment_method' => 'cash'])->assertOk();
     }
 }

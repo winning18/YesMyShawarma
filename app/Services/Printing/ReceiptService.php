@@ -114,7 +114,7 @@ class ReceiptService
             'counter' => $tab->shift?->terminal?->name,
             'table' => $tab->table?->name,
             'fulfilment' => 'pickup',
-            'customer' => null,
+            'customer' => $tab->customer_name,
             'lines' => $rounds->flatMap(fn (Order $order) => $this->lines($order))->values()->all(),
             'subtotal' => (int) $rounds->sum('subtotal'),
             'discount' => (int) $rounds->sum('discount_total'),

@@ -3,6 +3,7 @@
 namespace App\Services\Settings;
 
 use App\Models\Setting;
+use App\Services\Modules\ModuleService;
 
 /**
  * A general-purpose key-value store for admin-editable business
@@ -68,6 +69,27 @@ class SettingsService
      * Owner, 2026-11-20; see RiderCashupService.
      */
     public const DELIVERY_FEE_HANDLING = 'delivery_fee_handling';
+
+    /**
+     * How the POS works (owner, 2026-11-20; with the Tables module):
+     * 'tables' (every order belongs to a table), 'quick' (the menu, no
+     * tables) or 'both' (the default: opens on Tables, with Quick sale a
+     * tap away). Without the Tables module it's always 'quick'.
+     */
+    public const POS_MODE = 'pos_mode';
+
+    public const POS_MODES = ['tables', 'quick', 'both'];
+
+    public function posMode(): string
+    {
+        if (! app(ModuleService::class)->enabled(ModuleService::TABLES)) {
+            return 'quick';
+        }
+
+        $mode = $this->get(self::POS_MODE, 'both');
+
+        return in_array($mode, self::POS_MODES, true) ? $mode : 'both';
+    }
 
     /**
      * From when riders hand the food money they collect at doors in

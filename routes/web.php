@@ -220,6 +220,7 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::post('/dashboard/orders/{order}/print/{kind}', [PrintController::class, 'queue'])->whereIn('kind', ['receipt', 'kitchen'])->middleware('throttle:60,1')->name('dashboard.orders.print.queue');
 
     Route::get('/dashboard/pos', [PosController::class, 'index'])->name('dashboard.pos.index');
+    Route::get('/dashboard/pos/cart', [PosController::class, 'cart'])->name('dashboard.pos.cart.show');
     Route::post('/dashboard/pos/cart/add', [PosController::class, 'addItem'])->name('dashboard.pos.cart.add');
     Route::post('/dashboard/pos/cart/{line}', [PosController::class, 'updateQuantity'])->name('dashboard.pos.cart.update');
     Route::post('/dashboard/pos/cart/{line}/options/{option}', [PosController::class, 'updateOptionQuantity'])->name('dashboard.pos.cart.options.update');
@@ -229,6 +230,9 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     // Tables (2026-11-20): open bills on the POS.
     Route::get('/dashboard/tables', [TableController::class, 'index'])->middleware('module:tables')->name('dashboard.tables.index');
     Route::post('/dashboard/tables', [TableController::class, 'store'])->middleware('module:tables')->name('dashboard.tables.store');
+    Route::put('/dashboard/tables/{table}', [TableController::class, 'update'])->whereNumber('table')->middleware('module:tables')->name('dashboard.tables.update');
+    Route::delete('/dashboard/tables/{table}', [TableController::class, 'destroy'])->whereNumber('table')->middleware('module:tables')->name('dashboard.tables.destroy');
+    Route::post('/dashboard/tables/tabs/{tab}/customer', [TableController::class, 'customer'])->whereNumber('tab')->middleware('module:tables')->name('dashboard.tables.customer');
     Route::get('/dashboard/tables/tabs/{tab}', [TableController::class, 'show'])->whereNumber('tab')->middleware('module:tables')->name('dashboard.tables.show');
     Route::post('/dashboard/tables/tabs/{tab}/settle', [TableController::class, 'settle'])->whereNumber('tab')->middleware('module:tables')->name('dashboard.tables.settle');
     Route::post('/dashboard/tables/tabs/{tab}/move', [TableController::class, 'move'])->whereNumber('tab')->middleware('module:tables')->name('dashboard.tables.move');

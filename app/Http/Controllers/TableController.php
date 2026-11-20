@@ -7,6 +7,7 @@ use App\Exceptions\TableTabException;
 use App\Models\DiningTable;
 use App\Models\TableTab;
 use App\Services\Branches\BranchContext;
+use App\Services\Customers\CustomerService;
 use App\Services\Printing\PrinterService;
 use App\Services\Printing\PrintJobService;
 use App\Services\Printing\ReceiptService;
@@ -47,6 +48,45 @@ class TableController extends Controller
         $table = $this->tabs->createTable($this->branchId(), $validated['name']);
 
         return response()->json(['table' => ['id' => $table->id, 'name' => $table->name], 'tables' => $this->tabs->tablesFor($this->branchId())], 201);
+    }
+
+    public function update(Request $request, DiningTable $table): JsonResponse
+    {
+        $this->authorizeTable($table);
+        $validated = $request->validate(['name' => ['required', 'string', 'max:40']]);
+
+        try {
+            $this->tabs->rename($table, $validated['name']);
+        } catch (TableTabException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['tables' => $this->tabs->tablesFor($table->branch_id)]);
+    }
+
+    public function destroy(DiningTable $table): JsonResponse
+    {
+        $this->authorizeTable($table);
+
+        try {
+            $this->tabs->delete($table);
+        } catch (TableTabException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['tables' => $this->tabs->tablesFor($table->branch_id)]);
+    }
+
+    /** The table's customer, kept with its bill. */
+    public function customer(Request $request, TableTab $tab, CustomerService $customers): JsonResponse
+    {
+        $this->authorizeTab($tab);
+        $validated = $request->validate(['name' => ['nullable', 'string', 'max:255'], 'phone' => ['nullable', 'string', 'max:20']]);
+        $phone = filled($validated['phone'] ?? null) ? $customers->normalizeGhanaPhone($validated['phone']) : null;
+
+        $this->tabs->setCustomer($tab, $validated['name'] ?? null, $phone);
+
+        return response()->json(['tables' => $this->tabs->tablesFor($tab->branch_id)]);
     }
 
     /** One bill: its rounds and total. */
@@ -137,6 +177,12 @@ class TableController extends Controller
     private function branchId(): int
     {
         return (int) ($this->context->id() ?? abort(404));
+    }
+
+    private function authorizeTable(DiningTable $table): void
+    {
+        Gate::authorize('orders.create');
+        abort_unless($table->branch_id === (int) $this->context->id() && $table->is_active, 404);
     }
 
     private function authorizeTab(TableTab $tab): void

@@ -7,11 +7,14 @@
     customer.blade.php), so "does this width get a hamburger" is
     consistent everywhere in the app, not a per-layout coin flip.
 --}}
-<aside class="hidden md:flex md:flex-col md:w-64 md:shrink-0 md:sticky md:top-0 md:h-screen bg-white border-r border-gray-100">
-    <div class="h-16 flex items-center px-6 border-b border-gray-100 shrink-0">
+<aside x-show="!sidebarCollapsed" class="hidden md:flex md:flex-col md:w-64 md:shrink-0 md:sticky md:top-0 md:h-screen bg-white border-r border-gray-100">
+    <div class="h-16 flex items-center justify-between gap-2 px-6 pr-3 border-b border-gray-100 shrink-0">
         <a href="{{ route('dashboard') }}">
             <x-application-logo class="block h-9 w-auto" />
         </a>
+        <button type="button" @click="toggleSidebar()" class="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-50" title="{{ __('Hide menu') }}" aria-label="{{ __('Hide menu') }}">
+            <svg class="h-5 w-5" stroke="currentColor" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7M19 19l-7-7 7-7" /></svg>
+        </button>
     </div>
 
     <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1">

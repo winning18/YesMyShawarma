@@ -25,6 +25,9 @@ use Illuminate\Support\Facades\DB;
  */
 class TableTabService
 {
+    /** A branch's first tables, made the first time it uses tables (owner, 2026-11-20). */
+    public const STARTER_TABLES = ['1', '2', '3'];
+
     /** Round statuses that are not on the bill. */
     public const OFF_THE_BILL = ['cancelled', 'rejected', 'refunded', 'abandoned', 'failed'];
 
@@ -36,6 +39,12 @@ class TableTabService
      */
     public function tablesFor(int $branchId): Collection
     {
+        if (! DiningTable::where('branch_id', $branchId)->exists()) {
+            foreach (self::STARTER_TABLES as $name) {
+                DiningTable::firstOrCreate(['branch_id' => $branchId, 'name' => $name]);
+            }
+        }
+
         return DiningTable::where('branch_id', $branchId)->where('is_active', true)
             ->with(['openTab.orders' => fn ($q) => $q->select('id', 'table_tab_id', 'reference', 'status', 'total', 'placed_at')])
             ->get()
@@ -49,7 +58,7 @@ class TableTabService
     }
 
     /**
-     * @return array{id: int, opened_at: string, rounds: int, total: int}
+     * @return array{id: int, opened_at: string, rounds: int, total: int, customer_name: ?string, customer_phone: ?string}
      */
     public function summary(TableTab $tab): array
     {
@@ -60,7 +69,46 @@ class TableTabService
             'opened_at' => $tab->opened_at->clone()->timezone('Africa/Accra')->format('H:i'),
             'rounds' => $rounds->count(),
             'total' => (int) $rounds->sum('total'),
+            'customer_name' => $tab->customer_name,
+            'customer_phone' => $tab->customer_phone,
         ];
+    }
+
+    public function rename(DiningTable $table, string $name): DiningTable
+    {
+        $name = trim(preg_replace('/\s+/', ' ', $name));
+        $clash = DiningTable::where('branch_id', $table->branch_id)->where('name', $name)->whereKeyNot($table->id)->first();
+
+        if ($clash && $clash->is_active) {
+            throw TableTabException::nameTaken($name);
+        }
+        // A deleted table's old name can be used again.
+        $clash?->update(['name' => mb_substr($clash->name.' (#'.$clash->id.')', 0, 40)]);
+
+        $table->update(['name' => $name]);
+
+        return $table;
+    }
+
+    /** Free tables only; their past bills stay in reports and history. */
+    public function delete(DiningTable $table): void
+    {
+        if (TableTab::where('dining_table_id', $table->id)->whereNull('settled_at')->exists()) {
+            throw TableTabException::tableInUse($table->name);
+        }
+
+        $table->update(['is_active' => false]);
+    }
+
+    /** The table's customer, kept with its bill until it's paid. */
+    public function setCustomer(TableTab $tab, ?string $name, ?string $phone): TableTab
+    {
+        $tab->update([
+            'customer_name' => filled($name) ? trim($name) : null,
+            'customer_phone' => filled($phone) ? $phone : null,
+        ]);
+
+        return $tab;
     }
 
     /**

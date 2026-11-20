@@ -15,10 +15,23 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="font-sans antialiased">
-        <div class="min-h-screen flex bg-gray-100" x-data="{ sidebarOpen: false }">
+        <div class="min-h-screen flex bg-gray-100" x-data="{
+            sidebarOpen: false,
+            // Desktop: the sidebar collapses and opens (2026-11-20), remembered on this device.
+            sidebarCollapsed: (() => { try { return localStorage.getItem('sidebarCollapsed') === '1'; } catch (e) { return false; } })(),
+            toggleSidebar() {
+                this.sidebarCollapsed = ! this.sidebarCollapsed;
+                try { localStorage.setItem('sidebarCollapsed', this.sidebarCollapsed ? '1' : '0'); } catch (e) {}
+            },
+        }">
             @include('layouts.navigation')
 
             <div class="flex-1 flex flex-col min-w-0">
+                <button type="button" x-show="sidebarCollapsed" x-cloak @click="toggleSidebar()"
+                    class="hidden md:flex fixed top-3 left-3 z-30 items-center gap-1 px-2.5 py-2 rounded-md bg-white border border-gray-200 shadow-sm text-gray-600 hover:text-gray-900"
+                    title="{{ __('Show menu') }}" aria-label="{{ __('Show menu') }}">
+                    <svg class="h-5 w-5" stroke="currentColor" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                </button>
                 <!-- Mobile top bar -->
                 <div class="md:hidden flex items-center justify-between h-16 px-4 bg-white border-b border-gray-100 shrink-0">
                     <a href="{{ route('dashboard') }}">
