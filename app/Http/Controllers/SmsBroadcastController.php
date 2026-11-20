@@ -8,6 +8,7 @@ use App\Models\Branch;
 use App\Models\SmsBroadcast;
 use App\Services\Sms\SmsBroadcastService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
@@ -74,5 +75,31 @@ class SmsBroadcastController extends Controller
         }
 
         return back()->with('status', __('Broadcast cancelled.'));
+    }
+
+    public function retry(SmsBroadcast $broadcast): RedirectResponse
+    {
+        Gate::authorize('customers.broadcast');
+
+        try {
+            $retrying = $this->broadcasts->retryFailed($broadcast);
+        } catch (SmsBroadcastException $e) {
+            return back()->withErrors(['broadcast' => $e->getMessage()]);
+        }
+
+        return back()->with('status', trans_choice('Retrying :count failed number. Sending starts within a minute.|Retrying :count failed numbers. Sending starts within a minute.', $retrying));
+    }
+
+    public function resend(Request $request, SmsBroadcast $broadcast): RedirectResponse
+    {
+        Gate::authorize('customers.broadcast');
+
+        try {
+            $this->broadcasts->resend($broadcast, $request->user());
+        } catch (SmsBroadcastException $e) {
+            return back()->withErrors(['broadcast' => $e->getMessage()]);
+        }
+
+        return redirect()->route('dashboard.customers.broadcasts.index')->with('status', __('Broadcast queued again. Sending starts within a minute.'));
     }
 }

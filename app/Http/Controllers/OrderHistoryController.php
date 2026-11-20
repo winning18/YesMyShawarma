@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
 use App\Models\DeliveryArea;
 use App\Models\Order;
 use App\Services\Branches\BranchContext;
@@ -39,8 +40,18 @@ class OrderHistoryController extends Controller
         $filters = $this->filters($request);
         [$from, $to] = $this->dateRange($filters);
 
+        // Only the owner's all-branches view lists more than one branch —
+        // everyone else is already held to their current branch
+        // (BranchScope), so a branch filter would mean nothing to them
+        // (owner, 2026-11-20: owner only for now).
+        $byBranch = $isOwner && $branchId === null;
+        if (! $byBranch) {
+            $filters['branch'] = null;
+        }
+
         return view('orders.history', [
             'orders' => $this->orders($channel, $filters, $from, $to),
+            'branchOptions' => $byBranch ? Branch::orderBy('name')->get(['id', 'name']) : null,
             'channel' => $channel,
             'filters' => $filters,
             // The *resolved* window, not the raw from/to query params —
@@ -97,7 +108,7 @@ class OrderHistoryController extends Controller
     }
 
     /**
-     * @return array{search: ?string, status: ?string, fulfilment_type: ?string, payment_method: ?string, location: ?string, range: ?string, from: ?string, to: ?string}
+     * @return array{search: ?string, status: ?string, fulfilment_type: ?string, payment_method: ?string, location: ?string, branch: ?int, range: ?string, from: ?string, to: ?string}
      */
     private function filters(Request $request): array
     {
@@ -107,6 +118,7 @@ class OrderHistoryController extends Controller
             'fulfilment_type' => ['nullable', 'in:pickup,delivery'],
             'payment_method' => ['nullable', 'in:cash,momo,paystack,bolt_food'],
             'location' => ['nullable', 'string', 'max:255'],
+            'branch' => ['nullable', 'integer'],
             'range' => ['nullable', Rule::in(self::RANGE_PRESETS)],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
@@ -154,8 +166,9 @@ class OrderHistoryController extends Controller
 
     private function orders(?string $channel, array $filters, ?Carbon $from, ?Carbon $to): LengthAwarePaginator
     {
-        return Order::with('customer')
+        return Order::with(['customer', 'branch:id,name'])
             ->when($channel, fn ($query, $value) => $query->where('channel', $value))
+            ->when($filters['branch'] ?? null, fn ($query, $value) => $query->where('branch_id', $value))
             ->when($filters['search'] ?? null, fn ($query, $value) => $query->where(
                 fn ($query) => $query->where('reference', 'like', "%{$value}%")
                     ->orWhereHas('customer', fn ($query) => $query->where('name', 'like', "%{$value}%")->orWhere('phone', 'like', "%{$value}%"))

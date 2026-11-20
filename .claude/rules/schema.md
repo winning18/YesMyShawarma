@@ -478,6 +478,16 @@ job sends for up to 40s, so only `pending` recipients are ever texted and a dead
 No frequency limit: the original one-per-7-days rule was removed at the owner's request
 (2026-10-21) — broadcasts can go any day, any time.
 
+Past broadcasts (owner, 2026-11-20). These are for broadcasts only; order SMS keep their own
+three automatic tries (`SendSms`):
+- **Retry failed** (`SmsBroadcastService::retryFailed()`, a sent broadcast with failures) puts that
+  broadcast's `failed` recipients back to `pending` with their same opt-out codes, leaving out
+  anyone opted out since, and sets the broadcast back to `sending`. The next minute's run sends
+  them like any broadcast still sending.
+- **Resend** (`resend()`, sent broadcasts only) is a new broadcast with the same message and
+  `branch_id`, sent now to today's audience with new codes.
+- **Copy** only puts the message and branch back in the compose form.
+
 ## Visitor tracking
 
 ```

@@ -24,6 +24,9 @@ class SmsBroadcastTest extends TestCase
     /** @var list<array{phone: string, message: string}> */
     private array $sent = [];
 
+    /** @var list<string> numbers fakeFlakySms() rejects until cleared */
+    private array $rejecting = [];
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -51,6 +54,44 @@ class SmsBroadcastTest extends TestCase
                 return $accept;
             });
         });
+    }
+
+    /**
+     * Like fakeSms(), but rejects whatever is in $this->rejecting at the
+     * moment of sending — clear it to make the "provider" recover.
+     */
+    private function fakeFlakySms(): void
+    {
+        $this->mock(Notifier::class, function ($mock) {
+            $mock->shouldReceive('send')->andReturnUsing(function (string $phone, string $message) {
+                $this->sent[] = ['phone' => $phone, 'message' => $message];
+
+                return ! in_array($phone, $this->rejecting, true);
+            });
+        });
+    }
+
+    /**
+     * A sent broadcast to three customers where the provider rejected the
+     * second and third numbers.
+     */
+    private function sentBroadcastWithTwoFailures(User $owner): SmsBroadcast
+    {
+        $this->fakeFlakySms();
+        foreach (['+233241111111', '+233242222222', '+233243333333'] as $phone) {
+            Customer::create(['phone' => $phone]);
+        }
+        $this->rejecting = ['+233242222222', '+233243333333'];
+
+        $this->broadcasts()->schedule('Shawarma Wednesday!', null, null, $owner);
+        $this->artisan('sms:send-due-broadcasts');
+
+        $broadcast = SmsBroadcast::sole();
+        $this->assertSame('sent', $broadcast->status);
+        $this->assertSame(2, $broadcast->failed_count);
+        $this->sent = [];
+
+        return $broadcast;
     }
 
     private function userWithRole(string $role): User
@@ -284,5 +325,180 @@ class SmsBroadcastTest extends TestCase
         $this->assertSame(2, $service->smsParts(str_repeat('a', 159).'€'));
         $this->assertSame(1, $service->smsParts(str_repeat('a', 68).'🌯'));
         $this->assertSame(2, $service->smsParts(str_repeat('a', 69).'🌯'));
+    }
+
+    public function test_retry_failed_texts_only_the_failed_numbers_again_with_their_own_opt_out_links(): void
+    {
+        $owner = $this->userWithRole('owner');
+        $broadcast = $this->sentBroadcastWithTwoFailures($owner);
+        $codes = $broadcast->recipients()->where('status', 'failed')->pluck('opt_out_code', 'phone');
+        $this->rejecting = [];
+
+        $this->actingAs($owner)->post(route('dashboard.customers.broadcasts.retry', $broadcast))
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('status', 'Retrying 2 failed numbers. Sending starts within a minute.');
+        $this->assertSame('sending', $broadcast->fresh()->status);
+        $this->assertSame(0, $broadcast->fresh()->failed_count);
+
+        $this->artisan('sms:send-due-broadcasts');
+
+        $this->assertEqualsCanonicalizing(['+233242222222', '+233243333333'], array_column($this->sent, 'phone'));
+        foreach ($this->sent as $sms) {
+            $this->assertStringContainsString('/stop/'.$codes[$sms['phone']], $sms['message']);
+        }
+        $broadcast->refresh();
+        $this->assertSame('sent', $broadcast->status);
+        $this->assertSame(3, $broadcast->sent_count);
+        $this->assertSame(0, $broadcast->failed_count);
+        $this->assertSame(1, SmsBroadcast::count());
+    }
+
+    public function test_a_number_still_rejected_on_retry_stays_failed_and_can_be_retried_again(): void
+    {
+        $owner = $this->userWithRole('owner');
+        $broadcast = $this->sentBroadcastWithTwoFailures($owner);
+        $this->rejecting = ['+233243333333'];
+
+        $this->broadcasts()->retryFailed($broadcast);
+        $this->artisan('sms:send-due-broadcasts');
+
+        $broadcast->refresh();
+        $this->assertSame('sent', $broadcast->status);
+        $this->assertSame(2, $broadcast->sent_count);
+        $this->assertSame(1, $broadcast->failed_count);
+        $this->assertSame(1, $this->broadcasts()->retryFailed($broadcast));
+    }
+
+    public function test_retry_leaves_out_anyone_who_has_opted_out_since(): void
+    {
+        $owner = $this->userWithRole('owner');
+        $broadcast = $this->sentBroadcastWithTwoFailures($owner);
+        Customer::where('phone', '+233243333333')->update(['marketing_opted_out_at' => now()]);
+        $this->rejecting = [];
+
+        $this->assertSame(1, $this->broadcasts()->retryFailed($broadcast));
+        $this->artisan('sms:send-due-broadcasts');
+
+        $this->assertSame(['+233242222222'], array_column($this->sent, 'phone'));
+        $this->assertSame(1, $broadcast->fresh()->failed_count);
+    }
+
+    public function test_retry_is_refused_when_everyone_who_failed_has_opted_out(): void
+    {
+        $owner = $this->userWithRole('owner');
+        $broadcast = $this->sentBroadcastWithTwoFailures($owner);
+        Customer::whereIn('phone', ['+233242222222', '+233243333333'])->update(['marketing_opted_out_at' => now()]);
+
+        $this->actingAs($owner)->post(route('dashboard.customers.broadcasts.retry', $broadcast))
+            ->assertSessionHasErrors('broadcast');
+
+        // Rolled back: still a finished broadcast with its two failures.
+        $this->assertSame('sent', $broadcast->fresh()->status);
+        $this->assertSame(2, $broadcast->fresh()->failed_count);
+    }
+
+    public function test_only_a_sent_broadcast_with_failures_can_be_retried(): void
+    {
+        $this->fakeSms();
+        Customer::create(['phone' => '+233241111111']);
+        $owner = $this->userWithRole('owner');
+        $scheduled = $this->broadcasts()->schedule('Later', null, now()->addHour(), $owner);
+        $clean = $this->broadcasts()->schedule('Now', null, null, $owner);
+        $this->artisan('sms:send-due-broadcasts');
+        $this->assertSame('sent', $clean->fresh()->status);
+
+        $this->actingAs($owner)->post(route('dashboard.customers.broadcasts.retry', $scheduled))->assertSessionHasErrors('broadcast');
+        $this->actingAs($owner)->post(route('dashboard.customers.broadcasts.retry', $clean))->assertSessionHasErrors('broadcast');
+        $this->assertSame('scheduled', $scheduled->fresh()->status);
+        $this->assertSame('sent', $clean->fresh()->status);
+    }
+
+    public function test_resend_sends_the_same_message_again_to_todays_audience_with_new_opt_out_links(): void
+    {
+        $this->fakeSms();
+        Customer::create(['phone' => '+233241111111']);
+        $owner = $this->userWithRole('owner');
+        $first = $this->broadcasts()->schedule('Shawarma Wednesday!', null, null, $owner);
+        $this->artisan('sms:send-due-broadcasts');
+        Customer::create(['phone' => '+233242222222']);
+        $this->sent = [];
+
+        $this->actingAs($owner)->post(route('dashboard.customers.broadcasts.resend', $first))
+            ->assertRedirect(route('dashboard.customers.broadcasts.index'))
+            ->assertSessionHasNoErrors();
+        $this->artisan('sms:send-due-broadcasts');
+
+        $again = SmsBroadcast::whereKeyNot($first->id)->sole();
+        $this->assertSame('Shawarma Wednesday!', $again->message);
+        $this->assertNull($again->branch_id);
+        $this->assertSame('sent', $again->status);
+        $this->assertSame(2, $again->sent_count);
+        $this->assertCount(2, $this->sent);
+        $this->assertEmpty(array_intersect(
+            $first->recipients()->pluck('opt_out_code')->all(),
+            $again->recipients()->pluck('opt_out_code')->all(),
+        ));
+    }
+
+    public function test_resend_keeps_the_branch_the_broadcast_went_to(): void
+    {
+        $this->fakeSms();
+        $other = Branch::create([
+            'name' => 'Pokuase', 'slug' => 'pokuase', 'phone' => '+233200000002', 'address' => 'B',
+            'lat' => 5.6, 'lng' => -0.2, 'opens_at' => '10:00', 'closes_at' => '22:00',
+        ]);
+        $this->orderFor(Customer::create(['phone' => '+233241111111']), $this->branch);
+        $this->orderFor(Customer::create(['phone' => '+233242222222']), $other);
+        $owner = $this->userWithRole('owner');
+        $first = $this->broadcasts()->schedule('Osu only', $this->branch->id, null, $owner);
+        $this->artisan('sms:send-due-broadcasts');
+        $this->sent = [];
+
+        $again = $this->broadcasts()->resend($first->fresh(), $owner);
+        $this->artisan('sms:send-due-broadcasts');
+
+        $this->assertSame($this->branch->id, $again->branch_id);
+        $this->assertSame(['+233241111111'], array_column($this->sent, 'phone'));
+    }
+
+    public function test_only_a_sent_broadcast_can_be_resent(): void
+    {
+        Customer::create(['phone' => '+233241111111']);
+        $owner = $this->userWithRole('owner');
+        $scheduled = $this->broadcasts()->schedule('Later', null, now()->addHour(), $owner);
+        $cancelled = $this->broadcasts()->schedule('Oops', null, now()->addHour(), $owner);
+        $this->broadcasts()->cancel($cancelled);
+
+        $this->actingAs($owner)->post(route('dashboard.customers.broadcasts.resend', $scheduled))->assertSessionHasErrors('broadcast');
+        $this->actingAs($owner)->post(route('dashboard.customers.broadcasts.resend', $cancelled))->assertSessionHasErrors('broadcast');
+        $this->assertSame(2, SmsBroadcast::count());
+    }
+
+    public function test_managers_cannot_retry_or_resend(): void
+    {
+        $owner = $this->userWithRole('owner');
+        $broadcast = $this->sentBroadcastWithTwoFailures($owner);
+        $manager = $this->userWithRole('manager');
+
+        $this->actingAs($manager)->post(route('dashboard.customers.broadcasts.retry', $broadcast))->assertForbidden();
+        $this->actingAs($manager)->post(route('dashboard.customers.broadcasts.resend', $broadcast))->assertForbidden();
+        $this->assertSame('sent', $broadcast->fresh()->status);
+        $this->assertSame(1, SmsBroadcast::count());
+    }
+
+    public function test_past_broadcasts_offer_copy_resend_and_retry_where_they_apply(): void
+    {
+        $owner = $this->userWithRole('owner');
+        $failed = $this->sentBroadcastWithTwoFailures($owner);
+        $this->broadcasts()->schedule('Later on', null, now()->addHour(), $owner);
+
+        $response = $this->actingAs($owner)->get(route('dashboard.customers.broadcasts.index'))->assertOk();
+
+        $response->assertSee(route('dashboard.customers.broadcasts.retry', $failed), false);
+        $response->assertSee(route('dashboard.customers.broadcasts.resend', $failed), false);
+        $response->assertSee('Send this SMS again to 3 people?');
+        $response->assertSee('Retry the 2 numbers this broadcast could not reach?');
+        $this->assertSame(2, substr_count($response->getContent(), "\$dispatch('copy-broadcast'"));
+        $this->assertSame(1, substr_count($response->getContent(), 'broadcasts/'.$failed->id.'/resend'));
     }
 }
