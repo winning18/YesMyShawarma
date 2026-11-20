@@ -134,16 +134,19 @@ jobs:
             sudo systemctl reload php8.3-fpm
           '
 
-      # Client installs on the staging code until the MVP release (step 10's
-      # pilot), set up with deploy/new-install.sh. The repository variable
-      # EXPRESSPOS_EXTRA_INSTALLS lists them, space-separated (e.g.
-      # "expresspos-mamaput"); empty means none. Each gets the same build,
-      # code and migrations as staging, and restarts its own services.
+      # Client installs on the staging code until the MVP release. The admin
+      # portal's provisioning registers each one in /etc/expresspos/installs
+      # on the server; the repository variable EXPRESSPOS_EXTRA_INSTALLS can
+      # add more by hand (space-separated, e.g. "expresspos-deboyes"). Each
+      # gets the same build, code and migrations as staging, and restarts
+      # its own services. None registered: nothing happens.
       - name: Update client installs on the staging code
-        if: ${{ vars.EXPRESSPOS_EXTRA_INSTALLS != '' }}
         env:
-          INSTALLS: ${{ vars.EXPRESSPOS_EXTRA_INSTALLS }}
+          EXTRA: ${{ vars.EXPRESSPOS_EXTRA_INSTALLS }}
         run: |
+          REGISTERED="$(ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} 'cat /etc/expresspos/installs 2>/dev/null || true')"
+          INSTALLS="$(echo $EXTRA $REGISTERED | tr ' ' '\n' | sort -u | tr '\n' ' ')"
+          if [ -z "${INSTALLS// /}" ]; then echo "No client installs."; exit 0; fi
           for install in $INSTALLS; do
             [[ "$install" =~ ^expresspos-[a-z0-9]+$ ]] || { echo "Skipping odd install name: $install"; continue; }
             echo "==> $install"

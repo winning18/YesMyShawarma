@@ -26,16 +26,15 @@ use function Laravel\Prompts\text;
     {--owner-email= : Owner\'s email (their sign-in)}
     {--owner-phone= : Owner\'s phone (optional)}
     {--support-email= : Solusys Digital support account email (optional)}
-    {--modules= : Modules to switch on, comma-separated keys (none = POS only)}')]
+    {--modules= : Modules to switch on, comma-separated keys (none = POS only)}
+    {--json : Print the result as one line of JSON (for the Express POS admin portal)}')]
 #[Description('Set up a fresh Express POS install for a new client: business, first branch, owner account and modules')]
 class NewClient extends Command
 {
     public function handle(ClientSetupService $setup): int
     {
         if (! $setup->isFreshInstall()) {
-            $this->error('This install already has branches, users or orders. Run this only on a new, empty install.');
-
-            return self::FAILURE;
+            return $this->failWith('This install already has branches, users or orders. Run this only on a new, empty install.');
         }
 
         $ask = fn (string $option, string $label, string $placeholder = '', bool $required = true) => $this->option($option)
@@ -77,11 +76,7 @@ class NewClient extends Command
         ]);
 
         if ($validator->fails()) {
-            foreach ($validator->errors()->all() as $message) {
-                $this->error($message);
-            }
-
-            return self::FAILURE;
+            return $this->failWith(implode(' ', $validator->errors()->all()));
         }
 
         $input['branch']['lat'] = (float) $input['branch']['lat'];
@@ -90,9 +85,22 @@ class NewClient extends Command
         try {
             $result = $setup->setUp($input);
         } catch (RuntimeException $e) {
-            $this->error($e->getMessage());
+            return $this->failWith($e->getMessage());
+        }
 
-            return self::FAILURE;
+        if ($this->option('json')) {
+            $this->line(json_encode([
+                'ok' => true,
+                'business' => $input['business'],
+                'branch' => $result['branch']->name,
+                'modules' => $input['modules'],
+                'accounts' => array_values(array_filter([
+                    ['role' => 'owner', 'email' => $result['owner']['user']->email, 'temporary_password' => $result['owner']['temporary_password']],
+                    $result['support'] ? ['role' => 'support', 'email' => $result['support']['user']->email, 'temporary_password' => $result['support']['temporary_password']] : null,
+                ])),
+            ]));
+
+            return self::SUCCESS;
         }
 
         $this->info("{$input['business']} is set up, with {$result['branch']->name} as its first branch.");
@@ -105,6 +113,18 @@ class NewClient extends Command
         ])));
 
         return self::SUCCESS;
+    }
+
+    /** An error, as text or (with --json) as JSON. */
+    private function failWith(string $message): int
+    {
+        if ($this->option('json')) {
+            $this->line(json_encode(['ok' => false, 'error' => $message]));
+        } else {
+            $this->error($message);
+        }
+
+        return self::FAILURE;
     }
 
     /**

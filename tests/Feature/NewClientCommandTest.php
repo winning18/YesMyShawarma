@@ -84,4 +84,15 @@ class NewClientCommandTest extends TestCase
         $this->assertFalse(Branch::exists());
         $this->assertFalse(User::exists());
     }
+
+    public function test_json_output_for_the_admin_portal(): void
+    {
+        $this->artisan('expresspos:new-client', $this->commandOptions(['--json' => true]))
+            ->expectsOutputToContain('"accounts":[{"role":"owner","email":"akosua@example.test","temporary_password"')
+            ->assertSuccessful();
+
+        $this->artisan('expresspos:new-client', $this->commandOptions(['--json' => true]))
+            ->expectsOutputToContain('{"ok":false,"error":"This install already has branches')
+            ->assertFailed();
+    }
 }

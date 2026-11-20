@@ -220,6 +220,14 @@ step before the previous one is released.
 5. **Express POS identity** — the EXPRESS POS login page; business branding inside.
 6. **Installs per client** — a repeatable install per client on a Solusys Digital subdomain,
    daily backups, one deploy updating every install, the owner's admin account on each.
+   Brought forward before the pilot (owner, 2026-11-20) as **Express POS Admin**: a separate
+   app in its own private repo (`winning18/expresspos-admin`, at
+   `admin.expresspos.solusysdigital.com`) where Solusys staff onboard clients. Version 1:
+   onboarding only. It runs `deploy/provision.sh` (root-owned `expresspos-provision`, the only
+   thing its worker may sudo), which calls `deploy/new-install.sh` and `expresspos:new-client
+   --json`, and registers the install in `/etc/expresspos/installs` (the staging deploy updates
+   everything listed there) and the nightly backups. One wildcard DNS record
+   `*.expresspos.solusysdigital.com` covers every client.
 7. **Several cashiers** — a till per cashier or terminal, each with its own float and cash-up.
 8. **Direct printing** — receipts and kitchen tickets straight to Epson printers, cash drawer.
 9. **Optional tax** — VAT, NHIL and levies per business, off by default.
@@ -227,7 +235,7 @@ step before the previous one is released.
 
 Straight after the MVP: offline mode for the subscription edition.
 
-**Current step:** 10 (food vendor pilot): tools built 2026-11-20 — `expresspos:new-client` (`ClientSetupService`), Help guides (staff quick-start, owner guide, go-live checklist), `deploy/new-install.sh` for a hand-set install on the staging code (updated by the staging deploy via the `EXPRESSPOS_EXTRA_INSTALLS` repo variable), nightly backups (`deploy/backup-databases.sh`), Reverb settings read at run time (`partials/reverb-config`) so one build serves every install; see `deploy/README.md`. Waiting on the vendor's details. Step 9, optional tax, built 2026-11-20 (the `tax` module: Settings → Tax, inclusive or added on top, food only (delivery fees never taxed), `order_taxes` kept as at sale, Reports → Tax, TIN on receipts — schema.md's Orders → Tax). Step 8, direct printing, built 2026-11-15/20: 8a printers,
+**Current step:** 6 (Express POS Admin, brought forward), then 10 (food vendor pilot: De Boyes Kitchen). Step 10 tools built 2026-11-20 — `expresspos:new-client` (`ClientSetupService`), Help guides (staff quick-start, owner guide, go-live checklist), `deploy/new-install.sh` for a hand-set install on the staging code (updated by the staging deploy via the `EXPRESSPOS_EXTRA_INSTALLS` repo variable), nightly backups (`deploy/backup-databases.sh`), Reverb settings read at run time (`partials/reverb-config`) so one build serves every install; see `deploy/README.md`. Production Yes My Shawarma database backed up nightly since 2026-11-20 (`/etc/expresspos/backup.conf`). Step 9, optional tax, built 2026-11-20 (the `tax` module: Settings → Tax, inclusive or added on top, food only (delivery fees never taxed), `order_taxes` kept as at sale, Reports → Tax, TIN on receipts — schema.md's Orders → Tax). Step 8, direct printing, built 2026-11-15/20: 8a printers,
 receipts, kitchen tickets and browser printing; 8b the Express POS Print Agent for Windows
 (`print-agent/`, Go, unsigned for the pilot) — schema.md's Printing notes. Step 6 (installs per client) is the last step, after the
 pilot (owner, 2026-11-15). Step 7, several cashiers, built 2026-11-15: 7a named

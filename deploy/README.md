@@ -1,7 +1,8 @@
 # Express POS: setting up a client install by hand
 
-For the food vendor pilot (MVP step 10). Step 6 later makes this repeatable
-for every client. Until the MVP release, client installs run the `staging`
+Normally clients are onboarded in **Express POS Admin** (the
+`winning18/expresspos-admin` repo), which runs `provision.sh` for you. This
+page is the same thing by hand, for when the portal isn't available. Until the MVP release, client installs run the `staging`
 code, and the staging deploy updates them too.
 
 You need: the client's short name (lowercase, e.g. `mamaput`), and DNS access
