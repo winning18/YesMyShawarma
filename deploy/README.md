@@ -10,8 +10,8 @@ for solusysdigital.com.
 
 ## 1. DNS (in your DNS provider)
 
-Add an **A record**: `mamaput.expresspos` → `161.35.170.51`.
-Wait until it resolves. On your Mac: `dig +short mamaput.expresspos.solusysdigital.com`
+Add an **A record**: `mamaput.pos` → `161.35.170.51`.
+Wait until it resolves. On your Mac: `dig +short mamaput.pos.solusysdigital.com`
 should print `161.35.170.51`.
 
 ## 2. Create the install (on the server)
@@ -21,7 +21,7 @@ From your Mac's Terminal:
 ```sh
 ssh root@161.35.170.51
 cd /var/www/yes-my-shawarma-staging
-bash deploy/new-install.sh mamaput mamaput.expresspos.solusysdigital.com
+bash deploy/new-install.sh mamaput mamaput.pos.solusysdigital.com
 ```
 
 It creates the folder, database, web server site with SSL, queue worker,

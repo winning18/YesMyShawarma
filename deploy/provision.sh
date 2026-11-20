@@ -18,7 +18,7 @@
 # a shell, and artisan validates it again. The slug is the only thing used
 # in paths or names, and it must be lowercase letters and digits.
 #
-# /etc/expresspos/provision.conf:  DOMAIN_SUFFIX="expresspos.solusysdigital.com"
+# /etc/expresspos/provision.conf:  DOMAIN_SUFFIX="pos.solusysdigital.com"
 
 set -euo pipefail
 

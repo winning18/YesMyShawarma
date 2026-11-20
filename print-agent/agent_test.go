@@ -108,7 +108,7 @@ func TestANetworkAddressWithoutAPortUses9100(t *testing.T) {
 
 func TestTheSiteAddressIsTidied(t *testing.T) {
 	for typed, want := range map[string]string{
-		" mama.expresspos.solusysdigital.com/ ": "https://mama.expresspos.solusysdigital.com",
+		" mama.pos.solusysdigital.com/ ": "https://mama.pos.solusysdigital.com",
 		"http://localhost:8000":                 "http://localhost:8000",
 	} {
 		if got := normalizeServer(typed); got != want {

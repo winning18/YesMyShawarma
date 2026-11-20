@@ -101,7 +101,7 @@ branch.
 
 **One install per business** (owner decision, 2026-11-15): the same code, deployed separately
 for each client, each with its own database, settings and subdomain under Solusys Digital
-(`<client>.expresspos.solusysdigital.com`). One business can never see another's data. The same
+(`<client>.pos.solusysdigital.com`; the short `pos` subdomain is the owner's choice, 2026-11-20, and the portal is `admin.pos.solusysdigital.com`). One business can never see another's data. The same
 deploy updates every install. Moving to one shared system for all clients is a later decision,
 around ten clients — don't build for it now, but don't make it harder either (keep everything
 branch-scoped, keep settings in the database).
@@ -222,12 +222,12 @@ step before the previous one is released.
    daily backups, one deploy updating every install, the owner's admin account on each.
    Brought forward before the pilot (owner, 2026-11-20) as **Express POS Admin**: a separate
    app in its own private repo (`winning18/expresspos-admin`, at
-   `admin.expresspos.solusysdigital.com`) where Solusys staff onboard clients. Version 1:
+   `admin.pos.solusysdigital.com`) where Solusys staff onboard clients. Version 1:
    onboarding only. It runs `deploy/provision.sh` (root-owned `expresspos-provision`, the only
    thing its worker may sudo), which calls `deploy/new-install.sh` and `expresspos:new-client
    --json`, and registers the install in `/etc/expresspos/installs` (the staging deploy updates
    everything listed there) and the nightly backups. One wildcard DNS record
-   `*.expresspos.solusysdigital.com` covers every client.
+   `*.pos.solusysdigital.com` covers every client.
 7. **Several cashiers** — a till per cashier or terminal, each with its own float and cash-up.
 8. **Direct printing** — receipts and kitchen tickets straight to Epson printers, cash drawer.
 9. **Optional tax** — VAT, NHIL and levies per business, off by default.

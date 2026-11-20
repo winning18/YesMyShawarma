@@ -21,7 +21,7 @@ func setup() error {
 	fmt.Println("2. Type the site's address and the code below.")
 	fmt.Println()
 
-	fmt.Print("Site address (e.g. yourbusiness.expresspos.solusysdigital.com): ")
+	fmt.Print("Site address (e.g. yourbusiness.pos.solusysdigital.com): ")
 	server, _ := in.ReadString('\n')
 	server = normalizeServer(server)
 	if server == "" {
