@@ -140,6 +140,12 @@ class Order extends Model
         return $this->hasOne(ComplimentaryOrder::class);
     }
 
+    /** The table bill this order is a round of (Tables module), if any. */
+    public function tableTab(): BelongsTo
+    {
+        return $this->belongsTo(TableTab::class);
+    }
+
     /** The rider cash-up this delivery was handed in with, if any. */
     public function cashupLine(): HasOne
     {

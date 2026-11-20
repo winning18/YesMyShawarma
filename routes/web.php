@@ -75,6 +75,7 @@ use App\Http\Controllers\SmsOptOutController;
 use App\Http\Controllers\StaffMemberManagementController;
 use App\Http\Controllers\StockItemController;
 use App\Http\Controllers\StockMovementController;
+use App\Http\Controllers\TableController;
 use App\Http\Controllers\TaxController;
 use App\Http\Controllers\TaxReportController;
 use App\Http\Controllers\TodayReportController;
@@ -224,6 +225,15 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::post('/dashboard/pos/cart/{line}/options/{option}', [PosController::class, 'updateOptionQuantity'])->name('dashboard.pos.cart.options.update');
     Route::delete('/dashboard/pos/cart/{line}', [PosController::class, 'removeItem'])->name('dashboard.pos.cart.remove');
     Route::post('/dashboard/pos/orders', [PosController::class, 'store'])->name('dashboard.pos.orders.store');
+
+    // Tables (2026-11-20): open bills on the POS.
+    Route::get('/dashboard/tables', [TableController::class, 'index'])->middleware('module:tables')->name('dashboard.tables.index');
+    Route::post('/dashboard/tables', [TableController::class, 'store'])->middleware('module:tables')->name('dashboard.tables.store');
+    Route::get('/dashboard/tables/tabs/{tab}', [TableController::class, 'show'])->whereNumber('tab')->middleware('module:tables')->name('dashboard.tables.show');
+    Route::post('/dashboard/tables/tabs/{tab}/settle', [TableController::class, 'settle'])->whereNumber('tab')->middleware('module:tables')->name('dashboard.tables.settle');
+    Route::post('/dashboard/tables/tabs/{tab}/move', [TableController::class, 'move'])->whereNumber('tab')->middleware('module:tables')->name('dashboard.tables.move');
+    Route::get('/dashboard/tables/tabs/{tab}/bill', [TableController::class, 'bill'])->whereNumber('tab')->middleware('module:tables')->name('dashboard.tables.bill');
+    Route::post('/dashboard/tables/tabs/{tab}/print', [TableController::class, 'printBill'])->whereNumber('tab')->middleware(['module:tables', 'throttle:30,1'])->name('dashboard.tables.print');
 
     Route::post('/dashboard/orders/{order}/accept', [OrderActionController::class, 'accept'])->name('orders.accept');
     Route::post('/dashboard/orders/{order}/reject', [OrderActionController::class, 'reject'])->name('orders.reject');

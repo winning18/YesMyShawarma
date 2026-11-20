@@ -6,6 +6,7 @@ use App\Exceptions\OrderPlacementException;
 use App\Models\Category;
 use App\Models\ComplimentaryOrder;
 use App\Models\DeliveryArea;
+use App\Models\DiningTable;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\Branches\BranchContext;
@@ -24,6 +25,7 @@ use App\Services\Promotions\PromotionService;
 use App\Services\Settings\SettingsService;
 use App\Services\Shifts\CounterService;
 use App\Services\Shifts\ShiftService;
+use App\Services\Tables\TableTabService;
 use App\Services\Tax\TaxService;
 use Closure;
 use Illuminate\Http\JsonResponse;
@@ -306,6 +308,21 @@ class PosController extends Controller
                 'nullable', Rule::in(Order::DELIVERY_FEE_PAID_BY),
             ],
             'instructions' => ['nullable', 'string', 'max:1000'],
+            // Tables (2026-11-20): a round on a table's bill, paid when the bill is settled.
+            'table_id' => [
+                'nullable', 'integer',
+                function (string $attribute, mixed $value, Closure $fail) use ($request, $modules, $branch): void {
+                    if ($value === null) {
+                        return;
+                    }
+                    if (! $modules->enabled(ModuleService::TABLES) || ! DiningTable::where('id', $value)->where('branch_id', $branch->id)->where('is_active', true)->exists()) {
+                        $fail(__('Choose a table at this branch.'));
+                    }
+                    if ($request->input('fulfilment_type') !== 'pickup' || ! in_array($request->input('payment_method'), ['cash', 'momo'], true) || $request->filled('source')) {
+                        $fail(__('A table order is eat-in, paid by cash or MoMo when the bill is settled.'));
+                    }
+                },
+            ],
         ];
 
         if ($deliveryAvailable) {
@@ -341,6 +358,9 @@ class PosController extends Controller
             : null;
 
         $user = $request->user();
+        $tab = isset($validated['table_id'])
+            ? app(TableTabService::class)->openTabFor(DiningTable::findOrFail($validated['table_id']), $user)
+            : null;
 
         try {
             $order = $orders->create(new PlaceOrderData(
@@ -366,8 +386,15 @@ class PosController extends Controller
                         reason: $validated['freebie_reason'],
                     )
                     : null,
+                // A round: recorded as cash until the bill is settled (TableTabService::settle()).
+                tableTabId: $tab?->id,
             ));
         } catch (OrderPlacementException $e) {
+            // A bill opened just now for this round, with nothing on it, goes again.
+            if ($tab && $tab->wasRecentlyCreated && ! $tab->orders()->exists()) {
+                $tab->delete();
+            }
+
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
@@ -383,6 +410,7 @@ class PosController extends Controller
                 'id' => $order->id,
                 'reference' => $order->reference,
                 'total' => $order->total,
+                'table' => $tab?->table?->name,
                 'tracking_url' => $modules->enabled(ModuleService::WEBSITE) ? route('tracking.show', $order) : null,
             ],
         ]);

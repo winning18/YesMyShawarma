@@ -48,6 +48,8 @@ class ModuleService
 
     public const TAX = 'tax';
 
+    public const TABLES = 'tables';
+
     /**
      * label/description: shown on the Modules page. requires: modules
      * that must be on for this one to work. ready: false while its switch
@@ -69,6 +71,7 @@ class ModuleService
         self::SMS => ['label' => 'Customer SMS', 'description' => 'Order updates, refund notices and SMS broadcasts to customers.', 'requires' => [], 'ready' => true],
         self::REFUNDS => ['label' => 'Refunds and damage reports', 'description' => 'Request, approve and complete refunds; damage reports with photos.', 'requires' => [], 'ready' => true],
         self::REVIEWS => ['label' => 'Reviews', 'description' => 'Customers review their order after it arrives; approved reviews show on the website.', 'requires' => [self::WEBSITE], 'ready' => true],
+        self::TABLES => ['label' => 'Tables', 'description' => 'Eat-in tables at the POS: guests order in rounds that go to the kitchen straight away, and pay one bill at the end.', 'requires' => [], 'ready' => true],
         self::TAX => ['label' => 'VAT and levies', 'description' => 'Charge VAT, NHIL, GETFund or other levies on sales, shown on receipts, with a tax report for filing.', 'requires' => [], 'ready' => true],
     ];
 

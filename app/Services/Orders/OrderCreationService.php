@@ -256,6 +256,8 @@ class OrderCreationService
             //   on pickup, regardless of fulfilment_type (always pickup
             //   anyway — see PosController's own validation).
             $initialPaymentStatus = match (true) {
+                // A table round is paid when the table's bill is settled (TableTabService).
+                $data->tableTabId !== null => 'pending',
                 $data->paymentMethod === 'cash' && $data->fulfilmentType === 'pickup' => 'paid',
                 $data->paymentMethod === 'momo' && $data->paymentReference !== null => 'paid',
                 $data->paymentMethod === 'bolt_food' => 'paid',
@@ -292,6 +294,7 @@ class OrderCreationService
             // or the branch's shared shift). A web order gets the till
             // that accepts it (OrderStateMachine).
             $order->shift_id = $data->channel === 'pos' ? app(ShiftService::class)->activeForBranch($branch->id)?->id : null;
+            $order->table_tab_id = $data->tableTabId;
             $order->save();
 
             $this->tax->record($order, $tax);
@@ -337,7 +340,7 @@ class OrderCreationService
                 'to_status' => $initialStatus,
                 'actor_type' => $data->actorType ?? 'customer',
                 'actor_id' => $data->actorId ?? $customer->id,
-                'meta' => ['action' => 'placed'],
+                'meta' => array_filter(['action' => 'placed', 'table_tab_id' => $data->tableTabId]),
             ]);
 
             if ($data->paymentMethod === Order::COMPLIMENTARY) {

@@ -20,8 +20,49 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-3 gap-8 lg:h-[calc(100vh-6rem)]">
             {{-- Menu picker --}}
             <div class="lg:col-span-2 lg:h-full lg:overflow-y-auto lg:pr-2 space-y-8">
-                <p class="text-sm text-gray-500">{{ $branch->name }}</p>
+                <div class="flex items-center justify-between gap-3">
+                    <p class="text-sm text-gray-500">{{ $branch->name }}</p>
+                    @module('tables')
+                    <div class="inline-flex rounded-md border border-gray-200 bg-white p-0.5 text-sm">
+                        <button type="button" @click="view = 'menu'" class="px-3 py-1 rounded" :class="view === 'menu' ? 'bg-gray-800 text-white' : 'text-gray-600'">{{ __('Menu') }}</button>
+                        <button type="button" @click="view = 'tables'; loadTables()" class="px-3 py-1 rounded" :class="view === 'tables' ? 'bg-gray-800 text-white' : 'text-gray-600'">{{ __('Tables') }}</button>
+                    </div>
+                    @endmodule
+                </div>
 
+                @module('tables')
+                {{-- Tables (2026-11-20): one card per table, free or with its open bill. --}}
+                <section x-show="view === 'tables'" x-cloak class="space-y-4">
+                    <div x-show="tableError" x-cloak class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3" x-text="tableError"></div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                        <template x-for="t in tables" :key="t.id">
+                            <div class="rounded-lg border p-3 flex flex-col gap-2" :class="t.tab ? 'bg-amber-50 border-amber-300' : 'bg-white border-gray-200'">
+                                <div class="flex items-baseline justify-between gap-2">
+                                    <p class="font-semibold text-gray-800 truncate" x-text="t.name"></p>
+                                    <span class="text-xs font-semibold" :class="t.tab ? 'text-amber-800' : 'text-green-700'" x-text="t.tab ? @js(__('Open')) : @js(__('Free'))"></span>
+                                </div>
+                                <template x-if="t.tab">
+                                    <div class="text-sm">
+                                        <p class="font-semibold text-gray-900" x-text="formatMoney(t.tab.total)"></p>
+                                        <p class="text-xs text-gray-500" x-text="t.tab.rounds + ' ' + (t.tab.rounds === 1 ? @js(__('round')) : @js(__('rounds'))) + ' · ' + @js(__('since')) + ' ' + t.tab.opened_at"></p>
+                                    </div>
+                                </template>
+                                <div class="flex flex-wrap gap-2 mt-auto">
+                                    <button type="button" @click="chooseTable(t)" class="flex-1 px-2 py-1.5 text-xs font-semibold rounded-md bg-gray-800 text-white hover:bg-gray-900" x-text="t.tab ? @js(__('Add a round')) : @js(__('Order'))"></button>
+                                    <button type="button" x-show="t.tab" @click="openBill(t)" class="flex-1 px-2 py-1.5 text-xs font-semibold rounded-md bg-green-600 text-white hover:bg-green-700">{{ __('Bill') }}</button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                    <p class="text-sm text-gray-500" x-show="tables.length === 0">{{ __('No tables yet. Add one: a number or a name.') }}</p>
+                    <form @submit.prevent="addTable()" class="flex gap-2 max-w-sm">
+                        <input type="text" x-model="newTableName" maxlength="40" placeholder="{{ __('e.g. 7 or Terrace 2') }}" class="flex-1 rounded-md border-gray-300 text-sm">
+                        <button type="submit" class="px-3 py-2 text-sm font-semibold rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50">{{ __('Add table') }}</button>
+                    </form>
+                </section>
+                @endmodule
+
+                <div x-show="view === 'menu'" class="space-y-8">
                 @forelse ($categories as $group)
                     <section>
                         <h3 class="font-semibold text-gray-800 mb-3">{{ $group['category']->name }}</h3>
@@ -58,11 +99,19 @@
                 @empty
                     <p class="text-sm text-gray-500">{{ __('Nothing available to sell at this branch right now.') }}</p>
                 @endforelse
+                </div>
             </div>
 
             {{-- Cart + checkout --}}
             <div class="bg-white shadow rounded-lg p-4 lg:h-full lg:overflow-y-auto">
                 <h3 class="font-semibold text-gray-800 mb-3">{{ __('Order') }}</h3>
+
+                @module('tables')
+                <div x-show="table" x-cloak class="mb-4 rounded-md bg-amber-50 border border-amber-300 px-3 py-2 text-sm flex items-center justify-between gap-2">
+                    <span><span class="font-semibold" x-text="@js(__('Table')) + ' ' + (table?.name ?? '')"></span> · {{ __('a round, paid on the bill') }}</span>
+                    <button type="button" @click="clearTable()" class="text-xs text-gray-600 underline">{{ __('Not a table') }}</button>
+                </div>
+                @endmodule
 
                 {{--
                     Payment first, above the items: a Bolt Food order is chosen
@@ -70,7 +119,7 @@
                     (never given on Bolt Food, see visibleLines()) doesn't show
                     while staff build one (owner, 2026-11-12).
                 --}}
-                <div class="mb-4 pb-3 border-b border-gray-100">
+                <div class="mb-4 pb-3 border-b border-gray-100" x-show="!table">
                     <label class="block text-xs font-medium text-gray-500 mb-2">{{ __('Payment') }} <span class="text-red-600">*</span></label>
                     <div class="flex flex-wrap gap-x-4 gap-y-2 text-sm">
                         <label class="flex items-center gap-1.5">
@@ -212,7 +261,7 @@
                         <input type="text" x-model="name" class="w-full rounded-md border-gray-300 text-sm">
                     </div>
 
-                    <div>
+                    <div x-show="!table">
                         <label class="block text-xs font-medium text-gray-500 mb-2">{{ __('Fulfilment') }} <span class="text-red-600">*</span></label>
                         <div class="flex gap-4 text-sm">
                             <label class="flex items-center gap-1.5">
@@ -308,10 +357,68 @@
                         type="button" @click="placeOrder()"
                         :disabled="lines.length === 0 || submitting"
                         class="w-full px-4 py-2.5 bg-green-600 text-white text-sm font-semibold rounded-md hover:bg-green-700 disabled:opacity-50"
-                    ><span x-text="submitting ? '{{ __('Placing…') }}' : '{{ __('Place order') }}'"></span></button>
+                    ><span x-text="submitting ? '{{ __('Placing…') }}' : (table ? @js(__('Send round to the kitchen')) : '{{ __('Place order') }}')"></span></button>
                 </div>
             </div>
         </div>
+
+        @module('tables')
+        {{-- A table's bill: its rounds, settle it (cash or MoMo), move it, print it. --}}
+        <div x-show="bill" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @keydown.escape.window="bill = null">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto p-5" @click.outside="bill = null">
+                <template x-if="bill">
+                    <div>
+                        <div class="flex items-baseline justify-between gap-3">
+                            <h3 class="font-semibold text-gray-800" x-text="@js(__('Table')) + ' ' + bill.table"></h3>
+                            <span class="text-xs text-gray-500" x-text="@js(__('since')) + ' ' + bill.opened_at"></span>
+                        </div>
+
+                        <ul class="mt-3 divide-y divide-gray-100 text-sm">
+                            <template x-for="round in bill.orders" :key="round.id">
+                                <li class="py-2">
+                                    <div class="flex justify-between gap-2">
+                                        <span class="text-gray-500" x-text="round.placed_at + ' · ' + round.reference"></span>
+                                        <span class="font-semibold" x-text="formatMoney(round.total)"></span>
+                                    </div>
+                                    <p class="text-xs text-gray-600" x-text="round.items.join(', ')"></p>
+                                </li>
+                            </template>
+                        </ul>
+                        <p class="text-sm text-gray-500" x-show="bill.orders.length === 0">{{ __('Nothing on this bill (every round was cancelled). Settling just frees the table.') }}</p>
+
+                        <div class="flex justify-between font-semibold border-t border-gray-100 pt-3 mt-2">
+                            <span>{{ __('Total') }}</span>
+                            <span x-text="formatMoney(bill.total)"></span>
+                        </div>
+
+                        <div class="mt-4 space-y-3">
+                            <div class="flex gap-4 text-sm" x-show="bill.total > 0">
+                                <label class="flex items-center gap-1.5"><input type="radio" x-model="settleMethod" value="cash"> {{ __('Cash') }}</label>
+                                <label class="flex items-center gap-1.5"><input type="radio" x-model="settleMethod" value="momo"> {{ __('Momo') }}</label>
+                            </div>
+                            <input type="text" x-show="settleMethod === 'momo' && bill.total > 0" x-model="settleReference" placeholder="{{ __('Momo transaction ID') }}" class="w-full rounded-md border-gray-300 text-sm">
+                            <div x-show="billError" class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3" x-text="billError"></div>
+                            <button type="button" @click="settleBill()" :disabled="billBusy" class="w-full px-4 py-2.5 bg-green-600 text-white text-sm font-semibold rounded-md hover:bg-green-700 disabled:opacity-50"
+                                x-text="bill.total > 0 ? @js(__('Paid: settle the bill')) : @js(__('Free the table'))"></button>
+                            <div class="flex gap-2">
+                                <button type="button" @click="printBill()" x-show="bill.total > 0" class="flex-1 px-3 py-2 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50">{{ __('Print bill') }}</button>
+                                <button type="button" @click="bill = null" class="flex-1 px-3 py-2 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50">{{ __('Close') }}</button>
+                            </div>
+                            <div class="flex gap-2 items-center border-t border-gray-100 pt-3" x-show="freeTables().length > 0">
+                                <select x-model="moveTo" class="flex-1 rounded-md border-gray-300 text-sm">
+                                    <option value="">{{ __('Move to another table…') }}</option>
+                                    <template x-for="t in freeTables()" :key="t.id">
+                                        <option :value="t.id" x-text="t.name"></option>
+                                    </template>
+                                </select>
+                                <button type="button" @click="moveBill()" :disabled="!moveTo || billBusy" class="px-3 py-2 text-sm rounded-md bg-gray-800 text-white disabled:opacity-50">{{ __('Move') }}</button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+        @endmodule
 
         {{-- Item options modal --}}
         <div x-show="activeItem" x-cloak class="fixed inset-0 z-40 flex items-center justify-center p-4">
@@ -380,7 +487,8 @@
 
             <template x-if="confirmation">
                 <div class="relative bg-white rounded-lg shadow-lg max-w-md w-full p-6 text-center">
-                    <h3 class="font-semibold text-lg text-gray-800 mb-1">{{ __('Order placed') }}</h3>
+                    <h3 class="font-semibold text-lg text-gray-800 mb-1" x-text="confirmation.table ? @js(__('Round sent to the kitchen')) : @js(__('Order placed'))"></h3>
+                    <p class="text-sm font-semibold text-amber-800 mb-1" x-show="confirmation.table" x-text="@js(__('Table')) + ' ' + confirmation.table + ' · ' + @js(__('added to the bill'))"></p>
                     <p class="text-sm text-gray-500 mb-1" x-text="confirmation.reference"></p>
                     <p class="text-xl font-bold text-gray-800 mb-4" x-text="formatMoney(confirmation.total)"></p>
 
@@ -422,8 +530,118 @@
                 itemQuantity: 1,
                 invalidGroups: {},
                 confirmation: null,
+                // Tables (2026-11-20)
+                view: 'menu',
+                tables: [],
+                table: null,
+                newTableName: '',
+                tableError: null,
+                bill: null,
+                billError: null,
+                billBusy: false,
+                settleMethod: 'cash',
+                settleReference: '',
+                moveTo: '',
 
                 init() {},
+
+                async tablesRequest(url, options = {}) {
+                    const response = await fetch(url, { headers: this.headers(), ...options });
+                    const payload = await response.json().catch(() => ({}));
+                    if (!response.ok) throw new Error(payload.message || @js(__('Action failed.')));
+                    return payload;
+                },
+
+                async loadTables() {
+                    try {
+                        this.tables = (await this.tablesRequest(@js(route('dashboard.tables.index')))).tables;
+                        this.tableError = null;
+                    } catch (e) {
+                        this.tableError = e.message;
+                    }
+                },
+
+                async addTable() {
+                    if (!this.newTableName.trim()) return;
+                    try {
+                        this.tables = (await this.tablesRequest(@js(route('dashboard.tables.store')), { method: 'POST', body: JSON.stringify({ name: this.newTableName }) })).tables;
+                        this.newTableName = '';
+                        this.tableError = null;
+                    } catch (e) {
+                        this.tableError = e.message;
+                    }
+                },
+
+                chooseTable(t) {
+                    this.table = { id: t.id, name: t.name };
+                    this.paymentMethod = 'cash';
+                    this.fulfilmentType = 'pickup';
+                    this.whatsapp = false;
+                    this.view = 'menu';
+                },
+
+                clearTable() {
+                    this.table = null;
+                },
+
+                freeTables() {
+                    return this.tables.filter((t) => !t.tab);
+                },
+
+                async openBill(t) {
+                    this.billError = null;
+                    this.settleMethod = 'cash';
+                    this.settleReference = '';
+                    this.moveTo = '';
+                    try {
+                        this.bill = await this.tablesRequest(@js(url('/dashboard/tables/tabs')) + '/' + t.tab.id);
+                    } catch (e) {
+                        this.tableError = e.message;
+                    }
+                },
+
+                async settleBill() {
+                    if (!this.bill || this.billBusy) return;
+                    if (this.bill.total > 0 && this.settleMethod === 'cash' && !confirm(@js(__('Confirm you have received the cash for this bill?')))) return;
+                    this.billBusy = true;
+                    this.billError = null;
+                    try {
+                        const payload = await this.tablesRequest(@js(url('/dashboard/tables/tabs')) + '/' + this.bill.id + '/settle', {
+                            method: 'POST',
+                            body: JSON.stringify({ payment_method: this.settleMethod, payment_reference: this.settleMethod === 'momo' ? this.settleReference : null }),
+                        });
+                        this.tables = payload.tables;
+                        if (payload.total > 0 && !payload.printed_by_agent && window.expressPrinting?.receipt) window.expressPrint(payload.print_url);
+                        this.bill = null;
+                    } catch (e) {
+                        this.billError = e.message;
+                    } finally {
+                        this.billBusy = false;
+                    }
+                },
+
+                async moveBill() {
+                    if (!this.bill || !this.moveTo) return;
+                    this.billBusy = true;
+                    try {
+                        this.tables = (await this.tablesRequest(@js(url('/dashboard/tables/tabs')) + '/' + this.bill.id + '/move', { method: 'POST', body: JSON.stringify({ table_id: Number(this.moveTo) }) })).tables;
+                        this.bill = null;
+                    } catch (e) {
+                        this.billError = e.message;
+                    } finally {
+                        this.billBusy = false;
+                    }
+                },
+
+                async printBill() {
+                    if (!this.bill) return;
+                    try {
+                        const payload = await this.tablesRequest(@js(url('/dashboard/tables/tabs')) + '/' + this.bill.id + '/print', { method: 'POST', body: '{}' });
+                        if (!payload.queued) window.expressPrint(payload.print_url);
+                    } catch (e) {
+                        this.billError = e.message;
+                    }
+                },
 
                 // The server's own discount assumes a non-Bolt-Food order
                 // (it's priced before payment method is necessarily final)
@@ -594,7 +812,7 @@
                     this.error = this.validationError();
                     if (this.error) return;
 
-                    if (this.paymentMethod === 'cash' && !confirm(@js(__('Confirm you have received cash payment for this order?')))) {
+                    if (!this.table && this.paymentMethod === 'cash' && !confirm(@js(__('Confirm you have received cash payment for this order?')))) {
                         return;
                     }
 
@@ -621,6 +839,7 @@
                                 freebie_recipient_type: this.paymentMethod === 'complimentary' ? this.freebieRecipientType : null,
                                 freebie_recipient_user_id: this.paymentMethod === 'complimentary' && this.freebieRecipientType === 'staff' ? this.freebieStaffId : null,
                                 freebie_reason: this.paymentMethod === 'complimentary' ? this.freebieReason : null,
+                                table_id: this.table ? this.table.id : null,
                             }),
                         });
 
@@ -638,9 +857,15 @@
 
                         // Step 8a: the receipt and the kitchen ticket, when the branch has those printers.
                         // The print agent has them when it's on (step 8b).
+                        // A table round prints only its kitchen ticket; the bill comes when it's settled.
                         if (! payload.printed_by_agent) {
-                            if (window.expressPrinting?.receipt) window.expressPrint(window.expressPrintUrl(payload.order.id, 'receipt'));
+                            if (window.expressPrinting?.receipt && !payload.order.table) window.expressPrint(window.expressPrintUrl(payload.order.id, 'receipt'));
                             if (window.expressPrinting?.kitchen) window.expressPrint(window.expressPrintUrl(payload.order.id, 'kitchen'));
+                        }
+                        if (payload.order.table) {
+                            this.confirmation.table = payload.order.table;
+                            this.table = null;
+                            this.loadTables();
                         }
                         this.resetForm();
                     } catch (e) {

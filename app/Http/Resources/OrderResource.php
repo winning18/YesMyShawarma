@@ -31,6 +31,8 @@ class OrderResource extends JsonResource
             'reference' => $this->reference,
             'status' => $this->status,
             'fulfilment_type' => $this->fulfilment_type,
+            // Tables (2026-11-20): which table a round goes to.
+            'table' => $this->table_tab_id ? $this->tableTab?->table?->name : null,
             'payment_method' => $this->payment_method,
             'payment_status' => $this->payment_status,
             'total' => $this->total,

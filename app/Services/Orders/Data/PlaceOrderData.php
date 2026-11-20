@@ -55,5 +55,7 @@ final class PlaceOrderData
         public readonly ?string $deliveryFeePaidBy = null,
         public readonly ?string $source = null,
         public readonly ?ComplimentaryData $complimentary = null,
+        // A round on a table's bill (Tables module): paid when the bill is settled.
+        public readonly ?int $tableTabId = null,
     ) {}
 }

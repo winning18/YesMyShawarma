@@ -6,6 +6,8 @@ use App\Models\Order;
 use App\Models\PrintAgent;
 use App\Models\Printer;
 use App\Models\PrintJob;
+use App\Models\TableTab;
+use App\Models\Terminal;
 use App\Models\User;
 use App\Services\Settings\BusinessProfile;
 use Illuminate\Support\Collection;
@@ -46,7 +48,8 @@ class PrintJobService
         $receiptPrinter = $this->printers->receiptPrinterFor($order->branch_id, $order->shift?->terminal);
 
         DB::transaction(function () use ($order, $by, $receiptPrinter) {
-            if ($receiptPrinter) {
+            // A table round prints only its kitchen ticket; the table's bill comes at the end (forBill()).
+            if ($receiptPrinter && $order->table_tab_id === null) {
                 $this->queue($order, $receiptPrinter, PrintJob::RECEIPT, $by);
 
                 if ($order->payment_method === 'cash' && $receiptPrinter->opens_drawer) {
@@ -56,6 +59,38 @@ class PrintJobService
 
             foreach ($this->printers->kitchenPrinters($order->branch_id) as $kitchen) {
                 $this->queue($order, $kitchen, PrintJob::KITCHEN, $by);
+            }
+        });
+
+        return true;
+    }
+
+    /**
+     * A table's bill (Tables module) on the counter's receipt printer, and
+     * the cash drawer when it was settled in cash. False: no agent online,
+     * so the POS prints it through the browser.
+     */
+    public function forBill(TableTab $tab, ?Terminal $counter, ?User $by = null): bool
+    {
+        if (! $this->agents->isOnline($tab->branch_id)) {
+            return false;
+        }
+
+        $printer = $this->printers->receiptPrinterFor($tab->branch_id, $counter);
+        if (! $printer) {
+            return false;
+        }
+
+        DB::transaction(function () use ($tab, $printer, $by) {
+            foreach (array_filter([PrintJob::BILL, $tab->payment_method === 'cash' && $printer->opens_drawer ? PrintJob::DRAWER : null]) as $kind) {
+                PrintJob::create([
+                    'branch_id' => $tab->branch_id,
+                    'printer_id' => $printer->id,
+                    'table_tab_id' => $tab->id,
+                    'kind' => $kind,
+                    'status' => PrintJob::PENDING,
+                    'requested_by_user_id' => $by?->id,
+                ]);
             }
         });
 
@@ -187,7 +222,7 @@ class PrintJobService
         return PrintJob::with(['printer', 'order'])
             ->where('branch_id', $branchId)
             ->where('status', PrintJob::FAILED)
-            ->whereNotIn('kind', [PrintJob::DRAWER, PrintJob::TEST])
+            ->whereNotIn('kind', [PrintJob::DRAWER, PrintJob::TEST, PrintJob::BILL])
             ->where('updated_at', '>', now()->subHours(3))
             ->whereNotExists(fn ($query) => $query->from('print_jobs as later')
                 ->whereColumn('later.order_id', 'print_jobs.order_id')
@@ -219,6 +254,7 @@ class PrintJobService
             PrintJob::KITCHEN => $this->escPos->kitchenTicket($this->receipts->kitchenTicket($order), $job->printer),
             PrintJob::DRAWER => $this->escPos->drawerOnly(),
             PrintJob::TEST => $this->escPos->testPage($job->printer, $this->profile->name(), $job->printer->branch?->name),
+            PrintJob::BILL => $this->escPos->receipt($this->receipts->tabBill($job->tableTab), $job->printer, $this->profile->logoFilePath()),
         };
     }
 }

@@ -230,6 +230,9 @@ step before the previous one is released.
    `*.pos.solusysdigital.com` covers every client.
 7. **Several cashiers** — a till per cashier or terminal, each with its own float and cash-up.
 8. **Direct printing** — receipts and kitchen tickets straight to Epson printers, cash drawer.
+   8c. **Tables** (owner, 2026-11-20; the `tables` module): open bills on eat-in tables at the
+   POS — rounds to the kitchen straight away, one bill settled at the end at a till, bills move
+   to a free table, no till closes while its tables owe (schema.md's Orders → Tables).
 9. **Optional tax** — VAT, NHIL and levies per business, off by default.
 10. **Food vendor pilot** — the first paying client set up, trained and live.
 

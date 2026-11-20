@@ -133,7 +133,7 @@ class OrderDashboardController extends Controller
         // at all (orders.md: "pickup skips the rider entirely"), so
         // whereNull('rider_id') alone keeps every pickup order visible
         // without needing a fulfilment_type check.
-        $orders = Order::with(['items.options', 'customer', 'rider', 'events', 'payments'])
+        $orders = Order::with(['items.options', 'customer', 'rider', 'events', 'payments', 'tableTab.table'])
             ->whereIn('status', self::VISIBLE_STATUSES)
             ->where(fn ($query) => $query->whereNull('rider_id')->orWhere('status', 'ready'))
             ->orderBy('placed_at')

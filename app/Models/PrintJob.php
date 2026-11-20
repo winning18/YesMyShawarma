@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * One thing for the print agent to print (step 8b): a receipt, a kitchen
  * ticket, or a cash drawer kick — see PrintJobService.
  */
-#[Fillable(['branch_id', 'printer_id', 'order_id', 'kind', 'status', 'attempts', 'error', 'requested_by_user_id', 'claimed_at', 'printed_at'])]
+#[Fillable(['branch_id', 'printer_id', 'order_id', 'table_tab_id', 'kind', 'status', 'attempts', 'error', 'requested_by_user_id', 'claimed_at', 'printed_at'])]
 class PrintJob extends Model
 {
     public const RECEIPT = 'receipt';
@@ -21,6 +21,9 @@ class PrintJob extends Model
 
     /** "Print a test page" on the Printers page — no order. */
     public const TEST = 'test';
+
+    /** A table's combined bill (Tables module). */
+    public const BILL = 'bill';
 
     public const PENDING = 'pending';
 
@@ -45,6 +48,11 @@ class PrintJob extends Model
     public function printer(): BelongsTo
     {
         return $this->belongsTo(Printer::class);
+    }
+
+    public function tableTab(): BelongsTo
+    {
+        return $this->belongsTo(TableTab::class);
     }
 
     public function order(): BelongsTo

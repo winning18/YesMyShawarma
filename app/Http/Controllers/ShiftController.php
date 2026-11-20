@@ -3,11 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\CounterException;
+use App\Exceptions\TableTabException;
 use App\Models\Branch;
 use App\Models\Shift;
 use App\Services\Branches\BranchContext;
+use App\Services\Modules\ModuleService;
 use App\Services\Reports\OrderReportService;
 use App\Services\Shifts\ShiftService;
+use App\Services\Tables\TableTabService;
 use App\Support\Money;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -94,6 +97,12 @@ class ShiftController extends Controller
             return response()->json([
                 'message' => __('Add at least one expense, or confirm there were none today.'),
             ], 422);
+        }
+
+        // Tables (owner, 2026-11-20): no closing while this till's tables still owe.
+        $openTabs = app(ModuleService::class)->enabled(ModuleService::TABLES) ? app(TableTabService::class)->openTabsBlocking($shift) : 0;
+        if ($openTabs > 0) {
+            return response()->json(['message' => TableTabException::openTabs($openTabs)->getMessage()], 422);
         }
 
         $systemSales = $this->systemSalesForShift($shift, $reports);

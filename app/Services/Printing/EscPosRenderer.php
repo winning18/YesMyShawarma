@@ -45,7 +45,7 @@ class EscPosRenderer
         if ($servedBy !== '') {
             $this->text($servedBy);
         }
-        $this->text(($data['fulfilment'] === 'delivery' ? __('Delivery') : __('Pickup')).($data['customer'] ? ' - '.$data['customer'] : ''));
+        $this->text(($data['table'] ?? null) ? __('Table :table', ['table' => $data['table']]) : (($data['fulfilment'] === 'delivery' ? __('Delivery') : __('Pickup')).($data['customer'] ? ' - '.$data['customer'] : '')));
         $this->rule();
 
         foreach ($data['lines'] as $line) {
@@ -98,7 +98,11 @@ class EscPosRenderer
 
         $this->align(1)->bold(true)->size(3, 3)->text(substr((string) strrchr('-'.$data['reference'], '-'), 1))->size(1, 1);
         $this->bold(false)->text($data['reference']);
-        $this->bold(true)->text(($data['fulfilment'] === 'delivery' ? __('DELIVERY') : __('PICKUP')).($data['counter'] ? ' - '.$data['counter'] : ''))->bold(false);
+        if ($data['table'] ?? null) {
+            $this->bold(true)->size(2, 2)->text(__('TABLE :table', ['table' => $data['table']]))->size(1, 1)->bold(false);
+        } else {
+            $this->bold(true)->text(($data['fulfilment'] === 'delivery' ? __('DELIVERY') : __('PICKUP')).($data['counter'] ? ' - '.$data['counter'] : ''))->bold(false);
+        }
         $this->text(($data['placed_at']?->format('H:i') ?? '').($data['scheduled_for'] ? ' - '.__('for :time', ['time' => $data['scheduled_for']->format('H:i')]) : ''));
         $this->align(0)->rule();
 

@@ -5,8 +5,10 @@ namespace App\Services\Printing;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderItemOption;
+use App\Models\TableTab;
 use App\Models\User;
 use App\Services\Settings\BusinessProfile;
+use App\Services\Tables\TableTabService;
 use App\Services\Tax\TaxService;
 
 /**
@@ -40,6 +42,7 @@ class ReceiptService
             'placed_at' => $order->placed_at?->timezone('Africa/Accra'),
             'served_by' => $this->servedBy($order),
             'counter' => $order->shift?->terminal?->name,
+            'table' => $order->tableTab?->table?->name,
             'fulfilment' => $order->fulfilment_type,
             'customer' => $order->customer?->name,
             'lines' => $this->lines($order),
@@ -63,7 +66,7 @@ class ReceiptService
      */
     public function kitchenTicket(Order $order): array
     {
-        $order->loadMissing(['items.options', 'shift.terminal']);
+        $order->loadMissing(['items.options', 'shift.terminal', 'tableTab.table']);
 
         return [
             'reference' => $order->reference,
@@ -71,8 +74,58 @@ class ReceiptService
             'fulfilment' => $order->fulfilment_type,
             'scheduled_for' => $order->scheduled_for?->timezone('Africa/Accra'),
             'counter' => $order->shift?->terminal?->name,
+            // Tables module: which table to take it to.
+            'table' => $order->tableTab?->table?->name,
             'lines' => $this->lines($order),
             'instructions' => $order->instructions,
+        ];
+    }
+
+    /**
+     * A table's whole bill (Tables module), in the receipt's shape: every
+     * round's lines, totals and tax added up. Printed when the bill is
+     * settled (or asked for before).
+     *
+     * @return array<string, mixed>
+     */
+    public function tabBill(TableTab $tab): array
+    {
+        $tab->loadMissing(['table', 'branch', 'shift.terminal', 'settledBy', 'orders.items.options', 'orders.taxes']);
+        $rounds = app(TableTabService::class)->rounds($tab);
+        $first = $rounds->first();
+
+        $taxes = $rounds->flatMap(fn (Order $order) => $order->taxes)
+            ->groupBy(fn ($tax) => $tax->name.'|'.$tax->rate_basis_points.'|'.(int) $tax->inclusive)
+            ->map(fn ($group) => [
+                'label' => TaxService::label($group->first()->name, $group->first()->rate_basis_points),
+                'amount' => (int) $group->sum(fn ($tax) => $tax->food_amount + $tax->delivery_amount),
+                'inclusive' => (bool) $group->first()->inclusive,
+            ])->values();
+
+        return [
+            'business' => $this->profile->name(),
+            'logo' => $this->profile->logoUrl(),
+            'branch' => $tab->branch?->name,
+            'address' => $tab->branch?->address,
+            'phone' => $this->phoneDisplay((string) $tab->branch?->phone),
+            'reference' => __('Table :table', ['table' => $tab->table?->name]),
+            'placed_at' => ($tab->settled_at ?? now())->clone()->timezone('Africa/Accra'),
+            'served_by' => $tab->settledBy?->name,
+            'counter' => $tab->shift?->terminal?->name,
+            'table' => $tab->table?->name,
+            'fulfilment' => 'pickup',
+            'customer' => null,
+            'lines' => $rounds->flatMap(fn (Order $order) => $this->lines($order))->values()->all(),
+            'subtotal' => (int) $rounds->sum('subtotal'),
+            'discount' => (int) $rounds->sum('discount_total'),
+            'delivery_fee' => 0,
+            'total' => (int) $rounds->sum('total'),
+            'taxes' => $taxes->map(fn ($tax) => ['label' => $tax['label'], 'amount' => $tax['amount']])->all(),
+            'tax_inclusive' => (bool) ($taxes->first()['inclusive'] ?? false),
+            'tin' => $taxes->isNotEmpty() ? $this->profile->tin() : null,
+            'payment' => $tab->isOpen() ? __('Not paid yet') : ($first ? $this->paymentLabel($first) : '—'),
+            'message' => $this->profile->receiptMessage(),
+            'rounds' => $rounds->count(),
         ];
     }
 

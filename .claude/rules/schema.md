@@ -169,6 +169,28 @@ order_taxes
   food_amount, delivery_amount (pesewas)
 ```
 
+### Tables (the `tables` module, owner 2026-11-20)
+
+```
+dining_tables  id, branch_id, name (unique per branch), is_active
+table_tabs     id, branch_id, dining_table_id, opened_by, opened_at, settled_at, settled_by,
+               shift_id (the till that settled it), payment_method (cash|momo),
+               payment_reference, total (pesewas, as settled)
+orders.table_tab_id      the bill a round is on
+print_jobs.table_tab_id  a bill printed by the agent (kind 'bill')
+```
+
+`TableTabService`. Eat-in guests order in rounds: each round is an ordinary POS order (pickup,
+recorded as cash with `payment_status` pending) on the table's one open bill, sent to the kitchen
+straight away; only its kitchen ticket prints, with the table name. Staff make tables as needed
+(no fixed set). The bill is settled once — one bill, one payment, by cash or MoMo (a MoMo ID is
+required, and goes on the first round's payment) — at this device's till: every round becomes
+paid by that method, moves to that till (`orders.shift_id`), and gets an `order_events` row
+(`table_tab_settled`); the combined bill prints (`ReceiptService::tabBill()`). Cancelled or
+rejected rounds are left off the bill; a bill with nothing left on it just frees the table. A
+bill can move to a free table. A till can't close while an open bill holds rounds it took
+(shared till: any open bill at the branch). Yes My Shawarma has the switch on.
+
 ### Tax (Express POS step 9, the `tax` module)
 
 `TaxService`. The business sets its taxes under Settings → Tax (owner only, `business.manage`):

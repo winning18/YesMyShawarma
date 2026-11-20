@@ -15,7 +15,11 @@
     @if ($data['served_by'] || $data['counter'])
         <p class="muted">{{ collect([$data['served_by'] ? __('Served by :name', ['name' => $data['served_by']]) : null, $data['counter']])->filter()->join(' · ') }}</p>
     @endif
-    <p class="muted">{{ $data['fulfilment'] === 'delivery' ? __('Delivery') : __('Pickup') }}@if ($data['customer']) · {{ $data['customer'] }}@endif</p>
+    @if ($data['table'] ?? null)
+        <p class="muted">{{ __('Table :table', ['table' => $data['table']]) }}</p>
+    @else
+        <p class="muted">{{ $data['fulfilment'] === 'delivery' ? __('Delivery') : __('Pickup') }}@if ($data['customer']) · {{ $data['customer'] }}@endif</p>
+    @endif
     <div class="rule"></div>
     @foreach ($data['lines'] as $line)
         <div class="row"><span>{{ $line['quantity'] }}× {{ $line['name'] }}@if ($line['free']) ({{ __('free') }})@endif</span><span>{{ $money($line['total']) }}</span></div>
