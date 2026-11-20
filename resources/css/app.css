@@ -7,9 +7,9 @@
 }
 
 /*
- * Figtree, the staff app's typeface — served from our own site (SIL Open
- * Font License, latin only, about 34 KB), not a font CDN: a CDN changing
- * its stylesheet once broke the pinned integrity hash and blocked the font.
+ * Figtree (staff app) and Inter (customer site), served from our own site
+ * (SIL Open Font License, latin only), not a font CDN: a CDN changing its
+ * stylesheet once broke the pinned integrity hashes and blocked both fonts.
  */
 @font-face {
     font-family: 'Figtree';
@@ -29,6 +29,34 @@
     font-family: 'Figtree';
     src: url('/fonts/figtree-600-latin.woff2') format('woff2');
     font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Inter';
+    src: url('/fonts/inter-400-latin.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Inter';
+    src: url('/fonts/inter-500-latin.woff2') format('woff2');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Inter';
+    src: url('/fonts/inter-600-latin.woff2') format('woff2');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Inter';
+    src: url('/fonts/inter-700-latin.woff2') format('woff2');
+    font-weight: 700;
     font-style: normal;
     font-display: swap;
 }

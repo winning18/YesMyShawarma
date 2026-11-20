@@ -50,13 +50,6 @@
         --}}
         <link rel="manifest" href="{{ route('manifest') }}">
 
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link
-            href="https://fonts.bunny.net/css?family=inter:400,500,600,700&display=swap"
-            rel="stylesheet"
-            integrity="sha384-hghFbNuIyYt6shX1CElG2rmJNAz8OP4HTdBlz3sBzjbEIiMSf/D0fnGb1+svFRv9"
-            crossorigin="anonymous"
-        />
 
         {{-- echo.js before customer.js: modules run in order, and Alpine components using window.Echo initialise as soon as customer.js starts Alpine. --}}
         @vite(['resources/css/app.css', ...($realtime ? ['resources/js/echo.js'] : []), 'resources/js/customer.js'])
