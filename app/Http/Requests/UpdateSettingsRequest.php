@@ -31,6 +31,8 @@ class UpdateSettingsRequest extends FormRequest
             'delivery_rate_per_km' => ['sometimes', $this->forModule(ModuleService::DELIVERY), 'numeric', 'min:0', 'max:1000'],
             'delivery_minimum_fee' => ['sometimes', $this->forModule(ModuleService::DELIVERY), 'numeric', 'min:0', 'max:1000'],
             'delivery_minimum_order' => ['sometimes', $this->forModule(ModuleService::DELIVERY), 'numeric', 'min:0', 'max:10000'],
+            // Owner only (the field only shows for business.manage; SettingsController checks again).
+            'delivery_fee_handling' => ['sometimes', $this->forModule(ModuleService::DELIVERY), 'in:handed_in,kept_by_rider'],
         ];
     }
 

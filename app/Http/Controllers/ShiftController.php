@@ -145,9 +145,8 @@ class ShiftController extends Controller
             return $reports->tillSales($shift);
         }
 
-        $summary = $reports->financialSummary($shift->started_at, now());
-
-        // With any tax the food was sold with (step 9): what the till holds.
-        return $summary['till_total'];
+        // With any tax the food was sold with (step 9), and riders' cash-ups
+        // (2026-11-20): what the till holds.
+        return $reports->sharedTillSales($shift);
     }
 }

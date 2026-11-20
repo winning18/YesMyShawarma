@@ -179,7 +179,7 @@ class ProfitReportTest extends TestCase
         $csv = $this->actingAs($owner)->get(route('dashboard.reports.profit.download', ['format' => 'csv', 'from' => '2026-10-05', 'to' => '2026-10-11']))
             ->assertOk()->getContent();
         $flat = collect(array_map('str_getcsv', explode("\n", trim($csv))))->map(fn ($row) => implode('|', array_filter($row, fn ($cell) => $cell !== '')))->all();
-        $this->assertContains('TOTAL|500.00|0.00|300.00|200.00|0.00|200.00', $flat);
+        $this->assertContains('TOTAL|500.00|0.00|0.00|300.00|200.00|0.00|200.00', $flat);
         $this->assertContains('Chicken|1|10 kg|300.00', $flat);
 
         $this->actingAs($owner)->get(route('dashboard.reports.profit.download', ['format' => 'pdf', 'from' => '2026-10-05', 'to' => '2026-10-11']))

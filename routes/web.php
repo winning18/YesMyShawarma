@@ -20,7 +20,6 @@ use App\Http\Controllers\Customer\Auth\RegisteredUserController as CustomerRegis
 use App\Http\Controllers\CustomerImportController;
 use App\Http\Controllers\CustomerManagementController;
 use App\Http\Controllers\DamageReportController;
-use App\Http\Controllers\DeliveryFeeCollectionController;
 use App\Http\Controllers\DeliveryFeesReportController;
 use App\Http\Controllers\ExpenseKindController;
 use App\Http\Controllers\ExpensesReportController;
@@ -65,6 +64,7 @@ use App\Http\Controllers\Rider\DeliveryHistoryController as RiderDeliveryHistory
 use App\Http\Controllers\Rider\ProfileController as RiderProfileController;
 use App\Http\Controllers\Rider\RefundController as RiderRefundController;
 use App\Http\Controllers\RiderAvailabilityController;
+use App\Http\Controllers\RiderCashupController;
 use App\Http\Controllers\RobotsController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\ShiftController;
@@ -398,9 +398,9 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
 
     Route::get('/dashboard/reports/delivery-fees', [DeliveryFeesReportController::class, 'index'])->middleware('module:delivery')->name('dashboard.reports.delivery-fees.index');
     Route::get('/dashboard/reports/delivery-fees/download', [DeliveryFeesReportController::class, 'download'])->middleware('module:delivery')->name('dashboard.reports.delivery-fees.download');
-    Route::get('/dashboard/reports/delivery-fees/collections', [DeliveryFeeCollectionController::class, 'index'])->middleware('module:delivery')->name('dashboard.reports.delivery-fees.collections.index');
-    Route::post('/dashboard/reports/delivery-fees/collections', [DeliveryFeeCollectionController::class, 'store'])->middleware('module:delivery')->name('dashboard.reports.delivery-fees.collections.store');
-    Route::post('/dashboard/reports/delivery-fees/collections/{collection}/void', [DeliveryFeeCollectionController::class, 'void'])->middleware('module:delivery')->name('dashboard.reports.delivery-fees.collections.void');
+    Route::get('/dashboard/rider-cashups', [RiderCashupController::class, 'index'])->middleware('module:delivery')->name('dashboard.rider-cashups.index');
+    Route::post('/dashboard/rider-cashups', [RiderCashupController::class, 'store'])->middleware('module:delivery')->name('dashboard.rider-cashups.store');
+    Route::post('/dashboard/rider-cashups/{cashup}/void', [RiderCashupController::class, 'void'])->middleware('module:delivery')->name('dashboard.rider-cashups.void');
 
     Route::get('/dashboard/reports/tax', [TaxReportController::class, 'index'])->middleware('module:tax')->name('dashboard.reports.tax.index');
     Route::get('/dashboard/reports/tax/download', [TaxReportController::class, 'download'])->middleware('module:tax')->name('dashboard.reports.tax.download');

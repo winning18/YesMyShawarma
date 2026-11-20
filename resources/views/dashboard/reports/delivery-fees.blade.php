@@ -25,11 +25,17 @@
 
         <div>
             <h3 class="font-semibold text-lg text-gray-800">{{ __('Delivery fees') }}</h3>
-            <p class="text-sm text-gray-500">{{ __('Riders hand in the cash delivery fees they collect at the door; Paystack and MoMo fees are already with the business. Deliveries before the hand-ins started were the rider\'s to keep. Each rider sees the same totals in their app.') }}</p>
+            <p class="text-sm text-gray-500">
+                @if ($feesHandedIn)
+                    {{ __('Riders hand in the cash delivery fees they collect at the door, with the food money, at a rider cash-up; Paystack and MoMo fees are already with the business. Deliveries before the hand-ins started were the rider\'s to keep. Each rider sees the same totals in their app.') }}
+                @else
+                    {{ __('Riders keep their delivery fees: this list is for reference only and counts in no financial figure. Fees paid to the business by Paystack or MoMo are the rider\'s, and come off their cash-up. "To collect" is what each rider still has to hand in (food money, less those fees).') }}
+                @endif
+            </p>
         </div>
         @can('delivery_fees.collect')
-            <a href="{{ route('dashboard.reports.delivery-fees.collections.index', [...$branchParam, ...$rangeParams]) }}"
-                class="inline-block px-4 py-2 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-900">{{ __('Record a collection') }}</a>
+            <a href="{{ route('dashboard.rider-cashups.index', [...$branchParam, ...$rangeParams]) }}"
+                class="inline-block px-4 py-2 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-900">{{ __('Rider cash-up') }}</a>
         @endcan
 
         <div class="bg-white shadow rounded-lg p-4">

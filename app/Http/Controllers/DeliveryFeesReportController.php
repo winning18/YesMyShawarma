@@ -46,6 +46,7 @@ class DeliveryFeesReportController extends Controller
         $page = LengthAwarePaginator::resolveCurrentPage();
 
         return view('dashboard.reports.delivery-fees', [
+            'feesHandedIn' => $this->fees->feesHandedIn(),
             'from' => $from,
             'to' => $to,
             'riderId' => $riderId,

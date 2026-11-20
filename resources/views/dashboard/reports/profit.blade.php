@@ -72,11 +72,17 @@
             </form>
         </div>
 
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="grid grid-cols-2 lg:grid-cols-{{ $report['has_delivery_fees'] ? 5 : 4 }} gap-4">
             <div class="bg-white shadow rounded-lg p-4">
                 <p class="text-xs text-gray-500">{{ __('Sales (after refunds)') }}</p>
                 <p class="text-xl font-semibold text-gray-800">{{ $money($totals['sales'] - $totals['refunds']) }}</p>
             </div>
+            @if ($report['has_delivery_fees'])
+                <div class="bg-white shadow rounded-lg p-4">
+                    <p class="text-xs text-gray-500">{{ __('Delivery fees received') }}</p>
+                    <p class="text-xl font-semibold text-gray-800">{{ $money($totals['delivery_fees']) }}</p>
+                </div>
+            @endif
             <div class="bg-white shadow rounded-lg p-4">
                 <p class="text-xs text-gray-500">{{ __('Purchases & expenses') }}</p>
                 <p class="text-xl font-semibold text-gray-800">{{ $money($totals['purchases']) }}</p>
@@ -107,6 +113,7 @@
                     <tr>
                         <th class="px-4 py-2">{{ __('Period') }}</th>
                         <th class="px-4 py-2 text-right">{{ __('Sales') }}</th>
+                        @if ($report['has_delivery_fees'])<th class="px-4 py-2 text-right">{{ __('Delivery fees') }}</th>@endif
                         <th class="px-4 py-2 text-right">{{ __('Refunds') }}</th>
                         <th class="px-4 py-2 text-right">{{ __('Purchases & expenses') }}</th>
                         <th class="px-4 py-2 text-right">{{ __('Profit') }}</th>
@@ -123,6 +130,7 @@
                         <tr>
                             <td class="px-4 py-2 text-gray-800 whitespace-nowrap">{{ $period['label'] }}</td>
                             <td class="px-4 py-2 text-right whitespace-nowrap">{{ $money($period['sales']) }}</td>
+                            @if ($report['has_delivery_fees'])<td class="px-4 py-2 text-right whitespace-nowrap">{{ $money($period['delivery_fees']) }}</td>@endif
                             <td class="px-4 py-2 text-right whitespace-nowrap text-gray-500">{{ $period['refunds'] ? '−'.$money($period['refunds']) : '—' }}</td>
                             <td class="px-4 py-2 text-right whitespace-nowrap text-gray-500">{{ $period['purchases'] ? '−'.$money($period['purchases']) : '—' }}</td>
                             <td class="px-4 py-2 text-right whitespace-nowrap font-semibold {{ $period['profit'] < 0 ? 'text-red-600' : 'text-gray-800' }}">{{ $money($period['profit']) }}</td>
@@ -139,6 +147,7 @@
                     <tr>
                         <td class="px-4 py-2">{{ __('Total') }}</td>
                         <td class="px-4 py-2 text-right whitespace-nowrap">{{ $money($totals['sales']) }}</td>
+                        @if ($report['has_delivery_fees'])<td class="px-4 py-2 text-right whitespace-nowrap">{{ $money($totals['delivery_fees']) }}</td>@endif
                         <td class="px-4 py-2 text-right whitespace-nowrap">−{{ $money($totals['refunds']) }}</td>
                         <td class="px-4 py-2 text-right whitespace-nowrap">−{{ $money($totals['purchases']) }}</td>
                         <td class="px-4 py-2 text-right whitespace-nowrap {{ $totals['profit'] < 0 ? 'text-red-600' : '' }}">{{ $money($totals['profit']) }}</td>

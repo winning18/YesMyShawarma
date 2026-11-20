@@ -21,6 +21,7 @@
             <tr>
                 <th>{{ __('Period') }}</th>
                 <th class="num">{{ __('Sales') }} (ghs)</th>
+                @if ($report['has_delivery_fees'] ?? false)<th class="num">{{ __('Delivery fees received') }} (ghs)</th>@endif
                 <th class="num">{{ __('Refunds') }} (ghs)</th>
                 <th class="num">{{ __('Purchases & expenses') }} (ghs)</th>
                 <th class="num">{{ __('Profit') }} (ghs)</th>
@@ -37,6 +38,7 @@
                 <tr>
                     <td>{{ $period['label'] }}</td>
                     <td class="num">{{ $amount($period['sales']) }}</td>
+                    @if ($report['has_delivery_fees'] ?? false)<td class="num">{{ $amount($period['delivery_fees']) }}</td>@endif
                     <td class="num">{{ $amount($period['refunds']) }}</td>
                     <td class="num">{{ $amount($period['purchases']) }}</td>
                     <td class="num">{{ $amount($period['profit']) }}</td>
@@ -51,6 +53,7 @@
             <tr class="total">
                 <td>TOTAL</td>
                 <td class="num">{{ $amount($totals['sales']) }}</td>
+                @if ($report['has_delivery_fees'] ?? false)<td class="num">{{ $amount($totals['delivery_fees']) }}</td>@endif
                 <td class="num">{{ $amount($totals['refunds']) }}</td>
                 <td class="num">{{ $amount($totals['purchases']) }}</td>
                 <td class="num">{{ $amount($totals['profit']) }}</td>
@@ -86,6 +89,7 @@
                 <table class="summary">
                     <tr><th></th><th>{{ __('Total') }} (ghs)</th></tr>
                     <tr><td>{{ __('Sales') }}</td><td class="num">{{ $amount($totals['sales']) }}</td></tr>
+                    @if ($report['has_delivery_fees'] ?? false)<tr><td>{{ __('Delivery fees received') }}</td><td class="num">{{ $amount($totals['delivery_fees']) }}</td></tr>@endif
                     <tr><td>{{ __('Refunds') }}</td><td class="num">-{{ $amount($totals['refunds']) }}</td></tr>
                     <tr><td>{{ __('Purchases & expenses') }}</td><td class="num">-{{ $amount($totals['purchases']) }}</td></tr>
                     <tr class="net"><td>{{ __('Profit') }}</td><td class="num">{{ $amount($totals['profit']) }}</td></tr>

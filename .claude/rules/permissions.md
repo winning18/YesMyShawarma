@@ -53,7 +53,7 @@ Roles: `staff`, `rider`, `manager`, `general_manager`, `owner`, `stock_manager`.
 | `damage_reports.review` | — | — | ✓ | ✓ | ✓ | — |
 | `market_lists.record` | ✓ | — | ✓ | ✓ | ✓ | ✓ |
 | `market_lists.approve` | — | — | ✓ | ✓ | ✓ | — |
-| `delivery_fees.collect` | — | — | ✓ | ✓ | ✓ | — |
+| `delivery_fees.collect` | ✓ | — | ✓ | ✓ | ✓ | — |
 | `freebies.approve` | — | — | ✓ | ✓ | ✓ | — |
 
 `general_manager` holds the exact same permission set as `manager` (see `RolesAndPermissionsSeeder`'s
@@ -358,13 +358,15 @@ could approve it (same tier rule). It's a hard delete — items, history and rec
 only a `Market list deleted` log line left (`MarketListService::delete()`). Approved lists can
 never be deleted; the service refuses even the owner, whom `Gate::before` lets past the policy.
 
-## Delivery fee collections
+## Rider cash-ups
 
-`delivery_fees.collect` (owner, general_manager, manager) — record that a rider handed in their
-cash delivery fees for a branch and period, or void such a record
-(`DeliveryFeeCollectionService`). Kept apart from the other money permissions so it can be
-audited on its own. Checked against the collection's own branch; a manager only at their branch,
-a GM at their GM branches, owner everywhere.
+`delivery_fees.collect` (owner, general_manager, manager, and staff since 2026-11-20) — take a
+rider's cash-up (food money, plus fees when handed in) at this device's open till, or void one
+(`RiderCashupService`, the "Rider cash-up" menu item). Kept apart from the other money
+permissions so it can be audited on its own. Checked against the cash-up's own branch; staff and
+managers only at their current branch, a GM at their GM branches, owner everywhere. Who gets the
+delivery fee (`delivery_fee_handling`) is the owner's choice only (`business.manage`, Settings →
+General).
 
 ## Freebies
 

@@ -8,6 +8,7 @@ use App\Models\PromotionRedemption;
 use App\Models\Refund;
 use App\Models\Scopes\BranchScope;
 use App\Models\Shift;
+use App\Services\Delivery\RiderCashupService;
 use App\Services\Tax\TaxService;
 use Carbon\CarbonPeriod;
 use Illuminate\Support\Carbon;
@@ -185,7 +186,19 @@ class OrderReportService
      */
     public function tillSales(Shift $shift): int
     {
-        return $this->financialSummary($shift->started_at, now(), shiftId: $shift->id)['till_total'];
+        return $this->financialSummary($shift->started_at, now(), shiftId: $shift->id)['till_total']
+            + app(RiderCashupService::class)->tillAdjustment($shift, $this->ordersInRange($shift->started_at, now(), shiftId: $shift->id));
+    }
+
+    /**
+     * A branch's one shared till (no counters): its sales since it opened,
+     * with the same rider cash-up adjustment as tillSales(). Branch from
+     * the current BranchContext, as ShiftController always has it.
+     */
+    public function sharedTillSales(Shift $shift): int
+    {
+        return $this->financialSummary($shift->started_at, now())['till_total']
+            + app(RiderCashupService::class)->tillAdjustment($shift, $this->ordersInRange($shift->started_at, now()));
     }
 
     /**

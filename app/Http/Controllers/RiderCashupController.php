@@ -2,15 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Exceptions\DeliveryFeeCollectionException;
+use App\Exceptions\RiderCashupException;
 use App\Models\Branch;
-use App\Models\DeliveryFeeCollection;
+use App\Models\RiderCashup;
 use App\Models\Order;
 use App\Models\Scopes\BranchScope;
 use App\Models\User;
 use App\Services\Branches\BranchContext;
-use App\Services\Delivery\DeliveryFeeCollectionService;
+use App\Services\Delivery\RiderCashupService;
 use App\Services\Reports\DeliveryFeeReportService;
+use App\Services\Shifts\ShiftService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -19,18 +20,20 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 /**
- * Reports → Delivery fees → Collections: record a rider handing in their
- * cash delivery fees for a branch and period, list past hand-ins, void a
- * mistake (DeliveryFeeCollectionService). delivery_fees.collect, at the
- * branches the person runs: owner every branch, a GM their GM branches,
- * a manager their current branch.
+ * Rider cash-ups: record a rider handing in what they must account for
+ * (food money, and fees when the business has them handed in) at this
+ * device's open till, list past cash-ups, void a mistake
+ * (RiderCashupService). delivery_fees.collect, at the branches the person
+ * runs: owner every branch, a GM their GM branches, a manager or cashier
+ * their current branch.
  */
-class DeliveryFeeCollectionController extends Controller
+class RiderCashupController extends Controller
 {
     public function __construct(
-        private readonly DeliveryFeeCollectionService $collections,
+        private readonly RiderCashupService $cashups,
         private readonly DeliveryFeeReportService $fees,
         private readonly BranchContext $context,
+        private readonly ShiftService $shifts,
     ) {}
 
     public function index(Request $request): View
@@ -48,26 +51,29 @@ class DeliveryFeeCollectionController extends Controller
         $branch = $branches->firstWhere('id', (int) ($validated['branch'] ?? 0)) ?? ($branches->count() === 1 ? $branches->first() : null);
         $rider = isset($validated['rider']) ? User::find($validated['rider']) : null;
         $now = Carbon::now('Africa/Accra');
-        $from = isset($validated['from']) ? Carbon::parse($validated['from'], 'Africa/Accra')->startOfDay() : $now->clone()->startOfWeek();
-        $to = isset($validated['to']) ? Carbon::parse($validated['to'], 'Africa/Accra')->endOfDay() : $now->clone()->endOfWeek();
+        // Everything not yet handed in, by default.
+        $from = isset($validated['from']) ? Carbon::parse($validated['from'], 'Africa/Accra')->startOfDay() : $this->fees->handInStartsOn()->clone();
+        $to = isset($validated['to']) ? Carbon::parse($validated['to'], 'Africa/Accra')->endOfDay() : $now->clone()->endOfDay();
         if ($from->gt($to)) {
             [$from, $to] = [$to->clone()->startOfDay(), $from->clone()->endOfDay()];
         }
 
-        return view('dashboard.reports.delivery-fee-collections', [
+        return view('dashboard.reports.rider-cashups', [
             'branches' => $branches,
             'branch' => $branch,
             'riders' => $branch ? $this->ridersAt($branch) : collect(),
             'rider' => $rider,
             'from' => $from,
             'to' => $to,
-            'owed' => $branch && $rider ? $this->collections->owed($rider, $branch->id, $from, $to) : null,
+            'owed' => $branch && $rider ? $this->cashups->owed($rider, $branch->id, $from, $to) : null,
             'handInStartsOn' => $this->fees->handInStartsOn(),
-            'history' => DeliveryFeeCollection::withoutGlobalScope(BranchScope::class)
+            'feesHandedIn' => $this->fees->feesHandedIn(),
+            'till' => $branch ? $this->shifts->activeForBranch($branch->id) : null,
+            'history' => RiderCashup::withoutGlobalScope(BranchScope::class)
                 ->whereIn('branch_id', $branches->pluck('id'))
                 ->when($branch, fn ($query) => $query->where('branch_id', $branch->id))
                 ->when($rider, fn ($query) => $query->where('rider_id', $rider->id))
-                ->with(['rider:id,name', 'branch:id,name', 'collectedBy:id,name', 'voidedBy:id,name'])
+                ->with(['rider:id,name', 'branch:id,name', 'collectedBy:id,name', 'voidedBy:id,name', 'shift.terminal:id,name'])
                 ->latest('collected_at')
                 ->paginate(20)
                 ->withQueryString(),
@@ -84,6 +90,8 @@ class DeliveryFeeCollectionController extends Controller
             'from' => ['required', 'date'],
             'to' => ['required', 'date', 'after_or_equal:from'],
             'received' => ['required', 'numeric', 'min:0', 'max:1000000'],
+            // 'out': the business paid the rider (fees it held for them came to more than they handed in).
+            'direction' => ['nullable', 'in:in,out'],
             'note' => ['nullable', 'string', 'max:1000'],
         ]);
 
@@ -91,45 +99,52 @@ class DeliveryFeeCollectionController extends Controller
         abort_unless($branch, 403);
 
         try {
-            $collection = $this->collections->record(
+            $cashup = $this->cashups->record(
                 collector: $request->user(),
                 rider: User::findOrFail($validated['rider']),
                 branchId: $branch->id,
                 from: Carbon::parse($validated['from'], 'Africa/Accra')->startOfDay(),
                 to: Carbon::parse($validated['to'], 'Africa/Accra')->endOfDay(),
-                received: (int) round(((float) $validated['received']) * 100),
+                received: (($validated['direction'] ?? 'in') === 'out' ? -1 : 1) * (int) round(((float) $validated['received']) * 100),
                 note: $validated['note'] ?? null,
+                till: $this->shifts->activeForBranch($branch->id),
             );
-        } catch (DeliveryFeeCollectionException $e) {
+        } catch (RiderCashupException $e) {
             return back()->withErrors(['collection' => $e->getMessage()])->withInput();
         }
 
-        $difference = $collection->difference();
-        $message = __('Collection recorded: :count deliveries, GH₵:amount received.', ['count' => $collection->order_count, 'amount' => number_format($collection->received / 100, 2)]);
+        $difference = $cashup->difference();
+        $message = $cashup->received < 0
+            ? __('Cash-up recorded: :count deliveries, GH₵:amount paid to the rider.', ['count' => $cashup->order_count, 'amount' => number_format(-$cashup->received / 100, 2)])
+            : __('Cash-up recorded: :count deliveries, GH₵:amount received.', ['count' => $cashup->order_count, 'amount' => number_format($cashup->received / 100, 2)]);
         if ($difference !== 0) {
             $message .= ' '.($difference < 0
                 ? __('Short by GH₵:amount.', ['amount' => number_format(-$difference / 100, 2)])
                 : __('Over by GH₵:amount.', ['amount' => number_format($difference / 100, 2)]));
         }
 
-        return redirect()->route('dashboard.reports.delivery-fees.collections.index', ['branch' => $branch->id, 'rider' => $collection->rider_id])
+        if ($cashup->shift_id === null) {
+            $message .= ' '.__('No till is open on this device, so it isn\'t counted in any till.');
+        }
+
+        return redirect()->route('dashboard.rider-cashups.index', ['branch' => $branch->id, 'rider' => $cashup->rider_id])
             ->with('status', $message);
     }
 
-    public function void(Request $request, DeliveryFeeCollection $collection): RedirectResponse
+    public function void(Request $request, RiderCashup $cashup): RedirectResponse
     {
         Gate::authorize('delivery_fees.collect');
-        abort_unless($this->branchesFor($request->user())->contains('id', $collection->branch_id), 403);
+        abort_unless($this->branchesFor($request->user())->contains('id', $cashup->branch_id), 403);
 
         $validated = $request->validate(['reason' => ['required', 'string', 'max:1000']]);
 
         try {
-            $this->collections->void($collection, $request->user(), $validated['reason']);
-        } catch (DeliveryFeeCollectionException $e) {
+            $this->cashups->void($cashup, $request->user(), $validated['reason']);
+        } catch (RiderCashupException $e) {
             return back()->withErrors(['collection' => $e->getMessage()]);
         }
 
-        return back()->with('status', __('Collection voided. Its deliveries can be collected again.'));
+        return back()->with('status', __('Cash-up voided. Its deliveries can be handed in again.'));
     }
 
     /**

@@ -272,8 +272,8 @@
 
         @if ($deliveryFees)
             <div class="bg-white shadow rounded-lg p-4">
-                <p class="text-xs text-gray-500">{{ __('Delivery fees, not included in sales') }} ({{ strtoupper($channel) }})</p>
-                <p class="text-xl font-bold text-gray-800">GH₵{{ number_format($deliveryFees['total'] / 100, 2) }}</p>
+                <p class="text-xs text-gray-500">{{ __('Delivery fees received, not included in food sales') }} ({{ strtoupper($channel) }})</p>
+                <p class="text-xl font-bold text-gray-800">GH₵{{ number_format($deliveryFees['fee_income'] / 100, 2) }}</p>
                 <p class="text-xs text-gray-500 mt-1">
                     {{ trans_choice(':count delivery|:count deliveries', $deliveryFees['count'], ['count' => $deliveryFees['count']]) }} ·
                     {{ __('GH₵:cash cash from customers · GH₵:staff from staff', ['cash' => number_format($deliveryFees['cash'] / 100, 2), 'staff' => number_format($deliveryFees['prepaid'] / 100, 2)]) }}

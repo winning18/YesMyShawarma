@@ -105,7 +105,9 @@ class SalesStatementService
         $this->tax = app(TaxService::class)->breakdown($orders);
         $hasTax = $isSales && $this->tax !== [];
 
-        $columns = $this->columns($type, $general, $hasTax);
+        // Kept by riders, delivery fees are in no financial record (owner, 2026-11-20).
+        $feesCount = app(DeliveryFeeReportService::class)->feesHandedIn();
+        $columns = $this->columns($type, $general, $hasTax, $feesCount);
         $moneyKeys = collect($columns)->where('money', true)->pluck('key')->all();
 
         $number = 0;
@@ -151,7 +153,7 @@ class SalesStatementService
             ? [
                 ['label' => 'Orders', 'value' => (string) count($allRows)],
                 ['label' => 'Discounts given', 'value' => $this->money($totals['discount'])],
-                ['label' => 'Delivery fees (not sales)', 'value' => $this->money($totals['delivery_fee'])],
+                ...($feesCount ? [['label' => 'Delivery fees (not food sales)', 'value' => $this->money($totals['delivery_fee'])]] : []),
                 ...($hasTax || $refunds['tax'] ? [['label' => 'Tax collected (not sales)', 'value' => $this->money(($totals['tax'] ?? 0) - $refunds['tax'])]] : []),
                 ['label' => 'Refunds completed', 'value' => (string) $refunds['count']],
             ]
@@ -186,7 +188,7 @@ class SalesStatementService
     /**
      * @return list<array{key: string, label: string, money: bool}>
      */
-    private function columns(string $type, bool $general, bool $hasTax = false): array
+    private function columns(string $type, bool $general, bool $hasTax = false, bool $feesCount = true): array
     {
         $columns = [
             ['key' => 'no', 'label' => 'No', 'money' => false],
@@ -216,8 +218,8 @@ class SalesStatementService
             ['key' => 'discount', 'label' => 'Discount', 'money' => true],
             ['key' => 'sales', 'label' => $hasTax ? 'Sales before tax' : 'Sales', 'money' => true],
             ...($hasTax ? [['key' => 'tax', 'label' => 'Tax', 'money' => true]] : []),
-            ['key' => 'delivery_fee', 'label' => 'Delivery fee (rider)', 'money' => true],
-            ['key' => 'total', 'label' => 'Customer paid', 'money' => true],
+            ...($feesCount ? [['key' => 'delivery_fee', 'label' => 'Delivery fee', 'money' => true]] : []),
+            ['key' => 'total', 'label' => $feesCount ? 'Customer paid' : 'Customer paid for food', 'money' => true],
         ];
     }
 
@@ -241,7 +243,7 @@ class SalesStatementService
             'sales' => app(TaxService::class)->netFood($order, $this->tax),
             'tax' => (int) $order->tax_total,
             'delivery_fee' => (int) $order->delivery_fee,
-            'total' => (int) $order->total,
+            'total' => app(DeliveryFeeReportService::class)->feesHandedIn() ? (int) $order->total : (int) $order->total - (int) $order->delivery_fee,
         ];
     }
 

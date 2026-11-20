@@ -105,6 +105,29 @@
                         </div>
                     @endforeach
                 </div>
+
+                @can('business.manage')
+                    <fieldset class="mt-5">
+                        <legend class="text-sm font-semibold text-gray-800">{{ __('Who gets the delivery fee?') }}</legend>
+                        <p class="text-xs text-gray-500 mb-2">{{ __('Customers always pay it. Riders always hand in the food money they collect, at a rider cash-up.') }}</p>
+                        @php $handling = old('delivery_fee_handling', $deliveryFeeHandling); @endphp
+                        <label class="flex items-start gap-3 mb-2">
+                            <input type="radio" name="delivery_fee_handling" value="handed_in" @checked($handling === 'handed_in') class="mt-1">
+                            <span>
+                                <span class="block text-sm font-medium text-gray-800">{{ __('The business: riders hand fees in') }}</span>
+                                <span class="block text-xs text-gray-500">{{ __('Fees are handed in with the food money and count as the business\'s income ("Delivery fees received" in Sales and Profit).') }}</span>
+                            </span>
+                        </label>
+                        <label class="flex items-start gap-3">
+                            <input type="radio" name="delivery_fee_handling" value="kept_by_rider" @checked($handling === 'kept_by_rider') class="mt-1">
+                            <span>
+                                <span class="block text-sm font-medium text-gray-800">{{ __('The rider: they keep the fees') }}</span>
+                                <span class="block text-xs text-gray-500">{{ __('For riders you don\'t employ. Fees stay out of every financial figure. A fee the customer paid to the business by Paystack or MoMo is the rider\'s, and comes off their cash-up.') }}</span>
+                            </span>
+                        </label>
+                        <x-input-error class="mt-2" :messages="$errors->get('delivery_fee_handling')" />
+                    </fieldset>
+                @endcan
             </div>
             @endmodule
 

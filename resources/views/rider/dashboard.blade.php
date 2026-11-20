@@ -34,10 +34,10 @@
 
             <div class="bg-white shadow-sm rounded-lg p-4 flex items-center justify-between gap-3">
                 <div>
-                    <p class="text-sm text-gray-600">{{ __('Cash delivery fees to hand in') }}</p>
-                    <p class="text-xs text-gray-400" x-text="@js(__('Collected today:')) + ' ' + formatMoney(deliveryFeeCashToday)"></p>
+                    <p class="text-sm text-gray-600" x-text="deliveryFeeToHandIn < 0 ? @js(__('The business owes you')) : @js(__('To hand in at your cash-up'))"></p>
+                    <p class="text-xs text-gray-400" x-text="@js(__('Cash collected today:')) + ' ' + formatMoney(deliveryFeeCashToday)"></p>
                 </div>
-                <p class="text-lg font-semibold text-gray-900" x-text="formatMoney(deliveryFeeToHandIn)"></p>
+                <p class="text-lg font-semibold text-gray-900" x-text="formatMoney(Math.abs(deliveryFeeToHandIn))"></p>
             </div>
 
             <section>
@@ -117,7 +117,7 @@
                                         No more "get your fee from staff": since 2026-11-11
                                         riders hand fees in rather than keep them, so a
                                         prepaid fee simply stays with the business
-                                        (DeliveryFeeCollectionService).
+                                        (RiderCashupService).
                                     --}}
                                     {{--
                                         Customer didn't share a location at checkout, so

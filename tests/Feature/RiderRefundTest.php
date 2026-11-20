@@ -152,7 +152,7 @@ class RiderRefundTest extends TestCase
         $this->actingAs($manager)->withSession(['current_branch_id' => $this->branch->id])->post(route('dashboard.refunds.approve', $refund));
         $this->asRider($rider)->post(route('rider.refunds.complete', $refund->id));
 
-        $this->assertSame(['fee' => 0, 'cash' => 0, 'prepaid' => 0], app(DeliveryFeeReportService::class)->split($order->fresh()));
+        $this->assertSame(['fee' => 0, 'cash' => 0, 'prepaid' => 0, 'food_cash' => 0], app(DeliveryFeeReportService::class)->split($order->fresh()));
     }
 
     public function test_past_deliveries_offer_the_request_only_where_allowed(): void

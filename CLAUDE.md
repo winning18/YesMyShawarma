@@ -284,8 +284,10 @@ Flag these rather than assuming an answer.
 Resolved, no longer open: SMS provider (Arkesel, see Stack table above). Delivery fee model is
 continuous distance pricing — haversine distance from branch × a flat rate per km
 (`App\Services\Delivery\DeliveryFeeCalculator`). See `.claude/rules/schema.md` and
-`.claude/rules/orders.md`. Riders hand in the cash delivery fees they collect from 2026-11-11
-(delivery fee collections, payments.md); rider pay itself is not tracked in the app, by choice.
+`.claude/rules/orders.md`. Riders hand in the cash delivery fees they collect from 2026-11-11;
+from 2026-11-20 a rider cash-up at a till takes the food money too, and the owner chooses whether
+fees are handed in (the business's income) or kept by riders (in no financial figure) —
+payments.md's "Rider cash-ups". Rider pay itself is not tracked in the app, by choice.
 "Inventory or stock depletion" was deliberately built, flagged and approved mid-project —
 recipe-driven, per-branch, tied to order acceptance/cancellation. See `.claude/rules/schema.md`'s
 "Recipes and stock deduction" section. "Promo types beyond percentage and fixed discount" was

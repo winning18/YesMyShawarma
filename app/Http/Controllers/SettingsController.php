@@ -34,6 +34,7 @@ class SettingsController extends Controller
                 'delivery_minimum_fee' => number_format($fees->minimumFee() / 100, 2, '.', ''),
                 'delivery_minimum_order' => number_format($fees->minimumOrderTotal() / 100, 2, '.', ''),
             ],
+            'deliveryFeeHandling' => $settings->get(SettingsService::DELIVERY_FEE_HANDLING, 'handed_in'),
         ]);
     }
 
@@ -63,6 +64,10 @@ class SettingsController extends Controller
             if (isset($validated[$field])) {
                 $settings->set($key, (string) (int) round(((float) $validated[$field]) * 100));
             }
+        }
+        // Who gets the delivery fee (owner, 2026-11-20): the owner's call only.
+        if (isset($validated['delivery_fee_handling']) && $request->user()->can('business.manage')) {
+            $settings->set(SettingsService::DELIVERY_FEE_HANDLING, $validated['delivery_fee_handling']);
         }
         if (isset($validated['whatsapp_reward'])) {
             $settings->set(SettingsService::WHATSAPP_REWARD_AMOUNT, (string) (int) round(((float) $validated['whatsapp_reward']) * 100));

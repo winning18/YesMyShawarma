@@ -55,7 +55,9 @@ class DashboardController extends Controller
         $owed = $fees->summary($fees->rowsForRider($request->user(), $fees->handInStartsOn(), $now->clone()->endOfDay()));
 
         return OrderResource::collection($orders)->additional([
-            'meta' => ['delivery_fee_cash_today' => $today['cash'], 'delivery_fee_to_hand_in' => $owed['to_collect']],
+            // Cash taken at doors today (food and fees), and everything still to
+            // hand in at a rider cash-up (2026-11-20); negative: the business owes them.
+            'meta' => ['delivery_fee_cash_today' => $today['cash'] + $today['food_cash'], 'delivery_fee_to_hand_in' => $owed['to_collect']],
         ]);
     }
 }

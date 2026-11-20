@@ -30,6 +30,8 @@ class RolesAndPermissionsSeeder extends Seeder
             'reports.view_operational',
             'damage_reports.file',
             'market_lists.record',
+            // Rider cash-ups at their own till (owner, 2026-11-20).
+            'delivery_fees.collect',
         ],
         'rider' => [
             'orders.view',

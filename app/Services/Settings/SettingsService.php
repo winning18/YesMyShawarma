@@ -57,9 +57,24 @@ class SettingsService
     /**
      * Date (Y-m-d, Africa/Accra) from which riders hand their cash delivery
      * fees in (owner, 2026-11-11). Deliveries before it were the rider's to
-     * keep and are never shown as owed. See DeliveryFeeCollectionService.
+     * keep and are never shown as owed. See RiderCashupService.
      */
     public const DELIVERY_FEE_HAND_IN_STARTS_ON = 'delivery_fee_hand_in_starts_on';
+
+    /**
+     * Delivery fees are handed in by riders and count as the business's
+     * income ('handed_in', the default), or riders keep them as their pay
+     * and they're kept out of every financial figure ('kept_by_rider').
+     * Owner, 2026-11-20; see RiderCashupService.
+     */
+    public const DELIVERY_FEE_HANDLING = 'delivery_fee_handling';
+
+    /**
+     * From when riders hand the food money they collect at doors in
+     * through rider cash-ups (before, it went into the till that took the
+     * order). Unset on a new install: always.
+     */
+    public const RIDER_CASHUP_FOOD_STARTS_ON = 'rider_cashup_food_starts_on';
 
     /**
      * What each order reference prefix is before a business sets its own

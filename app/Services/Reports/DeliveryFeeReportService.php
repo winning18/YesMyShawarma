@@ -23,7 +23,7 @@ use Illuminate\Support\Collection;
  *
  * Fees aren't sales. Until 2026-11-11 every fee was the rider's (owner,
  * 2026-10-21); from then on riders hand in the cash fees they collect
- * (owner, 2026-11-11, DeliveryFeeCollectionService). Each fee is split by
+ * (owner, 2026-11-11, RiderCashupService). Each fee is split by
  * where the money is:
  * - cash: taken from the customer at the door by the rider.
  * - prepaid: already with the business — Paystack covering the fee, or a
@@ -49,6 +49,12 @@ class DeliveryFeeReportService
     public const STATUS_COLLECTED = 'collected';
 
     public const STATUS_TO_COLLECT = 'to_collect';
+
+    public const FEES_HANDED_IN = 'handed_in';
+
+    public const FEES_KEPT_BY_RIDER = 'kept_by_rider';
+
+    private ?Carbon $foodStartsOn = null;
 
     private ?Carbon $handInStartsOn = null;
 
@@ -97,7 +103,9 @@ class DeliveryFeeReportService
 
     /**
      * @param  Collection<int, array<string, mixed>>  $rows
-     * @return array{total: int, cash: int, prepaid: int, count: int, to_collect: int, collected: int}
+     *                                                       to_collect / collected: what riders must hand in (rider cash-ups:
+     *                                                       food, plus fees when handed in, less fees owed to riders).
+     * @return array{total: int, cash: int, prepaid: int, count: int, to_collect: int, collected: int, food_cash: int, fee_income: int}
      */
     public function summary(Collection $rows): array
     {
@@ -106,8 +114,10 @@ class DeliveryFeeReportService
             'cash' => (int) $rows->sum('cash'),
             'prepaid' => (int) $rows->sum('prepaid'),
             'count' => $rows->count(),
-            'to_collect' => (int) $rows->where('collection_status', self::STATUS_TO_COLLECT)->sum('cash'),
-            'collected' => (int) $rows->where('collection_status', self::STATUS_COLLECTED)->sum('cash'),
+            'to_collect' => (int) $rows->where('collection_status', self::STATUS_TO_COLLECT)->sum('due'),
+            'collected' => (int) $rows->where('collection_status', self::STATUS_COLLECTED)->sum('due'),
+            'food_cash' => (int) $rows->sum('food_cash'),
+            'fee_income' => (int) $rows->sum('fee_income'),
         ];
     }
 
@@ -143,7 +153,7 @@ class DeliveryFeeReportService
                 'rider:id,name',
                 'branch:id,name',
                 'events' => fn ($q) => $q->whereIn('meta->action', self::FEE_CHANGE_ACTIONS),
-                'feeCollection.collection.collectedBy:id,name',
+                'cashupLine.cashup.collectedBy:id,name',
             ])
             ->withSum(['payments as paystack_paid' => fn ($q) => $q->where('provider', 'paystack')->where('status', 'paid')], 'amount')
             ->withSum(['refunds as refunded_total' => fn ($q) => $q->withoutGlobalScope(BranchScope::class)->where('status', Refund::STATUS_COMPLETED)], 'amount');
@@ -154,40 +164,84 @@ class DeliveryFeeReportService
      */
     private function row(Order $order): array
     {
-        ['fee' => $fee, 'cash' => $cash, 'prepaid' => $prepaid] = $this->split($order);
-        $collection = $order->feeCollection?->collection;
+        $money = $this->money($order);
+        $cashup = $order->cashupLine?->cashup;
 
         return [
             'order_id' => $order->id,
             'reference' => $order->reference,
             'delivered_at' => $order->delivered_at->clone()->timezone('Africa/Accra'),
+            'branch_id' => $order->branch_id,
             'branch' => $order->branch?->name,
             'rider_id' => $order->rider_id,
             'rider' => $order->rider?->name ?? __('(removed rider)'),
             'area' => $order->delivery_address_snapshot['area_name'] ?? null,
             'payment_method' => $order->payment_method,
             'channel' => $order->channel,
+            ...$money,
+            'fee_note' => $this->feeNote($order),
+            'collection_status' => match (true) {
+                $cashup !== null => self::STATUS_COLLECTED,
+                $money['food_due'] === 0 && $money['fee_due'] === 0 && $money['fee_credit'] === 0
+                    && $order->delivered_at->lt($this->handInStartsOn()) => self::STATUS_KEPT,
+                $money['food_due'] === 0 && $money['fee_due'] === 0 && $money['fee_credit'] === 0 => self::STATUS_PREPAID,
+                default => self::STATUS_TO_COLLECT,
+            },
+            'collection_id' => $cashup?->id,
+            'collected_at' => $cashup?->collected_at?->clone()->timezone('Africa/Accra'),
+            'collected_by' => $cashup?->collectedBy?->name,
+        ];
+    }
+
+    /**
+     * One delivered order's money, as the rider holds it (owner,
+     * 2026-11-20):
+     * - fee / cash / prepaid: the delivery fee, the part of it the rider
+     *   took in cash at the door, and the part already with the business.
+     * - food_cash: food money the rider took at the door (a cash order's
+     *   food, or what Paystack didn't cover).
+     * - food_due, fee_due, fee_credit, due: what the rider must hand in.
+     *   Food always (from rider_cashup_food_starts_on); the fee too when
+     *   fees are handed in (from the hand-in start date); when riders keep
+     *   fees, a fee the business already holds is owed to the rider and
+     *   comes off. due = food_due + fee_due - fee_credit, and can be
+     *   negative: the business pays the rider.
+     * - fee_income: the fee as the business's income (fees handed in
+     *   only), for Sales and Profit.
+     *
+     * @return array{fee: int, cash: int, prepaid: int, food_cash: int, food_due: int, fee_due: int, fee_credit: int, due: int, fee_income: int}
+     */
+    public function money(Order $order): array
+    {
+        ['fee' => $fee, 'cash' => $cash, 'prepaid' => $prepaid, 'food_cash' => $foodCash] = $this->split($order);
+        $delivered = $order->delivered_at;
+        $feesCount = $delivered !== null && $delivered->gte($this->handInStartsOn());
+        $foodStarts = $this->foodStartsOn();
+        $handedIn = $this->feesHandedIn();
+
+        $foodDue = ($foodStarts === null || ($delivered !== null && $delivered->gte($foodStarts))) ? $foodCash : 0;
+        $feeDue = $handedIn && $feesCount ? $cash : 0;
+        $feeCredit = ! $handedIn && $feesCount ? $prepaid : 0;
+
+        return [
             'fee' => $fee,
             'cash' => $cash,
             'prepaid' => $prepaid,
-            'fee_note' => $this->feeNote($order),
-            'collection_status' => match (true) {
-                $order->delivered_at->lt($this->handInStartsOn()) => self::STATUS_KEPT,
-                $collection !== null => self::STATUS_COLLECTED,
-                $cash === 0 => self::STATUS_PREPAID,
-                default => self::STATUS_TO_COLLECT,
-            },
-            'collection_id' => $collection?->id,
-            'collected_at' => $collection?->collected_at?->clone()->timezone('Africa/Accra'),
-            'collected_by' => $collection?->collectedBy?->name,
+            'food_cash' => $foodCash,
+            'food_due' => $foodDue,
+            'fee_due' => $feeDue,
+            'fee_credit' => $feeCredit,
+            'due' => $foodDue + $feeDue - $feeCredit,
+            'fee_income' => $handedIn && $feesCount ? $fee : 0,
         ];
     }
 
     /**
      * One delivered order's fee, split into what the rider got from the
-     * customer in cash and what staff pay them (see the class docblock).
+     * customer in cash and what staff pay them (see the class docblock),
+     * and the food money the rider took at the door.
      *
-     * @return array{fee: int, cash: int, prepaid: int}
+     * @return array{fee: int, cash: int, prepaid: int, food_cash: int}
      */
     public function split(Order $order): array
     {
@@ -199,12 +253,15 @@ class DeliveryFeeReportService
             ? $order->paystack_paid
             : $order->payments()->where('provider', 'paystack')->where('status', 'paid')->sum('amount');
 
-        $cash = match ($order->payment_method) {
-            'cash' => $fee,
-            'paystack' => min($fee, max(0, (int) $order->total - (int) $paystackPaid)),
+        // Everything the rider took at the door, then the fee's share of it.
+        $atDoor = match ($order->payment_method) {
+            'cash' => (int) $order->total,
+            'paystack' => max(0, (int) $order->total - (int) $paystackPaid),
             'momo' => $order->delivery_fee_paid_by === 'rider_cash' ? $fee : 0,
             default => 0,
         };
+        $cash = min($fee, $atDoor);
+        $foodCash = $atDoor - $cash;
         $prepaid = $fee - $cash;
 
         // A refund gives back the food first; whatever it returns beyond
@@ -214,10 +271,31 @@ class DeliveryFeeReportService
         $refunded = array_key_exists('refunded_total', $order->getAttributes())
             ? (int) $order->refunded_total
             : (int) $order->refunds()->withoutGlobalScope(BranchScope::class)->where('status', Refund::STATUS_COMPLETED)->sum('amount');
-        $feeRefunded = min($fee, max(0, $refunded - ((int) $order->total - $fee)));
+        $food = (int) $order->total - $fee;
+        $foodRefunded = min(max(0, $food), $refunded);
+        $feeRefunded = min($fee, max(0, $refunded - $food));
         $fromCash = min($cash, $feeRefunded);
 
-        return ['fee' => $fee - $feeRefunded, 'cash' => $cash - $fromCash, 'prepaid' => $prepaid - ($feeRefunded - $fromCash)];
+        return [
+            'fee' => $fee - $feeRefunded,
+            'cash' => $cash - $fromCash,
+            'prepaid' => $prepaid - ($feeRefunded - $fromCash),
+            'food_cash' => $foodCash - min($foodCash, $foodRefunded),
+        ];
+    }
+
+    /** Riders hand delivery fees in (the default), or keep them as their pay. */
+    public function feesHandedIn(): bool
+    {
+        return $this->settings->get(SettingsService::DELIVERY_FEE_HANDLING, self::FEES_HANDED_IN) !== self::FEES_KEPT_BY_RIDER;
+    }
+
+    /** From when food money comes in through rider cash-ups; null: always. */
+    public function foodStartsOn(): ?Carbon
+    {
+        $date = $this->settings->get(SettingsService::RIDER_CASHUP_FOOD_STARTS_ON);
+
+        return $this->foodStartsOn ??= $date ? Carbon::parse($date, 'Africa/Accra')->startOfDay() : null;
     }
 
     /**

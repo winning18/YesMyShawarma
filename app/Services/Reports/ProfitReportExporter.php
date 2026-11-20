@@ -102,11 +102,12 @@ class ProfitReportExporter
         $money = fn (int $pesewas) => ['money' => $pesewas];
         // The Bolt Food columns only while Bolt Food is switched on (ModuleService).
         $bolt = app(ModuleService::class)->enabled(ModuleService::BOLT_FOOD);
+        $fees = (bool) ($report['has_delivery_fees'] ?? false);
         $row = fn (string $label, array $p) => [
-            $label, $money($p['sales']), $money($p['refunds']), $money($p['purchases']), $money($p['profit']),
+            $label, $money($p['sales']), ...($fees ? [$money($p['delivery_fees'])] : []), $money($p['refunds']), $money($p['purchases']), $money($p['profit']),
             ...($bolt ? [$money($p['bolt_food']), $money($p['profit_with_bolt'])] : []),
         ];
-        $rows = [['Period', 'Sales (ghs)', 'Refunds (ghs)', 'Purchases & expenses (ghs)', 'Profit (ghs)', ...($bolt ? ['Bolt Food sales, before commission (ghs)', 'Profit incl. Bolt Food (ghs)'] : [])]];
+        $rows = [['Period', 'Sales (ghs)', ...($fees ? ['Delivery fees received (ghs)'] : []), 'Refunds (ghs)', 'Purchases & expenses (ghs)', 'Profit (ghs)', ...($bolt ? ['Bolt Food sales, before commission (ghs)', 'Profit incl. Bolt Food (ghs)'] : [])]];
 
         foreach ($report['periods'] as $period) {
             $rows[] = $row($period['label'], $period);

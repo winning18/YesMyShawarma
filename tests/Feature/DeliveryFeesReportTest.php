@@ -13,6 +13,7 @@ use App\Services\Reports\OrderReportService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -28,6 +29,8 @@ class DeliveryFeesReportTest extends TestCase
 
         $this->seed(RolesAndPermissionsSeeder::class);
         Carbon::setTestNow('2026-10-21 15:00:00'); // a Wednesday
+        // These tests are about fees: food money joins rider cash-ups later (RiderCashupTest covers it).
+        DB::table('settings')->updateOrInsert(['key' => 'rider_cashup_food_starts_on'], ['value' => '2027-01-01']);
 
         $this->branch = Branch::create([
             'name' => 'Osu', 'slug' => 'osu', 'phone' => '+233200000001', 'address' => 'A',
@@ -92,7 +95,7 @@ class DeliveryFeesReportTest extends TestCase
 
         $summary = $this->fees()->summary($this->fees()->rows(now('Africa/Accra')->startOfWeek(), now('Africa/Accra')->endOfWeek(), ignoreBranchScope: true));
 
-        $this->assertSame(['total' => 1500, 'cash' => 1500, 'prepaid' => 0, 'count' => 1, 'to_collect' => 0, 'collected' => 0], $summary);
+        $this->assertSame(['total' => 1500, 'cash' => 1500, 'prepaid' => 0, 'count' => 1, 'to_collect' => 0, 'collected' => 0, 'food_cash' => 5000, 'fee_income' => 0], $summary);
     }
 
     public function test_fee_is_split_by_who_received_the_money(): void
@@ -113,11 +116,12 @@ class DeliveryFeesReportTest extends TestCase
 
         $splits = collect([$cash, $prepaid, $feeOnArrival, $momo, $momoFeeInCash])->map(fn (Order $o) => $this->fees()->split($o->fresh()));
 
-        $this->assertSame(['fee' => 1000, 'cash' => 1000, 'prepaid' => 0], $splits[0]);
-        $this->assertSame(['fee' => 1200, 'cash' => 0, 'prepaid' => 1200], $splits[1]);
-        $this->assertSame(['fee' => 1400, 'cash' => 1400, 'prepaid' => 0], $splits[2]);
-        $this->assertSame(['fee' => 800, 'cash' => 0, 'prepaid' => 800], $splits[3]);
-        $this->assertSame(['fee' => 900, 'cash' => 900, 'prepaid' => 0], $splits[4]);
+        // food_cash: what the rider took at the door for the food (cash orders only here).
+        $this->assertSame(['fee' => 1000, 'cash' => 1000, 'prepaid' => 0, 'food_cash' => 5000], $splits[0]);
+        $this->assertSame(['fee' => 1200, 'cash' => 0, 'prepaid' => 1200, 'food_cash' => 0], $splits[1]);
+        $this->assertSame(['fee' => 1400, 'cash' => 1400, 'prepaid' => 0, 'food_cash' => 0], $splits[2]);
+        $this->assertSame(['fee' => 800, 'cash' => 0, 'prepaid' => 800, 'food_cash' => 0], $splits[3]);
+        $this->assertSame(['fee' => 900, 'cash' => 900, 'prepaid' => 0, 'food_cash' => 0], $splits[4]);
     }
 
     public function test_a_riders_app_totals_match_their_row_in_the_report(): void
@@ -277,11 +281,11 @@ class DeliveryFeesReportTest extends TestCase
         $manager = $this->actingAs($this->userWithRole('manager'))->get(route('dashboard.reports.today.index', $params))->assertOk();
         $this->assertSame(1500, $manager->viewData('deliveryFees')['total']);
         $this->assertSame(5000, $manager->viewData('summary')['total_sales']);
-        $manager->assertSee('Delivery fees, not included in sales');
+        $manager->assertSee('Delivery fees received, not included in food sales');
 
         $staff = $this->actingAs($this->userWithRole('staff'))->get(route('dashboard.reports.today.index', $params))->assertOk();
         $this->assertNull($staff->viewData('deliveryFees'));
-        $staff->assertDontSee('Delivery fees, not included in sales');
+        $staff->assertDontSee('Delivery fees received, not included in food sales');
     }
 
     public function test_rider_dashboard_data_gives_todays_cash_delivery_fees(): void
@@ -293,6 +297,6 @@ class DeliveryFeesReportTest extends TestCase
 
         $this->actingAs($rider, 'rider')->getJson(route('rider.orders.data'))
             ->assertOk()
-            ->assertJsonPath('meta.delivery_fee_cash_today', 1500);
+            ->assertJsonPath('meta.delivery_fee_cash_today', 6500); // the GH₵50 food and the GH₵15 fee taken at the door
     }
 }

@@ -58,6 +58,15 @@
     </x-sidebar-link>
 @endif
 
+{{-- Rider cash-up (2026-11-20): cashiers and managers take riders' end-of-day hand-ins at their till. --}}
+@module('delivery')
+@can('delivery_fees.collect')
+    <x-sidebar-link :href="route('dashboard.rider-cashups.index')" :active="request()->routeIs('dashboard.rider-cashups.*')">
+        {{ __('Rider cash-up') }}
+    </x-sidebar-link>
+@endcan
+@endmodule
+
 {{--
     Order History > Web / POS — each channel opens its own filtered record
     of every past order, any status, paginated (OrderHistoryController).

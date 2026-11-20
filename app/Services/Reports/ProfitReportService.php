@@ -7,6 +7,7 @@ use App\Models\MarketListItem;
 use App\Models\Order;
 use App\Models\Refund;
 use App\Models\Scopes\BranchScope;
+use App\Services\Modules\ModuleService;
 use App\Services\Tax\TaxService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
@@ -20,6 +21,8 @@ use Illuminate\Support\Collection;
  *  - Sales: exactly SalesStatementService's 'sales' figure — every order
  *    except Bolt Food, subtotal − discount (the delivery fee goes to the
  *    rider), paid-onwards statuses only, by placed_at.
+ *  - Delivery fees received: when riders hand fees in (2026-11-20), by
+ *    delivery date; kept by riders, they're not the business's income.
  *  - Refunds: completed refunds, by completed_at, same as the statement
  *    (less their tax share, step 9).
  *  - Purchases: approved market lists, by purchase date. Pending and
@@ -53,15 +56,17 @@ class ProfitReportService
         $bolt = $this->salesByPeriod($from, $to, $scopeIds, true, $periodOf);
         $refunds = $this->refundsByPeriod($from, $to, $scopeIds, $periodOf);
         $purchases = $this->purchasesByPeriod($from, $to, $scopeIds, $periodOf);
+        $fees = $this->deliveryFeesByPeriod($from, $to, $scopeIds, $periodOf);
 
         $periods = collect($this->periodKeys($from, $to, $groupBy))
-            ->map(function (string $key) use ($sales, $bolt, $refunds, $purchases, $groupBy) {
-                $profit = ($sales[$key] ?? 0) - ($refunds[$key] ?? 0) - ($purchases[$key] ?? 0);
+            ->map(function (string $key) use ($sales, $bolt, $refunds, $purchases, $fees, $groupBy) {
+                $profit = ($sales[$key] ?? 0) + ($fees[$key] ?? 0) - ($refunds[$key] ?? 0) - ($purchases[$key] ?? 0);
 
                 return [
                     'key' => $key,
                     'label' => $this->periodLabel($key, $groupBy),
                     'sales' => $sales[$key] ?? 0,
+                    'delivery_fees' => $fees[$key] ?? 0,
                     'refunds' => $refunds[$key] ?? 0,
                     'purchases' => $purchases[$key] ?? 0,
                     'profit' => $profit,
@@ -71,7 +76,7 @@ class ProfitReportService
             })
             ->values();
 
-        $totals = collect(['sales', 'refunds', 'purchases', 'profit', 'bolt_food', 'profit_with_bolt'])
+        $totals = collect(['sales', 'delivery_fees', 'refunds', 'purchases', 'profit', 'bolt_food', 'profit_with_bolt'])
             ->mapWithKeys(fn (string $column) => [$column => (int) $periods->sum($column)])
             ->all();
 
@@ -84,9 +89,39 @@ class ProfitReportService
             'general' => $singleBranchId === null,
             'periods' => $periods->all(),
             'totals' => $totals,
+            'has_delivery_fees' => $this->countsDeliveryFees(),
             'by_kind' => $this->byKind($from, $to, $scopeIds),
             'awaiting' => $this->awaiting($from, $to, $scopeIds),
         ];
+    }
+
+    /**
+     * Delivery fees are the business's income only when riders hand them
+     * in (owner, 2026-11-20), and only with the Delivery module on.
+     */
+    private function countsDeliveryFees(): bool
+    {
+        return app(ModuleService::class)->enabled(ModuleService::DELIVERY) && app(DeliveryFeeReportService::class)->feesHandedIn();
+    }
+
+    /**
+     * Delivery fees received, by the day the order was delivered (from the
+     * hand-in start date; earlier ones were the rider's).
+     *
+     * @param  ?list<int>  $scopeIds
+     * @return array<string, int>
+     */
+    private function deliveryFeesByPeriod(Carbon $from, Carbon $to, ?array $scopeIds, \Closure $periodOf): array
+    {
+        if (! $this->countsDeliveryFees()) {
+            return [];
+        }
+
+        return app(DeliveryFeeReportService::class)
+            ->rows($from, $to, ignoreBranchScope: $scopeIds === null, branchIds: $scopeIds)
+            ->groupBy(fn (array $row) => $periodOf($row['delivered_at']))
+            ->map(fn ($rows) => (int) $rows->sum('fee_income'))
+            ->all();
     }
 
     /**

@@ -361,7 +361,7 @@ class SalesStatementTest extends TestCase
 
         $rows = array_map('str_getcsv', explode("\n", trim($response->getContent())));
 
-        $this->assertSame(['No', 'Date', 'Time', 'Order ID', 'Type', 'Payment', 'Subtotal (ghs)', 'Discount (ghs)', 'Sales (ghs)', 'Delivery fee (rider) (ghs)', 'Customer paid (ghs)'], $rows[0]);
+        $this->assertSame(['No', 'Date', 'Time', 'Order ID', 'Type', 'Payment', 'Subtotal (ghs)', 'Discount (ghs)', 'Sales (ghs)', 'Delivery fee (ghs)', 'Customer paid (ghs)'], $rows[0]);
         $this->assertSame(['1', '2026-10-05', '16:22', 'YMGS-1', 'Delivery', 'Cash', '49.00', '-', '49.00', '10.00', '59.00'], $rows[1]);
         $this->assertSame(['', '2026-10-05', '', '', '', 'TOTAL', '49.00', '-', '49.00', '10.00', '59.00'], $rows[2]);
 

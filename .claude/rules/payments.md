@@ -251,18 +251,39 @@ covering the fee, or `momo` with `delivery_fee_paid_by` `'momo'`/null). The ride
 `cash_to_collect` (OrderResource) follows the same rule; `fee_from_staff` is still in the resource
 but no longer shown — staff stopped paying riders prepaid fees on 2026-11-11.
 
-### Delivery fee collections
+### Rider cash-ups
 
-`delivery_fee_collections` / `delivery_fee_collection_orders` (`DeliveryFeeCollectionService`,
-`delivery_fees.collect`: owner/GM/manager at the collection's branch): one rider handing in
-their **cash** fees at one branch for a period. Only deliveries on or after the
-`delivery_fee_hand_in_starts_on` setting (2026-11-11) are ever owed; earlier ones show "Kept by
-rider". The amount actually handed in is recorded beside the expected total (shortfall/over
-shown). Each order sits in one live collection at most (unique `order_id`), so overlapping
-periods never double-count; voiding (with a reason) deletes the links and keeps the record.
-Orders themselves are never written. Each Delivery fees report row carries `collection_status`
-(`kept`|`prepaid`|`collected`|`to_collect`), filterable, and the rider app shows "to hand in"
-(everything owed since the start date) and "handed in".
+Owner, 2026-11-20 (`RiderCashupService`, `rider_cashups` / `rider_cashup_orders`, formerly the
+fee-only delivery fee collections of 2026-11-11, renamed with every past hand-in kept). At the end
+of the day a rider hands in, **at a till**, everything they must account for, worked out per
+delivered order by `DeliveryFeeReportService::money()`:
+
+- **Food money** taken at the door (a cash order's food, or what Paystack didn't cover): always
+  handed in, from `rider_cashup_food_starts_on` (the day this shipped on an install already taking
+  orders; always on a new one). Before that it went into the till that took the order.
+- **The delivery fee**: customers always pay it; the owner chooses who gets it
+  (`delivery_fee_handling`, Settings → General, `business.manage` only):
+  - `handed_in` (the default; Yes My Shawarma): cash fees are handed in too, from
+    `delivery_fee_hand_in_starts_on` (2026-11-11), and every fee from then counts as the
+    business's income — "Delivery fees received" on the Sales tab and in Profit (never mixed into
+    food sales).
+  - `kept_by_rider` (riders the business doesn't employ): the rider keeps cash fees; a fee the
+    business already holds (Paystack, or MoMo with the food) is owed to the rider and comes off
+    their cash-up (`fee_credit`). Fees then appear in no financial figure (the Delivery fees tab
+    stays as an operations list, outside every total; the sales statement drops its fee column).
+- **Due** = food + fees handed in − fees owed to the rider; it can be negative (the business pays
+  the rider: `received` stored negative, "paid to the rider").
+
+A cash-up is one rider, one branch, one period, recorded by a cashier or manager
+(`delivery_fees.collect`); the device's open till is stored (`shift_id`) and counts it:
+`OrderReportService::tillSales()` / `sharedTillSales()` add the cash-ups received at a till and
+take off the food money riders collect for that till's own delivery orders
+(`RiderCashupService::tillAdjustment()`). With no till open the cash-up is recorded but counted in
+no till (the page says so). What was handed over is recorded beside what was due (shortfall/over
+shown). Each order sits in one live cash-up at most (unique `order_id`); voiding (with a reason)
+deletes the links and keeps the record. Orders themselves are never written. Each Delivery fees
+report row carries `collection_status` (`kept`|`prepaid`|`collected`|`to_collect`), and the rider
+app shows "to hand in at your cash-up" (or "the business owes you").
 
 `orders.delivery_fee_paid_by` is chosen per order at the POS for MoMo delivery orders (it varies),
 and can be changed from the order page until delivered (`DeliveryFeePayerService`, writes an

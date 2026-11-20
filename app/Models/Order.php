@@ -140,12 +140,10 @@ class Order extends Model
         return $this->hasOne(ComplimentaryOrder::class);
     }
 
-    /**
-     * The hand-in this order's cash delivery fee went into, if any.
-     */
-    public function feeCollection(): HasOne
+    /** The rider cash-up this delivery was handed in with, if any. */
+    public function cashupLine(): HasOne
     {
-        return $this->hasOne(DeliveryFeeCollectionOrder::class);
+        return $this->hasOne(RiderCashupOrder::class);
     }
 
     public function items(): HasMany

@@ -11,14 +11,22 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * One rider handing in their cash delivery fees at one branch for a
- * period (owner, 2026-11-11). See DeliveryFeeCollectionService.
+ * period (owner, 2026-11-11). See RiderCashupService.
+ */
+/**
+ * A rider's end-of-day hand-in (owner, 2026-11-20; RiderCashupService):
+ * the food money collected at doors, the delivery fees when the business
+ * has them handed in, less fees owed to a rider who keeps them. Received
+ * at a till (shift_id) and counted in its cash-up. expected / received can
+ * be negative: the business paid the rider out.
  */
 #[Fillable([
-    'branch_id', 'rider_id', 'period_from', 'period_to', 'expected', 'received', 'order_count',
+    'branch_id', 'rider_id', 'shift_id', 'period_from', 'period_to', 'expected_food', 'expected_fee', 'fee_credit',
+    'fee_handling', 'expected', 'received', 'order_count',
     'note', 'collected_by', 'collected_at', 'voided_at', 'voided_by', 'void_reason',
 ])]
 #[ScopedBy([BranchScope::class])]
-class DeliveryFeeCollection extends Model
+class RiderCashup extends Model
 {
     protected function casts(): array
     {
@@ -27,6 +35,10 @@ class DeliveryFeeCollection extends Model
             'period_to' => 'date',
             'expected' => 'integer',
             'received' => 'integer',
+            'expected_food' => 'integer',
+            'expected_fee' => 'integer',
+            'fee_credit' => 'integer',
+            'shift_id' => 'integer',
             'collected_at' => 'datetime',
             'voided_at' => 'datetime',
         ];
@@ -62,6 +74,11 @@ class DeliveryFeeCollection extends Model
         return $this->belongsTo(User::class, 'rider_id');
     }
 
+    public function shift(): BelongsTo
+    {
+        return $this->belongsTo(Shift::class);
+    }
+
     public function collectedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'collected_by');
@@ -74,6 +91,6 @@ class DeliveryFeeCollection extends Model
 
     public function orders(): HasMany
     {
-        return $this->hasMany(DeliveryFeeCollectionOrder::class);
+        return $this->hasMany(RiderCashupOrder::class);
     }
 }
