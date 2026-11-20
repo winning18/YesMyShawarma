@@ -253,7 +253,10 @@ three tries. Jobs are queued only while the branch's agent is online (seen in th
 POS sale queues receipt, kitchen ticket(s) and, for cash with a drawer printer, a drawer kick;
 accepting queues kitchen tickets; Print buttons queue reprints — and the response's
 `printed_by_agent` / `queued` tells the page whether to print through the browser instead.
-Failed receipts and tickets show on the order board (`print_failures`) until reprinted.
+Failed receipts and tickets show on the order board (`print_failures`) until reprinted. Each printer on
+the Printers page has "Print a test page" (`kind` test, no order; the page polls its status, or
+prints a browser test page with no agent on); test pages never show on the board. Asking for a
+connection code again for a not-yet-connected agent of the same name reuses it.
 
 In 8a printing goes through the acting device's browser (`partials/print-script`, a hidden
 frame): the receipt and kitchen ticket after a POS sale, the kitchen ticket on accept, and Print

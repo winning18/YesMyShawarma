@@ -27,9 +27,9 @@
         </div>
     </div>
     <div class="sm:col-span-2">
-        <label for="{{ $id }}-address" class="block text-xs font-medium text-gray-500" x-text="connection === 'network' ? @js(__('IP address (optional for now)')) : @js(__('Windows printer name (optional for now)'))"></label>
+        <label for="{{ $id }}-address" class="block text-xs font-medium text-gray-500" x-text="connection === 'network' ? @js(__('IP address')) : @js(__('Printer name in Windows'))"></label>
         <input id="{{ $id }}-address" name="address" value="{{ $printer ? $printer->address : old('address') }}" maxlength="120" :placeholder="connection === 'network' ? '192.168.1.50' : 'EPSON TM-T82III Receipt'" class="mt-1 block w-full rounded-md border-gray-300 text-sm font-mono">
-        <p class="text-xs text-gray-400 mt-1">{{ __('The print agent uses this to reach the printer.') }}</p>
+        <p class="text-xs text-gray-400 mt-1" x-text="connection === 'network' ? @js(__('The print agent sends to this address. Find it on the printer\'s network status slip.')) : @js(__('Exactly as Windows lists it under Settings, Printers & scanners, on the PC with the print agent.'))"></p>
     </div>
     <label class="flex items-center gap-2 text-sm" x-show="role === 'receipt'">
         <input type="checkbox" name="opens_drawer" value="1" @checked($printer?->opens_drawer) class="rounded border-gray-300">

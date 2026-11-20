@@ -96,6 +96,35 @@ class PrintJobService
     }
 
     /**
+     * "Print a test page" on the Printers page: the agent's job, or null
+     * when there's no agent on (the page prints a test through the browser).
+     */
+    public function test(Printer $printer, ?User $by = null): ?PrintJob
+    {
+        if (! $this->agents->isOnline($printer->branch_id)) {
+            return null;
+        }
+
+        return PrintJob::create([
+            'branch_id' => $printer->branch_id,
+            'printer_id' => $printer->id,
+            'kind' => PrintJob::TEST,
+            'requested_by_user_id' => $by?->id,
+        ]);
+    }
+
+    /**
+     * Each printer's latest test page, for the Printers page.
+     *
+     * @return Collection<int, PrintJob> keyed by printer id
+     */
+    public function latestTests(int $branchId): Collection
+    {
+        return PrintJob::where('branch_id', $branchId)->where('kind', PrintJob::TEST)
+            ->orderByDesc('id')->get()->unique('printer_id')->keyBy('printer_id');
+    }
+
+    /**
      * Hands the agent its branch's waiting jobs, ready to print: each with
      * its printer's connection and the ESC/POS bytes. A job the agent took
      * but never reported on is offered again, up to three tries.
@@ -158,7 +187,7 @@ class PrintJobService
         return PrintJob::with(['printer', 'order'])
             ->where('branch_id', $branchId)
             ->where('status', PrintJob::FAILED)
-            ->where('kind', '!=', PrintJob::DRAWER)
+            ->whereNotIn('kind', [PrintJob::DRAWER, PrintJob::TEST])
             ->where('updated_at', '>', now()->subHours(3))
             ->whereNotExists(fn ($query) => $query->from('print_jobs as later')
                 ->whereColumn('later.order_id', 'print_jobs.order_id')
@@ -189,6 +218,7 @@ class PrintJobService
             PrintJob::RECEIPT => $this->escPos->receipt($this->receipts->receipt($order), $job->printer, $this->profile->logoFilePath()),
             PrintJob::KITCHEN => $this->escPos->kitchenTicket($this->receipts->kitchenTicket($order), $job->printer),
             PrintJob::DRAWER => $this->escPos->drawerOnly(),
+            PrintJob::TEST => $this->escPos->testPage($job->printer, $this->profile->name(), $job->printer->branch?->name),
         };
     }
 }

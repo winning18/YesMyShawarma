@@ -35,6 +35,10 @@ class PrintAgentService
             'pairing_expires_at' => now()->addMinutes(self::CODE_MINUTES),
         ];
 
+        // Asking again for an agent that hasn't connected yet reuses it
+        // rather than listing a second one with the same name.
+        $agent ??= PrintAgent::where('branch_id', $branch->id)->where('name', trim($name))->whereNull('token_hash')->first();
+
         $agent ? $agent->update($fields) : $agent = PrintAgent::create(['branch_id' => $branch->id, ...$fields]);
 
         return [$agent, substr($code, 0, 4).'-'.substr($code, 4)];

@@ -19,6 +19,9 @@ class PrintJob extends Model
 
     public const DRAWER = 'drawer';
 
+    /** "Print a test page" on the Printers page — no order. */
+    public const TEST = 'test';
+
     public const PENDING = 'pending';
 
     public const SENT = 'sent';

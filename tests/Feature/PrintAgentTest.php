@@ -225,4 +225,53 @@ class PrintAgentTest extends TestCase
         $this->as($manager)->delete(route('dashboard.printers.agents.disconnect', PrintAgent::sole()))->assertSessionHas('status');
         $this->assertSame(0, PrintAgent::count());
     }
+
+    public function test_a_test_page_goes_through_the_agent_and_reports_back(): void
+    {
+        $token = $this->onlineAgent();
+        $manager = $this->userWithRole('manager');
+
+        $queued = $this->as($manager)->postJson(route('dashboard.printers.test', $this->receipt))->assertOk()->assertJsonPath('queued', true)->json('job');
+
+        $jobs = $this->getJson(route('api.print-agent.jobs'), ['Authorization' => 'Bearer '.$token])->json('jobs');
+        $this->assertCount(1, $jobs);
+        $page = base64_decode($jobs[0]['data']);
+        $this->assertStringContainsString('Test page', $page);
+        $this->assertStringContainsString('Front (80 mm)', $page);
+        $this->assertStringContainsString("\x1Bp", $page, 'a drawer printer opens its drawer on the test page');
+
+        $this->as($manager)->getJson(route('dashboard.printers.job-status', $queued))->assertJsonPath('status', 'sent');
+        $this->postJson(route('api.print-agent.report', $queued), ['printed' => false, 'error' => "can't reach the printer at 192.168.1.50:9100"], ['Authorization' => 'Bearer '.$token]);
+        $this->as($manager)->getJson(route('dashboard.printers.job-status', $queued))->assertJsonPath('status', 'failed');
+        $this->as($manager)->get(route('dashboard.printers.index'))->assertSee('reach the printer at 192.168.1.50:9100', false);
+
+        // Test pages never show on the order board.
+        $this->as($this->userWithRole('staff'))->getJson(route('dashboard.orders.data'))->assertJsonCount(0, 'print_failures');
+    }
+
+    public function test_with_no_agent_the_test_page_prints_through_the_browser(): void
+    {
+        $manager = $this->userWithRole('manager');
+
+        $this->as($manager)->postJson(route('dashboard.printers.test', $this->kitchen))->assertJsonPath('queued', false);
+        $this->as($manager)->get(route('dashboard.printers.test-page', $this->kitchen))->assertOk()
+            ->assertSee('size: 58mm auto', false)->assertSee('Kitchen (58 mm)');
+    }
+
+    public function test_asking_for_a_code_twice_doesnt_list_the_agent_twice(): void
+    {
+        $manager = $this->userWithRole('manager');
+        $this->as($manager)->post(route('dashboard.printers.agents.connect'), ['name' => 'Counter PC']);
+        $this->as($manager)->post(route('dashboard.printers.agents.connect'), ['name' => 'Counter PC']);
+
+        $this->assertSame(1, PrintAgent::count());
+    }
+
+    public function test_the_printers_page_has_the_download_and_the_site_address(): void
+    {
+        $this->as($this->userWithRole('manager'))->get(route('dashboard.printers.index'))
+            ->assertSee('Download for Windows')
+            ->assertSee(asset('downloads/ExpressPOSPrintAgent.exe'), false)
+            ->assertSee(rtrim(url('/'), '/'), false);
+    }
 }

@@ -113,6 +113,30 @@ class EscPosRenderer
         return $this->out;
     }
 
+    /**
+     * "Print a test page": what printer this is and that the agent reached
+     * it — and, on a drawer printer, the drawer opens too.
+     */
+    public function testPage(Printer $printer, string $business, ?string $branch): string
+    {
+        $this->start($printer);
+        $this->align(1)->bold(true)->size(2, 2)->text('Express POS')->size(1, 1)->text(__('Test page'))->bold(false);
+        $this->rule();
+        $this->text($business.($branch ? ' - '.$branch : ''));
+        $this->text($printer->name.' ('.$printer->paper_width.' mm)');
+        $this->text(now()->timezone('Africa/Accra')->format('d/m/Y H:i'));
+        $this->rule();
+        $this->text(__('If you can read this, the print agent reached this printer.'));
+        $this->align(0);
+        $this->cut();
+
+        if ($printer->opens_drawer) {
+            $this->drawer();
+        }
+
+        return $this->out;
+    }
+
     /** Only opens the drawer cabled to the printer. */
     public function drawerOnly(): string
     {

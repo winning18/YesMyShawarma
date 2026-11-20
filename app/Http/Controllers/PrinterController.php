@@ -4,10 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\PrintAgent;
 use App\Models\Printer;
+use App\Models\PrintJob;
 use App\Models\Terminal;
 use App\Services\Branches\BranchContext;
 use App\Services\Printing\PrintAgentService;
 use App\Services\Printing\PrinterService;
+use App\Services\Printing\PrintJobService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -21,14 +24,17 @@ use Illuminate\View\View;
  */
 class PrinterController extends Controller
 {
-    public function index(BranchContext $context): View
+    public function index(BranchContext $context, PrintAgentService $agents, PrintJobService $jobs): View
     {
         Gate::authorize('settings.manage');
         $branch = $context->branch() ?? abort(404);
 
         return view('dashboard.printers.index', [
             'branch' => $branch,
-            'printers' => Printer::where('branch_id', $branch->id)->orderBy('role')->orderBy('name')->get(),
+            'agentOnline' => $agents->isOnline($branch->id),
+            'latestTests' => $jobs->latestTests($branch->id),
+            // Receipt printers first, then kitchen.
+            'printers' => Printer::where('branch_id', $branch->id)->orderByDesc('role')->orderBy('name')->get(),
             'counters' => Terminal::where('branch_id', $branch->id)->where('is_active', true)->orderBy('name')->get(),
             'agents' => PrintAgent::where('branch_id', $branch->id)->orderBy('name')->get(),
         ]);
@@ -61,6 +67,42 @@ class PrinterController extends Controller
         $agents->disconnect($agent);
 
         return back()->with('status', __(':name is disconnected and can no longer print.', ['name' => $agent->name]));
+    }
+
+    /**
+     * "Print a test page": through the print agent when it's on (the page
+     * then checks whether it came out), otherwise the page prints a test
+     * through the browser.
+     */
+    public function test(Request $request, Printer $printer, PrintJobService $jobs): JsonResponse
+    {
+        $this->authorizePrinter($printer);
+        $job = $jobs->test($printer, $request->user());
+
+        return response()->json(['queued' => (bool) $job, 'job' => $job?->id]);
+    }
+
+    /** The browser's test page for a printer (no print agent on). */
+    public function testPage(Printer $printer): View
+    {
+        $this->authorizePrinter($printer);
+
+        return view('print.test', ['printer' => $printer, 'width' => $printer->paper_width, 'business' => config('app.name')]);
+    }
+
+    /** Whether a test page came out — the Printers page asks every few seconds. */
+    public function jobStatus(PrintJob $job): JsonResponse
+    {
+        Gate::authorize('settings.manage');
+        abort_unless($job->branch_id === (int) app(BranchContext::class)->id(), 404);
+
+        return response()->json(['status' => $job->status, 'error' => $job->error]);
+    }
+
+    private function authorizePrinter(Printer $printer): void
+    {
+        Gate::authorize('settings.manage');
+        abort_unless($printer->branch_id === (int) app(BranchContext::class)->id(), 404);
     }
 
     public function store(Request $request, BranchContext $context, PrinterService $printers): RedirectResponse

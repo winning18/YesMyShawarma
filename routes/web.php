@@ -323,6 +323,9 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::get('/dashboard/printers', [PrinterController::class, 'index'])->name('dashboard.printers.index');
     Route::post('/dashboard/printers', [PrinterController::class, 'store'])->name('dashboard.printers.store');
     Route::put('/dashboard/printers/{printer}', [PrinterController::class, 'update'])->whereNumber('printer')->name('dashboard.printers.update');
+    Route::post('/dashboard/printers/{printer}/test', [PrinterController::class, 'test'])->whereNumber('printer')->middleware('throttle:20,1')->name('dashboard.printers.test');
+    Route::get('/dashboard/printers/{printer}/test', [PrinterController::class, 'testPage'])->whereNumber('printer')->name('dashboard.printers.test-page');
+    Route::get('/dashboard/printers/jobs/{job}', [PrinterController::class, 'jobStatus'])->whereNumber('job')->name('dashboard.printers.job-status');
     Route::post('/dashboard/printers/agents', [PrinterController::class, 'connectAgent'])->middleware('throttle:10,1')->name('dashboard.printers.agents.connect');
     Route::delete('/dashboard/printers/agents/{agent}', [PrinterController::class, 'disconnectAgent'])->whereNumber('agent')->name('dashboard.printers.agents.disconnect');
 
