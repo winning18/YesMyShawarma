@@ -7,6 +7,7 @@ use App\Http\Requests\StoreSmsBroadcastRequest;
 use App\Models\Branch;
 use App\Models\SmsBroadcast;
 use App\Services\Sms\SmsBroadcastService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -21,27 +22,62 @@ class SmsBroadcastController extends Controller
         Gate::authorize('customers.broadcast');
 
         $branches = Branch::where('is_active', true)->orderBy('name')->get(['id', 'name']);
+        $count = fn (array $selection) => $this->counts($this->broadcasts->audience($selection));
 
-        // Audience size per choice in the branch dropdown, so the form can
-        // show who a broadcast reaches before it's sent. Key '' = everyone.
-        $audiences = collect(['' => null])->union($branches->pluck('id', 'id'))
-            ->map(function (?int $branchId) {
-                $audience = $this->broadcasts->audience($branchId);
+        // Size of each "Send to" list on its own, shown beside its tick;
+        // the combined total comes from audience() below as ticks change.
+        $lists = [
+            'all' => $count(['all' => true]),
+            'uploaded' => $count(['uploaded' => true]),
+            'branches' => $branches->mapWithKeys(fn (Branch $branch) => [$branch->id => $count(['branches' => [$branch->id]])]),
+        ];
 
-                return [
-                    'recipients' => count($audience['recipients']),
-                    'duplicates' => $audience['duplicates'],
-                    'invalid' => $audience['invalid'],
-                    'opted_out' => $audience['opted_out'],
-                ];
-            });
+        $broadcasts = SmsBroadcast::with(['creator:id,name'])->latest('scheduled_at')->paginate(20);
+        $branchNames = Branch::pluck('name', 'id')->all();
+
+        // Each audience is a full pass over customers; past broadcasts
+        // mostly share the same ticks, so each distinct set is counted once.
+        $sizes = [];
+        $sizeOf = function (array $selection) use (&$sizes): int {
+            $key = json_encode($selection);
+
+            return $sizes[$key] ??= count($this->broadcasts->audience($selection)['recipients']);
+        };
 
         return view('dashboard.customers.broadcasts', [
             'branches' => $branches,
-            'audiences' => $audiences,
-            'broadcasts' => SmsBroadcast::with(['branch:id,name', 'creator:id,name'])->latest('scheduled_at')->paginate(20),
+            'lists' => $lists,
+            'broadcasts' => $broadcasts,
+            // Per past broadcast: its ticks, in words and as the form wants
+            // them back (Copy), and today's size of that audience (Resend).
+            'pastAudiences' => $broadcasts->getCollection()->mapWithKeys(fn (SmsBroadcast $broadcast) => [$broadcast->id => [
+                'label' => $this->broadcasts->describe($broadcast->selection(), $branchNames),
+                'selection' => $broadcast->selection(),
+                'recipients' => $broadcast->status === SmsBroadcast::STATUS_SENT ? $sizeOf($broadcast->selection()) : null,
+            ]]),
             'sampleSuffix' => $this->broadcasts->composeFor('', 'XXXXXXXX'),
         ]);
+    }
+
+    /**
+     * The combined size of the ticked lists, for the form's live total.
+     */
+    public function audience(Request $request): JsonResponse
+    {
+        Gate::authorize('customers.broadcast');
+
+        $validated = $request->validate([
+            'all' => ['sometimes', 'boolean'],
+            'branches' => ['sometimes', 'array'],
+            'branches.*' => ['integer'],
+            'uploaded' => ['sometimes', 'boolean'],
+        ]);
+
+        return response()->json($this->counts($this->broadcasts->audience([
+            'all' => (bool) ($validated['all'] ?? false),
+            'branches' => $validated['branches'] ?? [],
+            'uploaded' => (bool) ($validated['uploaded'] ?? false),
+        ])));
     }
 
     public function store(StoreSmsBroadcastRequest $request): RedirectResponse
@@ -51,7 +87,7 @@ class SmsBroadcastController extends Controller
         try {
             $broadcast = $this->broadcasts->schedule(
                 $request->validated('message'),
-                $request->validated('branch_id'),
+                $request->selection(),
                 $request->scheduledAt(),
                 $request->user(),
             );
@@ -101,5 +137,19 @@ class SmsBroadcastController extends Controller
         }
 
         return redirect()->route('dashboard.customers.broadcasts.index')->with('status', __('Broadcast queued again. Sending starts within a minute.'));
+    }
+
+    /**
+     * @param  array{recipients: array<int, string>, duplicates: int, invalid: int, opted_out: int}  $audience
+     * @return array{recipients: int, duplicates: int, invalid: int, opted_out: int}
+     */
+    private function counts(array $audience): array
+    {
+        return [
+            'recipients' => count($audience['recipients']),
+            'duplicates' => $audience['duplicates'],
+            'invalid' => $audience['invalid'],
+            'opted_out' => $audience['opted_out'],
+        ];
     }
 }

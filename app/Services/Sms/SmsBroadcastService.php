@@ -51,21 +51,46 @@ class SmsBroadcastService
 
     /**
      * Who a broadcast would reach right now, after normalising and
-     * de-duplicating numbers.
+     * de-duplicating numbers. $selection is the ticked lists (see
+     * SmsBroadcast::selection()):
+     * - all: real customers — anyone who has ordered or has an account.
+     *   Uploaded contacts who never did either aren't in it (owner,
+     *   2026-11-20: uploaded contacts are their own list).
+     * - branches: customers with an order at any of these branches.
+     * - uploaded: every number that came in through Import contacts.
+     * Several ticks are one list: a number on two of them gets one SMS.
      *
+     * @param  array{all?: bool, branches?: list<int>, uploaded?: bool}  $selection
      * @return array{recipients: array<int, string>, duplicates: int, invalid: int, opted_out: int}
      */
-    public function audience(?int $branchId): array
+    public function audience(array $selection): array
     {
+        $all = (bool) ($selection['all'] ?? false);
+        $branchIds = array_values(array_filter(array_map('intval', $selection['branches'] ?? [])));
+        $uploaded = (bool) ($selection['uploaded'] ?? false);
+
+        // Plain query builder for orders, not the Order model — BranchScope
+        // would otherwise narrow these to the viewer's current branch.
+        $hasOrder = fn ($branchIds = null) => fn ($sub) => $sub->select(DB::raw(1))->from('orders')
+            ->whereColumn('orders.customer_id', 'customers.id')
+            ->when($branchIds, fn ($q) => $q->whereIn('orders.branch_id', $branchIds));
+
         $base = Customer::query()
             ->whereNotNull('phone')
-            ->when($branchId, fn ($q) => $q->whereExists(
-                // Plain query builder, not the Order model — BranchScope
-                // would otherwise narrow this to the viewer's current branch.
-                fn ($sub) => $sub->select(DB::raw(1))->from('orders')
-                    ->whereColumn('orders.customer_id', 'customers.id')
-                    ->where('orders.branch_id', $branchId)
-            ));
+            ->where(function ($query) use ($all, $branchIds, $uploaded, $hasOrder) {
+                // Nothing ticked matches nobody.
+                $query->whereRaw('1 = 0');
+
+                if ($all) {
+                    $query->orWhereExists($hasOrder())->orWhereNotNull('password');
+                }
+                if ($branchIds !== []) {
+                    $query->orWhereExists($hasOrder($branchIds));
+                }
+                if ($uploaded) {
+                    $query->orWhereNotNull('imported_at');
+                }
+            });
 
         $optedOut = (clone $base)->whereNotNull('marketing_opted_out_at')->count();
 
@@ -95,6 +120,33 @@ class SmsBroadcastService
             });
 
         return ['recipients' => $recipients, 'duplicates' => $duplicates, 'invalid' => $invalid, 'opted_out' => $optedOut];
+    }
+
+    /**
+     * The ticked lists in words, for the past broadcasts table — e.g.
+     * "All customers, Uploaded contacts" or "Osu, Pokuase customers".
+     *
+     * @param  array{all?: bool, branches?: list<int>, uploaded?: bool}  $selection
+     * @param  array<int, string>  $branchNames  id => name
+     */
+    public function describe(array $selection, array $branchNames): string
+    {
+        $parts = [];
+
+        if ($selection['all'] ?? false) {
+            $parts[] = __('All customers');
+        }
+
+        $branches = array_values(array_filter(array_map(fn ($id) => $branchNames[$id] ?? null, $selection['branches'] ?? [])));
+        if ($branches !== []) {
+            $parts[] = __(':branches customers', ['branches' => implode(', ', $branches)]);
+        }
+
+        if ($selection['uploaded'] ?? false) {
+            $parts[] = __('Uploaded contacts');
+        }
+
+        return implode(' + ', $parts);
     }
 
     /**
@@ -139,19 +191,26 @@ class SmsBroadcastService
     }
 
     /**
+     * @param  array{all?: bool, branches?: list<int>, uploaded?: bool}  $selection
+     *
      * @throws SmsBroadcastException
      */
-    public function schedule(string $message, ?int $branchId, ?Carbon $scheduledAt, User $createdBy): SmsBroadcast
+    public function schedule(string $message, array $selection, ?Carbon $scheduledAt, User $createdBy): SmsBroadcast
     {
         $scheduledAt = ($scheduledAt ?? now())->clone()->utc();
+        $selection = [
+            'all' => (bool) ($selection['all'] ?? false),
+            'branches' => array_values(array_unique(array_map('intval', $selection['branches'] ?? []))),
+            'uploaded' => (bool) ($selection['uploaded'] ?? false),
+        ];
 
-        if ($this->audience($branchId)['recipients'] === []) {
+        if ($this->audience($selection)['recipients'] === []) {
             throw SmsBroadcastException::noRecipients();
         }
 
         return SmsBroadcast::create([
             'message' => $message,
-            'branch_id' => $branchId,
+            'audience' => $selection,
             'status' => SmsBroadcast::STATUS_SCHEDULED,
             'scheduled_at' => $scheduledAt,
             'created_by' => $createdBy->id,
@@ -211,8 +270,8 @@ class SmsBroadcastService
     }
 
     /**
-     * The same message to the same audience again, as a new broadcast sent
-     * now. The audience is read live like any other broadcast's, so it
+     * The same message to the same ticked lists again, as a new broadcast
+     * sent now. The audience is read live like any other broadcast's, so it
      * reaches today's customers, with new opt-out links, and skips anyone
      * who has opted out since.
      *
@@ -224,7 +283,7 @@ class SmsBroadcastService
             throw SmsBroadcastException::notResendable($broadcast->status);
         }
 
-        return $this->schedule($broadcast->message, $broadcast->branch_id, null, $by);
+        return $this->schedule($broadcast->message, $broadcast->selection(), null, $by);
     }
 
     /**
@@ -328,7 +387,7 @@ class SmsBroadcastService
     {
         $now = now();
 
-        $rows = collect($this->audience($broadcast->branch_id)['recipients'])
+        $rows = collect($this->audience($broadcast->selection())['recipients'])
             ->map(fn (string $phone, int $customerId) => [
                 'sms_broadcast_id' => $broadcast->id,
                 'customer_id' => $customerId,
