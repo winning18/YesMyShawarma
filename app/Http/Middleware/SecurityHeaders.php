@@ -32,8 +32,8 @@ class SecurityHeaders
         $csp = implode('; ', [
             "default-src 'self'",
             "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://static.cloudflareinsights.com",
-            "style-src 'self' 'unsafe-inline' https://fonts.bunny.net",
-            "font-src 'self' https://fonts.bunny.net",
+            "style-src 'self' 'unsafe-inline'",
+            "font-src 'self'",
             "img-src 'self' data: https://*.tile.openstreetmap.org",
             "connect-src 'self' {$origin} {$wsOrigin} https://nominatim.openstreetmap.org https://cloudflareinsights.com",
             "frame-src 'self' https://www.google.com https://challenges.cloudflare.com",

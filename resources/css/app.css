@@ -7,6 +7,61 @@
 }
 
 /*
+ * Figtree (staff app) and Inter (customer site), served from our own site
+ * (SIL Open Font License, latin only): a font CDN changing its stylesheet
+ * broke the pinned integrity hash and blocked both fonts.
+ */
+@font-face {
+    font-family: 'Figtree';
+    src: url('/fonts/figtree-400-latin.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Figtree';
+    src: url('/fonts/figtree-500-latin.woff2') format('woff2');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Figtree';
+    src: url('/fonts/figtree-600-latin.woff2') format('woff2');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Inter';
+    src: url('/fonts/inter-400-latin.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Inter';
+    src: url('/fonts/inter-500-latin.woff2') format('woff2');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Inter';
+    src: url('/fonts/inter-600-latin.woff2') format('woff2');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Inter';
+    src: url('/fonts/inter-700-latin.woff2') format('woff2');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+/*
  * App-wide: highlight a field the moment it's shown to be invalid after the
  * user has actually interacted with it (left it empty on a failed native
  * submit, typed something malformed, etc.) — :user-invalid, unlike plain
