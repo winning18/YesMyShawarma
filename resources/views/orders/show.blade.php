@@ -197,8 +197,14 @@
                         </div>
                         <div class="flex justify-between">
                             <dt class="text-gray-500">{{ __('Fulfilment') }}</dt>
-                            <dd class="text-gray-800 capitalize">{{ $order->fulfilment_type }}</dd>
+                            <dd class="text-gray-800 capitalize">{{ str_replace('_', ' ', $order->fulfilment_type) }}</dd>
                         </div>
+                        @if ($round ?? null)
+                            <div class="flex justify-between">
+                                <dt class="text-gray-500">{{ __('Table bill') }}</dt>
+                                <dd class="text-gray-800">{{ __('Table :table', ['table' => $order->tableTab?->table?->name]) }} · <a href="{{ route('dashboard.orders.history', ['search' => $round['bill']]) }}" class="text-indigo-600 hover:underline">{{ $round['bill'] }}</a> · {{ __('round :round of :of', $round) }}</dd>
+                            </div>
+                        @endif
                         <div class="flex justify-between">
                             <dt class="text-gray-500">{{ __('Payment method') }}</dt>
                             <dd class="text-gray-800">{{ ucwords(str_replace('_', ' ', $order->payment_method)) }}</dd>

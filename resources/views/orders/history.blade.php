@@ -33,7 +33,7 @@
                             <label for="search" class="block text-xs font-medium text-gray-500 mb-1">{{ __('Search') }}</label>
                             <input
                                 type="text" id="search" name="search" value="{{ $filters['search'] ?? '' }}"
-                                placeholder="{{ __('Name, phone, or reference…') }}"
+                                placeholder="{{ __('Name, phone, order or bill number…') }}"
                                 class="w-full rounded-md border-gray-300 text-sm"
                             >
                         </div>
@@ -55,6 +55,7 @@
                             <select id="fulfilment_type" name="fulfilment_type" class="w-full rounded-md border-gray-300 text-sm">
                                 <option value="">{{ __('Any fulfilment') }}</option>
                                 <option value="pickup" @selected(($filters['fulfilment_type'] ?? null) === 'pickup')>{{ __('Pickup') }}</option>
+                                <option value="dine_in" @selected(($filters['fulfilment_type'] ?? null) === 'dine_in')>{{ __('Dine in') }}</option>
                                 <option value="delivery" @selected(($filters['fulfilment_type'] ?? null) === 'delivery')>{{ __('Delivery') }}</option>
                             </select>
                         </div>
@@ -177,6 +178,9 @@
                             >
                                 <td class="px-4 py-2 font-medium">
                                     <a href="{{ route('dashboard.orders.show', $order) }}" class="text-indigo-600 hover:underline">{{ $order->reference }}</a>
+                                    @if ($rounds[$order->id] ?? null)
+                                        <span class="block text-xs text-amber-800">{{ __('Bill :bill · round :round of :of', $rounds[$order->id]) }}</span>
+                                    @endif
                                 </td>
                                 @if ($branchOptions)
                                     <td class="px-4 py-2 text-gray-500">{{ $order->branch?->name }}</td>
@@ -186,7 +190,7 @@
                                 <td class="px-4 py-2">
                                     <span class="text-xs font-medium px-2 py-1 rounded-md capitalize {{ $badgeClass }}">{{ str_replace('_', ' ', $order->status) }}</span>
                                 </td>
-                                <td class="px-4 py-2 text-gray-500 capitalize">{{ $order->fulfilment_type }}</td>
+                                <td class="px-4 py-2 text-gray-500 capitalize">{{ str_replace('_', ' ', $order->fulfilment_type) }}</td>
                                 @unless ($channel)
                                     <td class="px-4 py-2 text-gray-500 uppercase">{{ $order->channel }}</td>
                                 @endunless

@@ -169,7 +169,7 @@
                     @module('whatsapp_reward')
                     <label class="flex items-center gap-2 text-sm mt-3" x-show="paymentMethod === 'cash' || paymentMethod === 'momo'">
                         <input type="checkbox" x-model="whatsapp" @change="if (whatsapp) fulfilmentType = 'pickup'" class="rounded border-gray-300">
-                        <span>{{ __('WhatsApp group order') }} <span class="text-gray-500" x-text="'(' + formatMoney(whatsappReward) + ' ' + @js(__('off the food, pickup only')) + ')'"></span></span>
+                        <span>{{ __('WhatsApp group order') }} <span class="text-gray-500" x-text="'(' + formatMoney(whatsappReward) + ' ' + @js(__('off the food, not for delivery')) + ')'"></span></span>
                     </label>
                     @endmodule
 
@@ -287,6 +287,10 @@
                             <label class="flex items-center gap-1.5">
                                 <input type="radio" x-model="fulfilmentType" value="pickup"> {{ __('Pickup') }}
                             </label>
+                            {{-- Dine in (owner, 2026-11-20); never for Bolt Food, whose courier collects it. --}}
+                            <label class="flex items-center gap-1.5" x-show="paymentMethod !== 'bolt_food'">
+                                <input type="radio" x-model="fulfilmentType" value="dine_in"> {{ __('Dine in') }}
+                            </label>
                             @if ($deliveryAvailable)
                                 <label class="flex items-center gap-1.5" x-show="!pickupOnly()">
                                     <input type="radio" x-model="fulfilmentType" value="delivery"> {{ __('Delivery') }}
@@ -301,9 +305,9 @@
                         @php
                             $posModules = app(\App\Services\Modules\ModuleService::class);
                             $pickupOnlyNote = match (true) {
-                                $posModules->enabled('freebies') && $posModules->enabled('whatsapp_reward') => __('Freebies and WhatsApp group orders are pickup only.'),
-                                $posModules->enabled('freebies') => __('Freebies are pickup only.'),
-                                $posModules->enabled('whatsapp_reward') => __('WhatsApp group orders are pickup only.'),
+                                $posModules->enabled('freebies') && $posModules->enabled('whatsapp_reward') => __('Freebies and WhatsApp group orders are pickup or dine in.'),
+                                $posModules->enabled('freebies') => __('Freebies are pickup or dine in.'),
+                                $posModules->enabled('whatsapp_reward') => __('WhatsApp group orders are pickup or dine in.'),
                                 default => null,
                             };
                         @endphp
@@ -393,6 +397,7 @@
                             <h3 class="font-semibold text-gray-800" x-text="@js(__('Table')) + ' ' + bill.table"></h3>
                             <span class="text-xs text-gray-500" x-text="@js(__('since')) + ' ' + bill.opened_at"></span>
                         </div>
+                        <p class="text-sm font-semibold text-amber-800" x-show="bill.reference" x-text="@js(__('Bill')) + ' ' + bill.reference"></p>
                         <p class="text-sm text-gray-600 mt-1" x-show="bill.customer_name || bill.customer_phone" x-text="[bill.customer_name, bill.customer_phone].filter(Boolean).join(' · ')"></p>
 
                         <ul class="mt-3 divide-y divide-gray-100 text-sm">
@@ -661,7 +666,7 @@
                 async chooseTable(t) {
                     this.table = { id: t.id, name: t.name };
                     this.paymentMethod = 'cash';
-                    this.fulfilmentType = 'pickup';
+                    this.fulfilmentType = 'dine_in';
                     this.whatsapp = false;
                     // This table's own customer and unsent items, never another table's.
                     this.phone = phoneField(t.tab?.customer_phone ? '0' + t.tab.customer_phone.replace(/^\+233/, '') : '');

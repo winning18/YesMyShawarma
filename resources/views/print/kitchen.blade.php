@@ -4,8 +4,11 @@
     <p class="center muted">{{ $data['reference'] }}</p>
     @if ($data['table'] ?? null)
         <p class="center huge">{{ __('TABLE :table', ['table' => $data['table']]) }}</p>
+        @if ($data['bill'] ?? null)
+            <p class="center bold">{{ __('Bill :bill · round :round of :of', $data['bill']) }}</p>
+        @endif
     @else
-        <p class="center bold">{{ $data['fulfilment'] === 'delivery' ? __('DELIVERY') : __('PICKUP') }}@if ($data['counter']) · {{ $data['counter'] }}@endif</p>
+        <p class="center bold">{{ match ($data['fulfilment']) { 'delivery' => __('DELIVERY'), 'dine_in' => __('DINE IN'), default => __('PICKUP') } }}@if ($data['counter']) · {{ $data['counter'] }}@endif</p>
     @endif
     <p class="center">{{ $data['placed_at']?->format('H:i') }}@if ($data['scheduled_for']) · {{ __('for :time', ['time' => $data['scheduled_for']->format('H:i')]) }}@endif</p>
     <div class="rule"></div>

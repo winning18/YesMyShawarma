@@ -11,6 +11,7 @@ use App\Models\Shift;
 use App\Models\TableTab;
 use App\Models\User;
 use App\Services\Modules\ModuleService;
+use App\Services\Printing\ReceiptService;
 use App\Services\Settings\SettingsService;
 use App\Services\Tables\TableTabService;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -265,5 +266,35 @@ class TablesTest extends TestCase
         $this->as()->postJson(route('dashboard.pos.orders.store'), ['fulfilment_type' => 'pickup', 'payment_method' => 'cash'])
             ->assertStatus(422)->assertJsonPath('message', 'The cart is empty.');
         $this->assertSame(1, $this->as()->getJson(route('dashboard.tables.index'))->json('tables.0.unsent'));
+    }
+
+    public function test_rounds_are_dine_in_and_share_one_bill_number_on_tickets_history_and_the_bill(): void
+    {
+        $table = $this->table('4');
+        $this->round($table);
+        $this->round($table);
+        $tab = TableTab::sole();
+        [$first, $second] = $tab->orders()->orderBy('id')->get()->all();
+
+        $this->assertMatchesRegularExpression('/^[A-Z0-9-]+-T-[A-Z0-9]{4}$/', $tab->reference);
+        $this->assertSame(['dine_in', 'dine_in'], [$first->fulfilment_type, $second->fulfilment_type]);
+
+        $ticket = app(ReceiptService::class)->kitchenTicket($second->fresh());
+        $this->assertSame(['bill' => $tab->reference, 'round' => 2, 'of' => 2], $ticket['bill']);
+
+        $this->as()->get(route('dashboard.orders.history', ['search' => $tab->reference]))->assertOk()
+            ->assertSee($first->reference)->assertSee($second->reference)
+            ->assertSee('Bill '.$tab->reference.' · round 1 of 2');
+
+        $this->as()->get(route('dashboard.tables.bill', $tab))->assertSee($tab->reference)->assertSee('Dine in · Table 4');
+    }
+
+    public function test_quick_sale_can_be_dine_in_and_cash_is_paid_at_once(): void
+    {
+        $this->as()->postJson(route('dashboard.pos.cart.add'), ['menu_item_id' => $this->item->id, 'quantity' => 1, 'option_ids' => []]);
+        $this->as()->postJson(route('dashboard.pos.orders.store'), ['fulfilment_type' => 'dine_in', 'payment_method' => 'cash'])->assertOk();
+
+        $order = Order::withoutGlobalScopes()->sole();
+        $this->assertSame(['dine_in', 'paid', null], [$order->fulfilment_type, $order->payment_status, $order->table_tab_id]);
     }
 }

@@ -11,7 +11,7 @@ final class PlaceOrderData
      *                                  (CustomerService::findOrCreateByPhone() never
      *                                  deduplicates a null phone — each walk-in with
      *                                  none gets its own anonymous Customer row).
-     * @param  string  $fulfilmentType  'delivery' | 'pickup'
+     * @param  string  $fulfilmentType  'delivery' | 'pickup' | 'dine_in' (POS only)
      * @param  string  $paymentMethod  'paystack' | 'cash' | 'momo'
      * @param  PlaceOrderItemData[]  $items
      * @param  string  $channel  'web' | 'pos'

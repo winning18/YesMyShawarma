@@ -10,6 +10,7 @@ use App\Models\Payment;
 use App\Models\Shift;
 use App\Models\TableTab;
 use App\Models\User;
+use App\Services\Settings\SettingsService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -66,11 +67,54 @@ class TableTabService
 
         return [
             'id' => $tab->id,
+            'reference' => $tab->reference,
             'opened_at' => $tab->opened_at->clone()->timezone('Africa/Accra')->format('H:i'),
             'rounds' => $rounds->count(),
             'total' => (int) $rounds->sum('total'),
             'customer_name' => $tab->customer_name,
             'customer_phone' => $tab->customer_phone,
+        ];
+    }
+
+    /**
+     * A bill's own number (owner, 2026-11-20): the business's POS prefix,
+     * T, and four characters read off a receipt easily, e.g. YMGS-T-4KQ7.
+     */
+    public function newReference(): string
+    {
+        $prefix = app(SettingsService::class)->prefix(SettingsService::ORDER_REFERENCE_PREFIX_POS);
+        $alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+
+        do {
+            $code = '';
+            for ($i = 0; $i < 4; $i++) {
+                $code .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+            }
+            $reference = "{$prefix}-T-{$code}";
+        } while (TableTab::where('reference', $reference)->exists());
+
+        return $reference;
+    }
+
+    /**
+     * "Bill YMGS-T-4KQ7 · round 2 of 3" for one round, or null for an
+     * order that isn't a table round.
+     *
+     * @return array{bill: string, round: int, of: int}|null
+     */
+    public function roundOf(Order $order): ?array
+    {
+        if (! $order->table_tab_id || ! $order->tableTab) {
+            return null;
+        }
+
+        $ids = $order->tableTab->orders()->whereNotIn('status', self::OFF_THE_BILL)->orderBy('id')->pluck('id')->all();
+        $position = array_search($order->id, $ids, true);
+
+        return [
+            'bill' => (string) $order->tableTab->reference,
+            'round' => $position === false ? 0 : $position + 1,
+            'of' => count($ids),
         ];
     }
 
@@ -150,6 +194,7 @@ class TableTabService
                 ?? TableTab::create([
                     'branch_id' => $locked->branch_id,
                     'dining_table_id' => $locked->id,
+                    'reference' => $this->newReference(),
                     'opened_by' => $by->id,
                     'opened_at' => now(),
                 ]);

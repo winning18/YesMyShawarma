@@ -120,7 +120,7 @@ class OrderCreationService
         // Freebies and WhatsApp group orders are POS-only and pickup-only
         // (owner, 2026-11-14); a freebie must say who it's for and why.
         if ($data->paymentMethod === Order::COMPLIMENTARY || $data->source === Order::SOURCE_WHATSAPP) {
-            if ($data->channel !== 'pos' || $data->fulfilmentType !== 'pickup') {
+            if ($data->channel !== 'pos' || $data->fulfilmentType === 'delivery') {
                 throw OrderPlacementException::pickupOnly();
             }
         }
@@ -258,7 +258,7 @@ class OrderCreationService
             $initialPaymentStatus = match (true) {
                 // A table round is paid when the table's bill is settled (TableTabService).
                 $data->tableTabId !== null => 'pending',
-                $data->paymentMethod === 'cash' && $data->fulfilmentType === 'pickup' => 'paid',
+                $data->paymentMethod === 'cash' && in_array($data->fulfilmentType, ['pickup', 'dine_in'], true) => 'paid',
                 $data->paymentMethod === 'momo' && $data->paymentReference !== null => 'paid',
                 $data->paymentMethod === 'bolt_food' => 'paid',
                 $data->paymentMethod === Order::COMPLIMENTARY => 'paid',

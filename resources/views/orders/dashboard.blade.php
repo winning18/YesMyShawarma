@@ -78,7 +78,7 @@
                         <div class="bg-white border-2 border-red-400 shadow-sm rounded-lg p-5 flex flex-col">
                             <div class="flex items-start justify-between gap-3 mb-3">
                                 <div class="min-w-0">
-                                    <p class="font-semibold text-gray-900 truncate"><span x-text="order.reference"></span> <span x-show="order.table" class="ml-1 text-xs font-semibold text-amber-800 bg-amber-50 rounded px-1.5 py-0.5" x-text="@js(__('Table')) + ' ' + order.table"></span></p>
+                                    <p class="font-semibold text-gray-900 truncate"><span x-text="order.reference"></span> <span x-show="order.table" class="ml-1 text-xs font-semibold text-amber-800 bg-amber-50 rounded px-1.5 py-0.5" x-text="@js(__('Table')) + ' ' + order.table + (order.bill ? ' · ' + @js(__('round')) + ' ' + order.bill.round : '')"></span></p>
                                     <div class="flex items-center gap-1.5 mt-1 flex-wrap">
                                         <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 capitalize" x-text="order.fulfilment_type"></span>
                                         <span
@@ -152,7 +152,7 @@
                         <div class="bg-white shadow-sm rounded-lg p-5 flex flex-col">
                             <div class="flex items-start justify-between gap-3 mb-3">
                                 <div class="min-w-0">
-                                    <p class="font-semibold text-gray-900 truncate"><span x-text="order.reference"></span> <span x-show="order.table" class="ml-1 text-xs font-semibold text-amber-800 bg-amber-50 rounded px-1.5 py-0.5" x-text="@js(__('Table')) + ' ' + order.table"></span></p>
+                                    <p class="font-semibold text-gray-900 truncate"><span x-text="order.reference"></span> <span x-show="order.table" class="ml-1 text-xs font-semibold text-amber-800 bg-amber-50 rounded px-1.5 py-0.5" x-text="@js(__('Table')) + ' ' + order.table + (order.bill ? ' · ' + @js(__('round')) + ' ' + order.bill.round : '')"></span></p>
                                     {{-- Step 8a: reprint when an automatic print didn't come out. --}}
                                     <div x-show="window.expressPrinting?.enabled" x-cloak class="flex gap-3 mt-0.5 text-xs">
                                         <button type="button" class="text-indigo-600 hover:underline" @click="window.expressReprint(order.id, 'receipt')">{{ __('Print receipt') }}</button>
@@ -582,7 +582,7 @@
                 // 'dispatched' — staff's "Mark delivered" here is the
                 // fallback for when a rider can't/doesn't do it themselves.
                 nextStatus(order) {
-                    const flow = order.fulfilment_type === 'pickup'
+                    const flow = ['pickup', 'dine_in'].includes(order.fulfilment_type)
                         ? { accepted: 'preparing', preparing: 'ready', ready: 'dispatched' }
                         : { accepted: 'preparing', preparing: 'ready', ready: 'dispatched', dispatched: 'delivered' };
 
@@ -604,6 +604,15 @@
                             preparing: @js(__('Start preparing')),
                             ready: @js(__('Ready for pickup')),
                             dispatched: @js(__('Picked up')),
+                        }[to] ?? to;
+                    }
+
+                    // Dine in (2026-11-20): taken to the guest.
+                    if (order.fulfilment_type === 'dine_in') {
+                        return {
+                            preparing: @js(__('Start preparing')),
+                            ready: @js(__('Ready to serve')),
+                            dispatched: @js(__('Served')),
                         }[to] ?? to;
                     }
 

@@ -173,7 +173,8 @@ order_taxes
 
 ```
 dining_tables  id, branch_id, name (unique per branch), is_active
-table_tabs     id, branch_id, dining_table_id, opened_by, opened_at, customer_name, customer_phone,
+table_tabs     id, branch_id, dining_table_id, reference (unique, e.g. YMGS-POS-T-4KQ7),
+               opened_by, opened_at, customer_name, customer_phone,
                settled_at, settled_by,
                shift_id (the till that settled it), payment_method (cash|momo),
                payment_reference, total (pesewas, as settled)
@@ -201,6 +202,15 @@ name again brings it back). Each table keeps its own unsent items (the POS cart 
 `pos_mode` (Settings → General, "How the POS works"; `SettingsService::posMode()`): `both`
 (default: opens on Tables, Quick sale a tap away), `tables` (every cash/MoMo POS order needs a
 table; Bolt Food and freebies need Quick sale) or `quick` (no tables; always, without the module).
+
+**Dine in and bill numbers** (owner, 2026-11-20). `orders.fulfilment_type` gains `dine_in` (POS
+only): every table round is dine in, and Quick sale offers it beside Pickup and Delivery (never for
+Bolt Food). It follows the pickup lifecycle (ready → dispatched), labelled "Ready to serve" /
+"Served"; cash dine in is paid at once like pickup; freebies and WhatsApp orders may be dine in
+(never delivery). Each bill has its own number (`table_tabs.reference`: the POS prefix, `-T-`, four
+characters): it heads the final receipt; each round's kitchen ticket, receipt, board card, order
+page and order-history line show "Bill … · round n of m" (`TableTabService::roundOf()`), and
+searching order history for the bill number lists every round.
 
 ### Tax (Express POS step 9, the `tax` module)
 

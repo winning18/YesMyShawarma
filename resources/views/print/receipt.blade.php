@@ -16,9 +16,12 @@
         <p class="muted">{{ collect([$data['served_by'] ? __('Served by :name', ['name' => $data['served_by']]) : null, $data['counter']])->filter()->join(' · ') }}</p>
     @endif
     @if ($data['table'] ?? null)
-        <p class="muted">{{ __('Table :table', ['table' => $data['table']]) }}@if ($data['customer']) · {{ $data['customer'] }}@endif</p>
+        <p class="muted">{{ __('Dine in · Table :table', ['table' => $data['table']]) }}@if ($data['customer']) · {{ $data['customer'] }}@endif</p>
+        @if ($data['bill'] ?? null)
+            <p class="muted">{{ __('Bill :bill · round :round of :of', $data['bill']) }}</p>
+        @endif
     @else
-        <p class="muted">{{ $data['fulfilment'] === 'delivery' ? __('Delivery') : __('Pickup') }}@if ($data['customer']) · {{ $data['customer'] }}@endif</p>
+        <p class="muted">{{ match ($data['fulfilment']) { 'delivery' => __('Delivery'), 'dine_in' => __('Dine in'), default => __('Pickup') } }}@if ($data['customer']) · {{ $data['customer'] }}@endif</p>
     @endif
     <div class="rule"></div>
     @foreach ($data['lines'] as $line)
@@ -45,7 +48,7 @@
             <div class="row muted"><span>{{ __('Includes :tax', ['tax' => $tax['label']]) }}</span><span>{{ $money($tax['amount']) }}</span></div>
         @endforeach
     @endif
-    <p>{{ __('Paid by :method', ['method' => $data['payment']]) }}</p>
+    <p>{{ $data['payment'] === null ? __('Not paid yet') : __('Paid by :method', ['method' => $data['payment']]) }}</p>
     @if ($data['message'])
         <div class="rule"></div>
         <p class="center">{{ $data['message'] }}</p>

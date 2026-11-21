@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * See TableTabService.
  */
 #[Fillable([
-    'branch_id', 'dining_table_id', 'opened_by', 'opened_at', 'customer_name', 'customer_phone', 'settled_at', 'settled_by',
+    'branch_id', 'dining_table_id', 'reference', 'opened_by', 'opened_at', 'customer_name', 'customer_phone', 'settled_at', 'settled_by',
     'shift_id', 'payment_method', 'payment_reference', 'total',
 ])]
 class TableTab extends Model

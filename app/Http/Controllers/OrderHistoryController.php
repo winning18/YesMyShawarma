@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Services\Branches\BranchContext;
 use App\Services\Modules\ModuleService;
 use App\Services\Orders\RefundService;
+use App\Services\Tables\TableTabService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -50,8 +51,14 @@ class OrderHistoryController extends Controller
             $filters['branch'] = null;
         }
 
+        $orders = $this->orders($channel, $filters, $from, $to);
+
         return view('orders.history', [
-            'orders' => $this->orders($channel, $filters, $from, $to),
+            'orders' => $orders,
+            // Tables (2026-11-20): "Bill YMGS-T-4KQ7 · round 2 of 3" for each round.
+            'rounds' => collect($orders->items())->filter(fn ($order) => $order->table_tab_id)
+                ->mapWithKeys(fn ($order) => [$order->id => app(TableTabService::class)->roundOf($order)])
+                ->all(),
             'branchOptions' => $byBranch ? Branch::orderBy('name')->get(['id', 'name']) : null,
             'channel' => $channel,
             'filters' => $filters,
@@ -92,6 +99,8 @@ class OrderHistoryController extends Controller
         Gate::authorize('view', $order);
 
         return view('orders.show', [
+            // Tables (2026-11-20): the bill this round is on.
+            'round' => app(TableTabService::class)->roundOf($order->loadMissing('tableTab.table')),
             'order' => $order->load([
                 'items.options', 'customer', 'branch', 'rider', 'promotion',
                 'payments',
@@ -116,7 +125,7 @@ class OrderHistoryController extends Controller
         return $request->validate([
             'search' => ['nullable', 'string', 'max:255'],
             'status' => ['nullable', 'string', Rule::in(Order::STATUSES)],
-            'fulfilment_type' => ['nullable', 'in:pickup,delivery'],
+            'fulfilment_type' => ['nullable', 'in:pickup,dine_in,delivery'],
             'payment_method' => ['nullable', 'in:cash,momo,paystack'.(app(ModuleService::class)->enabled(ModuleService::BOLT_FOOD) ? ',bolt_food' : '')],
             'location' => ['nullable', 'string', 'max:255'],
             'branch' => ['nullable', 'integer'],
@@ -167,11 +176,13 @@ class OrderHistoryController extends Controller
 
     private function orders(?string $channel, array $filters, ?Carbon $from, ?Carbon $to): LengthAwarePaginator
     {
-        return Order::with(['customer', 'branch:id,name'])
+        return Order::with(['customer', 'branch:id,name', 'tableTab'])
             ->when($channel, fn ($query, $value) => $query->where('channel', $value))
             ->when($filters['branch'] ?? null, fn ($query, $value) => $query->where('branch_id', $value))
             ->when($filters['search'] ?? null, fn ($query, $value) => $query->where(
                 fn ($query) => $query->where('reference', 'like', "%{$value}%")
+                    // A table bill's number finds every round on it.
+                    ->orWhereHas('tableTab', fn ($query) => $query->where('reference', 'like', "%{$value}%"))
                     ->orWhereHas('customer', fn ($query) => $query->where('name', 'like', "%{$value}%")->orWhere('phone', 'like', "%{$value}%"))
             ))
             ->when($filters['status'] ?? null, fn ($query, $value) => $query->where('status', $value))

@@ -43,6 +43,7 @@ class ReceiptService
             'served_by' => $this->servedBy($order),
             'counter' => $order->shift?->terminal?->name,
             'table' => $order->tableTab?->table?->name,
+            'bill' => app(TableTabService::class)->roundOf($order),
             'fulfilment' => $order->fulfilment_type,
             'customer' => $order->customer?->name,
             'lines' => $this->lines($order),
@@ -74,8 +75,9 @@ class ReceiptService
             'fulfilment' => $order->fulfilment_type,
             'scheduled_for' => $order->scheduled_for?->timezone('Africa/Accra'),
             'counter' => $order->shift?->terminal?->name,
-            // Tables module: which table to take it to.
+            // Tables module: which table to take it to, and the bill it's a round of.
             'table' => $order->tableTab?->table?->name,
+            'bill' => app(TableTabService::class)->roundOf($order),
             'lines' => $this->lines($order),
             'instructions' => $order->instructions,
         ];
@@ -108,13 +110,15 @@ class ReceiptService
             'branch' => $tab->branch?->name,
             'address' => $tab->branch?->address,
             'phone' => $this->phoneDisplay((string) $tab->branch?->phone),
-            'reference' => __('Table :table', ['table' => $tab->table?->name]),
+            // One number for the whole table (2026-11-20): the bill's own.
+            'reference' => $tab->reference ?? __('Table :table', ['table' => $tab->table?->name]),
             'placed_at' => ($tab->settled_at ?? now())->clone()->timezone('Africa/Accra'),
             'served_by' => $tab->settledBy?->name,
             'counter' => $tab->shift?->terminal?->name,
             'table' => $tab->table?->name,
-            'fulfilment' => 'pickup',
+            'fulfilment' => 'dine_in',
             'customer' => $tab->customer_name,
+            'bill' => null,
             'lines' => $rounds->flatMap(fn (Order $order) => $this->lines($order))->values()->all(),
             'subtotal' => (int) $rounds->sum('subtotal'),
             'discount' => (int) $rounds->sum('discount_total'),
@@ -123,7 +127,8 @@ class ReceiptService
             'taxes' => $taxes->map(fn ($tax) => ['label' => $tax['label'], 'amount' => $tax['amount']])->all(),
             'tax_inclusive' => (bool) ($taxes->first()['inclusive'] ?? false),
             'tin' => $taxes->isNotEmpty() ? $this->profile->tin() : null,
-            'payment' => $tab->isOpen() ? __('Not paid yet') : ($first ? $this->paymentLabel($first) : '—'),
+            // null: the bill isn't paid yet (printed before settling).
+            'payment' => $tab->isOpen() ? null : ($first ? $this->paymentLabel($first) : '—'),
             'message' => $this->profile->receiptMessage(),
             'rounds' => $rounds->count(),
         ];

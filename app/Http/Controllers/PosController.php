@@ -264,7 +264,8 @@ class PosController extends Controller
             'phone' => ['nullable', 'string'],
             'name' => ['nullable', 'string', 'max:255'],
             'fulfilment_type' => [
-                'required', $deliveryAvailable ? 'in:pickup,delivery' : 'in:pickup',
+                // Dine in (owner, 2026-11-20): eating in, at a table or not.
+                'required', $deliveryAvailable ? 'in:pickup,dine_in,delivery' : 'in:pickup,dine_in',
                 // Bolt's own courier handles delivery for a Bolt Food
                 // order — never ours, so there's nothing for our rider
                 // flow to do with one placed as 'delivery'.
@@ -273,8 +274,8 @@ class PosController extends Controller
                         $fail(__('Bolt Food orders must be pickup — Bolt handles delivery themselves.'));
                     }
                     // Owner, 2026-11-14: freebies and WhatsApp group orders are pickup only.
-                    if (($request->input('payment_method') === Order::COMPLIMENTARY || $request->input('source') === Order::SOURCE_WHATSAPP) && $value !== 'pickup') {
-                        $fail(__('Freebies and WhatsApp group orders are pickup only.'));
+                    if (($request->input('payment_method') === Order::COMPLIMENTARY || $request->input('source') === Order::SOURCE_WHATSAPP) && $value === 'delivery') {
+                        $fail(__('Freebies and WhatsApp group orders are pickup or dine in, never delivery.'));
                     }
                 },
             ],
@@ -333,7 +334,7 @@ class PosController extends Controller
                     if (! $modules->enabled(ModuleService::TABLES) || ! DiningTable::where('id', $value)->where('branch_id', $branch->id)->where('is_active', true)->exists()) {
                         $fail(__('Choose a table at this branch.'));
                     }
-                    if ($request->input('fulfilment_type') !== 'pickup' || ! in_array($request->input('payment_method'), ['cash', 'momo'], true) || $request->filled('source')) {
+                    if ($request->input('fulfilment_type') === 'delivery' || ! in_array($request->input('payment_method'), ['cash', 'momo'], true) || $request->filled('source')) {
                         $fail(__('A table order is eat-in, paid by cash or MoMo when the bill is settled.'));
                     }
                 },
@@ -398,7 +399,8 @@ class PosController extends Controller
                 customerPhone: $customerPhone,
                 customerName: $customerName,
                 branchId: $branch->id,
-                fulfilmentType: $validated['fulfilment_type'],
+                // A table round is always dine in.
+                fulfilmentType: $tab ? 'dine_in' : $validated['fulfilment_type'],
                 paymentMethod: $validated['payment_method'],
                 items: $cart->toPlaceOrderItems(),
                 deliveryAddress: $deliveryAddress,

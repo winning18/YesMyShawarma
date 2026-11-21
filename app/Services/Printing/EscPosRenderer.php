@@ -45,7 +45,14 @@ class EscPosRenderer
         if ($servedBy !== '') {
             $this->text($servedBy);
         }
-        $this->text(($data['table'] ?? null) ? __('Table :table', ['table' => $data['table']]) : (($data['fulfilment'] === 'delivery' ? __('Delivery') : __('Pickup')).($data['customer'] ? ' - '.$data['customer'] : '')));
+        $this->text(($data['table'] ?? null)
+            ? __('Dine in - Table :table', ['table' => $data['table']]).($data['customer'] ? ' - '.$data['customer'] : '')
+            : (match ($data['fulfilment']) {
+                'delivery' => __('Delivery'), 'dine_in' => __('Dine in'), default => __('Pickup')
+            }.($data['customer'] ? ' - '.$data['customer'] : '')));
+        if ($data['bill'] ?? null) {
+            $this->text(__('Bill :bill - round :round of :of', $data['bill']));
+        }
         $this->rule();
 
         foreach ($data['lines'] as $line) {
@@ -74,7 +81,7 @@ class EscPosRenderer
         foreach ($taxes && ! $taxesAdded ? $taxes : [] as $tax) {
             $this->row(__('Includes :tax', ['tax' => $tax['label']]), $money($tax['amount']));
         }
-        $this->text(__('Paid by :method', ['method' => $data['payment']]));
+        $this->text($data['payment'] === null ? __('Not paid yet') : __('Paid by :method', ['method' => $data['payment']]));
 
         if ($data['message']) {
             $this->rule()->align(1)->text($data['message'])->align(0);
@@ -100,8 +107,13 @@ class EscPosRenderer
         $this->bold(false)->text($data['reference']);
         if ($data['table'] ?? null) {
             $this->bold(true)->size(2, 2)->text(__('TABLE :table', ['table' => $data['table']]))->size(1, 1)->bold(false);
+            if ($data['bill'] ?? null) {
+                $this->text(__('Bill :bill - round :round of :of', $data['bill']));
+            }
         } else {
-            $this->bold(true)->text(($data['fulfilment'] === 'delivery' ? __('DELIVERY') : __('PICKUP')).($data['counter'] ? ' - '.$data['counter'] : ''))->bold(false);
+            $this->bold(true)->text(match ($data['fulfilment']) {
+                'delivery' => __('DELIVERY'), 'dine_in' => __('DINE IN'), default => __('PICKUP')
+            }.($data['counter'] ? ' - '.$data['counter'] : ''))->bold(false);
         }
         $this->text(($data['placed_at']?->format('H:i') ?? '').($data['scheduled_for'] ? ' - '.__('for :time', ['time' => $data['scheduled_for']->format('H:i')]) : ''));
         $this->align(0)->rule();
