@@ -172,7 +172,9 @@ class OrderStateMachine
             // momo is reconciled by transaction ID (PaymentConfirmationService
             // ::confirmMomo()), not by delivery — flipping it here too would
             // mark a momo order "paid" with no transaction ID ever entered.
-            if ($to === 'delivered' && $order->payment_method === 'cash') {
+            // ... and a freebie's delivery fee the rider collected (2026-11-20).
+            if ($to === 'delivered' && ($order->payment_method === 'cash'
+                || ($order->payment_method === Order::COMPLIMENTARY && $order->delivery_fee_paid_by === 'rider_cash'))) {
                 $order->payment_status = 'paid';
             }
 

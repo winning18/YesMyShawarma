@@ -307,20 +307,13 @@
                         </template>
                         <div>
                             <label class="block text-sm font-medium mb-1">{{ __('Delivery area') }} <span class="text-brand-red">*</span></label>
-                            <select
+                            <x-area-picker
+                                :areas="$deliveryAreas"
+                                model="areaSelection"
                                 name="area_id"
-                                :required="fulfilmentType === 'delivery'"
-                                x-model="areaSelection"
-                                class="w-full rounded-md {{ $errors->has('area_id') ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300' }}"
-                            >
-                                <option value="">{{ __('Select your area…') }}</option>
-                                @foreach ($deliveryAreas as $area)
-                                    <option value="{{ $area->id }}" @selected(old('area_id') == $area->id)>
-                                        {{ $area->name }}
-                                    </option>
-                                @endforeach
-                                <option value="other" @selected(old('area_id') === 'other')>{{ __("Other (not listed)") }}</option>
-                            </select>
+                                required="fulfilmentType === 'delivery'"
+                                :input-class="'w-full rounded-md '.($errors->has('area_id') ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300')"
+                            />
                             @error('area_id') <p class="text-sm text-brand-red mt-1">{{ $message }}</p> @enderror
 
                             <div x-show="areaSelection === 'other'" x-cloak class="mt-2">

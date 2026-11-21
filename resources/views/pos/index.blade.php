@@ -155,7 +155,7 @@
                         @endmodule
                         @module('freebies')
                         <label class="flex items-center gap-1.5">
-                            <input type="radio" x-model="paymentMethod" value="complimentary" @change="fulfilmentType = 'pickup'; whatsapp = false"> {{ __('Freebie') }}
+                            <input type="radio" x-model="paymentMethod" value="complimentary" @change="whatsapp = false"> {{ __('Freebie') }}
                         </label>
                         @endmodule
                     </div>
@@ -165,11 +165,11 @@
                     </p>
                     @endmodule
 
-                    {{-- WhatsApp group orders: GH₵10 off the food, pickup only (owner, 2026-11-14). --}}
+                    {{-- WhatsApp group orders: GH₵10 off the food; deliverable since 2026-11-20. --}}
                     @module('whatsapp_reward')
                     <label class="flex items-center gap-2 text-sm mt-3" x-show="paymentMethod === 'cash' || paymentMethod === 'momo'">
-                        <input type="checkbox" x-model="whatsapp" @change="if (whatsapp) fulfilmentType = 'pickup'" class="rounded border-gray-300">
-                        <span>{{ __('WhatsApp group order') }} <span class="text-gray-500" x-text="'(' + formatMoney(whatsappReward) + ' ' + @js(__('off the food, not for delivery')) + ')'"></span></span>
+                        <input type="checkbox" x-model="whatsapp" class="rounded border-gray-300">
+                        <span>{{ __('WhatsApp group order') }} <span class="text-gray-500" x-text="'(' + formatMoney(whatsappReward) + ' ' + @js(__('off the food')) + ')'"></span></span>
                     </label>
                     @endmodule
 
@@ -302,31 +302,13 @@
                             {{ __('Bolt Food orders are always pickup — Bolt handles delivery themselves.') }}
                         </p>
                         @endmodule
-                        @php
-                            $posModules = app(\App\Services\Modules\ModuleService::class);
-                            $pickupOnlyNote = match (true) {
-                                $posModules->enabled('freebies') && $posModules->enabled('whatsapp_reward') => __('Freebies and WhatsApp group orders are pickup or dine in.'),
-                                $posModules->enabled('freebies') => __('Freebies are pickup or dine in.'),
-                                $posModules->enabled('whatsapp_reward') => __('WhatsApp group orders are pickup or dine in.'),
-                                default => null,
-                            };
-                        @endphp
-                        @if ($pickupOnlyNote)
-                            <p class="text-xs text-gray-500 mt-1" x-show="paymentMethod === 'complimentary' || whatsapp">{{ $pickupOnlyNote }}</p>
-                        @endif
                     </div>
 
                     @if ($deliveryAvailable)
                         <div x-show="fulfilmentType === 'delivery'" x-cloak class="space-y-3">
                             <div>
                                 <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Delivery area') }} <span class="text-red-600">*</span></label>
-                                <select x-model="areaId" class="w-full rounded-md border-gray-300 text-sm">
-                                    <option value="">{{ __('Select…') }}</option>
-                                    @foreach ($deliveryAreas as $area)
-                                        <option value="{{ $area->id }}">{{ $area->name }}</option>
-                                    @endforeach
-                                    <option value="other">{{ __('Other (not listed)') }}</option>
-                                </select>
+                                <x-area-picker :areas="$deliveryAreas" model="areaId" :placeholder="__('Search areas…')" />
                             </div>
                             <div x-show="areaId === 'other'" x-cloak>
                                 <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Area name') }}</label>
@@ -345,23 +327,23 @@
                     @endif
 
                     <div x-show="paymentMethod === 'momo'" x-cloak>
-                        <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Momo transaction ID') }}</label>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">{{ $checksMomo ? __('Momo transaction ID') : __('Momo transaction ID (optional)') }}</label>
                         <div class="flex gap-2">
                             <input type="text" x-model="paymentReference" class="w-full rounded-md border-gray-300 text-sm" placeholder="{{ __('e.g. from the Momo confirmation SMS') }}">
                             <button
                                 type="button" @click="paymentReference = ''"
-                                x-show="paymentReference"
+                                x-show="paymentReference && @js($checksMomo)"
                                 class="shrink-0 px-3 py-1.5 text-xs text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
                             >{{ __('Skip') }}</button>
                         </div>
-                        <p class="text-xs text-gray-500 mt-1">{{ __("Busy? Leave this blank and enter it later from the order. It won't be marked paid until you do.") }}</p>
+                        <p class="text-xs text-gray-500 mt-1">{{ $checksMomo ? __("Busy? Leave this blank and enter it later from the order. It won't be marked paid until you do.") : __('MoMo is marked paid at once; the ID is just for your records.') }}</p>
                     </div>
 
-                    <div x-show="paymentMethod === 'momo' && fulfilmentType === 'delivery'" x-cloak>
+                    <div x-show="asksFeePayer()" x-cloak>
                         <label class="block text-xs font-medium text-gray-500 mb-2">{{ __('Delivery fee paid') }} <span class="text-red-600">*</span></label>
                         <div class="flex flex-wrap gap-4 text-sm">
                             <label class="flex items-center gap-1.5">
-                                <input type="radio" x-model="deliveryFeePaidBy" value="momo"> {{ __('By MoMo, with the food') }}
+                                <input type="radio" x-model="deliveryFeePaidBy" value="momo"> <span x-text="paymentMethod === 'complimentary' ? @js(__('By MoMo, now')) : @js(__('By MoMo, with the food'))"></span>
                             </label>
                             <label class="flex items-center gap-1.5">
                                 <input type="radio" x-model="deliveryFeePaidBy" value="rider_cash"> {{ __('Cash to the rider') }}
@@ -423,7 +405,7 @@
                                 <label class="flex items-center gap-1.5"><input type="radio" x-model="settleMethod" value="cash"> {{ __('Cash') }}</label>
                                 <label class="flex items-center gap-1.5"><input type="radio" x-model="settleMethod" value="momo"> {{ __('Momo') }}</label>
                             </div>
-                            <input type="text" x-show="settleMethod === 'momo' && bill.total > 0" x-model="settleReference" placeholder="{{ __('Momo transaction ID') }}" class="w-full rounded-md border-gray-300 text-sm">
+                            <input type="text" x-show="settleMethod === 'momo' && bill.total > 0" x-model="settleReference" placeholder="{{ $checksMomo ? __('Momo transaction ID') : __('Momo transaction ID (optional)') }}" class="w-full rounded-md border-gray-300 text-sm">
                             <div x-show="billError" class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3" x-text="billError"></div>
                             <button type="button" @click="settleBill()" :disabled="billBusy" class="w-full px-4 py-2.5 bg-green-600 text-white text-sm font-semibold rounded-md hover:bg-green-700 disabled:opacity-50"
                                 x-text="bill.total > 0 ? @js(__('Paid: settle the bill')) : @js(__('Free the table'))"></button>
@@ -772,8 +754,14 @@
                     return window.expressTax(this.subtotal - this.displayedDiscount(), this.paymentMethod);
                 },
 
+                // Only Bolt Food stays pickup: freebies and WhatsApp orders can be delivered (owner, 2026-11-20).
                 pickupOnly() {
-                    return ['bolt_food', 'complimentary'].includes(this.paymentMethod) || this.whatsapp;
+                    return this.paymentMethod === 'bolt_food';
+                },
+
+                // Who pays the delivery fee is asked for MoMo orders and freebies.
+                asksFeePayer() {
+                    return ['momo', 'complimentary'].includes(this.paymentMethod) && this.fulfilmentType === 'delivery';
                 },
 
                 // Same reasoning as displayedDiscount() above, applied to
@@ -936,7 +924,7 @@
                                 ghanapost_code: this.ghanapostCode,
                                 payment_method: this.paymentMethod,
                                 payment_reference: this.paymentMethod === 'momo' ? this.paymentReference : null,
-                                delivery_fee_paid_by: this.paymentMethod === 'momo' && this.fulfilmentType === 'delivery' ? this.deliveryFeePaidBy : null,
+                                delivery_fee_paid_by: this.asksFeePayer() ? this.deliveryFeePaidBy : null,
                                 instructions: this.instructions,
                                 source: this.whatsapp && ['cash', 'momo'].includes(this.paymentMethod) ? 'whatsapp' : null,
                                 freebie_recipient_type: this.paymentMethod === 'complimentary' ? this.freebieRecipientType : null,
@@ -1001,7 +989,7 @@
                         if (!this.areaId) return '{{ __('Delivery area is required.') }}';
                         if (this.areaId === 'other' && !this.areaOther.trim()) return '{{ __('Area name is required.') }}';
                         if (!this.landmark.trim()) return '{{ __('Landmark is required.') }}';
-                        if (this.paymentMethod === 'momo' && !this.deliveryFeePaidBy) return '{{ __('Choose how the customer pays the delivery fee.') }}';
+                        if (this.asksFeePayer() && !this.deliveryFeePaidBy) return '{{ __('Choose how the customer pays the delivery fee.') }}';
                     }
 
                     return null;

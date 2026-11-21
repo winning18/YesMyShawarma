@@ -209,7 +209,8 @@ class TableTabService
     {
         $reference = $reference !== null && trim($reference) !== '' ? trim($reference) : null;
 
-        if ($method === 'momo' && $reference === null) {
+        // Only when the owner checks MoMo by transaction ID (2026-11-20).
+        if ($method === 'momo' && $reference === null && app(SettingsService::class)->checksMomoTransactionId()) {
             throw TableTabException::momoNeedsReference();
         }
 

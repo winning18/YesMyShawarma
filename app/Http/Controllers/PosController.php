@@ -125,6 +125,7 @@ class PosController extends Controller
             'ratePerKmPesewas' => app(DeliveryFeeCalculator::class)->ratePerKm(),
             'cart' => $this->cartPayload($cart, $promotions),
             'posMode' => app(SettingsService::class)->posMode(),
+            'checksMomo' => app(SettingsService::class)->checksMomoTransactionId(),
             'taxConfig' => app(TaxService::class)->clientConfig(),
             'whatsappReward' => (int) app(SettingsService::class)->get(SettingsService::WHATSAPP_REWARD_AMOUNT, '1000'),
             'freebieStaff' => $this->staffForFreebies(app(BranchContext::class)),
@@ -273,10 +274,7 @@ class PosController extends Controller
                     if ($request->input('payment_method') === 'bolt_food' && $value !== 'pickup') {
                         $fail(__('Bolt Food orders must be pickup — Bolt handles delivery themselves.'));
                     }
-                    // Owner, 2026-11-14: freebies and WhatsApp group orders are pickup only.
-                    if (($request->input('payment_method') === Order::COMPLIMENTARY || $request->input('source') === Order::SOURCE_WHATSAPP) && $value === 'delivery') {
-                        $fail(__('Freebies and WhatsApp group orders are pickup or dine in, never delivery.'));
-                    }
+                    // Freebies and WhatsApp group orders can be delivered (owner, 2026-11-20).
                 },
             ],
             'payment_method' => ['required', Rule::in(array_keys(array_filter([
@@ -320,7 +318,7 @@ class PosController extends Controller
             // fee by MoMo with the food, or will they pay the rider cash?
             // Decides what the rider collects at the door.
             'delivery_fee_paid_by' => [
-                Rule::requiredIf(fn () => $request->input('payment_method') === 'momo' && $request->input('fulfilment_type') === 'delivery'),
+                Rule::requiredIf(fn () => in_array($request->input('payment_method'), ['momo', Order::COMPLIMENTARY], true) && $request->input('fulfilment_type') === 'delivery'),
                 'nullable', Rule::in(Order::DELIVERY_FEE_PAID_BY),
             ],
             'instructions' => ['nullable', 'string', 'max:1000'],

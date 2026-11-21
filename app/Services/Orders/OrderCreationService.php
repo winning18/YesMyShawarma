@@ -117,10 +117,11 @@ class OrderCreationService
             throw OrderPlacementException::moduleOff(__('Delivery'));
         }
 
-        // Freebies and WhatsApp group orders are POS-only and pickup-only
-        // (owner, 2026-11-14); a freebie must say who it's for and why.
+        // Freebies and WhatsApp group orders are POS-only (owner,
+        // 2026-11-14), and may be delivered (owner, 2026-11-20); a freebie
+        // must say who it's for and why.
         if ($data->paymentMethod === Order::COMPLIMENTARY || $data->source === Order::SOURCE_WHATSAPP) {
-            if ($data->channel !== 'pos' || $data->fulfilmentType === 'delivery') {
+            if ($data->channel !== 'pos') {
                 throw OrderPlacementException::pickupOnly();
             }
         }
@@ -259,8 +260,11 @@ class OrderCreationService
                 // A table round is paid when the table's bill is settled (TableTabService).
                 $data->tableTabId !== null => 'pending',
                 $data->paymentMethod === 'cash' && in_array($data->fulfilmentType, ['pickup', 'dine_in'], true) => 'paid',
-                $data->paymentMethod === 'momo' && $data->paymentReference !== null => 'paid',
+                // MoMo: paid with its transaction ID, or at once when the owner doesn't check IDs (2026-11-20).
+                $data->paymentMethod === 'momo' && ($data->paymentReference !== null || ! $this->settings->checksMomoTransactionId()) => 'paid',
                 $data->paymentMethod === 'bolt_food' => 'paid',
+                // A delivered freebie whose fee the rider collects is settled at the door, like cash.
+                $data->paymentMethod === Order::COMPLIMENTARY && $data->fulfilmentType === 'delivery' && ($data->deliveryFeePaidBy ?? 'rider_cash') === 'rider_cash' => 'pending',
                 $data->paymentMethod === Order::COMPLIMENTARY => 'paid',
                 default => 'pending',
             };
@@ -278,9 +282,13 @@ class OrderCreationService
                 'promotion_id' => $promotion?->id,
                 'total' => $total,
                 'payment_method' => $data->paymentMethod,
-                'delivery_fee_paid_by' => $data->paymentMethod === 'momo' && $data->fulfilmentType === 'delivery'
-                    ? ($data->deliveryFeePaidBy ?? 'momo')
-                    : null,
+                'delivery_fee_paid_by' => match (true) {
+                    $data->fulfilmentType !== 'delivery' => null,
+                    $data->paymentMethod === 'momo' => $data->deliveryFeePaidBy ?? 'momo',
+                    // A freebie's food is free, its delivery fee isn't (owner, 2026-11-20).
+                    $data->paymentMethod === Order::COMPLIMENTARY => $data->deliveryFeePaidBy ?? 'rider_cash',
+                    default => null,
+                },
                 'payment_status' => $initialPaymentStatus,
                 'channel' => $data->channel,
                 'source' => $data->source,

@@ -126,6 +126,12 @@ cash on delivery at all.
 
 ## Momo (POS)
 
+**Checking by transaction ID is the owner's setting** (`momo_check_transaction_id`, Settings →
+General, `business.manage`; owner 2026-11-20). On (Yes My Shawarma, kept by migration): everything
+below applies. Off (a new business's default): a MoMo sale, delivery or table bill is paid at once,
+the ID is optional (still unique when given), and nothing waits on `confirmMomo()`.
+
+
 POS only, never delivery-timing-dependent — Momo is reconciled by **transaction ID**, not by
 who's holding what. Staff read the transaction ID off the customer's Momo confirmation SMS and
 enter it at the POS terminal.

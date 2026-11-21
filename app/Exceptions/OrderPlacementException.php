@@ -25,7 +25,7 @@ class OrderPlacementException extends Exception
 
     public static function pickupOnly(): self
     {
-        return new self(__('Freebies and WhatsApp group orders are placed at the POS, for pickup or dine in.'));
+        return new self(__('Freebies and WhatsApp group orders are placed at the POS.'));
     }
 
     public static function freebieDetailsRequired(): self

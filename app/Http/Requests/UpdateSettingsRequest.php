@@ -34,6 +34,7 @@ class UpdateSettingsRequest extends FormRequest
             // Owner only (the field only shows for business.manage; SettingsController checks again).
             'delivery_fee_handling' => ['sometimes', $this->forModule(ModuleService::DELIVERY), 'in:handed_in,kept_by_rider'],
             'pos_mode' => ['sometimes', $this->forModule(ModuleService::TABLES), 'in:tables,quick,both'],
+            'momo_check_transaction_id' => ['sometimes', 'boolean'],
         ];
     }
 

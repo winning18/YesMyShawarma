@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Order;
 use App\Services\Branches\BranchContext;
 use App\Services\Reports\DeliveryFeeReportService;
 use App\Services\Tables\TableTabService;
@@ -156,7 +157,7 @@ class OrderResource extends JsonResource
         // A POS MoMo order was paid to the business, never at the door —
         // the rider collects only a delivery fee the customer chose to
         // pay them in cash (orders.delivery_fee_paid_by).
-        if ($this->payment_method === 'momo') {
+        if ($this->payment_method === 'momo' || $this->payment_method === Order::COMPLIMENTARY) {
             return $this->delivery_fee_paid_by === 'rider_cash' ? (int) $this->delivery_fee : 0;
         }
 

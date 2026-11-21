@@ -92,6 +92,20 @@
             </div>
             @endmodule
 
+            @can('business.manage')
+            <div class="border-t border-gray-100 pt-6">
+                <h3 class="font-semibold text-gray-800">{{ __('MoMo payments') }}</h3>
+                <input type="hidden" name="momo_check_transaction_id" value="0">
+                <label class="flex items-start gap-3 mt-2">
+                    <input type="checkbox" name="momo_check_transaction_id" value="1" @checked(old('momo_check_transaction_id', $checksMomo)) class="mt-1 rounded border-gray-300">
+                    <span>
+                        <span class="block text-sm font-medium text-gray-800">{{ __('Check MoMo payments with the transaction ID') }}</span>
+                        <span class="block text-xs text-gray-500">{{ __('On: a MoMo sale stays "payment pending" until staff enter the transaction ID from the customer\'s confirmation SMS, and each ID can be used only once. Off: MoMo is marked paid at once; staff can still note the ID.') }}</span>
+                    </span>
+                </label>
+            </div>
+            @endcan
+
             @module('tables')
             @can('business.manage')
             <div class="border-t border-gray-100 pt-6">

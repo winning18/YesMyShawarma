@@ -122,6 +122,8 @@ class TablesTest extends TestCase
 
     public function test_momo_needs_a_transaction_id_used_only_once(): void
     {
+        // Checking MoMo by transaction ID (the owner's setting, on for Yes My Shawarma).
+        app(SettingsService::class)->setBool('momo_check_transaction_id', true);
         $table = $this->table();
         $this->round($table);
         $tab = TableTab::sole();

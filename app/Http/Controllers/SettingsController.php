@@ -36,6 +36,7 @@ class SettingsController extends Controller
             ],
             'deliveryFeeHandling' => $settings->get(SettingsService::DELIVERY_FEE_HANDLING, 'handed_in'),
             'posMode' => $settings->get(SettingsService::POS_MODE, 'both'),
+            'checksMomo' => $settings->checksMomoTransactionId(),
         ]);
     }
 
@@ -69,6 +70,10 @@ class SettingsController extends Controller
         // Who gets the delivery fee (owner, 2026-11-20): the owner's call only.
         if (isset($validated['delivery_fee_handling']) && $request->user()->can('business.manage')) {
             $settings->set(SettingsService::DELIVERY_FEE_HANDLING, $validated['delivery_fee_handling']);
+        }
+        // MoMo checked by transaction ID (owner, 2026-11-20): the owner's call only.
+        if ($request->has('momo_check_transaction_id') && $request->user()->can('business.manage')) {
+            $settings->setBool(SettingsService::MOMO_CHECK_TRANSACTION_ID, $request->boolean('momo_check_transaction_id'));
         }
         // How the POS works (owner, 2026-11-20): the owner's call only.
         if (isset($validated['pos_mode']) && $request->user()->can('business.manage')) {

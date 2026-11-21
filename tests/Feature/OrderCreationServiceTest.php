@@ -322,6 +322,8 @@ class OrderCreationServiceTest extends TestCase
 
     public function test_pickup_momo_order_succeeds_end_to_end(): void
     {
+        // Checking MoMo by transaction ID (the owner's setting, on for Yes My Shawarma).
+        app(SettingsService::class)->setBool('momo_check_transaction_id', true);
         // Momo is an in-house manual payment (Order::MANUALLY_SETTLED_
         // PAYMENT_METHODS) — same immediate-'paid' path as cash, no
         // Paystack involved.

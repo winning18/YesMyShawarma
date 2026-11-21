@@ -161,7 +161,9 @@ class CheckoutFlowTest extends TestCase
 
         $this->assertStringNotContainsString('name="area_id" required', $html);
         $this->assertStringNotContainsString('name="landmark" required', $html);
-        $this->assertSame(2, substr_count($html, ':required="fulfilmentType === \'delivery\'"'));
+        // The landmark field, and the searchable area picker (2026-11-20): required for delivery only.
+        $this->assertSame(1, substr_count($html, ':required="fulfilmentType === \'delivery\'"'));
+        $this->assertStringContainsString(':required="(fulfilmentType === &#039;delivery&#039;) && ! value"', $html);
     }
 
     public function test_checkout_page_offers_paystack_when_enabled(): void

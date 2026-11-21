@@ -257,7 +257,8 @@ class DeliveryFeeReportService
         $atDoor = match ($order->payment_method) {
             'cash' => (int) $order->total,
             'paystack' => max(0, (int) $order->total - (int) $paystackPaid),
-            'momo' => $order->delivery_fee_paid_by === 'rider_cash' ? $fee : 0,
+            // A freebie's food is free; its fee is collected like a MoMo order's (2026-11-20).
+            'momo', Order::COMPLIMENTARY => $order->delivery_fee_paid_by === 'rider_cash' ? $fee : 0,
             default => 0,
         };
         $cash = min($fee, $atDoor);

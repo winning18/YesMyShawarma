@@ -78,6 +78,19 @@ class SettingsService
      */
     public const POS_MODE = 'pos_mode';
 
+    /**
+     * MoMo checked by transaction ID (owner, 2026-11-20): on, a MoMo sale
+     * stays "payment pending" until staff enter the ID (as Yes My Shawarma
+     * always has); off (the default), MoMo is paid at once and the ID is
+     * optional, for the records.
+     */
+    public const MOMO_CHECK_TRANSACTION_ID = 'momo_check_transaction_id';
+
+    public function checksMomoTransactionId(): bool
+    {
+        return $this->getBool(self::MOMO_CHECK_TRANSACTION_ID, false);
+    }
+
     public const POS_MODES = ['tables', 'quick', 'both'];
 
     public function posMode(): string

@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Services\Settings\SettingsService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
@@ -296,6 +297,8 @@ class PosOrderTest extends TestCase
 
     public function test_momo_pos_order_is_paid_immediately_like_cash_with_no_paystack_call(): void
     {
+        // Checking MoMo by transaction ID (the owner's setting, on for Yes My Shawarma).
+        app(SettingsService::class)->setBool('momo_check_transaction_id', true);
         // Momo POS orders never touch Paystack — a fake with no registered
         // stub means the test fails loudly if anything tries to.
         Http::fake();
@@ -601,5 +604,37 @@ class PosOrderTest extends TestCase
         ])->assertOk();
 
         $this->assertNull(Order::sole()->delivery_fee_paid_by);
+    }
+
+    public function test_without_transaction_id_checks_momo_is_paid_at_once(): void
+    {
+        $staff = $this->makeStaff();
+        $this->addToPosCart($staff, 1);
+
+        $this->actingAs($staff)->postJson(route('dashboard.pos.orders.store'), [
+            'fulfilment_type' => 'pickup', 'payment_method' => 'momo',
+        ])->assertOk();
+
+        $order = Order::first();
+        $this->assertSame('paid', $order->payment_status);
+        $this->assertDatabaseHas('payments', ['order_id' => $order->id, 'provider' => 'momo', 'status' => 'paid']);
+    }
+
+    public function test_a_freebie_can_be_delivered_and_its_fee_is_collected_at_the_door(): void
+    {
+        DB::table('delivery_areas')->insert(['name' => 'Osu', 'is_active' => true, 'created_at' => now(), 'updated_at' => now()]);
+        $area = DeliveryArea::sole();
+        $staff = $this->makeStaff();
+        $this->addToPosCart($staff, 1);
+
+        $this->actingAs($staff)->postJson(route('dashboard.pos.orders.store'), [
+            'fulfilment_type' => 'delivery', 'payment_method' => 'complimentary',
+            'freebie_recipient_type' => 'customer', 'name' => 'Ama', 'freebie_reason' => 'Birthday',
+            'area_id' => $area->id, 'landmark' => 'Near the mall', 'delivery_fee_paid_by' => 'rider_cash',
+        ])->assertOk();
+
+        $order = Order::first();
+        $this->assertSame(['delivery', 'complimentary', 'rider_cash', 'pending'], [$order->fulfilment_type, $order->payment_method, $order->delivery_fee_paid_by, $order->payment_status]);
+        $this->assertSame((int) $order->subtotal, (int) $order->discount_total, 'the food is free');
     }
 }
