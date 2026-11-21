@@ -86,6 +86,21 @@ class SettingsService
      */
     public const MOMO_CHECK_TRANSACTION_ID = 'momo_check_transaction_id';
 
+    /**
+     * Per branch (owner, 2026-11-20): does it have a kitchen screen that
+     * works the Orders board step by step? Yes unless switched off
+     * (KitchenFlowService).
+     */
+    public function branchHasKitchenScreen(int $branchId): bool
+    {
+        return $this->getBool('branch_kitchen_screen_'.$branchId, true);
+    }
+
+    public function setBranchKitchenScreen(int $branchId, bool $has): void
+    {
+        $this->setBool('branch_kitchen_screen_'.$branchId, $has);
+    }
+
     public function checksMomoTransactionId(): bool
     {
         return $this->getBool(self::MOMO_CHECK_TRANSACTION_ID, false);

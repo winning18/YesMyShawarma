@@ -149,7 +149,7 @@ class OrderCreationService
             throw OrderPlacementException::duplicateMomoReference($data->paymentReference);
         }
 
-        return DB::transaction(function () use ($data, $branch) {
+        $order = DB::transaction(function () use ($data, $branch) {
             $customer = $this->customers->findOrCreateByPhone($data->customerPhone, $data->customerName);
 
             // A suspended customer can't order online by phone either, or
@@ -386,8 +386,13 @@ class OrderCreationService
                 DB::afterCommit(fn () => $this->notifier->placed($order));
             }
 
-            return $order->fresh(['items.options', 'events', 'payments']);
+            return $order;
         });
+
+        // A branch without a kitchen screen: a POS order is accepted as it's placed (2026-11-20).
+        app(KitchenFlowService::class)->afterPlaced($order, app(OrderStateMachine::class), $data->actorType ?? 'staff', $data->actorId);
+
+        return $order->fresh(['items.options', 'events', 'payments']);
     }
 
     /**

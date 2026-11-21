@@ -285,3 +285,20 @@ identically to a web order, a POS order, or a Bolt Food order. Full detail — t
 `menu_item_recipe_items` table, the single-select-vs-multi-select consumption rule, why
 `rejected` never needs reversal — lives in schema.md's "Recipes and stock deduction" section;
 not duplicated here.
+
+## Branches without a kitchen screen
+
+Owner, 2026-11-20 (`KitchenFlowService`; per branch, owner only: "This branch has a kitchen
+screen" on the branch page, setting `branch_kitchen_screen_<id>`, default yes). Without one, the
+board's step-by-step flow is cut to one tap:
+
+- A POS order is accepted as it's placed (`afterPlaced()`; kitchen ticket and stock as usual) and
+  moves straight to `preparing`; the board shows **Ready / Done**.
+- A website or delivery order still has to be accepted by someone; accepted, it moves straight to
+  `preparing`.
+- Ready on a POS pickup or dine-in order completes it (`ready → dispatched`); a delivery goes to
+  the rider as always, and a website pickup waits for the customer to collect.
+
+Each automatic step is an ordinary `OrderStateMachine` transition (actor `system`, meta action
+`no_kitchen_screen`), so every one writes its `order_events` row.
+

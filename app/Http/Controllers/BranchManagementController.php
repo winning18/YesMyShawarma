@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateBranchRequest;
 use App\Models\Branch;
 use App\Models\MenuItem;
 use App\Services\Media\ImageUploadService;
+use App\Services\Settings\SettingsService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -60,6 +61,7 @@ class BranchManagementController extends Controller
         // the toggle itself only updates an existing row — it can't create
         // one either.
         $branch->menuItems()->attach(MenuItem::pluck('id'), ['is_available' => true]);
+        app(SettingsService::class)->setBranchKitchenScreen($branch->id, $request->boolean('has_kitchen_screen', true));
 
         return redirect()->route('dashboard.branches.edit', $branch)
             ->with('status', __(':name has been created.', ['name' => $branch->name]));
@@ -77,6 +79,8 @@ class BranchManagementController extends Controller
         Gate::authorize('branches.manage');
 
         $validated = $request->validated();
+
+        app(SettingsService::class)->setBranchKitchenScreen($branch->id, $request->boolean('has_kitchen_screen', true));
 
         $branch->update([
             ...$validated,

@@ -117,4 +117,13 @@
         <input type="checkbox" name="is_active" value="1" @checked(old('is_active', $branch?->is_active ?? true)) class="rounded border-gray-300">
         {{ __('Active') }}
     </label>
+    {{-- Kitchen screen (owner, 2026-11-20; KitchenFlowService). --}}
+    <input type="hidden" name="has_kitchen_screen" value="0">
+    <label class="flex items-start gap-2 text-sm">
+        <input type="checkbox" name="has_kitchen_screen" value="1" @checked(old('has_kitchen_screen', $branch ? app(\App\Services\Settings\SettingsService::class)->branchHasKitchenScreen($branch->id) : true)) class="mt-0.5 rounded border-gray-300">
+        <span>
+            {{ __('This branch has a kitchen screen') }}
+            <span class="block text-xs text-gray-500">{{ __('Ticked: the kitchen works each order on the Orders board (accept, prepare, ready). Not ticked: POS orders go straight to preparing and one tap, Ready, finishes them; website and delivery orders still need accepting.') }}</span>
+        </span>
+    </label>
 </div>

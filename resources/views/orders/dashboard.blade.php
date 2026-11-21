@@ -599,6 +599,9 @@
                     const to = this.nextStatus(order);
                     if (!to) return '';
 
+                    // A branch without a kitchen screen: one tap finishes a POS order (2026-11-20).
+                    if (order.finishes_on_ready && to === 'ready') return @js(__('Ready / Done'));
+
                     if (order.fulfilment_type === 'pickup') {
                         return {
                             preparing: @js(__('Start preparing')),

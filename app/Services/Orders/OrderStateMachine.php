@@ -271,6 +271,9 @@ class OrderStateMachine
                 };
             });
 
+            // A branch without a kitchen screen skips steps nobody works (2026-11-20).
+            app(KitchenFlowService::class)->afterTransition($order, $to, $this);
+
             return $order->refresh();
         });
     }
