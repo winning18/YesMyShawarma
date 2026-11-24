@@ -23,6 +23,7 @@ class ModuleController extends Controller
                 ...$config,
                 'key' => $key,
                 'on' => $modules->switchedOn($key),
+                'missingSetup' => $modules->switchedOn($key) ? $modules->missingSetup($key) : null,
                 'requiresLabels' => array_map(fn (string $required) => ModuleService::MODULES[$required]['label'], $config['requires']),
                 'blockedBy' => collect($config['requires'])->reject(fn (string $required) => $modules->enabled($required))
                     ->map(fn (string $required) => ModuleService::MODULES[$required]['label'])->values()->all(),

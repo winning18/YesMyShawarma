@@ -177,6 +177,7 @@ class WebsiteThemeTest extends TestCase
         app(SettingsService::class)->set('brand_accent', '#1a237e');
 
         $this->get(route('home'))
+            ->assertSee('<style>html:root{--brand-primary:252 209 22;', false)
             ->assertSee('--brand-primary-ink:0 0 0;', false)
             ->assertSee('--brand-accent-ink:255 255 255;', false);
     }

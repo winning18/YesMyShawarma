@@ -25,6 +25,9 @@
                     <span>
                         <span class="block text-sm font-medium text-gray-800">{{ __($module['label']) }}</span>
                         <span class="block text-xs text-gray-500">{{ __($module['description']) }}</span>
+                        @if ($module['missingSetup'])
+                            <span class="block text-xs text-red-700 bg-red-50 rounded px-2 py-1 mt-1" role="alert">⚠ {{ $module['missingSetup'] }}</span>
+                        @endif
                         @if (! $module['ready'])
                             <span class="block text-xs text-gray-500 mt-1">{{ __('Always on for now: its switch comes in a later update.') }}</span>
                         @elseif ($module['blockedBy'])

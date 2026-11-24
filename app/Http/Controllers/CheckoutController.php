@@ -83,7 +83,9 @@ class CheckoutController extends Controller
             // isn't live (e.g. the merchant account is still under
             // review), checkout falls back to cash-only rather than
             // offering a payment method that can't actually be charged.
-            'paystackEnabled' => app(ModuleService::class)->enabled(ModuleService::PAYSTACK),
+            // Its keys missing (not yet added in Express POS Admin) counts
+            // as off too: cash only, never a payment that can't go through.
+            'paystackEnabled' => app(ModuleService::class)->enabled(ModuleService::PAYSTACK) && app(PaystackClient::class)->isConfigured(),
             // For the client-side fee estimate shown the instant location
             // is captured — the authoritative fee is still always priced
             // server-side (OrderCreationService, or OrderStateMachine at
@@ -167,7 +169,7 @@ class CheckoutController extends Controller
         // request can't place a paystack order while it's switched off,
         // same "never trust the client" reasoning as everything else this
         // validates. See payments.md's "Paystack on/off" section.
-        $paystackEnabled = app(ModuleService::class)->enabled(ModuleService::PAYSTACK);
+        $paystackEnabled = app(ModuleService::class)->enabled(ModuleService::PAYSTACK) && app(PaystackClient::class)->isConfigured();
         $rules['payment_method'] = ['required', $paystackEnabled ? 'in:cash,paystack' : 'in:cash'];
         $rules['promo_code'] = ['nullable', 'string'];
 

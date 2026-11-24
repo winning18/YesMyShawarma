@@ -6,10 +6,31 @@ use Illuminate\Support\Facades\Http;
 
 class PaystackClient
 {
+    /**
+     * $secretKey is null until Solusys Digital adds the business's keys
+     * (Express POS Admin → client → Keys). Nothing that merely uses this
+     * client may fail for that; only an actual call to Paystack does,
+     * with a message that says what to do.
+     */
     public function __construct(
-        private readonly string $secretKey,
-        private readonly string $baseUrl,
+        private readonly ?string $secretKey,
+        private readonly string $baseUrl = 'https://api.paystack.co',
     ) {}
+
+    /** Whether the business's Paystack keys are in place. */
+    public function isConfigured(): bool
+    {
+        return $this->secretKey !== null && $this->secretKey !== '';
+    }
+
+    private function key(): string
+    {
+        if (! $this->isConfigured()) {
+            throw new \RuntimeException(__('Online payment isn\'t set up yet: Paystack\'s keys are missing. Ask Solusys Digital to add them.'));
+        }
+
+        return $this->secretKey;
+    }
 
     /**
      * @param  array<string, mixed>  $payload
@@ -17,7 +38,7 @@ class PaystackClient
      */
     public function initializeTransaction(array $payload): array
     {
-        return Http::withToken($this->secretKey)
+        return Http::withToken($this->key())
             ->baseUrl($this->baseUrl)
             ->post('/transaction/initialize', $payload)
             ->throw()
@@ -34,7 +55,7 @@ class PaystackClient
      */
     public function refundTransaction(string $transactionReference, ?int $amount = null, ?string $merchantNote = null): array
     {
-        return Http::withToken($this->secretKey)
+        return Http::withToken($this->key())
             ->baseUrl($this->baseUrl)
             ->post('/refund', array_filter([
                 'transaction' => $transactionReference,
@@ -56,7 +77,7 @@ class PaystackClient
      */
     public function verifyTransaction(string $reference): array
     {
-        return Http::withToken($this->secretKey)
+        return Http::withToken($this->key())
             ->baseUrl($this->baseUrl)
             ->get("/transaction/verify/{$reference}")
             ->throw()
@@ -74,6 +95,6 @@ class PaystackClient
             return false;
         }
 
-        return hash_equals(hash_hmac('sha512', $rawBody, $this->secretKey), $signature);
+        return $this->isConfigured() && hash_equals(hash_hmac('sha512', $rawBody, $this->secretKey), $signature);
     }
 }

@@ -52,8 +52,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(DeliveryFeeCalculator::class, fn ($app) => new DeliveryFeeCalculator($app->make(SettingsService::class)));
 
         $this->app->singleton(PaystackClient::class, fn () => new PaystackClient(
-            secretKey: config('services.paystack.secret_key'),
-            baseUrl: config('services.paystack.base_url'),
+            secretKey: config('services.paystack.secret_key') ?: null,
+            baseUrl: config('services.paystack.base_url') ?: 'https://api.paystack.co',
         ));
 
         // Real SMS only once Arkesel is actually configured — local/testing

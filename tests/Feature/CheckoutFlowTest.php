@@ -12,6 +12,7 @@ use App\Models\Order;
 use App\Models\Promotion;
 use App\Services\Delivery\DeliveryFeeCalculator;
 use App\Services\Modules\ModuleService;
+use App\Services\Payments\PaystackClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
@@ -174,6 +175,19 @@ class CheckoutFlowTest extends TestCase
 
         $this->get(route('checkout.show'))
             ->assertSee('name="payment_method" value="paystack"', false);
+    }
+
+    public function test_without_paystack_keys_checkout_is_cash_only_and_nothing_breaks(): void
+    {
+        // Module on, keys not yet added in Express POS Admin (De Boyes Kitchen, 2026-11-24).
+        app(ModuleService::class)->set(ModuleService::PAYSTACK, true);
+        config(['services.paystack.secret_key' => null]);
+        app()->forgetInstance(PaystackClient::class);
+
+        $this->addToCart(1);
+
+        $this->get(route('checkout.show'))->assertOk()
+            ->assertDontSee('name="payment_method" value="paystack"', false);
     }
 
     public function test_checkout_with_empty_cart_redirects_back_to_cart(): void

@@ -411,4 +411,17 @@ class ModulesTest extends TestCase
         app(CustomerOrderNotifier::class)->readyForPickup($order);
         Queue::assertPushed(SendSms::class, fn (SendSms $job) => ! str_contains($job->message, 'http'));
     }
+
+    public function test_a_module_on_without_its_keys_says_so(): void
+    {
+        $owner = $this->userWithRole('owner');
+        config(['services.paystack.secret_key' => null, 'services.arkesel.api_key' => null]);
+
+        $this->as($owner)->get(route('dashboard.modules.edit'))
+            ->assertSee('Paystack\'s keys haven\'t been added')
+            ->assertSee('the SMS key hasn\'t been added');
+
+        config(['services.paystack.secret_key' => 'sk_test_x', 'services.arkesel.api_key' => 'key']);
+        $this->as($owner)->get(route('dashboard.modules.edit'))->assertDontSee('haven\'t been added');
+    }
 }

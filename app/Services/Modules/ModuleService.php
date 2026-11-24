@@ -98,6 +98,25 @@ class ModuleService
     }
 
     /**
+     * What a module still needs before it can do anything (2026-11-24): a
+     * Paystack or SMS module switched on with no keys yet fails quietly
+     * otherwise. Null when nothing's missing. Keys are added by Solusys
+     * Digital in Express POS Admin, never typed into the app.
+     */
+    public function missingSetup(string $module): ?string
+    {
+        return match ($module) {
+            self::PAYSTACK => config('services.paystack.secret_key')
+                ? null
+                : __('Not working yet: Paystack\'s keys haven\'t been added, so customers can only pay cash. Ask Solusys Digital (026 370 2929) to add them.'),
+            self::SMS => config('services.arkesel.api_key')
+                ? null
+                : __('Not working yet: the SMS key hasn\'t been added, so no texts are sent. Ask Solusys Digital (026 370 2929) to add it.'),
+            default => null,
+        };
+    }
+
+    /**
      * The switch itself, ignoring what it depends on — what the Modules
      * page shows as ticked.
      */
