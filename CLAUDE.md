@@ -77,23 +77,24 @@ These come before everything else in this file.
 7. **Every change is safe for Yes My Shawarma.** All modules stay on for Yes My Shawarma;
    switching modules off is only ever tested on staging and on other clients' installs.
 
-### Release routine until the MVP (owner decision, 2026-11-15)
+### Release routine (MVP released 2026-11-24)
 
-Express POS work stays on the `staging` branch and the staging server until the MVP is finished,
-then goes to production in one release. Production (`Main`) stays as it was on 2026-11-15
-(`d19f436`) apart from live fixes.
+The MVP went live on 2026-11-24 (`67b6014`). Yes My Shawarma is now an ordinary install: POS at
+`yesmyshawarma.pos.solusysdigital.com`, website `yesmyshawarma.com` (its own domain, behind
+Cloudflare). Its original install `/var/www/yes-my-shawarma` and database `yes_my_shawarma` are
+kept, in maintenance, as the rollback (`deploy/move-yes-my-shawarma.sh --rollback
+/root/yms-cutover-20261124-1829`) until the week-after clean-up in `deploy/MVP-CUTOVER.md`.
 
-A fix or small request for live Yes My Shawarma in the meantime takes the fix route, never the
-staging branch:
-
-1. Branch from production: `git switch -c fix/<name> origin/Main`.
-2. Make the fix there, with tests; run `php artisan test`.
-3. Push the branch; the owner releases it with `git push origin fix/<name>:refs/heads/Main`.
-4. Merge it into the Express POS work: `git switch staging && git merge origin/Main`, run the
-   tests, push `staging`.
-
-Never push `staging` to `Main` before the MVP release, and never put Express POS work on a fix
-branch.
+- **`staging`** is where work happens. Each push deploys to the shared staging
+  (`staging.pos.solusysdigital.com`) and client sandboxes (`/etc/expresspos/staging-installs`).
+- **`Main`** is production. A push deploys to **every live install** (`/etc/expresspos/installs`:
+  Yes My Shawarma, De Boyes Kitchen, every client onboarded since). The repository variable
+  `EXPRESSPOS_RELEASED=true` keeps the staging deploy off live installs.
+- **A release** is the owner's go-ahead plus `git push origin origin/staging:refs/heads/Main`
+  (a fast-forward), after staging's tests pass. It reaches every client at once.
+- **A fix that can't wait for a release** still takes the fix route: branch from `origin/Main`,
+  fix with tests, push the branch, the owner releases it to `Main`, then merge `origin/Main`
+  into `staging`.
 
 ---
 
