@@ -63,12 +63,15 @@ class BusinessProfile
      * palette the site was built with.
      */
     public const COLOURS = [
-        'brand_primary' => '#fffa00',
-        'brand_primary_light' => '#fff9b3',
-        'brand_primary_dark' => '#ccc800',
-        'brand_accent' => '#ff0000',
-        'brand_accent_light' => '#ffe6e6',
-        'brand_accent_dark' => '#9a0200',
+        // Neutral greys, a technical fallback only (owner, 2026-11-24): every
+        // client chooses its colours at onboarding, and Yes My Shawarma's
+        // yellow and red are its own stored settings, not a default.
+        'brand_primary' => '#374151',
+        'brand_primary_light' => '#f3f4f6',
+        'brand_primary_dark' => '#1f2937',
+        'brand_accent' => '#6b7280',
+        'brand_accent_light' => '#f3f4f6',
+        'brand_accent_dark' => '#4b5563',
     ];
 
     private const DIRECTORY = 'business';
@@ -299,6 +302,36 @@ class BusinessProfile
 
         $this->storeImage(self::LOGO, 'logo', $logo, $removeLogo);
         $this->storeImage(self::ICON, 'icon', $icon, $removeIcon);
+    }
+
+    /** Onboarding and Express POS Admin (2026-11-24): both brand colours at once. */
+    public function setBrandColours(string $primary, string $accent): void
+    {
+        $this->setColour('primary', $primary);
+        $this->setColour('accent', $accent);
+    }
+
+    /**
+     * The logo from a file on this server (onboarding and Express POS
+     * Admin, 2026-11-24): PNG, JPG or WebP, up to 2 MB. Replaces any logo.
+     */
+    public function setLogoFromFile(string $path): void
+    {
+        $info = is_file($path) && filesize($path) <= 2 * 1024 * 1024 ? @getimagesize($path) : false;
+        $extension = match ($info['mime'] ?? null) {
+            'image/png' => 'png',
+            'image/jpeg' => 'jpg',
+            'image/webp' => 'webp',
+            default => throw new \InvalidArgumentException('The logo must be a PNG, JPG or WebP image of up to 2 MB.'),
+        };
+
+        if ($previous = $this->setting(self::LOGO)) {
+            Storage::disk('public')->delete($previous);
+        }
+
+        $stored = self::DIRECTORY.'/logo-'.Str::lower(Str::random(8)).'.'.$extension;
+        Storage::disk('public')->put($stored, (string) file_get_contents($path));
+        $this->store(self::LOGO, $stored);
     }
 
     /**

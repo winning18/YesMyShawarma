@@ -62,17 +62,17 @@
 }
 
 /*
- * Brand colours as "r g b" channels (tailwind.config.js reads them). These
- * are the defaults; each page's partials/brand-head overrides them with
- * the business's own colours from its Business profile.
+ * Brand colours as "r g b" channels (tailwind.config.js reads them). Neutral
+ * greys only until partials/brand-head sets the business's own colours from
+ * its Business profile (every client chooses them at onboarding, 2026-11-24).
  */
 :root {
-    --brand-primary: 255 250 0;
-    --brand-primary-light: 255 249 179;
-    --brand-primary-dark: 204 200 0;
-    --brand-accent: 255 0 0;
-    --brand-accent-light: 255 230 230;
-    --brand-accent-dark: 154 2 0;
+    --brand-primary: 55 65 81;
+    --brand-primary-light: 243 244 246;
+    --brand-primary-dark: 31 41 55;
+    --brand-accent: 107 114 128;
+    --brand-accent-light: 243 244 246;
+    --brand-accent-dark: 75 85 99;
 }
 
 /*

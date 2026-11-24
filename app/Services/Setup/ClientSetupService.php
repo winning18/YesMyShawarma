@@ -8,6 +8,7 @@ use App\Models\MenuItem;
 use App\Models\SitePage;
 use App\Models\User;
 use App\Services\Modules\ModuleService;
+use App\Services\Settings\BusinessProfile;
 use App\Services\Settings\SettingsService;
 use App\Services\Users\UserManagementService;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -48,7 +49,7 @@ class ClientSetupService
     }
 
     /**
-     * @param  array{business: string, branch: array{name: string, phone: string, address: string, lat: float, lng: float, opens_at: string, closes_at: string}, owner: array{name: string, email: string, phone: ?string}, support_email: ?string, modules: list<string>}  $input
+     * @param  array{business: string, brand: array{primary: string, accent: string, logo: string}, branch: array{name: string, phone: string, address: string, lat: float, lng: float, opens_at: string, closes_at: string}, owner: array{name: string, email: string, phone: ?string}, support_email: ?string, modules: list<string>}  $input
      * @return array{branch: Branch, owner: array{user: User, temporary_password: string}, support: ?array{user: User, temporary_password: string}}
      */
     public function setUp(array $input): array
@@ -67,6 +68,10 @@ class ClientSetupService
         return DB::transaction(function () use ($input) {
             $this->settings->set(self::SETUP_MARKER, now()->toIso8601String());
             $this->settings->set('business_name', trim($input['business']));
+            // The business's own colours and logo (required, owner 2026-11-24).
+            $profile = app(BusinessProfile::class);
+            $profile->setBrandColours($input['brand']['primary'], $input['brand']['accent']);
+            $profile->setLogoFromFile($input['brand']['logo']);
 
             $branch = Branch::create([
                 ...$input['branch'],

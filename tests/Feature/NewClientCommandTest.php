@@ -12,6 +12,7 @@ use App\Services\Settings\BusinessProfile;
 use App\Services\Settings\SettingsService;
 use App\Services\Setup\ClientSetupService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -36,9 +37,24 @@ class NewClientCommandTest extends TestCase
             '--owner-email' => 'akosua@example.test',
             '--support-email' => 'support@example.test',
             '--modules' => 'market_list,tax',
+            '--primary-colour' => '#0b7a3a',
+            '--accent-colour' => '#fcd116',
+            '--logo' => $this->logo(),
             '--no-interaction' => true,
             ...$overrides,
         ];
+    }
+
+    /** A small real PNG, as the portal would upload. */
+    private function logo(): string
+    {
+        $path = sys_get_temp_dir().'/expresspos-logo-test.png';
+        if (! is_file($path)) {
+            $image = imagecreatetruecolor(40, 20);
+            imagepng($image, $path);
+        }
+
+        return $path;
     }
 
     public function test_it_sets_up_a_fresh_install(): void
@@ -113,5 +129,23 @@ class NewClientCommandTest extends TestCase
         $this->artisan('expresspos:new-client', $this->commandOptions(['--modules' => 'tax']))->assertSuccessful();
 
         $this->assertSame(0, FaqItem::count());
+    }
+
+    public function test_the_brand_is_required_and_set(): void
+    {
+        Storage::fake('public');
+
+        $this->artisan('expresspos:new-client', $this->commandOptions(['--primary-colour' => 'green']))->assertFailed();
+        $this->artisan('expresspos:new-client', $this->commandOptions(['--logo' => '/nowhere.png']))->assertFailed();
+        $this->assertFalse(Branch::exists());
+
+        $this->artisan('expresspos:new-client', $this->commandOptions())->assertSuccessful();
+        $profile = app(BusinessProfile::class);
+        $this->assertSame('#0b7a3a', $profile->colours()['brand_primary']);
+        $this->assertSame('#fcd116', $profile->colours()['brand_accent']);
+        $this->assertNotNull($profile->logoUrl());
+
+        $this->artisan('expresspos:brand', ['--primary-colour' => '#112233', '--accent-colour' => '#445566'])->assertSuccessful();
+        $this->assertSame('#112233', app(BusinessProfile::class)->colours()['brand_primary']);
     }
 }

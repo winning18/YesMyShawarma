@@ -27,6 +27,9 @@ use function Laravel\Prompts\text;
     {--owner-phone= : Owner\'s phone (optional)}
     {--support-email= : Solusys Digital support account email (optional)}
     {--modules= : Modules to switch on, comma-separated keys (none = POS only)}
+    {--primary-colour= : Brand primary colour, #rrggbb (required, owner 2026-11-24)}
+    {--accent-colour= : Brand accent colour, #rrggbb (required)}
+    {--logo= : Path to the logo on this server: PNG, JPG or WebP, up to 2 MB (required)}
     {--json : Print the result as one line of JSON (for the Express POS admin portal)}')]
 #[Description('Set up a fresh Express POS install for a new client: business, first branch, owner account and modules')]
 class NewClient extends Command
@@ -57,6 +60,12 @@ class NewClient extends Command
                 'phone' => $ask('owner-phone', 'Owner\'s phone (optional)', required: false) ?: null,
             ],
             'support_email' => $ask('support-email', 'Solusys Digital support email (optional)', required: false) ?: null,
+            // Every client chooses its own brand: no default colours (owner, 2026-11-24).
+            'brand' => [
+                'primary' => strtolower((string) $ask('primary-colour', 'Brand primary colour (#rrggbb)', '#0b7a3a')),
+                'accent' => strtolower((string) $ask('accent-colour', 'Brand accent colour (#rrggbb)', '#fcd116')),
+                'logo' => $ask('logo', 'Path to the logo file (PNG, JPG or WebP, up to 2 MB)'),
+            ],
             'modules' => $this->modules(),
         ];
 
@@ -73,7 +82,15 @@ class NewClient extends Command
             'owner.email' => ['required', 'email', 'max:255'],
             'owner.phone' => ['nullable', 'string', 'max:30'],
             'support_email' => ['nullable', 'email', 'max:255'],
-        ]);
+            'brand.primary' => ['required', 'regex:/^#[0-9a-f]{6}$/'],
+            'brand.accent' => ['required', 'regex:/^#[0-9a-f]{6}$/'],
+            'brand.logo' => ['required', 'string', function (string $attribute, mixed $value, \Closure $fail): void {
+                $info = is_string($value) && is_file($value) && filesize($value) <= 2 * 1024 * 1024 ? @getimagesize($value) : false;
+                if (! in_array($info['mime'] ?? null, ['image/png', 'image/jpeg', 'image/webp'], true)) {
+                    $fail('The logo must be a PNG, JPG or WebP image of up to 2 MB.');
+                }
+            }],
+        ], ['brand.primary.regex' => 'The primary colour must be #rrggbb.', 'brand.accent.regex' => 'The accent colour must be #rrggbb.']);
 
         if ($validator->fails()) {
             return $this->failWith(implode(' ', $validator->errors()->all()));

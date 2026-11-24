@@ -51,7 +51,7 @@ class BusinessProfileTest extends TestCase
             'contact_recipients' => 'owner@mamaput.test, chef@mamaput.test',
             'instagram_url' => 'https://instagram.com/mamaput',
             'primary_colour' => '#0055aa',
-            'accent_colour' => '#ff0000',
+            'accent_colour' => '#6b7280', // the fallback accent: unchanged
             'main_branch_id' => $this->branch->id,
             ...$overrides,
         ]);
@@ -106,7 +106,7 @@ class BusinessProfileTest extends TestCase
         $colours = app(BusinessProfile::class)->colours();
         $this->assertSame(['#0055aa', '#b3cce6', '#004488'], [$colours['brand_primary'], $colours['brand_primary_light'], $colours['brand_primary_dark']]);
         // The accent didn't change, so its shades are left exactly as they were.
-        $this->assertSame('#9a0200', $colours['brand_accent_dark']);
+        $this->assertSame('#4b5563', $colours['brand_accent_dark']);
 
         $this->get(route('home'))->assertSee('--brand-primary:0 85 170;', false);
     }

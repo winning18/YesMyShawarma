@@ -110,6 +110,12 @@ branch-scoped, keep settings in the database).
 `<client>.pos.solusysdigital.com` and never moves off it. Only a client's customer website may have
 its own domain (e.g. `deboyeskitchen.com`), served by the same install.
 
+**Brand (owner, 2026-11-24):** there is no default palette. Every client chooses its two brand
+colours and uploads its logo before onboarding can go ahead (`expresspos:new-client` requires
+them); Solusys staff can change them later from the client's page in Express POS Admin
+(`expresspos:brand`), and the owner from Business profile. The code's fallback colours are
+neutral greys, never another business's.
+
 **Build before the first client is onboarded (owner, 2026-11-24):**
 1. Own website domain: an optional website domain per client in Express POS Admin (DNS, SSL,
    the install answering on it), with the POS staying on its subdomain.
