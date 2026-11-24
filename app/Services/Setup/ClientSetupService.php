@@ -50,7 +50,7 @@ class ClientSetupService
     }
 
     /**
-     * @param  array{business: string, brand: array{primary: string, accent: string, logo: string}, branch: array{name: string, phone: string, address: string, lat: float, lng: float, opens_at: string, closes_at: string}, owner: array{name: string, email: string, phone: ?string}, support_email: ?string, modules: list<string>, theme?: string}  $input
+     * @param  array{business: string, brand: array{primary: string, accent: string, background: string, logo: string}, branch: array{name: string, phone: string, address: string, lat: float, lng: float, opens_at: string, closes_at: string}, owner: array{name: string, email: string, phone: ?string}, support_email: ?string, modules: list<string>, theme?: string}  $input
      * @return array{branch: Branch, owner: array{user: User, temporary_password: string}, support: ?array{user: User, temporary_password: string}}
      */
     public function setUp(array $input): array
@@ -71,7 +71,7 @@ class ClientSetupService
             $this->settings->set('business_name', trim($input['business']));
             // The business's own colours and logo (required, owner 2026-11-24).
             $profile = app(BusinessProfile::class);
-            $profile->setBrandColours($input['brand']['primary'], $input['brand']['accent']);
+            $profile->setBrandColours($input['brand']['primary'], $input['brand']['accent'], $input['brand']['background'] ?? null);
             $profile->setLogoFromFile($input['brand']['logo']);
 
             $branch = Branch::create([

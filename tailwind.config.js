@@ -56,6 +56,13 @@ export default {
                     // The brand colours as text on white, darkened until readable.
                     'primary-text': 'rgb(var(--brand-primary-text) / <alpha-value>)',
                     'accent-text': 'rgb(var(--brand-accent-text) / <alpha-value>)',
+                    // The third colour (2026-11-24): the website's header,
+                    // home page, footer and loading screen; on-surface is
+                    // readable text on it, highlight the main colour where
+                    // it stands out on it (else on-surface).
+                    surface: 'rgb(var(--brand-background) / <alpha-value>)',
+                    'on-surface': 'rgb(var(--brand-background-ink) / <alpha-value>)',
+                    highlight: 'rgb(var(--brand-highlight) / <alpha-value>)',
                     red: {
                         light: 'rgb(var(--brand-accent-light) / <alpha-value>)',
                         DEFAULT: 'rgb(var(--brand-accent) / <alpha-value>)',

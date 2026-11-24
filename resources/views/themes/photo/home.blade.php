@@ -28,8 +28,8 @@
                 <p class="uppercase tracking-[0.2em] text-xs sm:text-sm font-semibold mb-3 {{ $hero['imageUrl'] ? 'text-brand-white/80' : 'text-brand-on-primary/80' }}">{{ $hero['eyebrow'] }}</p>
                 <h1 class="font-heading text-4xl sm:text-6xl leading-[1.05] max-w-3xl {{ $hero['imageUrl'] ? 'text-brand-white' : 'text-brand-on-primary' }}">{{ $hero['headline'] }}</h1>
                 <div class="mt-8 flex flex-wrap gap-3">
-                    <a href="{{ route('menu.index') }}" class="inline-flex items-center px-7 py-3 rounded-full font-semibold transition {{ $hero['imageUrl'] ? 'bg-brand-yellow text-brand-on-primary hover:bg-brand-yellow-dark' : 'bg-brand-black text-brand-white hover:bg-brand-gray-700' }}">{{ __('Order now') }}</a>
-                    <a href="{{ route('branches.index') }}" class="inline-flex items-center px-7 py-3 rounded-full border font-semibold transition {{ $hero['imageUrl'] ? 'border-brand-white/70 text-brand-white hover:bg-brand-white hover:text-brand-black' : 'border-brand-black text-brand-black hover:bg-brand-black hover:text-brand-white' }}">{{ __('Find a branch') }}</a>
+                    <a href="{{ route('menu.index') }}" class="inline-flex items-center px-7 py-3 rounded-full font-semibold transition {{ $hero['imageUrl'] ? 'bg-brand-yellow text-brand-on-primary hover:bg-brand-yellow-dark' : 'bg-brand-surface text-brand-on-surface hover:opacity-90' }}">{{ __('Order now') }}</a>
+                    <a href="{{ route('branches.index') }}" class="inline-flex items-center px-7 py-3 rounded-full border font-semibold transition {{ $hero['imageUrl'] ? 'border-brand-white/70 text-brand-white hover:bg-brand-white hover:text-brand-black' : 'border-brand-black text-brand-black hover:bg-brand-surface hover:text-brand-on-surface' }}">{{ __('Find a branch') }}</a>
                 </div>
             </div>
         </section>
@@ -90,6 +90,6 @@
 
     <section class="my-10 rounded-3xl bg-brand-yellow text-brand-on-primary px-6 py-12 sm:px-12 text-center">
         <h2 class="font-heading text-3xl sm:text-4xl">{{ __('Hungry? Your order is a few taps away.') }}</h2>
-        <a href="{{ route('menu.index') }}" class="inline-flex mt-6 items-center px-8 py-3 rounded-full bg-brand-black text-brand-white font-semibold hover:bg-brand-gray-700 transition">{{ __('Order now') }}</a>
+        <a href="{{ route('menu.index') }}" class="inline-flex mt-6 items-center px-8 py-3 rounded-full bg-brand-surface text-brand-on-surface font-semibold hover:opacity-90 transition">{{ __('Order now') }}</a>
     </section>
 </x-customer-layout>

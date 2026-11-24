@@ -53,12 +53,12 @@
                                         <input type="hidden" name="menu_item_id" value="{{ $item->id }}">
                                         <input type="hidden" name="quantity" value="1">
                                         <input type="hidden" name="return_anchor" value="cat-{{ $group['category']->slug }}">
-                                        <button type="submit" class="inline-flex items-center gap-1 px-4 py-1.5 rounded-full bg-brand-black text-brand-white text-sm font-semibold hover:bg-brand-gray-700 transition" aria-label="{{ __('Add :item to cart', ['item' => $item->name]) }}">
+                                        <button type="submit" class="inline-flex items-center gap-1 px-4 py-1.5 rounded-full bg-brand-surface text-brand-on-surface text-sm font-semibold hover:opacity-90 transition" aria-label="{{ __('Add :item to cart', ['item' => $item->name]) }}">
                                             <span aria-hidden="true">+</span> {{ __('Add') }}
                                         </button>
                                     </form>
                                 @else
-                                    <a href="{{ route('menu.show', $item) }}" class="inline-flex items-center px-4 py-1.5 rounded-full border-2 border-brand-black text-brand-black text-sm font-semibold hover:bg-brand-black hover:text-brand-white transition">{{ __('Choose') }}</a>
+                                    <a href="{{ route('menu.show', $item) }}" class="inline-flex items-center px-4 py-1.5 rounded-full border-2 border-brand-black text-brand-black text-sm font-semibold hover:bg-brand-surface hover:text-brand-on-surface transition">{{ __('Choose') }}</a>
                                 @endif
                             </div>
                         </div>

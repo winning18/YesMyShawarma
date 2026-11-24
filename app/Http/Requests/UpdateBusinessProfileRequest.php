@@ -39,6 +39,7 @@ class UpdateBusinessProfileRequest extends FormRequest
             'tin' => ['nullable', 'string', 'max:20', 'regex:/^[A-Za-z0-9-]+$/'],
             'primary_colour' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'accent_colour' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'background_colour' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
             // PNG/JPG/WebP only — an SVG upload can carry script.
             'logo' => app(ImageRules::class)->rules('logo'),
             'icon' => app(ImageRules::class)->rules('icon'),

@@ -34,9 +34,9 @@
             @endphp
             <div class="grid grid-cols-1 {{ $columns }} gap-5">
                 @isset($figures['customers'])
-                <div class="bg-brand-black rounded-xl p-6 text-brand-white text-center">
+                <div class="bg-brand-surface rounded-xl p-6 text-brand-on-surface text-center">
                     <div class="w-12 h-12 rounded-full bg-brand-yellow flex items-center justify-center mx-auto mb-4">
-                        <svg viewBox="0 0 24 24" fill="none" class="w-6 h-6 text-brand-black">
+                        <svg viewBox="0 0 24 24" fill="none" class="w-6 h-6 text-brand-on-primary">
                             <circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.5" />
                             <path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
                             <circle cx="17" cy="9" r="2.3" stroke="currentColor" stroke-width="1.5" />
@@ -44,31 +44,31 @@
                         </svg>
                     </div>
                     <p class="text-2xl font-bold">{{ $customerCountLabel }}</p>
-                    <p class="text-sm text-brand-gray-300">{{ __('Happy customers') }}</p>
+                    <p class="text-sm text-brand-on-surface/70">{{ __('Happy customers') }}</p>
                 </div>
                 @endisset
                 @isset($figures['years'])
-                <div class="bg-brand-black rounded-xl p-6 text-brand-white text-center">
+                <div class="bg-brand-surface rounded-xl p-6 text-brand-on-surface text-center">
                     <div class="w-12 h-12 rounded-full bg-brand-yellow flex items-center justify-center mx-auto mb-4">
-                        <svg viewBox="0 0 24 24" fill="none" class="w-6 h-6 text-brand-black">
+                        <svg viewBox="0 0 24 24" fill="none" class="w-6 h-6 text-brand-on-primary">
                             <rect x="4" y="5" width="16" height="15" rx="2" stroke="currentColor" stroke-width="1.5" />
                             <path d="M4 9h16M8 3v3M16 3v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
                         </svg>
                     </div>
                     <p class="text-2xl font-bold">{{ $yearsOfOperation }}</p>
-                    <p class="text-sm text-brand-gray-300">{{ __('Years of operation') }}</p>
+                    <p class="text-sm text-brand-on-surface/70">{{ __('Years of operation') }}</p>
                 </div>
                 @endisset
                 @isset($figures['branches'])
-                <div class="bg-brand-black rounded-xl p-6 text-brand-white text-center">
+                <div class="bg-brand-surface rounded-xl p-6 text-brand-on-surface text-center">
                     <div class="w-12 h-12 rounded-full bg-brand-yellow flex items-center justify-center mx-auto mb-4">
-                        <svg viewBox="0 0 24 24" fill="none" class="w-6 h-6 text-brand-black">
+                        <svg viewBox="0 0 24 24" fill="none" class="w-6 h-6 text-brand-on-primary">
                             <path d="M12 21s7-6.5 7-11.5a7 7 0 1 0-14 0C5 14.5 12 21 12 21Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
                             <circle cx="12" cy="9.5" r="2.5" stroke="currentColor" stroke-width="1.5" />
                         </svg>
                     </div>
                     <p class="text-2xl font-bold">{{ $branchCount }}</p>
-                    <p class="text-sm text-brand-gray-300">{{ __('Branches') }}</p>
+                    <p class="text-sm text-brand-on-surface/70">{{ __('Branches') }}</p>
                 </div>
                 @endisset
             </div>
@@ -115,9 +115,9 @@
 
     {{-- Newsletter --}}
     <section class="pt-14 border-t border-brand-gray-100">
-        <div class="bg-brand-black rounded-xl p-8 text-center text-brand-white">
+        <div class="bg-brand-surface rounded-xl p-8 text-center text-brand-on-surface">
         <h2 class="text-lg font-bold mb-2">{{ __('Join our newsletter') }}</h2>
-        <p class="text-sm text-brand-gray-300 mb-6 max-w-md mx-auto">
+        <p class="text-sm text-brand-on-surface/70 mb-6 max-w-md mx-auto">
             {{ __('Get news on new menu items, offers and branch openings, straight to your inbox.') }}
         </p>
 
@@ -132,7 +132,7 @@
                     placeholder="{{ __('you@example.com') }}"
                     class="flex-1 rounded-md border-brand-gray-300 text-brand-black focus:border-brand-yellow focus:ring-brand-yellow"
                 >
-                <button type="submit" class="px-6 py-2.5 bg-brand-yellow text-brand-black text-sm font-semibold rounded-md hover:bg-brand-yellow-dark shrink-0">
+                <button type="submit" class="px-6 py-2.5 bg-brand-yellow text-brand-on-primary text-sm font-semibold rounded-md hover:bg-brand-yellow-dark shrink-0">
                     {{ __('Subscribe') }}
                 </button>
             </div>

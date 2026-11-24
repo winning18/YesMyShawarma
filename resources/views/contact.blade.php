@@ -60,7 +60,7 @@
 
                 <x-turnstile-widget />
 
-                <button type="submit" class="px-6 py-2.5 bg-brand-yellow text-brand-black text-sm font-semibold rounded-md hover:bg-brand-yellow-dark">
+                <button type="submit" class="px-6 py-2.5 bg-brand-yellow text-brand-on-primary text-sm font-semibold rounded-md hover:bg-brand-yellow-dark">
                     {{ __('Send message') }}
                 </button>
             </form>
@@ -69,7 +69,7 @@
         {{-- Call, Email, Follow — stacked top to bottom --}}
         <div class="space-y-5">
             @if ($branchPhones !== [])
-            <div class="bg-brand-black rounded-xl p-6 text-brand-white">
+            <div class="bg-brand-surface rounded-xl p-6 text-brand-on-surface">
                 <div class="flex items-center gap-3 mb-4">
                     <div class="w-10 h-10 rounded-full bg-brand-yellow flex items-center justify-center shrink-0">
                         <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5 text-brand-black">
@@ -82,7 +82,7 @@
                     @foreach ($branchPhones as $phone)
                         <li class="flex justify-between gap-2">
                             <span class="font-bold text-brand-white">{{ $phone['name'] }}</span>
-                            <a href="tel:{{ $phone['tel'] }}" class="underline hover:text-brand-yellow">{{ $phone['display'] }}</a>
+                            <a href="tel:{{ $phone['tel'] }}" class="underline hover:text-brand-highlight">{{ $phone['display'] }}</a>
                         </li>
                     @endforeach
                 </ul>
@@ -90,7 +90,7 @@
             @endif
 
             @if ($publicEmails !== [])
-            <div class="bg-brand-black rounded-xl p-6 text-brand-white">
+            <div class="bg-brand-surface rounded-xl p-6 text-brand-on-surface">
                 <div class="flex items-center gap-3 mb-4">
                     <div class="w-10 h-10 rounded-full bg-brand-yellow flex items-center justify-center shrink-0">
                         <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5 text-brand-black">
@@ -102,14 +102,14 @@
                 </div>
                 <ul class="space-y-1.5 text-sm text-brand-gray-100">
                     @foreach ($publicEmails as $email)
-                        <li><a href="mailto:{{ $email }}" class="underline hover:text-brand-yellow break-all">{{ $email }}</a></li>
+                        <li><a href="mailto:{{ $email }}" class="underline hover:text-brand-highlight break-all">{{ $email }}</a></li>
                     @endforeach
                 </ul>
             </div>
             @endif
 
             @if ($hasSocialLinks)
-            <div class="bg-brand-black rounded-xl p-6 text-brand-white">
+            <div class="bg-brand-surface rounded-xl p-6 text-brand-on-surface">
                 <div class="flex items-center gap-3 mb-4">
                     <div class="w-10 h-10 rounded-full bg-brand-yellow flex items-center justify-center shrink-0">
                         <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5 text-brand-black">

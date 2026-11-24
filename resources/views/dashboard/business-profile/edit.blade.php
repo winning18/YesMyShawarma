@@ -121,8 +121,13 @@
                         <input id="accent_colour" type="color" name="accent_colour" value="{{ old('accent_colour', $colours['brand_accent']) }}" class="mt-1 h-10 w-20 rounded border-gray-300">
                         <x-input-error class="mt-2" :messages="$errors->get('accent_colour')" />
                     </div>
+                    <div>
+                        <x-input-label for="background_colour" :value="__('Background colour')" required />
+                        <input id="background_colour" type="color" name="background_colour" value="{{ old('background_colour', $colours['brand_background']) }}" class="mt-1 h-10 w-20 rounded border-gray-300">
+                        <x-input-error class="mt-2" :messages="$errors->get('background_colour')" />
+                    </div>
                 </div>
-                <p class="text-xs text-gray-500">{{ __('Used across the customer website. Lighter and darker shades are worked out for you.') }}</p>
+                <p class="text-xs text-gray-500">{{ __('Main colour: buttons, highlights and the menu page. Accent: small touches like badges and links. Background: the website\'s header, home page, footer and loading screen. Text on each is made black or white automatically, and lighter and darker shades are worked out for you.') }}</p>
             </section>
 
             <section class="space-y-4 border-t border-gray-100 pt-6">

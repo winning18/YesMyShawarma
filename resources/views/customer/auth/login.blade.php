@@ -59,7 +59,7 @@
 
             <button
                 type="submit" :disabled="!formValid"
-                :class="formValid ? 'bg-brand-yellow text-brand-black hover:bg-brand-yellow-dark cursor-pointer' : 'bg-brand-gray-100 text-brand-gray-400 cursor-not-allowed'"
+                :class="formValid ? 'bg-brand-yellow text-brand-on-primary hover:bg-brand-yellow-dark cursor-pointer' : 'bg-brand-gray-100 text-brand-gray-400 cursor-not-allowed'"
                 class="w-full px-6 py-3 font-semibold rounded-md transition"
             >
                 {{ __('Log in') }}

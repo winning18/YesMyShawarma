@@ -19,7 +19,7 @@
         @if (app(\App\Services\Modules\ModuleService::class)->enabled('website'))
         <a
             href="{{ route('menu.index') }}"
-            class="flex-1 text-center px-6 py-3 bg-brand-yellow text-brand-black font-semibold rounded-md hover:bg-brand-yellow-dark"
+            class="flex-1 text-center px-6 py-3 bg-brand-yellow text-brand-on-primary font-semibold rounded-md hover:bg-brand-yellow-dark"
         >
             {{ __('See our menu') }}
         </a>
@@ -32,7 +32,7 @@
         @else
             <a
                 href="{{ route('login') }}"
-                class="flex-1 text-center px-6 py-3 bg-brand-yellow text-brand-black font-semibold rounded-md hover:bg-brand-yellow-dark"
+                class="flex-1 text-center px-6 py-3 bg-brand-yellow text-brand-on-primary font-semibold rounded-md hover:bg-brand-yellow-dark"
             >
                 {{ __('Go to the login page') }}
             </a>

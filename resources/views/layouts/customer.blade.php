@@ -74,10 +74,10 @@
             x-show="show"
             x-transition:leave="transition ease-out duration-300"
             x-transition:leave-end="opacity-0"
-            class="fixed inset-0 z-50 bg-brand-black flex flex-col items-center justify-center gap-6"
+            class="fixed inset-0 z-50 bg-brand-surface flex flex-col items-center justify-center gap-6"
         >
-            <x-brand-logo class="h-16 w-auto" text-class="font-bold text-3xl text-brand-white" />
-            <svg viewBox="0 0 24 24" fill="none" class="animate-spin w-8 h-8 text-brand-yellow">
+            <x-brand-logo class="h-16 w-auto" text-class="font-bold text-3xl text-brand-on-surface" />
+            <svg viewBox="0 0 24 24" fill="none" class="animate-spin w-8 h-8 text-brand-highlight">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4Z"></path>
             </svg>
@@ -85,7 +85,7 @@
 
         @if ($themePreviewing && $websiteOn)
             {{-- A staff preview of another website look (Website content → Website look): this browser only. --}}
-            <div class="bg-brand-black text-brand-white text-xs sm:text-sm px-4 py-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center">
+            <div class="bg-brand-surface text-brand-on-surface text-xs sm:text-sm px-4 py-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center">
                 <span>{{ __('Previewing the :theme look. Customers still see the look chosen in Website content.', ['theme' => __(\App\Services\Content\WebsiteThemeService::THEMES[$themePreviewing]['label'])]) }}</span>
                 <a href="{{ request()->fullUrlWithQuery(['theme_preview' => 'off']) }}" class="font-semibold underline">{{ __('End preview') }}</a>
             </div>
@@ -102,47 +102,47 @@
         @if ($theme !== 'classic')
             @include('themes.'.$theme.'.header')
         @else
-        <header class="bg-brand-black sticky top-0 z-40">
+        <header class="bg-brand-surface sticky top-0 z-40">
             <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
                 <a href="{{ route('home') }}">
-                    <x-brand-logo class="h-10 w-auto" text-class="font-bold text-xl text-brand-white" />
+                    <x-brand-logo class="h-10 w-auto" text-class="font-bold text-xl text-brand-on-surface" />
                 </a>
 
                 @if ($websiteOn)
-                <nav class="hidden md:flex items-center gap-6 text-sm text-brand-white">
-                    <a href="{{ route('home') }}" class="hover:text-brand-yellow {{ request()->routeIs('home') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Home') }}</a>
-                    <a href="{{ route('menu.index') }}" class="hover:text-brand-yellow {{ request()->routeIs('menu.index') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Menu') }}</a>
-                    <a href="{{ route('branches.index') }}" class="hover:text-brand-yellow {{ request()->routeIs('branches.index') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Branches') }}</a>
-                    <a href="{{ route('contact') }}" class="hover:text-brand-yellow {{ request()->routeIs('contact') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Contact us') }}</a>
+                <nav class="hidden md:flex items-center gap-6 text-sm text-brand-on-surface">
+                    <a href="{{ route('home') }}" class="hover:text-brand-highlight {{ request()->routeIs('home') ? 'text-brand-highlight font-semibold' : '' }}">{{ __('Home') }}</a>
+                    <a href="{{ route('menu.index') }}" class="hover:text-brand-highlight {{ request()->routeIs('menu.index') ? 'text-brand-highlight font-semibold' : '' }}">{{ __('Menu') }}</a>
+                    <a href="{{ route('branches.index') }}" class="hover:text-brand-highlight {{ request()->routeIs('branches.index') ? 'text-brand-highlight font-semibold' : '' }}">{{ __('Branches') }}</a>
+                    <a href="{{ route('contact') }}" class="hover:text-brand-highlight {{ request()->routeIs('contact') ? 'text-brand-highlight font-semibold' : '' }}">{{ __('Contact us') }}</a>
                     @if ($publishedPages['about'])
-                    <a href="{{ route('about') }}" class="hover:text-brand-yellow {{ request()->routeIs('about') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('About us') }}</a>
+                    <a href="{{ route('about') }}" class="hover:text-brand-highlight {{ request()->routeIs('about') ? 'text-brand-highlight font-semibold' : '' }}">{{ __('About us') }}</a>
                     @endif
-                    <a href="{{ route('tracking.lookup') }}" class="hover:text-brand-yellow {{ request()->routeIs('tracking.*') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Track order') }}</a>
+                    <a href="{{ route('tracking.lookup') }}" class="hover:text-brand-highlight {{ request()->routeIs('tracking.*') ? 'text-brand-highlight font-semibold' : '' }}">{{ __('Track order') }}</a>
                 </nav>
                 @endif
 
                 @if ($websiteOn)
                 <div class="hidden md:flex items-center gap-4">
-                    <a href="{{ route('cart.show') }}" class="relative text-brand-white hover:text-brand-yellow" aria-label="{{ __('Cart') }}">
+                    <a href="{{ route('cart.show') }}" class="relative text-brand-on-surface hover:text-brand-highlight" aria-label="{{ __('Cart') }}">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
                             <circle cx="9" cy="21" r="1"></circle>
                             <circle cx="20" cy="21" r="1"></circle>
                             <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
                         </svg>
                         @if($cartItemCount > 0)
-                            <span class="absolute -top-2 -right-3 bg-brand-yellow text-brand-black text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">{{ $cartItemCount }}</span>
+                            <span class="absolute -top-2 -right-3 bg-brand-yellow text-brand-on-primary text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">{{ $cartItemCount }}</span>
                         @endif
                     </a>
 
                     @auth('customer')
-                        <a href="{{ route('customer.account.show') }}" class="text-sm text-brand-white hover:text-brand-yellow {{ request()->routeIs('customer.account.*') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('My account') }}</a>
+                        <a href="{{ route('customer.account.show') }}" class="text-sm text-brand-on-surface hover:text-brand-highlight {{ request()->routeIs('customer.account.*') ? 'text-brand-highlight font-semibold' : '' }}">{{ __('My account') }}</a>
                         <form method="POST" action="{{ route('customer.logout') }}">
                             @csrf
-                            <button type="submit" class="text-sm text-brand-white hover:text-brand-yellow">{{ __('Log out') }}</button>
+                            <button type="submit" class="text-sm text-brand-on-surface hover:text-brand-highlight">{{ __('Log out') }}</button>
                         </form>
                     @else
-                        <a href="{{ route('customer.login') }}" class="text-sm text-brand-white hover:text-brand-yellow">{{ __('Login') }}</a>
-                        <a href="{{ route('customer.register') }}" class="px-3 py-1.5 bg-brand-yellow text-brand-black text-sm font-semibold rounded-md hover:bg-brand-yellow-dark">{{ __('Sign up') }}</a>
+                        <a href="{{ route('customer.login') }}" class="text-sm text-brand-on-surface hover:text-brand-highlight">{{ __('Login') }}</a>
+                        <a href="{{ route('customer.register') }}" class="px-3 py-1.5 bg-brand-yellow text-brand-on-primary text-sm font-semibold rounded-md hover:bg-brand-yellow-dark">{{ __('Sign up') }}</a>
                     @endauth
                 </div>
                 @endif
@@ -157,7 +157,7 @@
                     same as the staff/rider dashboards' hamburger button.
                 --}}
                 <button
-                    type="button" class="md:hidden text-brand-white p-2 -me-2 touch-manipulation" @click="open = true; $dispatch('customer-drawer-opened')"
+                    type="button" class="md:hidden text-brand-on-surface p-2 -me-2 touch-manipulation" @click="open = true; $dispatch('customer-drawer-opened')"
                     aria-label="{{ __('Open menu') }}"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
@@ -210,7 +210,7 @@
                 ></div>
 
                 <div
-                    class="relative w-64 h-full bg-brand-black flex flex-col will-change-transform"
+                    class="relative w-64 h-full bg-brand-surface flex flex-col will-change-transform"
                     x-show="open"
                     x-transition:enter="transition ease-out duration-[120ms]"
                     x-transition:enter-start="-translate-x-full"
@@ -219,22 +219,22 @@
                     x-transition:leave-start="translate-x-0"
                     x-transition:leave-end="-translate-x-full"
                 >
-                    <div class="h-16 flex items-center justify-between px-4 border-b border-brand-gray-700 shrink-0">
+                    <div class="h-16 flex items-center justify-between px-4 border-b border-brand-on-surface/15 shrink-0">
                         <a href="{{ route('home') }}">
-                            <x-brand-logo class="h-8 w-auto" text-class="font-bold text-lg text-brand-white" />
+                            <x-brand-logo class="h-8 w-auto" text-class="font-bold text-lg text-brand-on-surface" />
                         </a>
-                        <button type="button" @click="open = false" aria-label="{{ __('Close menu') }}" class="p-2 -me-2 text-brand-white">
+                        <button type="button" @click="open = false" aria-label="{{ __('Close menu') }}" class="p-2 -me-2 text-brand-on-surface">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
                                 <path d="M6 18L18 6M6 6l12 12" />
                             </svg>
                         </button>
                     </div>
 
-                    <nav class="flex-1 overflow-y-auto px-4 py-4 space-y-2 text-brand-white text-sm" @click="open = false">
+                    <nav class="flex-1 overflow-y-auto px-4 py-4 space-y-2 text-brand-on-surface text-sm" @click="open = false">
                         @foreach ($customerNav as $link)
-                        <a href="{{ $link['url'] }}" class="block hover:text-brand-yellow {{ $link['active'] ? 'text-brand-yellow font-semibold' : '' }}">@if ($link['number'])<span class="text-brand-gray-300 text-xs me-1">{{ $link['number'] }}</span>@endif{{ $link['label'] }}</a>
+                        <a href="{{ $link['url'] }}" class="block hover:text-brand-highlight {{ $link['active'] ? 'text-brand-highlight font-semibold' : '' }}">@if ($link['number'])<span class="text-brand-on-surface/70 text-xs me-1">{{ $link['number'] }}</span>@endif{{ $link['label'] }}</a>
                         @endforeach
-                        <a href="{{ route('cart.show') }}" class="flex items-center gap-2 hover:text-brand-yellow">
+                        <a href="{{ route('cart.show') }}" class="flex items-center gap-2 hover:text-brand-highlight">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 shrink-0">
                                 <circle cx="9" cy="21" r="1"></circle>
                                 <circle cx="20" cy="21" r="1"></circle>
@@ -244,17 +244,17 @@
                         </a>
                     </nav>
 
-                    <div class="border-t border-brand-gray-700 p-4 shrink-0">
+                    <div class="border-t border-brand-on-surface/15 p-4 shrink-0">
                         @auth('customer')
-                            <a href="{{ route('customer.account.show') }}" class="block text-sm font-semibold text-brand-white hover:text-brand-yellow mb-2 truncate">{{ __('My account') }} · {{ auth('customer')->user()->name ?? auth('customer')->user()->phone }}</a>
+                            <a href="{{ route('customer.account.show') }}" class="block text-sm font-semibold text-brand-on-surface hover:text-brand-highlight mb-2 truncate">{{ __('My account') }} · {{ auth('customer')->user()->name ?? auth('customer')->user()->phone }}</a>
                             <form method="POST" action="{{ route('customer.logout') }}">
                                 @csrf
-                                <button type="submit" class="text-sm text-brand-gray-300 hover:text-brand-yellow">{{ __('Log out') }}</button>
+                                <button type="submit" class="text-sm text-brand-on-surface/70 hover:text-brand-highlight">{{ __('Log out') }}</button>
                             </form>
                         @else
                             <div class="flex gap-3">
-                                <a href="{{ route('customer.login') }}" class="flex-1 text-center px-3 py-2 border border-brand-gray-500 text-brand-white text-sm font-semibold rounded-md">{{ __('Login') }}</a>
-                                <a href="{{ route('customer.register') }}" class="flex-1 text-center px-3 py-2 bg-brand-yellow text-brand-black text-sm font-semibold rounded-md">{{ __('Sign up') }}</a>
+                                <a href="{{ route('customer.login') }}" class="flex-1 text-center px-3 py-2 border border-brand-on-surface/40 text-brand-on-surface text-sm font-semibold rounded-md">{{ __('Login') }}</a>
+                                <a href="{{ route('customer.register') }}" class="flex-1 text-center px-3 py-2 bg-brand-yellow text-brand-on-primary text-sm font-semibold rounded-md">{{ __('Sign up') }}</a>
                             </div>
                         @endauth
                     </div>
@@ -269,9 +269,9 @@
 
         @isset($pageHeader)
             @if ($theme === 'classic')
-            <div class="bg-brand-black py-10 border-t border-brand-yellow">
+            <div class="bg-brand-surface py-10 border-t border-brand-highlight">
                 <div class="max-w-5xl mx-auto px-4">
-                    <h1 class="text-2xl font-bold text-brand-white text-center">{{ $pageHeader }}</h1>
+                    <h1 class="text-2xl font-bold text-brand-on-surface text-center">{{ $pageHeader }}</h1>
                 </div>
             </div>
             @else
@@ -298,7 +298,7 @@
                     <h2 class="text-lg font-bold text-brand-black mb-1">{{ __('Added to cart') }}</h2>
                     <p class="text-sm text-brand-gray-500 mb-5">{{ __('What would you like to do next?') }}</p>
                     <div class="grid grid-cols-1 gap-3">
-                        <a href="{{ route('cart.show') }}" class="w-full px-4 py-2.5 bg-brand-yellow text-brand-black text-sm font-semibold rounded-md hover:bg-brand-yellow-dark">
+                        <a href="{{ route('cart.show') }}" class="w-full px-4 py-2.5 bg-brand-yellow text-brand-on-primary text-sm font-semibold rounded-md hover:bg-brand-yellow-dark">
                             {{ __('Go to cart') }}
                         </a>
                         <button type="button" @click="show = false" class="w-full px-4 py-2.5 border border-brand-gray-300 text-sm font-semibold rounded-md hover:bg-brand-gray-100">
@@ -329,99 +329,99 @@
             x-transition:enter-start="opacity-0 translate-y-2"
             x-transition:enter-end="opacity-100 translate-y-0"
             role="dialog" aria-live="polite" aria-label="{{ __('Cookie preferences') }}"
-            class="fixed bottom-4 inset-x-4 sm:inset-x-auto sm:right-4 sm:w-80 z-50 bg-brand-black border border-brand-yellow rounded-xl shadow-lg p-4 text-sm text-brand-gray-300"
+            class="fixed bottom-4 inset-x-4 sm:inset-x-auto sm:right-4 sm:w-80 z-50 bg-brand-surface border border-brand-highlight rounded-xl shadow-lg p-4 text-sm text-brand-on-surface/70"
         >
             <p>
                 {{ __('We use one first-party cookie to see how our site is used. The site works either way.') }}
                 @if ($publishedPages['cookies'])
-                    <a href="{{ route('policy.cookies') }}" class="underline hover:text-brand-yellow">{{ __('Learn more') }}</a>
+                    <a href="{{ route('policy.cookies') }}" class="underline hover:text-brand-highlight">{{ __('Learn more') }}</a>
                 @endif
             </p>
             <div class="flex gap-2 mt-3">
                 <form method="POST" action="{{ route('cookie-consent.update') }}" class="flex-1">
                     @csrf
                     <input type="hidden" name="choice" value="decline">
-                    <button type="submit" class="w-full px-3 py-1.5 border border-brand-gray-500 text-brand-white text-sm font-semibold rounded-md hover:bg-brand-gray-800">{{ __('Decline') }}</button>
+                    <button type="submit" class="w-full px-3 py-1.5 border border-brand-on-surface/40 text-brand-on-surface text-sm font-semibold rounded-md hover:bg-brand-on-surface/10">{{ __('Decline') }}</button>
                 </form>
                 <form method="POST" action="{{ route('cookie-consent.update') }}" class="flex-1">
                     @csrf
                     <input type="hidden" name="choice" value="accept">
-                    <button type="submit" class="w-full px-3 py-1.5 bg-brand-yellow text-brand-black text-sm font-semibold rounded-md hover:bg-brand-yellow-dark">{{ __('Accept') }}</button>
+                    <button type="submit" class="w-full px-3 py-1.5 bg-brand-yellow text-brand-on-primary text-sm font-semibold rounded-md hover:bg-brand-yellow-dark">{{ __('Accept') }}</button>
                 </form>
             </div>
         </div>
         @endif
 
-        <footer class="mt-12 bg-brand-black border-t border-brand-yellow">
-            <div class="max-w-5xl mx-auto px-4 py-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 text-sm text-brand-gray-300">
+        <footer class="mt-12 bg-brand-surface border-t border-brand-highlight">
+            <div class="max-w-5xl mx-auto px-4 py-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 text-sm text-brand-on-surface/70">
                 <div>
-                    <x-brand-logo class="h-9 w-auto mb-4" text-class="block font-bold text-lg text-brand-white mb-4" />
+                    <x-brand-logo class="h-9 w-auto mb-4" text-class="block font-bold text-lg text-brand-on-surface mb-4" />
                     @if ($footerTagline)
-                        <p class="text-brand-gray-300">{{ $footerTagline }}</p>
+                        <p class="text-brand-on-surface/70">{{ $footerTagline }}</p>
                     @endif
                 </div>
 
                 @if ($websiteOn)
                 <div>
-                    <p class="font-semibold text-brand-yellow uppercase text-xs tracking-wide mb-4">{{ __('Quick links') }}</p>
+                    <p class="font-semibold text-brand-highlight uppercase text-xs tracking-wide mb-4">{{ __('Quick links') }}</p>
                     <nav class="space-y-2">
-                        <a href="{{ route('home') }}" class="block hover:text-brand-yellow transition">{{ __('Home') }}</a>
-                        <a href="{{ route('menu.index') }}" class="block hover:text-brand-yellow transition">{{ __('Menu') }}</a>
-                        <a href="{{ route('branches.index') }}" class="block hover:text-brand-yellow transition">{{ __('Branches') }}</a>
-                        <a href="{{ route('contact') }}" class="block hover:text-brand-yellow transition">{{ __('Contact us') }}</a>
+                        <a href="{{ route('home') }}" class="block hover:text-brand-highlight transition">{{ __('Home') }}</a>
+                        <a href="{{ route('menu.index') }}" class="block hover:text-brand-highlight transition">{{ __('Menu') }}</a>
+                        <a href="{{ route('branches.index') }}" class="block hover:text-brand-highlight transition">{{ __('Branches') }}</a>
+                        <a href="{{ route('contact') }}" class="block hover:text-brand-highlight transition">{{ __('Contact us') }}</a>
                         @if ($publishedPages['about'])
-                        <a href="{{ route('about') }}" class="block hover:text-brand-yellow transition">{{ __('About us') }}</a>
+                        <a href="{{ route('about') }}" class="block hover:text-brand-highlight transition">{{ __('About us') }}</a>
                         @endif
-                        <a href="{{ route('tracking.lookup') }}" class="block hover:text-brand-yellow transition">{{ __('Track order') }}</a>
+                        <a href="{{ route('tracking.lookup') }}" class="block hover:text-brand-highlight transition">{{ __('Track order') }}</a>
                         @if ($publishedPages['faq'])
-                        <a href="{{ route('faq') }}" class="block hover:text-brand-yellow transition">{{ __('FAQ') }}</a>
+                        <a href="{{ route('faq') }}" class="block hover:text-brand-highlight transition">{{ __('FAQ') }}</a>
                         @endif
                         @module('reviews')
-                            <a href="{{ route('reviews.index') }}" class="block hover:text-brand-yellow transition">{{ __('Reviews') }}</a>
+                            <a href="{{ route('reviews.index') }}" class="block hover:text-brand-highlight transition">{{ __('Reviews') }}</a>
                         @endmodule
                     </nav>
                 </div>
 
                 <div>
-                    <p class="font-semibold text-brand-yellow uppercase text-xs tracking-wide mb-4">{{ __('Policy') }}</p>
+                    <p class="font-semibold text-brand-highlight uppercase text-xs tracking-wide mb-4">{{ __('Policy') }}</p>
                     <nav class="space-y-2">
                         @if ($publishedPages['terms'])
-                        <a href="{{ route('policy.terms') }}" class="block hover:text-brand-yellow transition">{{ __('Terms & Conditions') }}</a>
+                        <a href="{{ route('policy.terms') }}" class="block hover:text-brand-highlight transition">{{ __('Terms & Conditions') }}</a>
                         @endif
                         @if ($publishedPages['refunds'])
-                        <a href="{{ route('policy.refunds') }}" class="block hover:text-brand-yellow transition">{{ __('Refund Policy') }}</a>
+                        <a href="{{ route('policy.refunds') }}" class="block hover:text-brand-highlight transition">{{ __('Refund Policy') }}</a>
                         @endif
                         @if ($publishedPages['privacy'])
-                        <a href="{{ route('policy.privacy') }}" class="block hover:text-brand-yellow transition">{{ __('Privacy Policy') }}</a>
+                        <a href="{{ route('policy.privacy') }}" class="block hover:text-brand-highlight transition">{{ __('Privacy Policy') }}</a>
                         @endif
                         @if ($publishedPages['cookies'])
-                        <a href="{{ route('policy.cookies') }}" class="block hover:text-brand-yellow transition">{{ __('Cookie Policy') }}</a>
+                        <a href="{{ route('policy.cookies') }}" class="block hover:text-brand-highlight transition">{{ __('Cookie Policy') }}</a>
                         @endif
-                        <button type="button" @click="$dispatch('open-cookie-banner')" class="block hover:text-brand-yellow transition text-left">{{ __('Cookie preferences') }}</button>
+                        <button type="button" @click="$dispatch('open-cookie-banner')" class="block hover:text-brand-highlight transition text-left">{{ __('Cookie preferences') }}</button>
                     </nav>
                 </div>
                 @endif
 
                 @if ($footerHasSocialLinks)
                     <div>
-                        <p class="font-semibold text-brand-yellow uppercase text-xs tracking-wide mb-4">{{ __('Follow us') }}</p>
-                        <x-social-links icon-class="text-brand-gray-300" />
+                        <p class="font-semibold text-brand-highlight uppercase text-xs tracking-wide mb-4">{{ __('Follow us') }}</p>
+                        <x-social-links icon-class="text-brand-on-surface/70" />
                     </div>
                 @endif
 
                 @if ($footerBranches !== [])
                     <div>
-                        <p class="font-semibold text-brand-yellow uppercase text-xs tracking-wide mb-4">{{ __('Call us') }}</p>
+                        <p class="font-semibold text-brand-highlight uppercase text-xs tracking-wide mb-4">{{ __('Call us') }}</p>
                         @foreach ($footerBranches as $branch)
-                            <a href="tel:{{ $branch['tel'] }}" class="block hover:text-brand-yellow transition mb-2"><span class="font-bold text-brand-white">{{ $branch['name'] }}</span><br>{{ $branch['display'] }}</a>
+                            <a href="tel:{{ $branch['tel'] }}" class="block hover:text-brand-highlight transition mb-2"><span class="font-bold text-brand-on-surface">{{ $branch['name'] }}</span><br>{{ $branch['display'] }}</a>
                         @endforeach
                     </div>
                 @endif
             </div>
-            <div class="max-w-5xl mx-auto px-4 py-4 border-t border-brand-gray-700 text-sm text-brand-gray-300 text-center">
+            <div class="max-w-5xl mx-auto px-4 py-4 border-t border-brand-on-surface/15 text-sm text-brand-on-surface/70 text-center">
                 &copy; {{ now()->year }} {{ config('app.name') }}
                 &middot;
-                {{ __('Designed by') }} <a href="tel:+233263702929" class="hover:text-brand-yellow transition">Solusys Digital: 026 370 2929</a>
+                {{ __('Designed by') }} <a href="tel:+233263702929" class="hover:text-brand-highlight transition">Solusys Digital: 026 370 2929</a>
             </div>
         </footer>
 

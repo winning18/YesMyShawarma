@@ -10,7 +10,7 @@
             <p class="text-brand-gray-500">{{ __('You\'ll still get SMS updates about orders you place.') }}</p>
             <form method="POST" action="{{ route('sms.opt-out.store', $code) }}">
                 @csrf
-                <button type="submit" class="px-6 py-2.5 bg-brand-yellow text-brand-black text-sm font-semibold rounded-md hover:bg-brand-yellow-dark">
+                <button type="submit" class="px-6 py-2.5 bg-brand-yellow text-brand-on-primary text-sm font-semibold rounded-md hover:bg-brand-yellow-dark">
                     {{ __('Yes, stop these messages') }}
                 </button>
             </form>

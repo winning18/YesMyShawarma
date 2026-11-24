@@ -56,5 +56,5 @@
         <p x-show="locationNote" x-text="locationNote" class="text-xs text-brand-gray-500 mt-1"></p>
     </div>
 
-    <button type="submit" class="px-6 py-2.5 bg-brand-yellow text-brand-black font-semibold rounded-md hover:bg-brand-yellow-dark">{{ $submitLabel }}</button>
+    <button type="submit" class="px-6 py-2.5 bg-brand-yellow text-brand-on-primary font-semibold rounded-md hover:bg-brand-yellow-dark">{{ $submitLabel }}</button>
 </form>

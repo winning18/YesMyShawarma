@@ -31,6 +31,7 @@ use function Laravel\Prompts\text;
     {--modules= : Modules to switch on, comma-separated keys (none = POS only)}
     {--primary-colour= : Brand primary colour, #rrggbb (required, owner 2026-11-24)}
     {--accent-colour= : Brand accent colour, #rrggbb (required)}
+    {--background-colour= : Website background colour, #rrggbb (required): header, home page, footer}
     {--logo= : Path to the logo on this server: PNG, JPG or WebP, up to 2 MB (required)}
     {--theme=classic : Website look: classic, photo or onepage (with the Website module)}
     {--json : Print the result as one line of JSON (for the Express POS admin portal)}')]
@@ -67,6 +68,7 @@ class NewClient extends Command
             'brand' => [
                 'primary' => strtolower((string) $ask('primary-colour', 'Brand primary colour (#rrggbb)', '#0b7a3a')),
                 'accent' => strtolower((string) $ask('accent-colour', 'Brand accent colour (#rrggbb)', '#fcd116')),
+                'background' => strtolower((string) $ask('background-colour', 'Website background colour (#rrggbb)', '#000000')),
                 'logo' => $ask('logo', 'Path to the logo file (PNG, JPG or WebP, up to 2 MB)'),
             ],
             'modules' => $this->modules(),
@@ -89,6 +91,7 @@ class NewClient extends Command
             'theme' => ['required', Rule::in(array_keys(WebsiteThemeService::THEMES))],
             'brand.primary' => ['required', 'regex:/^#[0-9a-f]{6}$/'],
             'brand.accent' => ['required', 'regex:/^#[0-9a-f]{6}$/'],
+            'brand.background' => ['required', 'regex:/^#[0-9a-f]{6}$/'],
             'brand.logo' => ['required', 'string', function (string $attribute, mixed $value, \Closure $fail): void {
                 $info = is_string($value) && is_file($value) && filesize($value) <= 2 * 1024 * 1024 ? @getimagesize($value) : false;
                 if (! in_array($info['mime'] ?? null, ['image/png', 'image/jpeg', 'image/webp'], true)) {
@@ -98,6 +101,7 @@ class NewClient extends Command
         ], [
             'brand.primary.regex' => 'The primary colour must be #rrggbb.',
             'brand.accent.regex' => 'The accent colour must be #rrggbb.',
+            'brand.background.regex' => 'The background colour must be #rrggbb.',
             'theme.in' => 'The website look must be classic, photo or onepage.',
         ]);
 

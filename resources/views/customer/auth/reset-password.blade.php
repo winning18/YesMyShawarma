@@ -20,7 +20,7 @@
                 <label for="password_confirmation" class="block text-sm font-medium mb-1">{{ __('Confirm new password') }} <span class="text-red-600">*</span></label>
                 <input id="password_confirmation" type="password" name="password_confirmation" required autocomplete="new-password" class="w-full rounded-md border-brand-gray-300">
             </div>
-            <button type="submit" class="w-full px-6 py-3 bg-brand-yellow text-brand-black font-semibold rounded-md hover:bg-brand-yellow-dark">{{ __('Set password and log in') }}</button>
+            <button type="submit" class="w-full px-6 py-3 bg-brand-yellow text-brand-on-primary font-semibold rounded-md hover:bg-brand-yellow-dark">{{ __('Set password and log in') }}</button>
         </form>
 
         <p class="text-sm text-brand-gray-500 mt-6">

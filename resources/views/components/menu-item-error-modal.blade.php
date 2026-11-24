@@ -21,7 +21,7 @@
         </ul>
         <button
             type="button" @click="errors = []"
-            class="w-full px-4 py-2.5 bg-brand-yellow text-brand-black text-sm font-semibold rounded-md hover:bg-brand-yellow-dark"
+            class="w-full px-4 py-2.5 bg-brand-yellow text-brand-on-primary text-sm font-semibold rounded-md hover:bg-brand-yellow-dark"
         >
             {{ __('OK') }}
         </button>

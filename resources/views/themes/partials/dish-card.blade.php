@@ -52,7 +52,7 @@
                     </button>
                 </form>
             @else
-                <a href="{{ route('menu.show', $item) }}" class="inline-flex items-center px-4 py-2 rounded-full border border-brand-black text-brand-black text-sm font-semibold hover:bg-brand-black hover:text-brand-white transition">
+                <a href="{{ route('menu.show', $item) }}" class="inline-flex items-center px-4 py-2 rounded-full border border-brand-black text-brand-black text-sm font-semibold hover:bg-brand-surface hover:text-brand-on-surface transition">
                     {{ ($branch ?? null) ? __('Choose') : __('View') }}
                 </a>
             @endif

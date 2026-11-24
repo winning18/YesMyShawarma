@@ -6,7 +6,7 @@
 --}}
 <x-customer-layout
     :title="$meta['title']"
-    body-class="bg-brand-black"
+    body-class="bg-brand-surface"
     :og-image="data_get($heroSlides->first(), 'imageUrl')"
     :og-description="$meta['description']"
 >
@@ -28,7 +28,7 @@
                 markup, no extra request or JS, so it never costs anything
                 against the 3G performance budget.
             --}}
-            <section class="relative bg-brand-red text-white text-center px-4 py-6">
+            <section class="relative bg-brand-red text-brand-on-accent text-center px-4 py-6">
                 @if ($promotionBanner['imageUrl'])
                     <img src="{{ $promotionBanner['imageUrl'] }}" alt="" class="mx-auto mb-3 max-h-40 rounded-lg" loading="eager">
                 @endif
@@ -122,13 +122,13 @@
                             stops means the sm: override actually replaces
                             the mobile one instead of stacking with it.
                         --}}
-                        <div class="absolute inset-0 bg-gradient-to-r from-brand-black/60 via-brand-black/60 to-brand-black/60 sm:from-brand-black/85 sm:via-brand-black/50 sm:to-brand-black/10"></div>
+                        <div class="absolute inset-0 bg-gradient-to-r from-brand-surface/60 via-brand-surface/60 to-brand-surface/60 sm:from-brand-surface/85 sm:via-brand-surface/50 sm:to-brand-surface/10"></div>
 
                         <div class="relative h-full max-w-5xl mx-auto px-4 flex items-center">
                             <div class="max-w-md text-left">
-                                <p class="text-brand-yellow uppercase tracking-wide text-sm font-semibold mb-2" x-text="slide.name"></p>
-                                <p class="text-3xl sm:text-4xl font-bold text-brand-white mb-6" x-text="slide.tagline"></p>
-                                <a href="{{ route('branches.index') }}" class="inline-block px-8 py-3 bg-brand-yellow text-brand-black font-bold rounded-md hover:bg-brand-yellow-dark">
+                                <p class="text-brand-highlight uppercase tracking-wide text-sm font-semibold mb-2" x-text="slide.name"></p>
+                                <p class="text-3xl sm:text-4xl font-bold text-brand-on-surface mb-6" x-text="slide.tagline"></p>
+                                <a href="{{ route('branches.index') }}" class="inline-block px-8 py-3 bg-brand-yellow text-brand-on-primary font-bold rounded-md hover:bg-brand-yellow-dark">
                                     {{ __('ORDER NOW') }}
                                 </a>
                             </div>
@@ -213,20 +213,20 @@
         --}}
         @if ($popularItems->isNotEmpty())
             <section class="mb-12">
-                <h2 class="text-xl font-bold text-brand-white mb-4">{{ __('Most ordered this month') }}</h2>
+                <h2 class="text-xl font-bold text-brand-on-surface mb-4">{{ __('Most ordered this month') }}</h2>
                 <div class="overflow-x-auto scrollbar-hide snap-x snap-mandatory">
                     <div class="flex gap-4 w-max">
                         @foreach ($popularItems as $item)
                             <a href="{{ route('menu.show', $item) }}" class="block w-40 shrink-0 snap-start group {{ $item->isAvailable ? '' : 'opacity-50' }}">
                                 <div class="relative">
                                     <x-product-image :item="$item" class="w-40 h-40 mb-2 rounded-lg group-hover:opacity-90 transition {{ $item->isAvailable ? '' : 'grayscale' }}" />
-                                    <span class="absolute top-2 left-2 bg-brand-yellow text-brand-black text-[11px] font-bold px-2 py-0.5 rounded">#{{ $item->popularRank }}</span>
+                                    <span class="absolute top-2 left-2 bg-brand-yellow text-brand-on-primary text-[11px] font-bold px-2 py-0.5 rounded">#{{ $item->popularRank }}</span>
                                     @unless ($item->isAvailable)
                                         <span class="absolute top-2 right-2 bg-brand-black/80 text-brand-white text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded">{{ __('Sold out') }}</span>
                                     @endunless
                                 </div>
-                                <p class="text-sm font-semibold truncate text-brand-white">{{ $item->name }}</p>
-                                <p class="text-sm text-brand-gray-300">GH₵{{ number_format($item->base_price / 100, 2) }}</p>
+                                <p class="text-sm font-semibold truncate text-brand-on-surface">{{ $item->name }}</p>
+                                <p class="text-sm text-brand-on-surface/70">GH₵{{ number_format($item->base_price / 100, 2) }}</p>
                             </a>
                         @endforeach
                     </div>
@@ -237,10 +237,10 @@
         @foreach ($menuSliders as $slider)
             <section class="mb-12">
                 <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-xl font-bold text-brand-white">{{ __($slider['title']) }}</h2>
+                    <h2 class="text-xl font-bold text-brand-on-surface">{{ __($slider['title']) }}</h2>
                     <a
                         href="{{ route('menu.index', ['category' => $slider['categorySlug']]) }}"
-                        class="text-sm font-semibold text-brand-yellow hover:text-brand-yellow-dark shrink-0"
+                        class="text-sm font-semibold text-brand-highlight hover:opacity-80 shrink-0"
                     >
                         {{ __('Show all') }}
                     </a>
@@ -251,8 +251,8 @@
                             @if ($item->isAvailable)
                                 <a href="{{ route('menu.show', $item) }}" class="block w-40 shrink-0 snap-start group">
                                     <x-product-image :item="$item" class="w-40 h-40 mb-2 rounded-lg group-hover:opacity-90 transition" />
-                                    <p class="text-sm font-semibold truncate text-brand-white">{{ $item->name }}</p>
-                                    <p class="text-sm text-brand-gray-300">GH₵{{ number_format($item->base_price / 100, 2) }}</p>
+                                    <p class="text-sm font-semibold truncate text-brand-on-surface">{{ $item->name }}</p>
+                                    <p class="text-sm text-brand-on-surface/70">GH₵{{ number_format($item->base_price / 100, 2) }}</p>
                                 </a>
                             @else
                                 <div class="block w-40 shrink-0 snap-start relative" aria-disabled="true">
@@ -262,8 +262,8 @@
                                             {{ __('Sold out') }}
                                         </span>
                                     </div>
-                                    <p class="text-sm font-semibold truncate text-brand-gray-400">{{ $item->name }}</p>
-                                    <p class="text-sm text-brand-gray-500">GH₵{{ number_format($item->base_price / 100, 2) }}</p>
+                                    <p class="text-sm font-semibold truncate text-brand-on-surface/50">{{ $item->name }}</p>
+                                    <p class="text-sm text-brand-on-surface/50">GH₵{{ number_format($item->base_price / 100, 2) }}</p>
                                 </div>
                             @endif
                         @endforeach

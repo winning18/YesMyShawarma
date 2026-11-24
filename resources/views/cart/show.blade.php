@@ -122,7 +122,7 @@
 
                     <a
                         href="{{ route('checkout.show') }}"
-                        class="block text-center px-6 py-3 bg-brand-yellow text-brand-black font-semibold rounded-md hover:bg-brand-yellow-dark"
+                        class="block text-center px-6 py-3 bg-brand-yellow text-brand-on-primary font-semibold rounded-md hover:bg-brand-yellow-dark"
                     >
                         {{ __('Proceed to checkout') }}
                     </a>

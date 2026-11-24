@@ -131,10 +131,10 @@ class DeliveryFeesAndHomeStripsTest extends TestCase
             ['title' => 'Everything good', 'slugs' => ['sides', 'wraps']],
         ]])->assertSessionHas('status');
 
-        $this->get(route('home'))->assertSee('text-brand-white">Everything good</h2>', false)->assertDontSee('text-brand-white">Wraps</h2>', false);
+        $this->get(route('home'))->assertSee('text-brand-on-surface">Everything good</h2>', false)->assertDontSee('text-brand-on-surface">Wraps</h2>', false);
 
         $this->as($gm)->put(route('dashboard.home-strips.update'), ['reset' => '1'])->assertSessionHas('status');
-        $this->get(route('home'))->assertSee('text-brand-white">Wraps</h2>', false)->assertSee('text-brand-white">Sides</h2>', false);
+        $this->get(route('home'))->assertSee('text-brand-on-surface">Wraps</h2>', false)->assertSee('text-brand-on-surface">Sides</h2>', false);
 
         app(ModuleService::class)->set(ModuleService::WEBSITE, false);
         $this->as($gm)->get(route('dashboard.home-strips.edit'))->assertNotFound();

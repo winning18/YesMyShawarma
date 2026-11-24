@@ -16,7 +16,7 @@
                     class="w-full rounded-md" :class="phone.invalid ? 'border-red-600 ring-1 ring-red-600' : 'border-brand-gray-300'">
                 <p class="text-xs text-red-600 mt-1" x-show="phone.invalid">{{ __('Enter a 10-digit phone number.') }}</p>
             </div>
-            <button type="submit" class="w-full px-6 py-3 bg-brand-yellow text-brand-black font-semibold rounded-md hover:bg-brand-yellow-dark">{{ __('Text me a code') }}</button>
+            <button type="submit" class="w-full px-6 py-3 bg-brand-yellow text-brand-on-primary font-semibold rounded-md hover:bg-brand-yellow-dark">{{ __('Text me a code') }}</button>
         </form>
 
         <p class="text-sm text-brand-gray-500 mt-6"><a href="{{ route('customer.login') }}" class="underline">{{ __('Back to log in') }}</a></p>

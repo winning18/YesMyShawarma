@@ -486,7 +486,7 @@
                         </button>
                         <button
                             type="button" @click="$refs.form.requestSubmit()"
-                            class="px-4 py-2.5 bg-brand-yellow text-brand-black text-sm font-semibold rounded-md hover:bg-brand-yellow-dark"
+                            class="px-4 py-2.5 bg-brand-yellow text-brand-on-primary text-sm font-semibold rounded-md hover:bg-brand-yellow-dark"
                         >
                             {{ __('Confirm & place order') }}
                         </button>
@@ -495,7 +495,7 @@
 
                 <button
                     type="button" x-show="!reviewing" @click="startReview()"
-                    class="w-full px-6 py-3 font-semibold rounded-md transition bg-brand-yellow text-brand-black hover:bg-brand-yellow-dark cursor-pointer"
+                    class="w-full px-6 py-3 font-semibold rounded-md transition bg-brand-yellow text-brand-on-primary hover:bg-brand-yellow-dark cursor-pointer"
                 >
                     {{ __('Review order') }}
                 </button>

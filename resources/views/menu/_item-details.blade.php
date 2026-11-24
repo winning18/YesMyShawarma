@@ -1,11 +1,11 @@
 <div class="flex justify-between items-start mb-3">
     <div>
-        <a href="{{ route('menu.show', $item) }}" class="font-semibold text-brand-white hover:underline">{{ $item->name }}</a>
+        <a href="{{ route('menu.show', $item) }}" class="font-semibold text-brand-on-surface hover:underline">{{ $item->name }}</a>
         @if ($isPopular ?? false)
-            <span class="ml-1 inline-block align-middle bg-brand-yellow text-brand-black text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded">{{ __('Popular') }}</span>
+            <span class="ml-1 inline-block align-middle bg-brand-yellow text-brand-on-primary text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded">{{ __('Popular') }}</span>
         @endif
     </div>
-    <p class="font-semibold whitespace-nowrap ml-2 text-brand-white">
+    <p class="font-semibold whitespace-nowrap ml-2 text-brand-on-surface">
         GH₵{{ number_format($item->base_price / 100, 2) }}
     </p>
 </div>
@@ -25,13 +25,13 @@
                 data-group-name="{{ $optionGroup->name }}"
                 @if ($optionGroup->max_select === 1) x-data="{ selected: null }" @endif
             >
-                <legend class="text-brand-yellow font-semibold mb-1">
+                <legend class="text-brand-highlight font-semibold mb-1">
                     {{ $optionGroup->name }}@if ($optionGroup->is_required)<span class="text-red-600"> *</span>@endif
                 </legend>
                 <div class="grid grid-cols-2 gap-x-3 gap-y-1.5">
                     @foreach ($optionGroup->options as $option)
                         @if ($optionGroup->max_select === 1)
-                            <label class="flex items-center gap-1.5 text-brand-white">
+                            <label class="flex items-center gap-1.5 text-brand-on-surface">
                                 <input
                                     type="checkbox" name="option_ids[]" value="{{ $option->id }}"
                                     :checked="selected === {{ $option->id }}"
@@ -42,7 +42,7 @@
                             </label>
                         @else
                             {{-- See menu/show.blade.php's equivalent block for why only a multi-select option gets this. --}}
-                            <div x-data="{ checked: false, qty: 1 }" class="flex items-center gap-1.5 text-brand-white">
+                            <div x-data="{ checked: false, qty: 1 }" class="flex items-center gap-1.5 text-brand-on-surface">
                                 <label class="flex items-center gap-1.5 flex-1 min-w-0">
                                     <input
                                         type="checkbox" name="option_ids[]" value="{{ $option->id }}" x-model="checked"
@@ -65,12 +65,12 @@
 
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <label class="text-sm text-brand-yellow font-semibold">{{ __('Qty') }}</label>
+                <label class="text-sm text-brand-highlight font-semibold">{{ __('Qty') }}</label>
                 <input type="number" name="quantity" value="1" min="1" max="{{ \App\Services\Cart\CartService::MAX_LINE_QUANTITY }}" class="w-16 rounded-md border-brand-gray-300 text-sm focus:border-brand-yellow focus:ring-brand-yellow">
             </div>
             <button
                 type="submit"
-                class="px-4 py-2 bg-brand-yellow text-brand-black text-sm font-semibold rounded-md hover:bg-brand-yellow-dark"
+                class="px-4 py-2 bg-brand-yellow text-brand-on-primary text-sm font-semibold rounded-md hover:bg-brand-yellow-dark"
             >
                 {{ __('Add to cart') }}
             </button>

@@ -73,6 +73,12 @@ class BusinessProfile
         'brand_accent' => '#6b7280',
         'brand_accent_light' => '#f3f4f6',
         'brand_accent_dark' => '#4b5563',
+        // The third colour (owner, 2026-11-24): the website's header, home
+        // page, footer and loading screen. Yes My Shawarma's black is its
+        // own stored setting.
+        'brand_background' => '#1f2937',
+        'brand_background_light' => '#bcbfc3',
+        'brand_background_dark' => '#191f2c',
     ];
 
     private const DIRECTORY = 'business';
@@ -241,13 +247,27 @@ class BusinessProfile
         // Readable text on each brand colour, black or white, whichever
         // contrasts more (website themes, 2026-11-24: a business's primary
         // may be light or dark).
-        foreach (['brand_primary', 'brand_accent'] as $key) {
+        foreach (['brand_primary', 'brand_accent', 'brand_background'] as $key) {
             $vars['--'.Str::of($key)->replace('_', '-').'-ink'] = $this->inkFor($this->colours()[$key]);
             // The colour as text or a link on white: darkened just enough to read (WCAG AA).
             $vars['--'.Str::of($key)->replace('_', '-').'-text'] = $this->readableOnWhite($this->colours()[$key]);
         }
 
+        // The main colour where it sits on the background (header links,
+        // footer headings): itself when it stands out (3:1), else the
+        // background's own readable text colour.
+        $vars['--brand-highlight'] = $this->contrast($this->colours()['brand_primary'], $this->colours()['brand_background']) >= 3
+            ? $vars['--brand-primary']
+            : $vars['--brand-background-ink'];
+
         return $vars;
+    }
+
+    private function contrast(string $a, string $b): float
+    {
+        [$la, $lb] = [$this->luminance(sscanf($a, '#%02x%02x%02x')), $this->luminance(sscanf($b, '#%02x%02x%02x'))];
+
+        return (max($la, $lb) + 0.05) / (min($la, $lb) + 0.05);
     }
 
     /**
@@ -274,14 +294,18 @@ class BusinessProfile
         return 0.2126 * $c[0] + 0.7152 * $c[1] + 0.0722 * $c[2];
     }
 
-    /** "0 0 0" or "255 255 255": the WCAG contrast winner on $hex. */
+    /**
+     * "0 0 0" or "255 255 255" for text on $hex: white whenever it reaches
+     * 4:1 (white on a strong red or green reads better than black, even
+     * where black scores a little higher), otherwise the higher contrast.
+     */
     private function inkFor(string $hex): string
     {
-        $luminance = collect(sscanf($hex, '#%02x%02x%02x'))
-            ->map(fn (int $channel) => ($c = $channel / 255) <= 0.03928 ? $c / 12.92 : (($c + 0.055) / 1.055) ** 2.4)
-            ->pipe(fn ($c) => 0.2126 * $c[0] + 0.7152 * $c[1] + 0.0722 * $c[2]);
+        $luminance = $this->luminance(sscanf($hex, '#%02x%02x%02x'));
+        $onWhite = 1.05 / ($luminance + 0.05);
+        $onBlack = ($luminance + 0.05) / 0.05;
 
-        return ($luminance + 0.05) / 0.05 >= 1.05 / ($luminance + 0.05) ? '0 0 0' : '255 255 255';
+        return $onWhite >= 4 || $onWhite >= $onBlack ? '255 255 255' : '0 0 0';
     }
 
     /**
@@ -340,7 +364,7 @@ class BusinessProfile
             $this->store($key, $value === '' ? null : $value);
         }
 
-        foreach (['primary', 'accent'] as $colour) {
+        foreach (['primary', 'accent', 'background'] as $colour) {
             $this->setColour($colour, $values[$colour.'_colour'] ?? null);
         }
 
@@ -348,11 +372,14 @@ class BusinessProfile
         $this->storeImage(self::ICON, 'icon', $icon, $removeIcon);
     }
 
-    /** Onboarding and Express POS Admin (2026-11-24): both brand colours at once. */
-    public function setBrandColours(string $primary, string $accent): void
+    /** Onboarding and Express POS Admin (2026-11-24): the brand colours at once. */
+    public function setBrandColours(string $primary, string $accent, ?string $background = null): void
     {
         $this->setColour('primary', $primary);
         $this->setColour('accent', $accent);
+        if ($background !== null) {
+            $this->setColour('background', $background);
+        }
     }
 
     /**

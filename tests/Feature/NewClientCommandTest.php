@@ -40,6 +40,7 @@ class NewClientCommandTest extends TestCase
             '--modules' => 'market_list,tax',
             '--primary-colour' => '#0b7a3a',
             '--accent-colour' => '#fcd116',
+            '--background-colour' => '#000000',
             '--logo' => $this->logo(),
             '--no-interaction' => true,
             ...$overrides,
@@ -137,6 +138,7 @@ class NewClientCommandTest extends TestCase
         Storage::fake('public');
 
         $this->artisan('expresspos:new-client', $this->commandOptions(['--primary-colour' => 'green']))->assertFailed();
+        $this->artisan('expresspos:new-client', $this->commandOptions(['--background-colour' => 'red']))->assertFailed();
         $this->artisan('expresspos:new-client', $this->commandOptions(['--logo' => '/nowhere.png']))->assertFailed();
         $this->assertFalse(Branch::exists());
 
@@ -146,8 +148,11 @@ class NewClientCommandTest extends TestCase
         $this->assertSame('#fcd116', $profile->colours()['brand_accent']);
         $this->assertNotNull($profile->logoUrl());
 
-        $this->artisan('expresspos:brand', ['--primary-colour' => '#112233', '--accent-colour' => '#445566'])->assertSuccessful();
+        $this->assertSame('#000000', $profile->colours()['brand_background']);
+
+        $this->artisan('expresspos:brand', ['--primary-colour' => '#112233', '--accent-colour' => '#445566', '--background-colour' => '#f22602'])->assertSuccessful();
         $this->assertSame('#112233', app(BusinessProfile::class)->colours()['brand_primary']);
+        $this->assertSame('#f22602', app(BusinessProfile::class)->colours()['brand_background']);
     }
 
     public function test_the_website_look_is_classic_unless_chosen(): void

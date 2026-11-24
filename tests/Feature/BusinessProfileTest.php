@@ -52,6 +52,7 @@ class BusinessProfileTest extends TestCase
             'instagram_url' => 'https://instagram.com/mamaput',
             'primary_colour' => '#0055aa',
             'accent_colour' => '#6b7280', // the fallback accent: unchanged
+            'background_colour' => '#1f2937', // the fallback background: unchanged
             'main_branch_id' => $this->branch->id,
             ...$overrides,
         ]);

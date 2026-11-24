@@ -13,7 +13,7 @@ use InvalidArgumentException;
  * its two colours, and its logo if a new one is given. The owner can do
  * the same on their Business profile page.
  */
-#[Signature('expresspos:brand {--primary-colour=} {--accent-colour=} {--logo= : Path to a new logo on this server (optional)}')]
+#[Signature('expresspos:brand {--primary-colour=} {--accent-colour=} {--background-colour= : The website background (optional; unchanged when left out)} {--logo= : Path to a new logo on this server (optional)}')]
 #[Description('Set the business\'s brand colours and, optionally, a new logo')]
 class BrandCommand extends Command
 {
@@ -22,8 +22,11 @@ class BrandCommand extends Command
         $primary = strtolower((string) $this->option('primary-colour'));
         $accent = strtolower((string) $this->option('accent-colour'));
 
-        if (! preg_match('/^#[0-9a-f]{6}$/', $primary) || ! preg_match('/^#[0-9a-f]{6}$/', $accent)) {
-            $this->error('Give both colours as #rrggbb.');
+        $background = $this->option('background-colour') ? strtolower((string) $this->option('background-colour')) : null;
+
+        if (! preg_match('/^#[0-9a-f]{6}$/', $primary) || ! preg_match('/^#[0-9a-f]{6}$/', $accent)
+            || ($background !== null && ! preg_match('/^#[0-9a-f]{6}$/', $background))) {
+            $this->error('Give the colours as #rrggbb.');
 
             return self::FAILURE;
         }
@@ -38,7 +41,7 @@ class BrandCommand extends Command
             return self::FAILURE;
         }
 
-        $profile->setBrandColours($primary, $accent);
+        $profile->setBrandColours($primary, $accent, $background);
         $this->info('Brand updated.');
 
         return self::SUCCESS;

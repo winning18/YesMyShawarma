@@ -51,7 +51,7 @@
                 >
             </div>
 
-            <button type="submit" class="px-6 py-3 bg-brand-yellow text-brand-black font-semibold rounded-md hover:bg-brand-yellow-dark">
+            <button type="submit" class="px-6 py-3 bg-brand-yellow text-brand-on-primary font-semibold rounded-md hover:bg-brand-yellow-dark">
                 {{ __('Find my order') }}
             </button>
         </form>

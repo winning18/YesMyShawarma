@@ -21,7 +21,7 @@
                             class="w-full rounded-md {{ $errors->has('email') ? 'border-red-600 ring-1 ring-red-600' : 'border-brand-gray-300' }}">
                         @error('email') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                     </div>
-                    <button type="submit" class="px-6 py-2.5 bg-brand-yellow text-brand-black font-semibold rounded-md hover:bg-brand-yellow-dark">{{ __('Save details') }}</button>
+                    <button type="submit" class="px-6 py-2.5 bg-brand-yellow text-brand-on-primary font-semibold rounded-md hover:bg-brand-yellow-dark">{{ __('Save details') }}</button>
                 </form>
             </section>
 
@@ -42,7 +42,7 @@
                         <input id="code" type="text" name="code" required inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}"
                             class="w-40 rounded-md border-brand-gray-300 tracking-widest text-lg">
                         <div class="flex flex-wrap items-center gap-4">
-                            <button type="submit" class="px-6 py-2.5 bg-brand-yellow text-brand-black font-semibold rounded-md hover:bg-brand-yellow-dark">{{ __('Confirm new number') }}</button>
+                            <button type="submit" class="px-6 py-2.5 bg-brand-yellow text-brand-on-primary font-semibold rounded-md hover:bg-brand-yellow-dark">{{ __('Confirm new number') }}</button>
                         </div>
                     </form>
                     <div class="flex flex-wrap gap-4 mt-3 text-sm">
@@ -99,7 +99,7 @@
                     @if ($customer->marketing_opted_out_at)
                         <span class="text-sm">{{ __('You\'re not getting SMS offers.') }}</span>
                         <input type="hidden" name="sms_offers" value="1">
-                        <button type="submit" class="px-4 py-2 bg-brand-yellow text-brand-black text-sm font-semibold rounded-md hover:bg-brand-yellow-dark">{{ __('Send me offers') }}</button>
+                        <button type="submit" class="px-4 py-2 bg-brand-yellow text-brand-on-primary text-sm font-semibold rounded-md hover:bg-brand-yellow-dark">{{ __('Send me offers') }}</button>
                     @else
                         <span class="text-sm">{{ __('You\'re getting SMS offers.') }}</span>
                         <input type="hidden" name="sms_offers" value="0">

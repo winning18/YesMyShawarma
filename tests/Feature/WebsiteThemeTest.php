@@ -8,6 +8,7 @@ use App\Models\MenuItem;
 use App\Models\User;
 use App\Services\Content\WebsiteThemeService;
 use App\Services\Modules\ModuleService;
+use App\Services\Settings\BusinessProfile;
 use App\Services\Settings\SettingsService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -189,5 +190,20 @@ class WebsiteThemeTest extends TestCase
         $lum = fn (int $v) => ($s = $v / 255) <= 0.03928 ? $s / 12.92 : (($s + 0.055) / 1.055) ** 2.4;
         $l = 0.2126 * $lum((int) $m[1]) + 0.7152 * $lum((int) $m[2]) + 0.0722 * $lum((int) $m[3]);
         $this->assertGreaterThanOrEqual(4.5, 1.05 / ($l + 0.05), 'readable on white');
+    }
+
+    public function test_the_background_colour_carries_the_site_and_the_main_colour_stays_visible_on_it(): void
+    {
+        app(BusinessProfile::class)->setBrandColours('#f7f01d', '#ffffff', '#f22602');
+
+        $this->get(route('home'))->assertOk()
+            ->assertSee('--brand-background:242 38 2;', false)
+            ->assertSee('--brand-background-ink:255 255 255;', false)
+            ->assertSee('--brand-highlight:247 240 29;', false, 'yellow stands out on red')
+            ->assertSee('bg-brand-surface', false);
+
+        // A main colour too close to the background falls back to readable text.
+        app(BusinessProfile::class)->setBrandColours('#e02020', '#ffffff', '#f22602');
+        $this->get(route('home'))->assertSee('--brand-highlight:255 255 255;', false);
     }
 }

@@ -16,7 +16,7 @@
                                 <p class="font-semibold">
                                     {{ $address->label ?: $address->areaName() ?: __('Address') }}
                                     @if ($address->is_default)
-                                        <span class="ms-1 text-xs font-semibold bg-brand-yellow text-brand-black px-2 py-0.5 rounded-full">{{ __('Default') }}</span>
+                                        <span class="ms-1 text-xs font-semibold bg-brand-yellow text-brand-on-primary px-2 py-0.5 rounded-full">{{ __('Default') }}</span>
                                     @endif
                                 </p>
                                 <p class="text-sm text-brand-gray-700">{{ collect([$address->areaName(), $address->landmark])->filter()->join(' · ') }}</p>

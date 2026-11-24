@@ -30,11 +30,11 @@
         <section class="bg-brand-yellow-light overflow-hidden">
             <div class="max-w-6xl mx-auto px-4 py-12 sm:py-16 grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
                 <div>
-                    <p class="inline-block mb-5 px-3 py-1 rounded-full bg-brand-black text-brand-white text-xs font-semibold uppercase tracking-wider">{{ $hero['eyebrow'] }}</p>
+                    <p class="inline-block mb-5 px-3 py-1 rounded-full bg-brand-surface text-brand-on-surface text-xs font-semibold uppercase tracking-wider">{{ $hero['eyebrow'] }}</p>
                     <h1 class="font-heading text-5xl sm:text-6xl lg:text-7xl leading-[0.95] text-brand-black">{{ $hero['headline'] }}</h1>
                     <div class="mt-8 flex flex-wrap gap-3">
-                        <a href="#menu" class="inline-flex items-center px-7 py-3 rounded-full bg-brand-black text-brand-white font-semibold hover:bg-brand-gray-700 transition">{{ __('See the menu') }}</a>
-                        <a href="#branches" class="inline-flex items-center px-7 py-3 rounded-full border-2 border-brand-black text-brand-black font-semibold hover:bg-brand-black hover:text-brand-white transition">{{ __('Find a branch') }}</a>
+                        <a href="#menu" class="inline-flex items-center px-7 py-3 rounded-full bg-brand-surface text-brand-on-surface font-semibold hover:opacity-90 transition">{{ __('See the menu') }}</a>
+                        <a href="#branches" class="inline-flex items-center px-7 py-3 rounded-full border-2 border-brand-black text-brand-black font-semibold hover:bg-brand-surface hover:text-brand-on-surface transition">{{ __('Find a branch') }}</a>
                     </div>
                 </div>
 
@@ -122,9 +122,9 @@
                     @endforeach
                 </div>
             @endif
-            <div class="rounded-2xl bg-brand-black text-brand-white p-6 flex flex-col">
-                <p class="text-xs uppercase tracking-wider text-brand-gray-300 mb-3">{{ __('Send a message') }}</p>
-                <p class="text-sm text-brand-gray-300 flex-1">{{ __('Questions, catering or feedback: write to us and we\'ll reply.') }}</p>
+            <div class="rounded-2xl bg-brand-surface text-brand-on-surface p-6 flex flex-col">
+                <p class="text-xs uppercase tracking-wider text-brand-on-surface/70 mb-3">{{ __('Send a message') }}</p>
+                <p class="text-sm text-brand-on-surface/70 flex-1">{{ __('Questions, catering or feedback: write to us and we\'ll reply.') }}</p>
                 <a href="{{ route('contact') }}" class="mt-4 inline-flex self-start items-center px-5 py-2.5 rounded-full bg-brand-white text-brand-black text-sm font-semibold hover:bg-brand-gray-100 transition">{{ __('Contact form') }}</a>
             </div>
         </div>

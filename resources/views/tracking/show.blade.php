@@ -105,7 +105,7 @@
                                         @click="submitReview()"
                                         :disabled="reviewRating === 0 || reviewSubmitting"
                                         :class="reviewRating === 0 || reviewSubmitting ? 'opacity-50 cursor-not-allowed' : ''"
-                                        class="px-5 py-2 bg-brand-yellow text-brand-black text-sm font-semibold rounded-md hover:bg-brand-yellow-dark"
+                                        class="px-5 py-2 bg-brand-yellow text-brand-on-primary text-sm font-semibold rounded-md hover:bg-brand-yellow-dark"
                                     >
                                         {{ __('Submit review') }}
                                     </button>

@@ -27,7 +27,7 @@
                         <div class="flex flex-wrap items-center gap-4 mt-3">
                             <form method="POST" action="{{ route('customer.account.reorder', $order) }}">
                                 @csrf
-                                <button type="submit" class="px-4 py-2 bg-brand-yellow text-brand-black text-sm font-semibold rounded-md hover:bg-brand-yellow-dark">{{ __('Order again') }}</button>
+                                <button type="submit" class="px-4 py-2 bg-brand-yellow text-brand-on-primary text-sm font-semibold rounded-md hover:bg-brand-yellow-dark">{{ __('Order again') }}</button>
                             </form>
                             <a href="{{ route('tracking.show', $order) }}" class="text-sm underline text-brand-gray-500">{{ __('Track / details') }}</a>
                         </div>

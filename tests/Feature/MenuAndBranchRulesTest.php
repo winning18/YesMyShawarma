@@ -128,11 +128,11 @@ class MenuAndBranchRulesTest extends TestCase
         $this->item($wraps, 'Chicken Wrap');
         $this->item($sides, 'Kelewele');
 
-        $this->get(route('home'))->assertSee('text-brand-white">Wraps</h2>', false)->assertSee('text-brand-white">Sides</h2>', false);
+        $this->get(route('home'))->assertSee('text-brand-on-surface">Wraps</h2>', false)->assertSee('text-brand-on-surface">Sides</h2>', false);
 
         app(SettingsService::class)->set(SettingsService::HOME_MENU_SLIDERS, json_encode([['title' => 'Everything good', 'slugs' => ['wraps', 'sides']]]));
 
-        $this->get(route('home'))->assertSee('text-brand-white">Everything good</h2>', false)->assertDontSee('text-brand-white">Wraps</h2>', false);
+        $this->get(route('home'))->assertSee('text-brand-on-surface">Everything good</h2>', false)->assertDontSee('text-brand-on-surface">Wraps</h2>', false);
     }
 
     public function test_the_backfill_copies_yes_my_shawarmas_rules(): void

@@ -19,7 +19,7 @@
                     <a
                         href="#cat-{{ $group['category']->slug }}"
                         @click="active = @js($group['category']->slug)"
-                        :class="active === @js($group['category']->slug) ? 'bg-brand-black text-brand-white border-brand-black' : 'bg-brand-white text-brand-black border-brand-gray-300'"
+                        :class="active === @js($group['category']->slug) ? 'bg-brand-surface text-brand-on-surface border-brand-surface' : 'bg-brand-white text-brand-black border-brand-gray-300'"
                         class="whitespace-nowrap px-4 py-1.5 text-sm font-semibold rounded-full border transition"
                     >{{ $group['category']->name }}</a>
                 @endforeach

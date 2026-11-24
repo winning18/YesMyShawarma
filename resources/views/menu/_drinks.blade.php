@@ -16,7 +16,7 @@
                         <input type="hidden" name="branch_id" value="{{ $branch->id }}">
                         <input type="hidden" name="menu_item_id" value="{{ $drink->id }}">
                         <input type="hidden" name="quantity" value="1">
-                        <button type="submit" class="w-full px-3 py-1.5 bg-brand-black text-brand-white text-xs font-semibold rounded-md hover:bg-brand-gray-700">
+                        <button type="submit" class="w-full px-3 py-1.5 bg-brand-surface text-brand-on-surface text-xs font-semibold rounded-md hover:opacity-90">
                             {{ __('+ Add') }}
                         </button>
                     </form>

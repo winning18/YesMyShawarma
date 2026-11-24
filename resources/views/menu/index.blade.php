@@ -45,7 +45,7 @@
                     @click.outside="showSuggestions = false"
                     placeholder="{{ __('Search our menu…') }}"
                     autocomplete="off"
-                    class="w-full rounded-md border-2 border-brand-yellow bg-brand-black text-brand-white placeholder-brand-gray-400 focus:border-brand-yellow focus:ring-brand-yellow"
+                    class="w-full rounded-md border-2 border-brand-yellow bg-brand-surface text-brand-on-surface placeholder-brand-on-surface/50 focus:border-brand-yellow focus:ring-brand-yellow"
                 >
 
                 <div
@@ -67,13 +67,13 @@
             <div class="flex flex-wrap items-center justify-center gap-2">
                 <button
                     type="button" @click="categoryFilter = 'all'"
-                    :class="categoryFilter === 'all' ? 'bg-brand-yellow text-brand-black' : 'bg-brand-black text-brand-white border border-brand-yellow'"
+                    :class="categoryFilter === 'all' ? 'bg-brand-yellow text-brand-on-primary' : 'bg-brand-surface text-brand-on-surface border border-brand-highlight'"
                     class="whitespace-nowrap px-3 py-1 text-xs font-semibold rounded-full"
                 >{{ __('All') }}</button>
                 @foreach ($categories as $group)
                     <button
                         type="button" @click="categoryFilter = '{{ $group['category']->slug }}'"
-                        :class="categoryFilter === '{{ $group['category']->slug }}' ? 'bg-brand-yellow text-brand-black' : 'bg-brand-black text-brand-white border border-brand-yellow'"
+                        :class="categoryFilter === '{{ $group['category']->slug }}' ? 'bg-brand-yellow text-brand-on-primary' : 'bg-brand-surface text-brand-on-surface border border-brand-highlight'"
                         class="whitespace-nowrap px-3 py-1 text-xs font-semibold rounded-full"
                     >{{ $group['category']->name }}</button>
                 @endforeach
@@ -95,7 +95,7 @@
                     @foreach ($group['items'] as $item)
                         <div x-show="itemMatches(@js($item->name))">
                             @if (in_array($group['category']->slug, $sideBySideCategories, true))
-                                <div class="bg-brand-black rounded-lg p-4 flex items-start gap-3">
+                                <div class="bg-brand-surface rounded-lg p-4 flex items-start gap-3">
                                     <a href="{{ route('menu.show', $item) }}" class="shrink-0">
                                         <x-product-image :item="$item" class="w-20 h-20" />
                                     </a>
@@ -105,7 +105,7 @@
                                     </div>
                                 </div>
                             @else
-                                <div class="bg-brand-black rounded-lg p-4">
+                                <div class="bg-brand-surface rounded-lg p-4">
                                     <a href="{{ route('menu.show', $item) }}">
                                         <x-product-image :item="$item" class="w-full max-w-56 mx-auto aspect-square mb-4" />
                                     </a>

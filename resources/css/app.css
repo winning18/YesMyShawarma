@@ -124,6 +124,11 @@
     --brand-accent-ink: 255 255 255;
     --brand-primary-text: 55 65 81;
     --brand-accent-text: 75 85 99;
+    --brand-background: 31 41 55;
+    --brand-background-light: 188 191 195;
+    --brand-background-dark: 25 31 44;
+    --brand-background-ink: 255 255 255;
+    --brand-highlight: 255 255 255;
 }
 
 /*
@@ -235,7 +240,7 @@ fieldset.xpos-invalid,
      * crosses fades, keeps the slider transition cheap (no image swap).
      */
     .hero-slider-bg {
-        background-color: theme('colors.brand.black');
+        background-color: rgb(var(--brand-background));
         background-image: radial-gradient(circle at 80% 15%, rgb(var(--brand-primary) / 0.16) 0%, rgb(var(--brand-primary) / 0) 55%),
             radial-gradient(circle at 10% 90%, rgb(var(--brand-primary) / 0.08) 0%, rgb(var(--brand-primary) / 0) 50%);
     }

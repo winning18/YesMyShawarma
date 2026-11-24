@@ -3,7 +3,7 @@
     <div class="mb-6 rounded-lg bg-brand-gray-100 px-4 py-3">
         <p class="font-semibold">{{ __('Sold out at :branch right now', ['branch' => $branch->name]) }}</p>
         <p class="text-sm text-brand-gray-500">{{ __('Check back soon, or see what else is on the menu.') }}</p>
-        <a href="{{ route('menu.index') }}" class="inline-block mt-3 px-6 py-2.5 bg-brand-black text-brand-yellow font-bold rounded-md hover:bg-brand-gray-700">{{ __('Browse the menu') }}</a>
+        <a href="{{ route('menu.index') }}" class="inline-block mt-3 px-6 py-2.5 bg-brand-surface text-brand-highlight font-bold rounded-md hover:opacity-90">{{ __('Browse the menu') }}</a>
     </div>
 @else
 <div x-data="menuItemForm()">
@@ -81,7 +81,7 @@
             <input type="number" name="quantity" value="1" min="1" max="{{ \App\Services\Cart\CartService::MAX_LINE_QUANTITY }}" class="w-20 rounded-md border-2 border-brand-black focus:border-brand-black focus:ring-brand-black">
         </div>
 
-        <button type="submit" class="w-full sm:w-auto px-8 py-3 bg-brand-black text-brand-yellow font-bold rounded-md hover:bg-brand-gray-700">
+        <button type="submit" class="w-full sm:w-auto px-8 py-3 bg-brand-surface text-brand-highlight font-bold rounded-md hover:opacity-90">
             {{ __('Add to cart') }}
         </button>
     </form>
