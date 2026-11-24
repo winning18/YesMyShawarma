@@ -134,17 +134,22 @@ jobs:
             sudo systemctl reload php8.3-fpm
           '
 
-      # Client installs on the staging code until the MVP release. The admin
-      # portal's provisioning registers each one in /etc/expresspos/installs
-      # on the server; the repository variable EXPRESSPOS_EXTRA_INSTALLS can
-      # add more by hand (space-separated, e.g. "expresspos-deboyes"). Each
-      # gets the same build, code and migrations as staging, and restarts
-      # its own services. None registered: nothing happens.
-      - name: Update client installs on the staging code
+      # Installs on the staging code (owner, 2026-11-24): shared staging and
+      # client sandboxes, listed in /etc/expresspos/staging-installs on the
+      # server. Live clients (/etc/expresspos/installs) too, until the MVP
+      # release: the repository variable EXPRESSPOS_RELEASED set to "true" on
+      # release night hands them to the Main deploy (deploy.yml) for good.
+      # EXPRESSPOS_EXTRA_INSTALLS can add more by hand (space-separated).
+      # Each gets the same build, code and migrations as staging, and
+      # restarts its own services. None registered: nothing happens.
+      - name: Update installs on the staging code
         env:
           EXTRA: ${{ vars.EXPRESSPOS_EXTRA_INSTALLS }}
+          RELEASED: ${{ vars.EXPRESSPOS_RELEASED }}
         run: |
-          REGISTERED="$(ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} 'cat /etc/expresspos/installs 2>/dev/null || true')"
+          LISTS="/etc/expresspos/staging-installs"
+          [ "$RELEASED" = "true" ] || LISTS="$LISTS /etc/expresspos/installs"
+          REGISTERED="$(ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "cat $LISTS 2>/dev/null || true")"
           INSTALLS="$(echo $EXTRA $REGISTERED | tr ' ' '\n' | sort -u | tr '\n' ' ')"
           if [ -z "${INSTALLS// /}" ]; then echo "No client installs."; exit 0; fi
           for install in $INSTALLS; do

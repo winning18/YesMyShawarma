@@ -12,7 +12,8 @@
 # then expresspos:scrub-sandbox replaces customers' personal data and
 # disconnects their website domain. It has no Paystack or SMS keys and sends
 # no email. Staff accounts are kept so the owner can sign in to review work.
-# Registered for code updates (/etc/expresspos/installs), never for backups.
+# Registered for the staging code's updates (/etc/expresspos/staging-installs),
+# never for backups.
 # If anything fails, whatever was made is removed again.
 #
 # The live install is only read from (mysqldump, rsync), never changed.
@@ -61,7 +62,9 @@ remove() {
   rm -f "/etc/cron.d/$SLUG_DIR" "/etc/sudoers.d/deploy-$SLUG_DIR"
   mysql -e "DROP DATABASE IF EXISTS \`$DB\`; DROP USER IF EXISTS '$DB'@'localhost';"
   rm -rf "$DIR"
-  [[ -f /etc/expresspos/installs ]] && sed -i "/^$SLUG_DIR\$/d" /etc/expresspos/installs
+  for list in /etc/expresspos/installs /etc/expresspos/staging-installs; do
+    [[ -f "$list" ]] && sed -i "/^$SLUG_DIR\$/d" "$list"
+  done
   return 0
 }
 
@@ -79,7 +82,7 @@ fi
 trap 'echo "==> Something failed; removing the half-made sandbox"; remove; fail "Creating the sandbox failed; see the log above. Nothing was left behind."' ERR
 
 echo "==> Creating the sandbox install at https://$DOMAIN"
-/usr/local/sbin/expresspos-new-install "$NAME" "$DOMAIN"
+/usr/local/sbin/expresspos-new-install "$NAME" "$DOMAIN" staging
 
 echo "==> Sign-in gate"
 USERNAME=preview
@@ -111,10 +114,10 @@ sudo -u www-data php artisan expresspos:scrub-sandbox
 sudo -u deploy php artisan config:cache --quiet
 systemctl restart "$SLUG_DIR-queue.service"
 
-echo "==> Registering it for code updates (not backups)"
+echo "==> Registering it for the staging code's updates (not backups)"
 mkdir -p /etc/expresspos
-touch /etc/expresspos/installs
-grep -qx "$SLUG_DIR" /etc/expresspos/installs || echo "$SLUG_DIR" >> /etc/expresspos/installs
+touch /etc/expresspos/staging-installs
+grep -qx "$SLUG_DIR" /etc/expresspos/staging-installs || echo "$SLUG_DIR" >> /etc/expresspos/staging-installs
 
 trap - ERR
 echo "EXPRESSPOS_RESULT {\"ok\":true,\"url\":\"https://$DOMAIN\",\"credentials\":{\"username\":\"$USERNAME\",\"password\":\"$PASSWORD\"}}"

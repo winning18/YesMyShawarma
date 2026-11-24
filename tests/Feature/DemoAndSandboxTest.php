@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\Settings\BusinessProfile;
 use App\Services\Settings\SettingsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -101,5 +102,22 @@ class DemoAndSandboxTest extends TestCase
 
         $this->artisan('expresspos:scrub-sandbox')->assertFailed();
         $this->assertSame('Ama Mensah', $customer->fresh()->name);
+    }
+
+    public function test_an_install_describes_itself_for_express_pos_admin(): void
+    {
+        Storage::fake('public');
+        $this->artisan('expresspos:demo-data')->assertSuccessful();
+
+        $this->assertSame(0, Artisan::call('expresspos:describe'));
+        $described = json_decode(trim(Artisan::output()), true);
+
+        $this->assertSame('Express POS Demo', $described['name']);
+        $this->assertSame('Osu', $described['branch']['name']);
+        $this->assertSame('owner@demo.expresspos.test', $described['owner']['email']);
+        $this->assertContains('website', $described['modules']);
+        $this->assertSame(['primary' => '#f59e0b', 'accent' => '#0f766e', 'background' => '#111827'], $described['colours']);
+        $this->assertSame('classic', $described['theme']);
+        $this->assertNotNull($described['logo']);
     }
 }

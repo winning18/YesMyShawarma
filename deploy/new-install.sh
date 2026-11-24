@@ -3,12 +3,14 @@
 # Express POS: set up one more client install on this server, by hand
 # (step 10's pilot; step 6 automates this later). Run as root on the server:
 #
-#   sudo bash deploy/new-install.sh <name> <domain>
+#   sudo bash deploy/new-install.sh <name> <domain> [staging|Main]
 #   e.g. sudo bash deploy/new-install.sh mamaput mamaput.pos.solusysdigital.com
 #
 # Before running: the domain's DNS A record must point at this server
-# (certbot needs it). The install tracks the `staging` branch until the
-# MVP release, and the staging deploy updates it (EXPRESSPOS_EXTRA_INSTALLS).
+# (certbot needs it). The code branch: `staging` for shared staging and
+# sandboxes; for a client, `staging` until the MVP release and `Main` after
+# it (the release creates /etc/expresspos/released), which is the default
+# when none is given. Main installs take their build from a live install.
 #
 # What it creates, all named expresspos-<name>:
 #   /var/www/expresspos-<name>            the code (cloned from staging's checkout)
@@ -27,8 +29,19 @@ set -euo pipefail
 
 NAME="${1:-}"
 DOMAIN="${2:-}"
-SOURCE=/var/www/yes-my-shawarma-staging
+BRANCH="${3:-$([[ -f /etc/expresspos/released ]] && echo Main || echo staging)}"
 PHP_VERSION=8.3
+
+if [[ "$BRANCH" == staging ]]; then
+  SOURCE=/var/www/yes-my-shawarma-staging
+  [[ -d "$SOURCE" ]] || SOURCE=/var/www/expresspos-staging
+elif [[ "$BRANCH" == Main ]]; then
+  # The released build is on every live install; take it from the first one.
+  SOURCE="/var/www/$(head -n1 /etc/expresspos/installs 2>/dev/null)"
+else
+  echo "The branch must be staging or Main." >&2; exit 1
+fi
+[[ -d "$SOURCE/.git" ]] || { echo "No $BRANCH install to copy the code from ($SOURCE)." >&2; exit 1; }
 
 if [[ $EUID -ne 0 ]]; then echo "Run as root." >&2; exit 1; fi
 if [[ ! "$NAME" =~ ^[a-z][a-z0-9]{1,23}$ ]]; then echo "Name: lowercase letters and digits, 2-24 characters (e.g. mamaput)." >&2; exit 1; fi
@@ -57,10 +70,10 @@ REVERB_SECRET="$(random 20)"
 echo "==> Code: $DIR"
 mkdir "$DIR"
 chown deploy:www-data "$DIR"
-sudo -u deploy git clone --quiet --branch staging "$SOURCE" "$DIR"
+sudo -u deploy git clone --quiet "$SOURCE" "$DIR"
 sudo -u deploy git -C "$DIR" remote set-url origin "$(sudo -u deploy git -C "$SOURCE" remote get-url origin)"
 sudo -u deploy git -C "$DIR" fetch --quiet origin
-sudo -u deploy git -C "$DIR" reset --quiet --hard origin/staging
+sudo -u deploy git -C "$DIR" checkout --quiet -B "$BRANCH" "origin/$BRANCH"
 for part in vendor public/build public/downloads; do
   sudo -u deploy mkdir -p "$DIR/$part"
   sudo -u deploy rsync -a --delete "$SOURCE/$part/" "$DIR/$part/"
@@ -266,8 +279,9 @@ cat <<DONE
 
 Done: https://$DOMAIN
 
-Next (Express POS Admin's onboarding does all three itself):
+Code: $BRANCH. Next (Express POS Admin's onboarding does all three itself):
   1. Fill in the business:  cd $DIR && sudo -u www-data php artisan expresspos:new-client
-  2. Register it for updates: add "$SLUG" to /etc/expresspos/installs.
-  3. Add $DB to the nightly backups: /etc/expresspos/backup.conf.
+  2. Register it for updates: add "$SLUG" to /etc/expresspos/installs (a live client)
+     or /etc/expresspos/staging-installs (staging, sandboxes).
+  3. Add $DB to the nightly backups: /etc/expresspos/backup.conf (live clients only).
 DONE

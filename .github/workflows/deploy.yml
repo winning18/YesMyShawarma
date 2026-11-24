@@ -108,28 +108,34 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Sync vendor/, public/build/ and public/downloads/ to server
+      # Every live install (owner, 2026-11-24): the MVP release made Yes My
+      # Shawarma an ordinary install, so Main updates every client listed in
+      # /etc/expresspos/installs on the server: same build, code and
+      # migrations, each restarting its own services. Staging and sandboxes
+      # are the staging deploy's (deploy-staging.yml).
+      - name: Update every live install
         run: |
-          rsync -az --delete -e "ssh -i ~/.ssh/deploy_key" vendor/ \
-            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/var/www/yes-my-shawarma/vendor/
-          rsync -az --delete -e "ssh -i ~/.ssh/deploy_key" public/build/ \
-            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/var/www/yes-my-shawarma/public/build/
-          rsync -az --delete -e "ssh -i ~/.ssh/deploy_key" public/downloads/ \
-            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/var/www/yes-my-shawarma/public/downloads/
-
-      - name: Update source code and restart services
-        run: |
-          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} '
-            set -e
-            cd /var/www/yes-my-shawarma
-            git fetch origin
-            git reset --hard origin/Main
-            php artisan package:discover --ansi
-            php artisan migrate --force
-            php artisan config:cache
-            php artisan route:cache
-            php artisan view:cache
-            sudo systemctl restart yes-my-shawarma-queue.service
-            sudo systemctl restart yes-my-shawarma-reverb.service
-            sudo systemctl reload php8.3-fpm
-          '
+          INSTALLS="$(ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} 'cat /etc/expresspos/installs 2>/dev/null || true')"
+          if [ -z "${INSTALLS// /}" ]; then echo "No live installs registered: nothing deployed."; exit 1; fi
+          for install in $INSTALLS; do
+            [[ "$install" =~ ^expresspos-[a-z0-9]+$ ]] || { echo "Skipping odd install name: $install"; continue; }
+            echo "==> $install"
+            for part in vendor public/build public/downloads; do
+              rsync -az --delete -e "ssh -i ~/.ssh/deploy_key" "$part/" \
+                ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/var/www/$install/$part/
+            done
+            ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "
+              set -e
+              cd /var/www/$install
+              git fetch origin
+              git checkout --quiet -B Main origin/Main
+              php artisan package:discover --ansi
+              php artisan migrate --force
+              php artisan config:cache
+              php artisan route:cache
+              php artisan view:cache
+              sudo systemctl restart $install-queue.service
+              sudo systemctl restart $install-reverb.service
+            "
+          done
+          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} 'sudo systemctl reload php8.3-fpm'
