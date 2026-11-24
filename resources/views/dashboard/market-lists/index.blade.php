@@ -127,9 +127,12 @@
                     @if ($list->note || $list->receipt_path)
                         <p class="text-xs text-gray-500">
                             @if ($list->note) {{ $list->note }} @endif
-                            @can('viewReceipt', $list)
-                                <a href="{{ route('dashboard.market-lists.receipt', $list) }}" target="_blank" class="text-indigo-600 hover:underline ms-1">{{ __('View receipt photo') }}</a>
-                            @endcan
+                            {{-- receipt_path too, not only the policy: the owner passes every check. --}}
+                            @if ($list->receipt_path)
+                                @can('viewReceipt', $list)
+                                    <a href="{{ route('dashboard.market-lists.receipt', $list) }}" target="_blank" class="text-indigo-600 hover:underline ms-1">{{ __('View receipt photo') }}</a>
+                                @endcan
+                            @endif
                         </p>
                     @endif
 

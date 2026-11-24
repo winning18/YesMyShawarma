@@ -296,8 +296,16 @@ class MarketListService
             ->count();
     }
 
+    /**
+     * 404 when there's no photo to show — none was attached, or the file
+     * is gone. The owner passes every permission check (Gate::before), so
+     * MarketListPolicy::viewReceipt()'s own receipt_path check can't be
+     * relied on to stop this (Sentry PHP-LARAVEL-X).
+     */
     public function receiptResponse(MarketList $list): StreamedResponse
     {
+        abort_if($list->receipt_path === null || ! Storage::disk(self::DISK)->exists($list->receipt_path), 404);
+
         return Storage::disk(self::DISK)->response($list->receipt_path);
     }
 

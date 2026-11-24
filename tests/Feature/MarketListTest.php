@@ -270,6 +270,35 @@ class MarketListTest extends TestCase
         $this->as($this->userWithRole('staff'))->get(route('dashboard.market-lists.receipt', $list))->assertForbidden();
     }
 
+    /**
+     * Sentry PHP-LARAVEL-X: a list with only a note showed the owner a
+     * "View receipt photo" link (the owner passes every permission check),
+     * and opening it crashed with no file to show.
+     */
+    public function test_a_list_without_a_receipt_photo_offers_no_link_and_never_crashes(): void
+    {
+        Storage::fake('local');
+        $staff = $this->userWithRole('staff');
+        $owner = $this->userWithRole('owner');
+
+        $this->as($staff)->post(route('dashboard.market-lists.store'), [
+            'purchased_on' => now('Africa/Accra')->toDateString(),
+            'items' => [['description' => 'Gas refill', 'amount' => '150']],
+            'note' => 'Paid by the branch manager',
+        ]);
+        $list = MarketList::withoutGlobalScopes()->firstOrFail();
+        $this->assertNull($list->receipt_path);
+
+        $this->as($owner)->get(route('dashboard.market-lists.index'))->assertOk()
+            ->assertSee('Paid by the branch manager')
+            ->assertDontSee(route('dashboard.market-lists.receipt', $list), false);
+        $this->as($owner)->get(route('dashboard.market-lists.receipt', $list))->assertNotFound();
+
+        // A photo whose file has gone missing is "not found" too, not a crash.
+        $list->forceFill(['receipt_path' => 'market-lists/missing.jpg'])->save();
+        $this->as($owner)->get(route('dashboard.market-lists.receipt', $list))->assertNotFound();
+    }
+
     public function test_expenses_entered_at_shift_close_land_on_the_market_list(): void
     {
         $staff = $this->userWithRole('staff');
