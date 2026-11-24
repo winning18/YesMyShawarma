@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\RiderCashupException;
 use App\Models\Branch;
-use App\Models\RiderCashup;
 use App\Models\Order;
+use App\Models\RiderCashup;
 use App\Models\Scopes\BranchScope;
 use App\Models\User;
 use App\Services\Branches\BranchContext;

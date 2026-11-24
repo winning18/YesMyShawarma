@@ -148,7 +148,7 @@ class CategoryManagementTest extends TestCase
 
         $this->actingAs($manager)
             ->post(route('dashboard.categories.image.update', $category), [
-                'image' => UploadedFile::fake()->image('hero.jpg'),
+                'image' => UploadedFile::fake()->image('hero.jpg', 1280, 720),
             ])
             ->assertRedirect();
 
@@ -174,7 +174,7 @@ class CategoryManagementTest extends TestCase
 
         $this->actingAs($manager)
             ->post(route('dashboard.categories.image.update', $category), [
-                'image' => UploadedFile::fake()->image('hero.jpg'),
+                'image' => UploadedFile::fake()->image('hero.jpg', 1280, 720),
             ])
             ->assertRedirect();
 
@@ -190,7 +190,7 @@ class CategoryManagementTest extends TestCase
 
         $this->actingAs($staff)
             ->post(route('dashboard.categories.image.update', $category), [
-                'image' => UploadedFile::fake()->image('hero.jpg'),
+                'image' => UploadedFile::fake()->image('hero.jpg', 1280, 720),
             ])
             ->assertForbidden();
     }

@@ -18,9 +18,7 @@
         @if (session('status'))
             <div class="rounded-md bg-green-50 text-green-700 text-sm px-4 py-2">{{ session('status') }}</div>
         @endif
-        @if ($errors->any())
-            <div class="rounded-md bg-red-50 text-red-700 text-sm px-4 py-2">{{ $errors->first() }}</div>
-        @endif
+        <x-error-summary />
 
         <p class="text-sm text-gray-600">
             {{ __('Receipts print when a POS sale is placed, kitchen tickets when an order is accepted, and every order has Print buttons for reprints.') }}
@@ -216,7 +214,7 @@
                         }
                     } catch (e) {
                         this.status = 'failed';
-                        this.error = @js(__('Couldn\'t reach Express POS.'));
+                        this.error = window.explainError(e);
                     } finally {
                         this.busy = false;
                     }

@@ -43,11 +43,7 @@
                             </div>
                         @endif
 
-                        <div>
-                            <label for="photo" class="block text-xs font-medium text-gray-500 mb-1">{{ __('Photo') }} <span class="text-red-600">*</span></label>
-                            <input id="photo" type="file" name="photo" accept="image/*" required class="text-sm">
-                            <p class="text-xs text-gray-400 mt-1">{{ __('A photo is required — this is the evidence a reviewer checks against.') }}</p>
-                        </div>
+                        <x-image-upload rule="evidence" name="photo" :label="__('Photo (the evidence a reviewer checks)')" required />
 
                         <button type="submit" class="px-4 py-2 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-900">
                             {{ __('Submit report') }}
@@ -113,7 +109,7 @@
                                     @if ($report->photo_path)
                                         <a href="{{ route('dashboard.damage-reports.photo', $report) }}" target="_blank" class="text-indigo-600 hover:underline">{{ __('View') }}</a>
                                     @else
-                                        <span class="text-gray-400 text-xs">{{ __('Expired') }}</span>
+                                        <span class="text-gray-400 text-xs" title="{{ __('Deleted 24 hours after it was checked and the report decided.') }}">{{ __('Deleted after review') }}</span>
                                     @endif
                                 </td>
                                 <td class="px-4 py-2 text-gray-500">

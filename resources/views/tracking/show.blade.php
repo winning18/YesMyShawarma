@@ -99,7 +99,7 @@
                                         placeholder="{{ __('Tell us more (optional)') }}"
                                         class="w-full rounded-md border-brand-gray-300 text-sm focus:border-brand-yellow focus:ring-brand-yellow mb-3"
                                     ></textarea>
-                                    <p x-show="reviewError" x-cloak x-text="reviewError" class="text-sm text-brand-red mb-2"></p>
+                                    <p x-show="reviewError" x-cloak x-text="reviewError" class="text-sm text-red-600 mb-2"></p>
                                     <button
                                         type="button"
                                         @click="submitReview()"
@@ -281,13 +281,13 @@
                         const payload = await response.json().catch(() => null);
 
                         if (!response.ok) {
-                            this.reviewError = payload?.message ?? '{{ __('Something went wrong. Please try again.') }}';
+                            this.reviewError = window.failureMessage(response, payload);
                             return;
                         }
 
                         this.order.review = payload.review;
                     } catch (e) {
-                        this.reviewError = '{{ __('Something went wrong. Please try again.') }}';
+                        this.reviewError = window.explainError(e);
                     } finally {
                         this.reviewSubmitting = false;
                     }

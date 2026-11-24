@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreCategoryRequest;
 use App\Http\Requests\UpdateCategoryRequest;
 use App\Models\Category;
+use App\Services\Media\ImageRules;
 use App\Services\Media\ImageUploadService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -80,12 +81,12 @@ class CategoryManagementController extends Controller
     {
         Gate::authorize('menu.edit_content');
 
-        $request->validate([
-            'image' => ['required', 'image', 'max:4096'],
-        ]);
+        $request->validateWithBag('category-'.$category->id, [
+            'image' => app(ImageRules::class)->rules('category_hero', true),
+        ], app(ImageRules::class)->messages('image', 'category_hero'));
 
         $category->update([
-            'hero_image_path' => $images->store('category-hero', $category->id, $request->file('image'), $category->hero_image_path),
+            'hero_image_path' => $images->store('category-hero', $category->id, $request->file('image'), $category->hero_image_path, 'category_hero'),
         ]);
 
         return back()->with('status', __(':category hero image updated.', ['category' => $category->name]));

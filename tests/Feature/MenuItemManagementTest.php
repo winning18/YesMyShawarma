@@ -230,7 +230,7 @@ class MenuItemManagementTest extends TestCase
             'name' => 'Lamb Shawarma',
             'base_price' => '70.00',
             'is_active' => '1',
-            'image' => UploadedFile::fake()->image('item.jpg'),
+            'image' => UploadedFile::fake()->image('item.jpg', 600, 600),
         ]);
 
         $item = MenuItem::where('name', 'Lamb Shawarma')->first();
@@ -350,7 +350,7 @@ class MenuItemManagementTest extends TestCase
 
         $this->actingAs($manager)
             ->post(route('dashboard.menu-items.image.update', $item), [
-                'image' => UploadedFile::fake()->image('item.jpg'),
+                'image' => UploadedFile::fake()->image('item.jpg', 600, 600),
             ])
             ->assertRedirect();
 
@@ -374,7 +374,7 @@ class MenuItemManagementTest extends TestCase
 
         $this->actingAs($staff)
             ->post(route('dashboard.menu-items.image.update', $item), [
-                'image' => UploadedFile::fake()->image('item.jpg'),
+                'image' => UploadedFile::fake()->image('item.jpg', 600, 600),
             ])
             ->assertForbidden();
     }

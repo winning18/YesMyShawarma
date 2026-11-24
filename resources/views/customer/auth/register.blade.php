@@ -2,11 +2,7 @@
     <div class="max-w-sm mx-auto">
         <h1 class="text-2xl font-bold mb-6">{{ __('Sign up') }}</h1>
 
-        @if ($errors->any())
-            <div class="mb-6 rounded-lg bg-brand-red-light border border-brand-red text-brand-red-dark text-sm px-4 py-2">
-                {{ $errors->first() }}
-            </div>
-        @endif
+        <x-error-summary class="mb-6" />
 
         <form
             method="POST" action="{{ route('customer.register') }}" class="space-y-4"
@@ -28,27 +24,27 @@
             @csrf
 
             <div>
-                <label class="block text-sm font-medium mb-1">{{ __('Name') }} <span class="text-brand-red">*</span></label>
+                <label class="block text-sm font-medium mb-1">{{ __('Name') }} <span class="text-red-600">*</span></label>
                 <input type="text" name="name" required x-model="name" autofocus class="w-full rounded-md border-brand-gray-300">
             </div>
 
             <div>
-                <label class="block text-sm font-medium mb-1">{{ __('Phone number') }} <span class="text-brand-red">*</span></label>
+                <label class="block text-sm font-medium mb-1">{{ __('Phone number') }} <span class="text-red-600">*</span></label>
                 <input
                     type="tel" name="phone" inputmode="numeric" autocomplete="tel" required
                     :value="phone.formatted" @input="phone.onInput($event)" @blur="phone.onBlur()"
                     placeholder="024-123-4567" maxlength="12"
                     class="w-full rounded-md"
-                    :class="phone.invalid ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300'"
+                    :class="phone.invalid ? 'border-red-600 ring-1 ring-red-600' : 'border-brand-gray-300'"
                 >
-                <p class="text-xs mt-1" :class="phone.invalid ? 'text-brand-red' : 'text-brand-gray-500'">
+                <p class="text-xs mt-1" :class="phone.invalid ? 'text-red-600' : 'text-brand-gray-500'">
                     <span x-show="!phone.invalid">{{ __('If you\'ve ordered with us before, this links to your past orders.') }}</span>
                     <span x-show="phone.invalid">{{ __('Enter a 10-digit phone number.') }}</span>
                 </p>
             </div>
 
             <div>
-                <label class="block text-sm font-medium mb-1">{{ __('Password') }} <span class="text-brand-red">*</span></label>
+                <label class="block text-sm font-medium mb-1">{{ __('Password') }} <span class="text-red-600">*</span></label>
                 <div class="relative" x-data="{ show: false }">
                     <input :type="show ? 'text' : 'password'" name="password" required x-model="password" class="w-full rounded-md border-brand-gray-300 pr-10">
                     <button
@@ -68,7 +64,7 @@
             </div>
 
             <div>
-                <label class="block text-sm font-medium mb-1">{{ __('Confirm password') }} <span class="text-brand-red">*</span></label>
+                <label class="block text-sm font-medium mb-1">{{ __('Confirm password') }} <span class="text-red-600">*</span></label>
                 <div class="relative" x-data="{ show: false }">
                     <input :type="show ? 'text' : 'password'" name="password_confirmation" required x-model="passwordConfirmation" class="w-full rounded-md border-brand-gray-300 pr-10">
                     <button

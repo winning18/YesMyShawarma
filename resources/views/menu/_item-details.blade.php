@@ -26,7 +26,7 @@
                 @if ($optionGroup->max_select === 1) x-data="{ selected: null }" @endif
             >
                 <legend class="text-brand-yellow font-semibold mb-1">
-                    {{ $optionGroup->name }}@if ($optionGroup->is_required)<span class="text-brand-red"> *</span>@endif
+                    {{ $optionGroup->name }}@if ($optionGroup->is_required)<span class="text-red-600"> *</span>@endif
                 </legend>
                 <div class="grid grid-cols-2 gap-x-3 gap-y-1.5">
                     @foreach ($optionGroup->options as $option)

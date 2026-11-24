@@ -9,11 +9,7 @@
 
             @include('dashboard.menu-items.partials.fields', ['menuItem' => null])
 
-            <div>
-                <x-input-label for="image" :value="__('Photo (optional)')" />
-                <input type="file" id="image" name="image" accept="image/*" class="mt-1 block w-full text-sm">
-                <x-input-error class="mt-2" :messages="$errors->get('image')" />
-            </div>
+            <x-image-upload rule="menu_item" name="image" :label="__('Photo (optional)')" />
 
             <x-primary-button>{{ __('Create item') }}</x-primary-button>
         </form>

@@ -16,11 +16,7 @@
         <x-customer-branch-bar :branch="$branch" class="max-w-xl mx-auto" />
     </div>
 
-    @if ($errors->any())
-        <div class="mb-6 rounded-lg bg-brand-red-light border border-brand-red text-brand-red-dark text-sm px-4 py-2">
-            {{ $errors->first() }}
-        </div>
-    @endif
+    <x-error-summary class="mb-6" />
 
     {{--
         Side-by-side (compact, fixed-size thumbnail) for Drinks only,

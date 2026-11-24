@@ -149,6 +149,9 @@ pm.max_children = 5
 pm.start_servers = 2
 pm.min_spare_servers = 1
 pm.max_spare_servers = 3
+; Uploads (2026-11-24): photos up to 4 MB, with headroom so the app's own message shows.
+php_admin_value[upload_max_filesize] = 5M
+php_admin_value[post_max_size] = 12M
 POOL
 php-fpm$PHP_VERSION -t
 systemctl reload "php$PHP_VERSION-fpm"

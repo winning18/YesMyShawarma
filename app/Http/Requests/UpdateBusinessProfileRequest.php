@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Services\Media\ImageRules;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -16,7 +17,7 @@ class UpdateBusinessProfileRequest extends FormRequest
         $emailList = function (string $attribute, mixed $value, Closure $fail): void {
             foreach (array_filter(array_map('trim', preg_split('/[\s,;]+/', (string) $value))) as $email) {
                 if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                    $fail(__('":email" is not a valid email address.', ['email' => $email]));
+                    $fail(__('":email" isn\'t a valid email address. Check for a missing @ or dot, and put a comma between addresses.', ['email' => $email]));
                 }
             }
         };
@@ -39,8 +40,8 @@ class UpdateBusinessProfileRequest extends FormRequest
             'primary_colour' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'accent_colour' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
             // PNG/JPG/WebP only — an SVG upload can carry script.
-            'logo' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
-            'icon' => ['nullable', 'image', 'mimes:png', 'max:1024', 'dimensions:min_width=192,min_height=192,ratio=1'],
+            'logo' => app(ImageRules::class)->rules('logo'),
+            'icon' => app(ImageRules::class)->rules('icon'),
             'remove_logo' => ['boolean'],
             'remove_icon' => ['boolean'],
         ];
@@ -51,6 +52,9 @@ class UpdateBusinessProfileRequest extends FormRequest
      */
     public function messages(): array
     {
-        return ['icon.dimensions' => __('The icon must be square and at least 192×192 pixels (512×512 is best).')];
+        return [
+            ...app(ImageRules::class)->messages('logo', 'logo'),
+            ...app(ImageRules::class)->messages('icon', 'icon'),
+        ];
     }
 }

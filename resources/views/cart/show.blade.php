@@ -2,7 +2,7 @@
     <h1 class="text-2xl font-bold mb-6">{{ __('Your cart') }}</h1>
 
     @foreach ($dropped as $message)
-        <div class="mb-4 rounded-lg bg-brand-red-light border border-brand-red text-brand-red-dark text-sm px-4 py-2">
+        <div class="mb-4 rounded-lg bg-red-50 border border-red-600 text-red-800 text-sm px-4 py-2">
             {{ $message }}
         </div>
     @endforeach
@@ -26,6 +26,7 @@
             brief "Updating…" state covers the round trip.
         --}}
         <div x-data="cartPage()" class="grid grid-cols-1 md:grid-cols-3 gap-8" :class="{ 'opacity-50 pointer-events-none': loading }">
+            <p x-show="error" x-cloak role="alert" class="md:col-span-3 rounded-lg bg-red-50 border border-red-600 text-red-800 text-sm px-4 py-2" x-text="error"></p>
             <div class="md:col-span-2 space-y-4">
                 @foreach ($lines as $line)
                     @if ($line['is_free'] ?? false)
@@ -134,6 +135,7 @@
         function cartPage() {
             return {
                 loading: false,
+                error: '',
 
                 changeQuantity(lineId, currentQuantity, delta) {
                     const max = {{ \App\Services\Cart\CartService::MAX_LINE_QUANTITY }};
@@ -157,6 +159,7 @@
                 // other way on this page.
                 patch(url, body) {
                     this.loading = true;
+                    this.error = '';
 
                     fetch(url, {
                         method: 'PATCH',
@@ -165,13 +168,15 @@
                             'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
                         },
                         body: JSON.stringify(body),
-                    }).then((response) => {
+                    }).then(async (response) => {
                         if (response.ok) {
                             window.location.reload();
                         } else {
+                            this.error = window.failureMessage(response, await response.json().catch(() => null));
                             this.loading = false;
                         }
-                    }).catch(() => {
+                    }).catch((e) => {
+                        this.error = window.explainError(e);
                         this.loading = false;
                     });
                 },

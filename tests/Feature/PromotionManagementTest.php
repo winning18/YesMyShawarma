@@ -347,7 +347,7 @@ class PromotionManagementTest extends TestCase
 
         $this->actingAs($manager)
             ->post(route('dashboard.promotions.banner-image.update', $promotion), [
-                'image' => UploadedFile::fake()->image('banner.jpg'),
+                'image' => UploadedFile::fake()->image('banner.jpg', 900, 300),
             ])
             ->assertRedirect();
 

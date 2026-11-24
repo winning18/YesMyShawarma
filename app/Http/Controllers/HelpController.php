@@ -18,6 +18,7 @@ class HelpController extends Controller
         'staff' => ['title' => 'Staff quick-start', 'summary' => 'Sign in, take an order, the kitchen board, printing, closing the till.', 'manager_only' => false],
         'owner' => ['title' => 'Owner guide', 'summary' => 'Setting up the menu, staff, counters, printers and tax, and reading the reports.', 'manager_only' => true],
         'go-live' => ['title' => 'Go-live checklist', 'summary' => 'Everything to check before the first real customer, and on the day.', 'manager_only' => true],
+        'image-sizes' => ['title' => 'Image sizes', 'summary' => 'The shape, size and largest file for every photo you upload, so each one fits its card.', 'manager_only' => true],
     ];
 
     public function index(): View

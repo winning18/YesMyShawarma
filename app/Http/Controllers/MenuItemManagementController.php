@@ -13,6 +13,7 @@ use App\Models\Option;
 use App\Models\OptionGroup;
 use App\Models\StockItem;
 use App\Services\Branches\BranchContext;
+use App\Services\Media\ImageRules;
 use App\Services\Media\ImageUploadService;
 use App\Support\Money;
 use Illuminate\Http\RedirectResponse;
@@ -137,7 +138,7 @@ class MenuItemManagementController extends Controller
         // create() must never leave an orphaned file behind. The item's id
         // (needed as the stored filename) only exists once that's done.
         if ($request->hasFile('image')) {
-            $item->update(['image_path' => $images->store('menu-items', $item->id, $request->file('image'), null)]);
+            $item->update(['image_path' => $images->store('menu-items', $item->id, $request->file('image'), null, 'menu_item')]);
         }
 
         return redirect()->route('dashboard.menu-items.edit', $item)
@@ -307,11 +308,11 @@ class MenuItemManagementController extends Controller
         Gate::authorize('menu.edit_content');
 
         $request->validate([
-            'image' => ['required', 'image', 'max:4096'],
-        ]);
+            'image' => app(ImageRules::class)->rules('menu_item', true),
+        ], app(ImageRules::class)->messages('image', 'menu_item'));
 
         $menuItem->update([
-            'image_path' => $images->store('menu-items', $menuItem->id, $request->file('image'), $menuItem->image_path),
+            'image_path' => $images->store('menu-items', $menuItem->id, $request->file('image'), $menuItem->image_path, 'menu_item'),
         ]);
 
         return back()->with('status', __(':item image updated.', ['item' => $menuItem->name]));

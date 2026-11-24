@@ -34,7 +34,9 @@ class SecurityHeaders
             "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://static.cloudflareinsights.com",
             "style-src 'self' 'unsafe-inline'",
             "font-src 'self'",
-            "img-src 'self' data: https://*.tile.openstreetmap.org",
+            // blob: is a photo chosen for upload, previewed on this device
+            // before it's sent (x-image-upload); it never leaves the browser.
+            "img-src 'self' data: blob: https://*.tile.openstreetmap.org",
             "connect-src 'self' {$origin} {$wsOrigin} https://nominatim.openstreetmap.org https://cloudflareinsights.com",
             "frame-src 'self' https://www.google.com https://challenges.cloudflare.com",
             "frame-ancestors 'self'",

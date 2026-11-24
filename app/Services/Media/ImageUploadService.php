@@ -8,7 +8,10 @@ use Illuminate\Support\Facades\Storage;
 
 class ImageUploadService
 {
-    public function __construct(private readonly WebpConverter $webp) {}
+    public function __construct(
+        private readonly WebpConverter $webp,
+        private readonly ImageRules $rules,
+    ) {}
 
     /**
      * Stores a new image on the public disk under $directory, replacing
@@ -20,12 +23,19 @@ class ImageUploadService
      * Generates the .webp sibling right here, once, at upload time —
      * never lazily on a customer-facing page render (see WebpConverter's
      * own docblock for why that would be a real problem).
+     *
+     * $slot (ImageRules::SLOTS) shrinks a photo bigger than its best size
+     * first, so the stored file and its .webp are no bigger than needed.
      */
-    public function store(string $directory, int $id, UploadedFile $file, ?string $previousPath): string
+    public function store(string $directory, int $id, UploadedFile $file, ?string $previousPath, ?string $slot = null): string
     {
         $this->delete($previousPath);
 
         $path = $file->storeAs($directory, $id.'.'.$file->extension(), 'public');
+
+        if ($slot) {
+            $this->rules->shrink(Storage::disk('public')->path($path), $slot);
+        }
 
         $this->webp->generate($path);
 

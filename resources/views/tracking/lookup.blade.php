@@ -1,11 +1,7 @@
 <x-customer-layout title="Track order · {{ config('app.name') }}">
     <h1 class="text-2xl font-bold mb-6">{{ __('Track your order') }}</h1>
 
-    @if ($errors->any())
-        <div class="mb-6 rounded-lg bg-brand-red-light border border-brand-red text-brand-red-dark text-sm px-4 py-2">
-            {{ $errors->first() }}
-        </div>
-    @endif
+    <x-error-summary class="mb-6" />
 
     @if ($orders !== null)
         @if ($orders->isEmpty())
@@ -36,22 +32,22 @@
             @csrf
 
             <div>
-                <label class="block text-sm font-medium mb-1">{{ __('Phone number') }} <span class="text-brand-red">*</span></label>
+                <label class="block text-sm font-medium mb-1">{{ __('Phone number') }} <span class="text-red-600">*</span></label>
                 <input
                     type="tel" name="phone" inputmode="numeric" autocomplete="tel" required
                     :value="phone.formatted" @input="phone.onInput($event)" @blur="phone.onBlur()"
                     placeholder="024-123-4567" maxlength="12"
                     class="w-full rounded-md"
-                    :class="phone.invalid ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300'"
+                    :class="phone.invalid ? 'border-red-600 ring-1 ring-red-600' : 'border-brand-gray-300'"
                 >
-                <p class="text-xs mt-1 text-brand-red" x-show="phone.invalid">{{ __('Enter a 10-digit phone number.') }}</p>
+                <p class="text-xs mt-1 text-red-600" x-show="phone.invalid">{{ __('Enter a 10-digit phone number.') }}</p>
             </div>
 
             <div>
-                <label class="block text-sm font-medium mb-1">{{ __('Order reference') }} <span class="text-brand-red">*</span></label>
+                <label class="block text-sm font-medium mb-1">{{ __('Order reference') }} <span class="text-red-600">*</span></label>
                 <input
                     type="text" name="reference" required value="{{ old('reference') }}"
-                    class="w-full rounded-md {{ $errors->has('reference') ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300' }}"
+                    class="w-full rounded-md {{ $errors->has('reference') ? 'border-red-600 ring-1 ring-red-600' : 'border-brand-gray-300' }}"
                 >
             </div>
 

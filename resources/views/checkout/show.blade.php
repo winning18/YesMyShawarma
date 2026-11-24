@@ -2,7 +2,7 @@
     <h1 class="text-2xl font-bold mb-6">{{ __('Checkout') }}</h1>
 
     @if ($errors->any())
-        <div class="mb-6 rounded-lg bg-brand-red-light border border-brand-red text-brand-red-dark text-sm px-4 py-2 space-y-1">
+        <div class="mb-6 rounded-lg bg-red-50 border border-red-600 text-red-800 text-sm px-4 py-2 space-y-1">
             @foreach ($errors->all() as $message)
                 <p>{{ $message }}</p>
             @endforeach
@@ -121,8 +121,8 @@
                 if (!el) return;
 
                 el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                el.classList.add('ring-2', 'ring-brand-red', 'rounded-lg');
-                setTimeout(() => el.classList.remove('ring-2', 'ring-brand-red', 'rounded-lg'), 2000);
+                el.classList.add('ring-2', 'ring-red-600', 'rounded-lg');
+                setTimeout(() => el.classList.remove('ring-2', 'ring-red-600', 'rounded-lg'), 2000);
             },
             startReview() {
                 // Handles name, phone, delivery area, and landmark — native
@@ -211,11 +211,11 @@
                         },
                         body: JSON.stringify({ code: this.discountCode, phone: this.phone.raw }),
                     });
-                    const payload = await response.json();
+                    const payload = await response.json().catch(() => ({}));
 
                     if (!response.ok) {
                         this.discountAmount = 0;
-                        this.promoMessage = payload.message || '{{ __('This promo code is not valid.') }}';
+                        this.promoMessage = window.failureMessage(response, payload, @js(__('This promo code is not valid. Check the spelling and try again.')));
                         return;
                     }
 
@@ -223,7 +223,7 @@
                     this.promoMessage = '{{ __('Code applied.') }}';
                 } catch (e) {
                     this.discountAmount = 0;
-                    this.promoMessage = '{{ __('Could not check this code. Try again.') }}';
+                    this.promoMessage = window.explainError(e, @js(__('Could not check this code. Try again.')));
                 }
             },
             // The only place delivery fee, discount, and subtotal actually
@@ -250,33 +250,33 @@
 
                 <div x-show="!reviewing">
                 <div>
-                    <label class="block text-sm font-medium mb-1">{{ __('Name') }} <span class="text-brand-red">*</span></label>
+                    <label class="block text-sm font-medium mb-1">{{ __('Name') }} <span class="text-red-600">*</span></label>
                     <input
                         type="text" name="name" required
                         x-model="name"
                         value="{{ old('name', $customer->name ?? '') }}"
                         placeholder="{{ __('e.g. Ama Mensah') }}"
-                        class="w-full rounded-md {{ $errors->has('name') ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300' }}"
+                        class="w-full rounded-md {{ $errors->has('name') ? 'border-red-600 ring-1 ring-red-600' : 'border-brand-gray-300' }}"
                     >
-                    @error('name') <p class="text-sm text-brand-red mt-1">{{ $message }}</p> @enderror
+                    @error('name') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium mb-1">{{ __('Phone number') }} <span class="text-brand-red">*</span></label>
+                    <label class="block text-sm font-medium mb-1">{{ __('Phone number') }} <span class="text-red-600">*</span></label>
                     <input
                         type="tel" name="phone" inputmode="numeric" autocomplete="tel" required
                         :value="phone.formatted" @input="phone.onInput($event)" @blur="phone.onBlur()"
                         placeholder="024-123-4567" maxlength="12"
                         class="w-full rounded-md"
-                        :class="(phone.invalid || {{ $errors->has('phone') ? 'true' : 'false' }}) ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300'"
+                        :class="(phone.invalid || {{ $errors->has('phone') ? 'true' : 'false' }}) ? 'border-red-600 ring-1 ring-red-600' : 'border-brand-gray-300'"
                     >
-                    <p class="text-xs text-brand-red mt-1" x-show="phone.invalid">{{ __('Enter a 10-digit phone number.') }}</p>
-                    @error('phone') <p class="text-sm text-brand-red mt-1">{{ $message }}</p> @enderror
+                    <p class="text-xs text-red-600 mt-1" x-show="phone.invalid">{{ __('Enter a 10-digit phone number.') }}</p>
+                    @error('phone') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                 </div>
 
                 @if ($deliveryAvailable)
                     <div>
-                        <label class="block text-sm font-medium mb-2">{{ __('Fulfilment') }} <span class="text-brand-red">*</span></label>
+                        <label class="block text-sm font-medium mb-2">{{ __('Fulfilment') }} <span class="text-red-600">*</span></label>
                         <div class="flex gap-6 text-sm">
                             <label class="flex items-center gap-2">
                                 <input type="radio" name="fulfilment_type" value="pickup" x-model="fulfilmentType">
@@ -306,24 +306,24 @@
                             </div>
                         </template>
                         <div>
-                            <label class="block text-sm font-medium mb-1">{{ __('Delivery area') }} <span class="text-brand-red">*</span></label>
+                            <label class="block text-sm font-medium mb-1">{{ __('Delivery area') }} <span class="text-red-600">*</span></label>
                             <x-area-picker
                                 :areas="$deliveryAreas"
                                 model="areaSelection"
                                 name="area_id"
                                 required="fulfilmentType === 'delivery'"
-                                :input-class="'w-full rounded-md '.($errors->has('area_id') ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300')"
+                                :input-class="'w-full rounded-md '.($errors->has('area_id') ? 'border-red-600 ring-1 ring-red-600' : 'border-brand-gray-300')"
                             />
-                            @error('area_id') <p class="text-sm text-brand-red mt-1">{{ $message }}</p> @enderror
+                            @error('area_id') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
 
                             <div x-show="areaSelection === 'other'" x-cloak class="mt-2">
                                 <input
                                     type="text" name="area_other" x-model="areaOther" value="{{ old('area_other') }}"
                                     :required="areaSelection === 'other'"
                                     placeholder="{{ __('Type your area name') }}" maxlength="100"
-                                    class="w-full rounded-md {{ $errors->has('area_other') ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300' }}"
+                                    class="w-full rounded-md {{ $errors->has('area_other') ? 'border-red-600 ring-1 ring-red-600' : 'border-brand-gray-300' }}"
                                 >
-                                @error('area_other') <p class="text-sm text-brand-red mt-1">{{ $message }}</p> @enderror
+                                @error('area_other') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                             </div>
 
                             <p class="text-xs text-brand-gray-500 mt-1">{{ __("Just tells our rider roughly where you are. Your fee is based on your shared location below.") }}</p>
@@ -333,21 +333,21 @@
                             <input
                                 type="text" name="ghanapost_code" x-model="ghanapostCode" value="{{ old('ghanapost_code') }}"
                                 placeholder="{{ __('e.g. GA-123-4567') }}"
-                                class="w-full rounded-md {{ $errors->has('ghanapost_code') ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300' }}"
+                                class="w-full rounded-md {{ $errors->has('ghanapost_code') ? 'border-red-600 ring-1 ring-red-600' : 'border-brand-gray-300' }}"
                             >
-                            @error('ghanapost_code') <p class="text-sm text-brand-red mt-1">{{ $message }}</p> @enderror
+                            @error('ghanapost_code') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                         </div>
                         <div>
-                            <label class="block text-sm font-medium mb-1">{{ __('Landmark') }} <span class="text-brand-red">*</span></label>
+                            <label class="block text-sm font-medium mb-1">{{ __('Landmark') }} <span class="text-red-600">*</span></label>
                             <input
                                 type="text" name="landmark" :required="fulfilmentType === 'delivery'" x-model="landmark" value="{{ old('landmark') }}"
                                 placeholder="{{ __('e.g. Opposite the blue gate, near the church') }}"
-                                class="w-full rounded-md {{ $errors->has('landmark') ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300' }}"
+                                class="w-full rounded-md {{ $errors->has('landmark') ? 'border-red-600 ring-1 ring-red-600' : 'border-brand-gray-300' }}"
                             >
-                            @error('landmark') <p class="text-sm text-brand-red mt-1">{{ $message }}</p> @enderror
+                            @error('landmark') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                         </div>
                         <div x-ref="locationSection" class="transition">
-                            <label class="block text-sm font-medium mb-1">{{ __('Share your live location') }} <span class="text-brand-red">*</span></label>
+                            <label class="block text-sm font-medium mb-1">{{ __('Share your live location') }} <span class="text-red-600">*</span></label>
                             <button
                                 type="button" @click="locate()"
                                 class="w-full px-4 py-2.5 bg-brand-red text-brand-white text-sm font-semibold rounded-md hover:bg-brand-red-dark"
@@ -391,7 +391,7 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium mb-2">{{ __('Payment method') }} <span class="text-brand-red">*</span></label>
+                    <label class="block text-sm font-medium mb-2">{{ __('Payment method') }} <span class="text-red-600">*</span></label>
                     @if ($paystackEnabled)
                         <div class="flex gap-6 text-sm">
                             <label class="flex items-center gap-2">
@@ -593,15 +593,15 @@
                             type="text" id="discount_code" name="promo_code" form="checkout-form"
                             x-model="discountCode"
                             placeholder="{{ __('Enter code') }}"
-                            class="w-full rounded-md {{ $errors->has('promo_code') ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300' }}"
+                            class="w-full rounded-md {{ $errors->has('promo_code') ? 'border-red-600 ring-1 ring-red-600' : 'border-brand-gray-300' }}"
                         >
                         <button
                             type="button" @click="applyPromoCode()"
                             class="px-4 py-2 bg-brand-gray-100 text-brand-black text-sm font-semibold rounded-md hover:bg-brand-gray-300 shrink-0"
                         >{{ __('Apply') }}</button>
                     </div>
-                    <p x-show="promoMessage" x-cloak class="text-xs mt-1" :class="discountAmount > 0 ? 'text-green-600' : 'text-brand-red'" x-text="promoMessage"></p>
-                    @error('promo_code') <p class="text-sm text-brand-red mt-1">{{ $message }}</p> @enderror
+                    <p x-show="promoMessage" x-cloak class="text-xs mt-1" :class="discountAmount > 0 ? 'text-green-600' : 'text-red-600'" x-text="promoMessage"></p>
+                    @error('promo_code') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                 </div>
             @endif
         </div>

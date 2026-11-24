@@ -3,9 +3,7 @@
         <h1 class="text-2xl font-bold mb-4">{{ __('My account') }}</h1>
         @include('customer.account._nav', ['active' => 'addresses'])
 
-        @if ($errors->any())
-            <div class="mb-6 rounded-lg bg-brand-red-light border border-brand-red text-brand-red-dark text-sm px-4 py-2">{{ $errors->first() }}</div>
-        @endif
+        <x-error-summary class="mb-6" />
 
         <p class="text-sm text-brand-gray-500 mb-4">{{ __('Pick one of these at checkout and we fill in the rest, including your location for the delivery fee. You can also tick "Save this address" when you check out.') }}</p>
 

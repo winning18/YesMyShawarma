@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Services\Media\ImageRules;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -23,7 +24,15 @@ class StoreMenuItemRequest extends FormRequest
             'is_active' => ['nullable', 'boolean'],
             'option_group_ids' => ['nullable', 'array'],
             'option_group_ids.*' => ['integer', 'exists:option_groups,id'],
-            'image' => ['nullable', 'image', 'max:4096'],
+            'image' => app(ImageRules::class)->rules('menu_item'),
         ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return app(ImageRules::class)->messages('image', 'menu_item');
     }
 }

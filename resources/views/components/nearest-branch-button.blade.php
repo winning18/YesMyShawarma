@@ -10,5 +10,5 @@
         <svg class="w-4 h-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18s6-5.33 6-10a6 6 0 1 0-12 0c0 4.67 6 10 6 10Zm0-7.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" clip-rule="evenodd"/></svg>
         <span x-text="locating ? @js(__('Finding your nearest branch…')) : @js($label)">{{ $label }}</span>
     </button>
-    <span x-show="error" x-text="error" x-cloak class="block text-xs text-brand-red-dark mt-1" role="alert"></span>
+    <span x-show="error" x-text="error" x-cloak class="block text-xs text-red-600 mt-1" role="alert"></span>
 </span>

@@ -117,7 +117,7 @@ class HeroSliderTest extends TestCase
 
         $this->actingAs($manager)
             ->post(route('dashboard.categories.image.update', $category), [
-                'image' => UploadedFile::fake()->image('salads.jpg'),
+                'image' => UploadedFile::fake()->image('salads.jpg', 1280, 720),
             ])
             ->assertRedirect();
 

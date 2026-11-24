@@ -9,6 +9,7 @@ use App\Models\Scopes\BranchScope;
 use App\Models\StockItem;
 use App\Services\Branches\BranchContext;
 use App\Services\DamageReports\DamageReportService;
+use App\Services\Media\ImageRules;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -73,8 +74,8 @@ class DamageReportController extends Controller
             'order_id' => ['nullable', 'integer', 'exists:orders,id'],
             'stock_item_id' => ['nullable', 'integer', 'exists:stock_items,id'],
             'description' => ['required', 'string', 'max:1000'],
-            'photo' => ['required', 'image', 'max:4096'],
-        ]);
+            'photo' => app(ImageRules::class)->rules('evidence', true),
+        ], app(ImageRules::class)->messages('photo', 'evidence'));
 
         // withoutGlobalScope: a rider's own session never resolves a branch
         // scope the way staff's does, and the order being reported on is

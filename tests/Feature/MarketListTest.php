@@ -270,6 +270,43 @@ class MarketListTest extends TestCase
         $this->as($this->userWithRole('staff'))->get(route('dashboard.market-lists.receipt', $list))->assertForbidden();
     }
 
+    public function test_a_receipt_is_deleted_24_hours_after_it_was_checked_and_approved(): void
+    {
+        Storage::fake('local');
+        $staff = $this->userWithRole('staff');
+        $manager = $this->userWithRole('manager');
+
+        $this->as($staff)->post(route('dashboard.market-lists.store'), [
+            'purchased_on' => now('Africa/Accra')->toDateString(),
+            'items' => [['description' => 'Gas refill', 'amount' => '150']],
+            'receipt' => UploadedFile::fake()->image('receipt.jpg'),
+        ]);
+        $list = MarketList::withoutGlobalScopes()->firstOrFail();
+        $path = $list->receipt_path;
+
+        // The recorder looking at their own photo doesn't start the clock; a reviewer does.
+        $this->as($staff)->get(route('dashboard.market-lists.receipt', $list))->assertOk();
+        $this->assertNull($list->fresh()->receipt_viewed_at);
+        $this->as($manager)->get(route('dashboard.market-lists.receipt', $list))->assertOk();
+        $this->assertNotNull($list->fresh()->receipt_viewed_at);
+
+        // Viewed a day ago but not approved yet: kept.
+        $list->update(['receipt_viewed_at' => now()->subHours(25)]);
+        $this->artisan('market-lists:delete-expired-receipts');
+        Storage::disk('local')->assertExists($path);
+
+        // Approved just now: kept for 24 hours more.
+        $this->as($manager)->post(route('dashboard.market-lists.approve', $list), ['review_note' => ''])->assertSessionHasNoErrors();
+        $this->artisan('market-lists:delete-expired-receipts');
+        Storage::disk('local')->assertExists($path);
+
+        // Both more than 24 hours ago: the photo goes, the list stays.
+        $list->fresh()->update(['reviewed_at' => now()->subHours(25)]);
+        $this->artisan('market-lists:delete-expired-receipts');
+        Storage::disk('local')->assertMissing($path);
+        $this->assertDatabaseHas('market_lists', ['id' => $list->id, 'receipt_path' => null, 'status' => 'approved']);
+    }
+
     public function test_expenses_entered_at_shift_close_land_on_the_market_list(): void
     {
         $staff = $this->userWithRole('staff');

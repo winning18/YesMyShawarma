@@ -112,7 +112,7 @@ class StaffMemberManagementTest extends TestCase
 
         $this->actingAs($owner)
             ->post(route('dashboard.staff-members.image.update', $staffMember), [
-                'image' => UploadedFile::fake()->image('ama.jpg'),
+                'image' => UploadedFile::fake()->image('ama.jpg', 400, 400),
             ])
             ->assertRedirect();
 
@@ -173,7 +173,7 @@ class StaffMemberManagementTest extends TestCase
         $staffMember = StaffMember::create(['name' => 'Ama Owusu']);
 
         $this->actingAs($owner)->post(route('dashboard.staff-members.image.update', $staffMember), [
-            'image' => UploadedFile::fake()->image('ama.jpg'),
+            'image' => UploadedFile::fake()->image('ama.jpg', 400, 400),
         ]);
 
         $storedPath = $staffMember->fresh()->photo_path;

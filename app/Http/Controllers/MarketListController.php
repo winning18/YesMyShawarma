@@ -9,6 +9,7 @@ use App\Models\Scopes\BranchScope;
 use App\Services\Branches\BranchContext;
 use App\Services\MarketLists\ExpenseKindMatcher;
 use App\Services\MarketLists\MarketListService;
+use App\Services\Media\ImageRules;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -179,6 +180,12 @@ class MarketListController extends Controller
     {
         Gate::authorize('viewReceipt', $marketList);
 
+        // Only someone who could approve it starts the deletion countdown;
+        // the recorder looking at their own photo doesn't.
+        if (Gate::allows('approve', $marketList)) {
+            $this->marketLists->markReceiptViewed($marketList);
+        }
+
         return $this->marketLists->receiptResponse($marketList);
     }
 
@@ -196,9 +203,9 @@ class MarketListController extends Controller
             'items.*.quantity' => ['nullable', 'numeric', 'min:0', 'max:100000'],
             'items.*.unit' => ['nullable', 'string', 'max:30'],
             'items.*.expense_category_id' => ['nullable', 'integer'],
-            'receipt' => ['nullable', 'image', 'max:5120'],
+            'receipt' => app(ImageRules::class)->rules('evidence', false),
             'note' => ['nullable', 'string', 'max:1000'],
-        ]);
+        ], app(ImageRules::class)->messages('receipt', 'evidence'));
     }
 
     /**

@@ -7,6 +7,7 @@ use App\Http\Requests\UpdatePromotionRequest;
 use App\Models\Branch;
 use App\Models\MenuItem;
 use App\Models\Promotion;
+use App\Services\Media\ImageRules;
 use App\Services\Media\ImageUploadService;
 use App\Support\Money;
 use Illuminate\Http\RedirectResponse;
@@ -111,11 +112,11 @@ class PromotionManagementController extends Controller
         Gate::authorize('promotions.manage');
 
         $request->validate([
-            'image' => ['required', 'image', 'max:4096'],
-        ]);
+            'image' => app(ImageRules::class)->rules('promotion_banner', true),
+        ], app(ImageRules::class)->messages('image', 'promotion_banner'));
 
         $promotion->update([
-            'banner_image_path' => $images->store('promotion-banner', $promotion->id, $request->file('image'), $promotion->banner_image_path),
+            'banner_image_path' => $images->store('promotion-banner', $promotion->id, $request->file('image'), $promotion->banner_image_path, 'promotion_banner'),
         ]);
 
         return back()->with('status', __('Banner image updated.'));

@@ -10,16 +10,16 @@
                     @csrf
                     @method('PATCH')
                     <div>
-                        <label for="name" class="block text-sm font-medium mb-1">{{ __('Name') }} <span class="text-brand-red">*</span></label>
+                        <label for="name" class="block text-sm font-medium mb-1">{{ __('Name') }} <span class="text-red-600">*</span></label>
                         <input id="name" type="text" name="name" required maxlength="255" autocomplete="name" value="{{ old('name', $customer->name) }}"
-                            class="w-full rounded-md {{ $errors->has('name') ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300' }}">
-                        @error('name') <p class="text-sm text-brand-red mt-1">{{ $message }}</p> @enderror
+                            class="w-full rounded-md {{ $errors->has('name') ? 'border-red-600 ring-1 ring-red-600' : 'border-brand-gray-300' }}">
+                        @error('name') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label for="email" class="block text-sm font-medium mb-1">{{ __('Email (optional)') }}</label>
                         <input id="email" type="email" name="email" maxlength="255" autocomplete="email" value="{{ old('email', $customer->email) }}"
-                            class="w-full rounded-md {{ $errors->has('email') ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300' }}">
-                        @error('email') <p class="text-sm text-brand-red mt-1">{{ $message }}</p> @enderror
+                            class="w-full rounded-md {{ $errors->has('email') ? 'border-red-600 ring-1 ring-red-600' : 'border-brand-gray-300' }}">
+                        @error('email') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                     </div>
                     <button type="submit" class="px-6 py-2.5 bg-brand-yellow text-brand-black font-semibold rounded-md hover:bg-brand-yellow-dark">{{ __('Save details') }}</button>
                 </form>
@@ -32,7 +32,7 @@
                 </p>
 
                 @if ($errors->phone->any())
-                    <div class="mb-4 rounded-lg bg-brand-red-light border border-brand-red text-brand-red-dark text-sm px-4 py-2">{{ $errors->phone->first() }}</div>
+                    <div class="mb-4 rounded-lg bg-red-50 border border-red-600 text-red-800 text-sm px-4 py-2">{{ $errors->phone->first() }}</div>
                 @endif
 
                 @if ($pendingPhone)
@@ -65,7 +65,7 @@
                         <input id="new_phone" type="tel" name="phone" inputmode="numeric" autocomplete="tel" required
                             :value="phone.formatted" @input="phone.onInput($event)" @blur="phone.onBlur()"
                             placeholder="024-123-4567" maxlength="12"
-                            class="w-full sm:w-64 rounded-md" :class="phone.invalid ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300'">
+                            class="w-full sm:w-64 rounded-md" :class="phone.invalid ? 'border-red-600 ring-1 ring-red-600' : 'border-brand-gray-300'">
                         <p class="text-xs text-brand-gray-500">{{ __('We\'ll text a code to the new number. It only changes once you enter it.') }}</p>
                         <button type="submit" class="px-6 py-2.5 border border-brand-gray-300 font-semibold rounded-md hover:bg-brand-gray-100">{{ __('Send code') }}</button>
                     </form>
@@ -79,10 +79,10 @@
                     @method('PUT')
                     @foreach (['current_password' => [__('Current password'), 'current-password'], 'password' => [__('New password (at least 8 characters)'), 'new-password'], 'password_confirmation' => [__('Confirm new password'), 'new-password']] as $field => [$label, $autocomplete])
                         <div>
-                            <label for="{{ $field }}" class="block text-sm font-medium mb-1">{{ $label }} <span class="text-brand-red">*</span></label>
+                            <label for="{{ $field }}" class="block text-sm font-medium mb-1">{{ $label }} <span class="text-red-600">*</span></label>
                             <input id="{{ $field }}" type="password" name="{{ $field }}" required autocomplete="{{ $autocomplete }}"
-                                class="w-full sm:w-80 rounded-md {{ $errors->password->has($field) ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300' }}">
-                            @if ($errors->password->has($field)) <p class="text-sm text-brand-red mt-1">{{ $errors->password->first($field) }}</p> @endif
+                                class="w-full sm:w-80 rounded-md {{ $errors->password->has($field) ? 'border-red-600 ring-1 ring-red-600' : 'border-brand-gray-300' }}">
+                            @if ($errors->password->has($field)) <p class="text-sm text-red-600 mt-1">{{ $errors->password->first($field) }}</p> @endif
                         </div>
                     @endforeach
                     <button type="submit" class="px-6 py-2.5 border border-brand-gray-300 font-semibold rounded-md hover:bg-brand-gray-100">{{ __('Change password') }}</button>

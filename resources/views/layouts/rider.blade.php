@@ -11,6 +11,7 @@
 
 
         @include('partials.reverb-config')
+        @include('partials.form-feedback')
 
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])

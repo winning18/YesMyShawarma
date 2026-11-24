@@ -10,6 +10,7 @@ use App\Models\Scopes\BranchScope;
 use App\Models\Shift;
 use App\Models\User;
 use App\Services\Branches\BranchContext;
+use App\Services\Media\ImageRules;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -296,6 +297,44 @@ class MarketListService
             ->count();
     }
 
+    /**
+     * A reviewer's first look at the receipt (MarketListController::
+     * receipt()): starts the 24 hours after which, once the list is
+     * approved, the photo is deleted (deleteExpiredReceipts()).
+     */
+    public function markReceiptViewed(MarketList $list): void
+    {
+        if ($list->receipt_viewed_at === null) {
+            $list->update(['receipt_viewed_at' => now()]);
+        }
+    }
+
+    /**
+     * Deletes receipt photos 24 hours after a reviewer viewed them and the
+     * list was approved, whichever came later (owner, 2026-11-24). The
+     * list, its items and amounts stay for good; a receipt nobody has
+     * viewed, or on a list not yet approved, is never touched.
+     *
+     * @return int how many were deleted
+     */
+    public function deleteExpiredReceipts(): int
+    {
+        $cutoff = now()->subDay();
+        $expired = MarketList::withoutGlobalScopes()
+            ->where('status', MarketList::STATUS_APPROVED)
+            ->whereNotNull('receipt_path')
+            ->where('receipt_viewed_at', '<', $cutoff)
+            ->where('reviewed_at', '<', $cutoff)
+            ->get();
+
+        foreach ($expired as $list) {
+            Storage::disk(self::DISK)->delete($list->receipt_path);
+            $list->update(['receipt_path' => null]);
+        }
+
+        return $expired->count();
+    }
+
     public function receiptResponse(MarketList $list): StreamedResponse
     {
         return Storage::disk(self::DISK)->response($list->receipt_path);
@@ -342,6 +381,8 @@ class MarketListService
 
     private function storeReceipt(UploadedFile $receipt): string
     {
+        app(ImageRules::class)->shrinkUpload($receipt, 'evidence');
+
         return $receipt->storeAs(self::DIRECTORY, Str::uuid().'.'.$receipt->extension(), self::DISK);
     }
 

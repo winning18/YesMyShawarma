@@ -122,6 +122,11 @@ neutral greys, never another business's.
 2. Paystack and SMS (Arkesel) keys per client from the portal, not by hand on the server.
 3. Website content set up as part of onboarding (pages, FAQ, photos) for clients with a website.
 
+**Images and errors (owner, 2026-11-24):** every upload's size rules live in `ImageRules` and
+show on its field and in Help → Image sizes; big photos are shrunk on upload; receipt and damage
+photos are deleted 24 hours after they're viewed and decided. Every error says what's wrong,
+where (red outline, fixed red) and how to fix it. See schema.md's "Image uploads" and "Errors".
+
 **Website looks (owner, 2026-11-24):** three themes built into the product, every one open to
 every client: Classic (today's design, the default), Photo-led (Fraunces headings) and One-page
 (Bricolage Grotesque headings). Chosen at onboarding (`expresspos:new-client --theme`) and by the

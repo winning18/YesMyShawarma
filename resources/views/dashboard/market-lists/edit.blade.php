@@ -7,9 +7,7 @@
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
             <a href="{{ route('dashboard.market-lists.index') }}" class="text-sm text-gray-500 hover:underline">&larr; {{ __('Market list') }}</a>
 
-            @if ($errors->any())
-                <div class="rounded-md bg-red-50 text-red-700 text-sm px-4 py-2">{{ $errors->first() }}</div>
-            @endif
+            <x-error-summary />
 
             @if ($list->status === 'needs_changes' && $list->review_note)
                 <div class="rounded-md bg-amber-50 text-amber-800 text-sm px-4 py-2">{{ __('Sent back:') }} {{ $list->review_note }}</div>

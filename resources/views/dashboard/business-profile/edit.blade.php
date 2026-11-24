@@ -94,23 +94,21 @@
             <section class="space-y-4 border-t border-gray-100 pt-6">
                 <h3 class="font-semibold text-gray-800">{{ __('Logo, icon and colours') }}</h3>
                 <div>
-                    <x-input-label for="logo" :value="__('Logo (PNG, JPG or WebP, up to 2 MB)')" />
+                    <x-input-label for="logo" :value="__('Logo')" />
                     @if ($profile->logoUrl())
                         <div class="mt-2 inline-block bg-gray-900 rounded-md p-3"><img src="{{ $profile->logoUrl() }}" alt="" class="h-10 w-auto"></div>
                         <label class="flex items-center gap-2 text-xs text-gray-500 mt-1"><input type="checkbox" name="remove_logo" value="1" class="rounded border-gray-300"> {{ __('Remove the logo (the name shows instead)') }}</label>
                     @endif
-                    <input id="logo" type="file" name="logo" accept="image/png,image/jpeg,image/webp" class="mt-2 block text-sm">
-                    <x-input-error class="mt-2" :messages="$errors->get('logo')" />
+                    <x-image-upload rule="logo" name="logo" class="mt-2" />
                 </div>
                 <div>
-                    <x-input-label for="icon" :value="__('App icon (square PNG, 512×512 is best)')" />
+                    <x-input-label for="icon" :value="__('App icon')" />
                     <p class="text-xs text-gray-500">{{ __('Shown in the browser tab and when the site is added to a phone\'s home screen.') }}</p>
                     @if ($profile->iconUrl())
                         <img src="{{ $profile->iconUrl() }}" alt="" class="mt-2 h-12 w-12 rounded-md border border-gray-200">
                         <label class="flex items-center gap-2 text-xs text-gray-500 mt-1"><input type="checkbox" name="remove_icon" value="1" class="rounded border-gray-300"> {{ __('Remove the icon') }}</label>
                     @endif
-                    <input id="icon" type="file" name="icon" accept="image/png" class="mt-2 block text-sm">
-                    <x-input-error class="mt-2" :messages="$errors->get('icon')" />
+                    <x-image-upload rule="icon" name="icon" class="mt-2" />
                 </div>
                 <div class="flex flex-wrap gap-8">
                     <div>

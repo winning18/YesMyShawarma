@@ -265,7 +265,7 @@
                         this.deliveryFeeToHandIn = meta.delivery_fee_to_hand_in ?? 0;
                         this.error = null;
                     } catch (e) {
-                        this.error = e.message;
+                        this.error = window.explainError(e);
                     }
                 },
 
@@ -285,10 +285,10 @@
 
                         if (!response.ok) {
                             const payload = await response.json().catch(() => null);
-                            throw new Error(payload?.message || 'Action failed');
+                            throw new Error(window.failureMessage(response, payload));
                         }
                     } catch (e) {
-                        this.actionError = e.message;
+                        this.actionError = window.explainError(e);
                     } finally {
                         this.fetchData();
                     }
@@ -388,10 +388,10 @@
 
                         if (!response.ok) {
                             const payload = await response.json().catch(() => null);
-                            throw new Error(payload?.message || 'Action failed');
+                            throw new Error(window.failureMessage(response, payload));
                         }
                     } catch (e) {
-                        this.actionError = e.message;
+                        this.actionError = window.explainError(e);
                     } finally {
                         this.arriving = null;
                         this.fetchData();
@@ -466,12 +466,12 @@
 
                         if (!response.ok) {
                             const payload = await response.json().catch(() => null);
-                            throw new Error(payload?.message || @js(__('Could not submit the report.')));
+                            throw new Error(window.failureMessage(response, payload, @js(__('Could not submit the report.'))));
                         }
 
                         this.closeDamageModal();
                     } catch (e) {
-                        this.damageError = e.message;
+                        this.damageError = window.explainError(e);
                     } finally {
                         this.damageSubmitting = false;
                     }

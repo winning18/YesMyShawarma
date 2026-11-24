@@ -591,7 +591,7 @@
                         this.discount = payload.discount;
                         this.promotionBanner = payload.promotionBanner;
                     } catch (e) {
-                        this.error = e.message;
+                        this.error = window.explainError(e);
                     }
                 },
 
@@ -603,7 +603,7 @@
                         if (this.table?.id === t.id) this.table.name = name.trim();
                         this.tableError = null;
                     } catch (e) {
-                        this.tableError = e.message;
+                        this.tableError = window.explainError(e);
                     }
                 },
 
@@ -614,14 +614,14 @@
                         if (this.table?.id === t.id) this.clearTable();
                         this.tableError = null;
                     } catch (e) {
-                        this.tableError = e.message;
+                        this.tableError = window.explainError(e);
                     }
                 },
 
                 async tablesRequest(url, options = {}) {
                     const response = await fetch(url, { headers: this.headers(), ...options });
                     const payload = await response.json().catch(() => ({}));
-                    if (!response.ok) throw new Error(payload.message || @js(__('Action failed.')));
+                    if (!response.ok) throw new Error(window.failureMessage(response, payload));
                     return payload;
                 },
 
@@ -630,7 +630,7 @@
                         this.tables = (await this.tablesRequest(@js(route('dashboard.tables.index')))).tables;
                         this.tableError = null;
                     } catch (e) {
-                        this.tableError = e.message;
+                        this.tableError = window.explainError(e);
                     }
                 },
 
@@ -641,7 +641,7 @@
                         this.newTableName = '';
                         this.tableError = null;
                     } catch (e) {
-                        this.tableError = e.message;
+                        this.tableError = window.explainError(e);
                     }
                 },
 
@@ -679,7 +679,7 @@
                     try {
                         this.bill = await this.tablesRequest(@js(url('/dashboard/tables/tabs')) + '/' + t.tab.id);
                     } catch (e) {
-                        this.tableError = e.message;
+                        this.tableError = window.explainError(e);
                     }
                 },
 
@@ -697,7 +697,7 @@
                         if (payload.total > 0 && !payload.printed_by_agent && window.expressPrinting?.receipt) window.expressPrint(payload.print_url);
                         this.bill = null;
                     } catch (e) {
-                        this.billError = e.message;
+                        this.billError = window.explainError(e);
                     } finally {
                         this.billBusy = false;
                     }
@@ -710,7 +710,7 @@
                         this.tables = (await this.tablesRequest(@js(url('/dashboard/tables/tabs')) + '/' + this.bill.id + '/move', { method: 'POST', body: JSON.stringify({ table_id: Number(this.moveTo) }) })).tables;
                         this.bill = null;
                     } catch (e) {
-                        this.billError = e.message;
+                        this.billError = window.explainError(e);
                     } finally {
                         this.billBusy = false;
                     }
@@ -722,7 +722,7 @@
                         const payload = await this.tablesRequest(@js(url('/dashboard/tables/tabs')) + '/' + this.bill.id + '/print', { method: 'POST', body: '{}' });
                         if (!payload.queued) window.expressPrint(payload.print_url);
                     } catch (e) {
-                        this.billError = e.message;
+                        this.billError = window.explainError(e);
                     }
                 },
 
@@ -877,10 +877,10 @@
                             headers: this.headers(),
                             body: body ? JSON.stringify(body) : undefined,
                         });
-                        const payload = await response.json();
+                        const payload = await response.json().catch(() => ({}));
 
                         if (!response.ok) {
-                            this.error = payload.message || '{{ __('Action failed.') }}';
+                            this.error = window.failureMessage(response, payload);
                             return false;
                         }
 
@@ -892,7 +892,7 @@
                         this.error = null;
                         return true;
                     } catch (e) {
-                        this.error = '{{ __('Action failed.') }}';
+                        this.error = window.explainError(e);
                         return false;
                     }
                 },
@@ -934,10 +934,10 @@
                             }),
                         });
 
-                        const payload = await response.json();
+                        const payload = await response.json().catch(() => ({}));
 
                         if (!response.ok) {
-                            this.error = payload.message || '{{ __('Could not place the order.') }}';
+                            this.error = window.failureMessage(response, payload, @js(__('Could not place the order.')));
                             return;
                         }
 
@@ -963,7 +963,8 @@
                             this.resetForm();
                         }
                     } catch (e) {
-                        this.error = '{{ __('Could not place the order.') }}';
+                        // The order may still have gone through if the connection dropped on the way back.
+                        this.error = window.explainError(e) + ' ' + @js(__('Check Order history before placing it again.'));
                     } finally {
                         this.submitting = false;
                     }

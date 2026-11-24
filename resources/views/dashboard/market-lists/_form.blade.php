@@ -84,8 +84,7 @@
 
     <div class="grid sm:grid-cols-2 gap-4">
         <div>
-            <label for="receipt" class="block text-xs font-medium text-gray-500 mb-1">{{ __('Receipt or list photo (optional)') }}</label>
-            <input id="receipt" type="file" name="receipt" accept="image/*" class="text-sm">
+            <x-image-upload rule="evidence" name="receipt" :label="__('Receipt or list photo (optional)')" />
             @if (isset($list) && $list->receipt_path)
                 <label class="flex items-center gap-2 text-xs text-gray-500 mt-2">
                     <input type="checkbox" name="remove_receipt" value="1" class="rounded border-gray-300">

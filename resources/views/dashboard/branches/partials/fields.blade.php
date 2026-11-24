@@ -69,7 +69,7 @@
         </x-secondary-button>
     </div>
 
-    <p class="text-sm text-brand-red mb-2" x-show="error" x-cloak x-text="error"></p>
+    <p class="text-sm text-red-600 mb-2" x-show="error" x-cloak x-text="error"></p>
 
     <div x-ref="map" x-init="init()" class="w-full h-64 rounded-md border border-gray-300"></div>
 

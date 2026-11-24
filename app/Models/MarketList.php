@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 #[Fillable([
     'branch_id', 'purchased_on', 'recorded_by', 'recorder_role', 'shift_id',
-    'status', 'total', 'receipt_path', 'note',
+    'status', 'total', 'receipt_path', 'receipt_viewed_at', 'note',
     'reviewed_by', 'reviewed_at', 'review_note',
 ])]
 #[ScopedBy([BranchScope::class])]
@@ -38,6 +38,7 @@ class MarketList extends Model
         return [
             'purchased_on' => 'date',
             'reviewed_at' => 'datetime',
+            'receipt_viewed_at' => 'datetime',
             'total' => 'integer',
         ];
     }

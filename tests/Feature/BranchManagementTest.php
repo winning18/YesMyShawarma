@@ -257,7 +257,7 @@ class BranchManagementTest extends TestCase
 
         $this->actingAs($owner)
             ->post(route('dashboard.branches.image.update', $this->branch), [
-                'image' => UploadedFile::fake()->image('branch.jpg'),
+                'image' => UploadedFile::fake()->image('branch.jpg', 800, 450),
             ])
             ->assertRedirect();
 
@@ -283,7 +283,7 @@ class BranchManagementTest extends TestCase
 
         $this->actingAs($manager)
             ->post(route('dashboard.branches.image.update', $this->branch), [
-                'image' => UploadedFile::fake()->image('branch.jpg'),
+                'image' => UploadedFile::fake()->image('branch.jpg', 800, 450),
             ])
             ->assertForbidden();
     }

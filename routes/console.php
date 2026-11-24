@@ -3,6 +3,7 @@
 use App\Console\Commands\AbandonPendingPaymentOrders;
 use App\Console\Commands\ApplyMenuItemSchedules;
 use App\Console\Commands\DeleteExpiredDamageReportPhotos;
+use App\Console\Commands\DeleteExpiredMarketListReceipts;
 use App\Console\Commands\EscalateUnacknowledgedOrders;
 use App\Console\Commands\SendDueSmsBroadcasts;
 use Illuminate\Foundation\Inspiring;
@@ -17,4 +18,5 @@ Schedule::command(EscalateUnacknowledgedOrders::class)->everyMinute();
 Schedule::command(AbandonPendingPaymentOrders::class)->everyFiveMinutes();
 Schedule::command(ApplyMenuItemSchedules::class)->everyFiveMinutes();
 Schedule::command(DeleteExpiredDamageReportPhotos::class)->hourly();
+Schedule::command(DeleteExpiredMarketListReceipts::class)->hourly();
 Schedule::command(SendDueSmsBroadcasts::class)->everyMinute()->withoutOverlapping();

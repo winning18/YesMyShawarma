@@ -9,6 +9,7 @@
  * by the time Alpine components initialise.
  */
 import Alpine from 'alpinejs';
+import './form-feedback';
 
 window.Alpine = Alpine;
 
@@ -62,7 +63,7 @@ Alpine.data('nearestBranchButton', (url, messages) => ({
             this.locating = false;
             this.error = error.message === 'denied' || error.message === 'unsupported'
                 ? messages.denied
-                : messages.failed;
+                : (error.name === 'TypeError' ? window.explainError(error) : messages.failed);
         }
     },
 }));

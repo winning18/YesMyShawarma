@@ -29,10 +29,10 @@
                 <x-honeypot />
 
                 <div>
-                    <label for="name" class="block text-sm font-medium mb-1">{{ __('Name') }} <span class="text-brand-red">*</span></label>
+                    <label for="name" class="block text-sm font-medium mb-1">{{ __('Name') }} <span class="text-red-600">*</span></label>
                     <input type="text" name="name" id="name" value="{{ old('name') }}" required
-                        class="w-full rounded-md {{ $errors->has('name') ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300' }} focus:border-brand-yellow focus:ring-brand-yellow">
-                    @error('name') <p class="text-sm text-brand-red mt-1">{{ $message }}</p> @enderror
+                        class="w-full rounded-md {{ $errors->has('name') ? 'border-red-600 ring-1 ring-red-600' : 'border-brand-gray-300' }} focus:border-brand-yellow focus:ring-brand-yellow">
+                    @error('name') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -40,22 +40,22 @@
                         <label for="email" class="block text-sm font-medium mb-1">{{ __('Email') }}</label>
                         <input type="email" name="email" id="email" x-model="email"
                             class="w-full rounded-md border-brand-gray-300 focus:border-brand-yellow focus:ring-brand-yellow">
-                        @error('email') <p class="text-sm text-brand-red mt-1">{{ $message }}</p> @enderror
+                        @error('email') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label for="phone" class="block text-sm font-medium mb-1">{{ __('Phone') }}</label>
                         <input type="tel" name="phone" id="phone" x-model="phone"
                             class="w-full rounded-md border-brand-gray-300 focus:border-brand-yellow focus:ring-brand-yellow">
-                        @error('phone') <p class="text-sm text-brand-red mt-1">{{ $message }}</p> @enderror
+                        @error('phone') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                     </div>
                 </div>
-                <p class="text-xs -mt-2" :class="missingContact ? 'text-brand-red' : 'text-brand-gray-500'">{{ __('Provide at least an email or a phone number so we can reply.') }}</p>
+                <p class="text-xs -mt-2" :class="missingContact ? 'text-red-600' : 'text-brand-gray-500'">{{ __('Provide at least an email or a phone number so we can reply.') }}</p>
 
                 <div>
-                    <label for="message" class="block text-sm font-medium mb-1">{{ __('Message') }} <span class="text-brand-red">*</span></label>
+                    <label for="message" class="block text-sm font-medium mb-1">{{ __('Message') }} <span class="text-red-600">*</span></label>
                     <textarea name="message" id="message" rows="5" required maxlength="2000"
-                        class="w-full rounded-md {{ $errors->has('message') ? 'border-brand-red ring-1 ring-brand-red' : 'border-brand-gray-300' }} focus:border-brand-yellow focus:ring-brand-yellow">{{ old('message') }}</textarea>
-                    @error('message') <p class="text-sm text-brand-red mt-1">{{ $message }}</p> @enderror
+                        class="w-full rounded-md {{ $errors->has('message') ? 'border-red-600 ring-1 ring-red-600' : 'border-brand-gray-300' }} focus:border-brand-yellow focus:ring-brand-yellow">{{ old('message') }}</textarea>
+                    @error('message') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                 </div>
 
                 <x-turnstile-widget />

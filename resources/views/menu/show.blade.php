@@ -14,11 +14,7 @@
 
     <x-customer-branch-bar :branch="$branch" class="mt-4" />
 
-    @if ($errors->any())
-        <div class="mt-6 rounded-lg bg-brand-red-light border border-brand-red text-brand-red-dark text-sm px-4 py-2">
-            {{ $errors->first() }}
-        </div>
-    @endif
+    <x-error-summary class="mt-6" />
 
     {{-- The selected product --}}
     <div class="grid grid-cols-1 md:grid-cols-2 gap-10 mt-6 mb-12">

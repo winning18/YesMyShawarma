@@ -8,16 +8,16 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
 /**
- * Deletes a damage report's photo once it's been more than 24h since a
- * reviewer first viewed it (DamageReportService::markPhotoViewed()) — the
- * report row itself stays permanently for audit, only the file goes. A
- * report whose photo has never been viewed is never touched here, however
- * old it gets; the 24h window only starts once someone's actually looked.
+ * Deletes a damage report's photo 24h after a reviewer first viewed it
+ * (DamageReportService::markPhotoViewed()) and the report was approved or
+ * denied, whichever came later (owner, 2026-11-24) — the report row itself
+ * stays permanently for audit, only the file goes. A pending report, or
+ * one whose photo nobody has viewed, is never touched here.
  * Hourly, not everyMinute() like orders:escalate-unacknowledged — nothing
  * about a 24h deadline needs minute-level precision.
  */
 #[Signature('damage-reports:delete-expired-photos')]
-#[Description('Delete damage report photos more than 24h past their first review view')]
+#[Description('Delete damage report photos 24h after they were viewed and the report decided')]
 class DeleteExpiredDamageReportPhotos extends Command
 {
     public function handle(DamageReportService $damageReports): int

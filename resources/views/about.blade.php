@@ -140,7 +140,7 @@
             <x-turnstile-widget />
         </form>
         @error('email')
-            <p class="text-sm text-brand-red mt-3">{{ $message }}</p>
+            <p class="text-sm text-red-600 mt-3">{{ $message }}</p>
         @enderror
         </div>
     </section>

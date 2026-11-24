@@ -7,6 +7,7 @@ use App\Models\DamageReport;
 use App\Models\Order;
 use App\Models\StockItem;
 use App\Models\User;
+use App\Services\Media\ImageRules;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -43,6 +44,7 @@ class DamageReportService
         ?Order $order = null,
         ?StockItem $stockItem = null,
     ): DamageReport {
+        app(ImageRules::class)->shrinkUpload($photo, 'evidence');
         $path = $photo->storeAs(self::DIRECTORY, Str::uuid().'.'.$photo->extension(), self::DISK);
 
         return DamageReport::create([
@@ -120,9 +122,14 @@ class DamageReportService
      */
     public function deleteExpiredPhotos(): int
     {
-        $expired = DamageReport::whereNotNull('photo_viewed_at')
+        // 24 hours after it was viewed and the report decided, whichever
+        // came later (owner, 2026-11-24): a pending report keeps its photo.
+        $cutoff = now()->subDay();
+        $expired = DamageReport::withoutGlobalScopes()
             ->whereNotNull('photo_path')
-            ->where('photo_viewed_at', '<', now()->subDay())
+            ->where('status', '!=', DamageReport::STATUS_PENDING)
+            ->where('photo_viewed_at', '<', $cutoff)
+            ->where('reviewed_at', '<', $cutoff)
             ->get();
 
         foreach ($expired as $report) {

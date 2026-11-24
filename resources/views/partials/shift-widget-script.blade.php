@@ -176,7 +176,7 @@
                     const payload = await response.json().catch(() => null);
 
                     if (!response.ok) {
-                        this.error = payload?.message || 'Action failed.';
+                        this.error = window.failureMessage(response, payload);
                         await this.refresh();
                         return false;
                     }
@@ -184,7 +184,7 @@
                     await this.refresh();
                     return true;
                 } catch (e) {
-                    this.error = 'Action failed.';
+                    this.error = window.explainError(e);
                     return false;
                 }
             },

@@ -340,7 +340,7 @@
                             headers: { Accept: 'application/json' },
                         });
 
-                        if (!response.ok) throw new Error('Failed to load orders');
+                        if (!response.ok) throw new Error(window.failureMessage(response, null));
 
                         const { data, print_failures } = await response.json();
                         this.printFailures = print_failures || [];
@@ -350,7 +350,7 @@
                         this.error = null;
                         this.fetchRiders();
                     } catch (e) {
-                        this.error = e.message;
+                        this.error = window.explainError(e);
                     }
                 },
 
@@ -561,12 +561,12 @@
 
                         if (!response.ok) {
                             const payload = await response.json().catch(() => null);
-                            throw new Error(payload?.message || 'Action failed');
+                            throw new Error(window.failureMessage(response, payload));
                         }
 
                         return await response.json().catch(() => ({}));
                     } catch (e) {
-                        this.actionError = e.message;
+                        this.actionError = window.explainError(e);
 
                         return false;
                     } finally {

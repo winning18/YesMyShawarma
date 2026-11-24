@@ -10,9 +10,7 @@
             @if (session('status'))
                 <div class="rounded-md bg-green-50 text-green-700 text-sm px-4 py-2">{{ session('status') }}</div>
             @endif
-            @if ($errors->any())
-                <div class="rounded-md bg-red-50 text-red-700 text-sm px-4 py-2">{{ $errors->first() }}</div>
-            @endif
+            <x-error-summary />
 
             <p class="text-sm text-gray-500">{{ __('Kinds group purchases in reports (all the chicken, all the transport…). Keywords make a kind get suggested as staff type a description. Hiding a kind stops it being offered; past purchases keep it.') }}</p>
 

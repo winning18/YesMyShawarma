@@ -28,9 +28,7 @@
         @if (session('status'))
             <div class="rounded-md bg-green-50 text-green-700 text-sm px-4 py-2">{{ session('status') }}</div>
         @endif
-        @if ($errors->any())
-            <div class="rounded-md bg-red-50 text-red-700 text-sm px-4 py-2">{{ $errors->first() }}</div>
-        @endif
+        <x-error-summary />
 
         <div class="bg-white shadow rounded-lg p-4 space-y-4">
             <form method="GET" action="{{ route('dashboard.rider-cashups.index') }}" class="flex flex-wrap items-end gap-3">

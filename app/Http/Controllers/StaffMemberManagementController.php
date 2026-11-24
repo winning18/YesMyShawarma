@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreStaffMemberRequest;
 use App\Http\Requests\UpdateStaffMemberRequest;
 use App\Models\StaffMember;
+use App\Services\Media\ImageRules;
 use App\Services\Media\ImageUploadService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -81,11 +82,11 @@ class StaffMemberManagementController extends Controller
         Gate::authorize('settings.manage');
 
         $request->validate([
-            'image' => ['required', 'image', 'max:4096'],
-        ]);
+            'image' => app(ImageRules::class)->rules('staff', true),
+        ], app(ImageRules::class)->messages('image', 'staff'));
 
         $staffMember->update([
-            'photo_path' => $images->store('staff', $staffMember->id, $request->file('image'), $staffMember->photo_path),
+            'photo_path' => $images->store('staff', $staffMember->id, $request->file('image'), $staffMember->photo_path, 'staff'),
         ]);
 
         return back()->with('status', __(':name photo updated.', ['name' => $staffMember->name]));

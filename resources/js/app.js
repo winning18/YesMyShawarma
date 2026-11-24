@@ -1,4 +1,6 @@
 import Alpine from 'alpinejs';
+import './form-feedback';
+import './image-upload';
 
 window.Alpine = Alpine;
 

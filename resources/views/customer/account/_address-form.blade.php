@@ -25,7 +25,7 @@
     </div>
 
     <div>
-        <label class="block text-sm font-medium mb-1">{{ __('Area') }} <span class="text-brand-red">*</span></label>
+        <label class="block text-sm font-medium mb-1">{{ __('Area') }} <span class="text-red-600">*</span></label>
         <select name="area_id" required x-model="area" class="w-full rounded-md border-brand-gray-300">
             <option value="">{{ __('Select your area…') }}</option>
             @foreach ($deliveryAreas as $area)
@@ -38,7 +38,7 @@
     </div>
 
     <div>
-        <label class="block text-sm font-medium mb-1">{{ __('Landmark') }} <span class="text-brand-red">*</span></label>
+        <label class="block text-sm font-medium mb-1">{{ __('Landmark') }} <span class="text-red-600">*</span></label>
         <input type="text" name="landmark" required maxlength="255" value="{{ $address->landmark ?? old('landmark') }}" placeholder="{{ __('e.g. Opposite the blue gate, near the church') }}" class="w-full rounded-md border-brand-gray-300">
     </div>
 

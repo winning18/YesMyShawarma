@@ -6,6 +6,7 @@ use App\Http\Requests\StoreBranchRequest;
 use App\Http\Requests\UpdateBranchRequest;
 use App\Models\Branch;
 use App\Models\MenuItem;
+use App\Services\Media\ImageRules;
 use App\Services\Media\ImageUploadService;
 use App\Services\Settings\SettingsService;
 use Illuminate\Http\RedirectResponse;
@@ -129,12 +130,12 @@ class BranchManagementController extends Controller
     {
         Gate::authorize('branches.manage');
 
-        $request->validate([
-            'image' => ['required', 'image', 'max:4096'],
-        ]);
+        $request->validateWithBag('branch-'.$branch->id, [
+            'image' => app(ImageRules::class)->rules('branch', true),
+        ], app(ImageRules::class)->messages('image', 'branch'));
 
         $branch->update([
-            'image_path' => $images->store('branches', $branch->id, $request->file('image'), $branch->image_path),
+            'image_path' => $images->store('branches', $branch->id, $request->file('image'), $branch->image_path, 'branch'),
         ]);
 
         return back()->with('status', __(':branch image updated.', ['branch' => $branch->name]));

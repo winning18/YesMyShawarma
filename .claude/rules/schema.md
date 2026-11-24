@@ -392,7 +392,8 @@ reads the market list only, so nothing is deducted twice.
 expense_categories  id, name (unique), keywords (json), sort_order, is_active
 market_lists        id, branch_id, purchased_on (date), recorded_by, recorder_role,
                     shift_id (nullable, unique), status (pending|needs_changes|approved),
-                    total, receipt_path (nullable), note, reviewed_by, reviewed_at,
+                    total, receipt_path (nullable), receipt_viewed_at (nullable), note,
+                    reviewed_by, reviewed_at,
                     review_note, timestamps
 market_list_items   id, market_list_id, expense_category_id, description,
                     quantity (decimal 10,2, nullable), unit (nullable), amount, timestamps
@@ -422,7 +423,11 @@ the same rule in the browser. Staff can change it and the approver can correct i
 approving. The Profit tab sums `quantity` per kind only when every item shares one unit.
 
 `receipt_path` is on the private `local` disk like damage photos, served only through
-`MarketListController::receipt()`, but kept permanently (financial record, no expiry).
+`MarketListController::receipt()`. Evidence photos are deleted once they've done their job
+(owner, 2026-11-24, over the recommendation to keep receipts as tax records): a reviewer's first
+look (someone who could approve it, never the recorder) sets `receipt_viewed_at`, and 24 hours
+after both that and approval, the hourly `market-lists:delete-expired-receipts` deletes the file
+and nulls `receipt_path`. The list, items and amounts stay.
 
 Shift expenses from before the market list were converted once into approved lists
 (`2026_11_11_100300_convert_shift_expenses_to_market_lists`, `actor_id` null, event `converted`).
@@ -528,11 +533,29 @@ one branch/menu images use, and is served only through `DamageReportController::
 (`DamageReportPolicy::viewPhoto()` — the reviewer tier, or the original reporter seeing their
 own submission back). The first time an actual *reviewer* opens it, `photo_viewed_at` is set
 (`DamageReportService::markPhotoViewed()` — the reporter viewing their own photo never counts);
-24 hours after that, the scheduled `damage-reports:delete-expired-photos` command
-(`routes/console.php`, hourly) deletes the file and nulls `photo_path`, but the row itself stays
-permanently, same as every other audit table in this app outliving the artifact it was about. A
-report whose photo has never been viewed is never touched, however old it gets — the window only
-starts once someone's actually looked.
+24 hours after both that and the decision (approved or denied, `reviewed_at`; owner,
+2026-11-24), the scheduled `damage-reports:delete-expired-photos` command (`routes/console.php`,
+hourly) deletes the file and nulls `photo_path`, but the row itself stays permanently, same as
+every other audit table in this app outliving the artifact it was about. A pending report, or one
+whose photo has never been viewed, is never touched, however old it gets.
+
+## Image uploads
+
+`App\Services\Media\ImageRules::SLOTS` (owner, 2026-11-24) defines every upload once: shape,
+best and minimum pixels, formats, largest file (4 MB; logo 2 MB, icon 1 MB). It gives the
+validation rules and plain-language messages, the `<x-image-upload>` field (rules shown, checked
+in the browser, cropped previews), Help → Image sizes, and `shrink()`, which brings a photo down
+to its best size (and the right way up) as it's stored. Any shape is accepted and cropped from
+the centre; below the minimum is refused. Server: each Express POS PHP pool allows 5 MB per file
+(`php_admin_value`, `deploy/new-install.sh`), so the app's own message always shows.
+
+## Errors
+
+One standard (owner, 2026-11-24): the field at fault outlined in a fixed red (never the business's
+accent), its message under it, every mistake listed at the top (`<x-error-summary>`, or
+`resources/js/form-feedback.js` adds one), the page opened at the first. Messages say what's wrong
+and how to fix it (`lang/en/validation.php`). Calls from live screens show
+`window.failureMessage()` / `window.explainError()` instead of a bare "Action failed.".
 
 ## Promotions
 

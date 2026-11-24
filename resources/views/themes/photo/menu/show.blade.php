@@ -14,11 +14,7 @@
 
     <a href="{{ $theme === \App\Services\Content\WebsiteThemeService::ONE_PAGE ? route('home').'#menu' : route('menu.index') }}" class="inline-flex items-center gap-1 text-sm font-medium text-brand-gray-500 hover:text-brand-black">&larr; {{ __('Back to menu') }}</a>
 
-    @if ($errors->any())
-        <div class="mt-6 rounded-lg bg-brand-red-light border border-brand-red text-brand-red-dark text-sm px-4 py-2">
-            {{ $errors->first() }}
-        </div>
-    @endif
+    <x-error-summary class="mt-6" />
 
     {{-- Without a photo the dish takes the whole width: no empty picture box. --}}
     <div class="grid grid-cols-1 {{ $item->imageUrl() ? 'md:grid-cols-2' : 'max-w-2xl' }} gap-8 md:gap-12 mt-6 mb-14">

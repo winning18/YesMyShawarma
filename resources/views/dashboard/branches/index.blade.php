@@ -47,16 +47,15 @@
                         </div>
                     </div>
 
-                    <div class="border-t border-gray-100 pt-4 flex items-center gap-3">
+                    <div class="border-t border-gray-100 pt-4 flex flex-wrap items-end gap-3">
                         <form
                             method="POST"
                             action="{{ route('dashboard.branches.image.update', $branch) }}"
                             enctype="multipart/form-data"
-                            class="flex items-center gap-3"
+                            class="space-y-3 flex-1 min-w-0"
                         >
                             @csrf
-                            <label for="image-{{ $branch->id }}" class="shrink-0 text-xs text-gray-500">{{ __('Photo') }} <span class="text-red-600">*</span></label>
-                            <input type="file" name="image" id="image-{{ $branch->id }}" accept="image/*" required class="text-sm">
+                            <x-image-upload rule="branch" name="image" :id="'image-'.$branch->id" :label="__('Photo')" required :error-bag="'branch-'.$branch->id" />
                             <button type="submit" class="shrink-0 px-3 py-1.5 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-900">
                                 {{ __('Upload') }}
                             </button>

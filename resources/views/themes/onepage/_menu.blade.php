@@ -13,11 +13,7 @@
 @else
     <x-customer-branch-bar :branch="$branch" class="mb-4" />
 
-    @if ($errors->any())
-        <div class="mb-4 rounded-lg bg-brand-red-light border border-brand-red text-brand-red-dark text-sm px-4 py-2">
-            {{ $errors->first() }}
-        </div>
-    @endif
+    <x-error-summary class="mb-4" />
 
     @include('themes.partials.category-bar', ['categories' => $categories])
 

@@ -31,10 +31,10 @@
                 @if ($promotion->bannerImageUrl())
                     <img src="{{ $promotion->bannerImageUrl() }}" alt="" class="max-h-32 rounded-md">
                 @endif
-                <div class="flex items-center gap-3">
-                    <form method="POST" action="{{ route('dashboard.promotions.banner-image.update', $promotion) }}" enctype="multipart/form-data" class="flex items-center gap-2">
+                <div class="flex flex-wrap items-end gap-3">
+                    <form method="POST" action="{{ route('dashboard.promotions.banner-image.update', $promotion) }}" enctype="multipart/form-data" class="space-y-3 flex-1 min-w-0">
                         @csrf
-                        <input type="file" name="image" accept="image/*" class="text-sm">
+                        <x-image-upload rule="promotion_banner" name="image" id="banner-image" required />
                         <x-secondary-button type="submit">{{ __('Upload') }}</x-secondary-button>
                     </form>
                     @if ($promotion->bannerImageUrl())

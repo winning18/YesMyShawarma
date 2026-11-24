@@ -241,7 +241,7 @@ class DamageReportTest extends TestCase
         $this->assertNotNull($report->fresh()->photo_viewed_at);
     }
 
-    public function test_scheduled_command_deletes_photos_more_than_24h_after_being_viewed_but_keeps_the_row(): void
+    public function test_scheduled_command_deletes_photos_24h_after_being_viewed_and_decided_but_keeps_the_row(): void
     {
         $staff = $this->makeStaff();
 
@@ -262,8 +262,18 @@ class DamageReportTest extends TestCase
         Storage::disk('local')->assertExists($photoPath);
         $this->assertNotNull($report->fresh()->photo_path);
 
-        // Viewed more than 24h ago — now deleted, row stays.
+        // Viewed more than 24h ago but still pending — kept until decided (owner, 2026-11-24).
         $report->update(['photo_viewed_at' => now()->subHours(25)]);
+        $this->artisan('damage-reports:delete-expired-photos');
+        Storage::disk('local')->assertExists($photoPath);
+
+        // Decided (approved or denied) just now — still kept for 24 hours.
+        $report->update(['status' => 'denied', 'reviewed_at' => now()]);
+        $this->artisan('damage-reports:delete-expired-photos');
+        Storage::disk('local')->assertExists($photoPath);
+
+        // Viewed and decided more than 24h ago — now deleted, row stays.
+        $report->update(['reviewed_at' => now()->subHours(25)]);
         $this->artisan('damage-reports:delete-expired-photos');
         Storage::disk('local')->assertMissing($photoPath);
         $this->assertDatabaseHas('damage_reports', ['id' => $report->id, 'photo_path' => null]);

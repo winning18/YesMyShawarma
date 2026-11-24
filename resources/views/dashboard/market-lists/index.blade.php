@@ -8,9 +8,7 @@
             @if (session('status'))
                 <div class="rounded-md bg-green-50 text-green-700 text-sm px-4 py-2">{{ session('status') }}</div>
             @endif
-            @if ($errors->any())
-                <div class="rounded-md bg-red-50 text-red-700 text-sm px-4 py-2">{{ $errors->first() }}</div>
-            @endif
+            <x-error-summary />
 
             @can('create', \App\Models\MarketList::class)
                 <div class="bg-white shadow rounded-lg p-4">
@@ -124,12 +122,17 @@
                         </table>
                     </div>
 
-                    @if ($list->note || $list->receipt_path)
+                    @if ($list->note || $list->receipt_path || $list->receipt_viewed_at)
                         <p class="text-xs text-gray-500">
                             @if ($list->note) {{ $list->note }} @endif
                             @can('viewReceipt', $list)
                                 <a href="{{ route('dashboard.market-lists.receipt', $list) }}" target="_blank" class="text-indigo-600 hover:underline ms-1">{{ __('View receipt photo') }}</a>
-                            @endcan
+                                @if ($list->status === 'approved')
+                                    <span class="text-gray-400">{{ $list->receipt_viewed_at ? __('(deleted 24 hours after it was checked and approved)') : __('(deleted 24 hours after it\'s checked)') }}</span>
+                                @endif
+                            @elseif (! $list->receipt_path && $list->receipt_viewed_at)
+                                <span class="text-gray-400 ms-1">{{ __('Receipt photo deleted after it was checked and approved.') }}</span>
+                            @endif
                         </p>
                     @endif
 

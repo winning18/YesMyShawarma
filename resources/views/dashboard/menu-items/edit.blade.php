@@ -60,18 +60,14 @@
                     method="POST"
                     action="{{ route('dashboard.menu-items.image.update', $menuItem) }}"
                     enctype="multipart/form-data"
-                    class="flex items-center gap-3"
+                    class="space-y-3"
                 >
                     @csrf
-                    <label for="image" class="shrink-0 text-xs text-gray-500">{{ __('Photo') }} <span class="text-red-600">*</span></label>
-                    <input type="file" name="image" id="image" accept="image/*" required class="text-sm">
-                    <button type="submit" class="shrink-0 px-3 py-1.5 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-900">
+                    <x-image-upload rule="menu_item" name="image" :label="__('Photo')" required />
+                    <button type="submit" class="px-3 py-1.5 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-900">
                         {{ __('Upload') }}
                     </button>
                 </form>
-                @error('image')
-                    <p class="text-xs text-red-600">{{ $message }}</p>
-                @enderror
 
                 @if ($menuItem->image_path)
                     <form method="POST" action="{{ route('dashboard.menu-items.image.destroy', $menuItem) }}">

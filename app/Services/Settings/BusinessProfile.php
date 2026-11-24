@@ -3,6 +3,7 @@
 namespace App\Services\Settings;
 
 use App\Models\Branch;
+use App\Services\Media\ImageRules;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -348,6 +349,7 @@ class BusinessProfile
 
         $stored = self::DIRECTORY.'/logo-'.Str::lower(Str::random(8)).'.'.$extension;
         Storage::disk('public')->put($stored, (string) file_get_contents($path));
+        app(ImageRules::class)->shrink(Storage::disk('public')->path($stored), 'logo');
         $this->store(self::LOGO, $stored);
     }
 
@@ -389,6 +391,8 @@ class BusinessProfile
         if ($file) {
             // A new name each time, so browsers and Cloudflare never serve the old file.
             $path = $file->storeAs(self::DIRECTORY, $name.'-'.Str::lower(Str::random(8)).'.'.$file->extension(), 'public');
+            // Logo or icon (ImageRules): no bigger than it's ever shown.
+            app(ImageRules::class)->shrink(Storage::disk('public')->path($path), $name === 'icon' ? 'icon' : 'logo');
             $this->store($key, $path);
         }
     }
