@@ -31,7 +31,7 @@ SOURCE=/var/www/yes-my-shawarma-staging
 PHP_VERSION=8.3
 
 if [[ $EUID -ne 0 ]]; then echo "Run as root." >&2; exit 1; fi
-if [[ ! "$NAME" =~ ^[a-z][a-z0-9]{1,20}$ ]]; then echo "Name: lowercase letters and digits, 2-21 characters (e.g. mamaput)." >&2; exit 1; fi
+if [[ ! "$NAME" =~ ^[a-z][a-z0-9]{1,23}$ ]]; then echo "Name: lowercase letters and digits, 2-24 characters (e.g. mamaput)." >&2; exit 1; fi
 if [[ ! "$DOMAIN" =~ ^[a-z0-9.-]+\.[a-z]{2,}$ ]]; then echo "Give the install's domain, e.g. $NAME.pos.solusysdigital.com." >&2; exit 1; fi
 
 SLUG="expresspos-$NAME"

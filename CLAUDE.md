@@ -110,6 +110,22 @@ branch-scoped, keep settings in the database).
 `<client>.pos.solusysdigital.com` and never moves off it. Only a client's customer website may have
 its own domain (e.g. `deboyeskitchen.com`), served by the same install.
 
+**Staging and sandboxes (owner, 2026-11-24):**
+- Shared staging moves to `staging.pos.solusysdigital.com`: an ordinary install filled with the
+  made-up "Express POS Demo" (`expresspos:demo-data`, data in `database/seeders/data/
+  demo_business.php`), behind a password gate. `staging.yesmyshawarma.com` runs until the MVP
+  release, then redirects there.
+- A client's **sandbox** is made on demand from Express POS Admin at
+  `<client>-staging.pos.solusysdigital.com` (one level, so the existing wildcard DNS covers it):
+  a copy of their install on the newest code, customers' personal data replaced
+  (`expresspos:scrub-sandbox`, refused on a live install), no live keys, a password gate, never
+  backed up, deleted on demand or after 7 days (`deploy/sandbox.sh`, the portal's
+  `clients:expire-sandboxes`). For custom-look work and support, never the live site.
+- **At the MVP release** Yes My Shawarma becomes an ordinary install: its POS at
+  `yesmyshawarma.pos.solusysdigital.com`, `yesmyshawarma.com` connected as its own website
+  domain. Needs a written cut-over checklist first (database, Paystack webhook, Print Agent
+  address, staff sign-in and push, rider subdomains).
+
 **Brand (owner, 2026-11-24):** there is no default palette. Every client chooses its two brand
 colours and uploads its logo before onboarding can go ahead (`expresspos:new-client` requires
 them); Solusys staff can change them later from the client's page in Express POS Admin
