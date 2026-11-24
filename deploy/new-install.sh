@@ -266,9 +266,8 @@ cat <<DONE
 
 Done: https://$DOMAIN
 
-Next:
+Next (Express POS Admin's onboarding does all three itself):
   1. Fill in the business:  cd $DIR && sudo -u www-data php artisan expresspos:new-client
-  2. Add this install to the staging deploy: GitHub repo → Settings → Variables →
-     EXPRESSPOS_EXTRA_INSTALLS, add "$SLUG" (space-separated).
+  2. Register it for updates: add "$SLUG" to /etc/expresspos/installs.
   3. Add $DB to the nightly backups: /etc/expresspos/backup.conf.
 DONE
