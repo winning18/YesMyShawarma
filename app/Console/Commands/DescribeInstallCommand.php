@@ -26,9 +26,12 @@ class DescribeInstallCommand extends Command
     public function handle(BusinessProfile $profile, ModuleService $modules, SettingsService $settings, WebsiteThemeService $themes): int
     {
         $branch = $profile->mainBranch();
+        // The first owner still in use (a removed account keeps its role row).
         $ownerId = DB::table('model_has_roles')
             ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
+            ->join('users', 'users.id', '=', 'model_has_roles.model_id')
             ->where('roles.name', 'owner')->where('model_has_roles.model_type', User::class)
+            ->whereNull('users.deleted_at')
             ->orderBy('model_has_roles.model_id')->value('model_has_roles.model_id');
         $owner = $ownerId ? User::find($ownerId) : null;
         $colours = $profile->colours();

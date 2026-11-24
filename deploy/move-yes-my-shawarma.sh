@@ -145,16 +145,18 @@ chmod -R ug+rwX "$NEW_DIR/storage/app"
 
 step "Carrying the keys over"
 # Everything in the old .env except what belongs to this install itself.
-# A rehearsal takes only APP_KEY (stored data is encrypted with it).
+# A rehearsal takes only APP_KEY (stored data is encrypted with it) and
+# APP_NAME (the business-profile migration stores it as the business's
+# name; without it the business would be called "Express POS").
 ONLY_APP_KEY=$([[ "$MODE" == --rehearsal ]] && echo 1 || echo 0)
 OLD_ENV="$OLD_DIR/.env" NEW_ENV="$NEW_DIR/.env" ONLY_APP_KEY="$ONLY_APP_KEY" php -r '
-    $own = "/^(APP_ENV|APP_URL|APP_NAME|DB_|REVERB_|VITE_|LOG_|SESSION_|BROADCAST_CONNECTION|QUEUE_CONNECTION|CACHE_STORE|FILESYSTEM_DISK)/";
+    $own = "/^(APP_ENV|APP_URL|DB_|REVERB_|VITE_|LOG_|SESSION_|BROADCAST_CONNECTION|QUEUE_CONNECTION|CACHE_STORE|FILESYSTEM_DISK)/";
     $read = fn ($f) => array_filter(array_map("trim", file($f)), fn ($l) => $l !== "" && $l[0] !== "#" && str_contains($l, "="));
     $new = []; foreach ($read(getenv("NEW_ENV")) as $l) { [$k, $v] = explode("=", $l, 2); $new[$k] = $v; }
     $carried = [];
     foreach ($read(getenv("OLD_ENV")) as $l) {
         [$k, $v] = explode("=", $l, 2);
-        if (getenv("ONLY_APP_KEY") === "1" ? $k !== "APP_KEY" : preg_match($own, $k)) { continue; }
+        if (getenv("ONLY_APP_KEY") === "1" ? ! in_array($k, ["APP_KEY", "APP_NAME"], true) : preg_match($own, $k)) { continue; }
         $new[$k] = $v; $carried[] = $k;
     }
     $out = ""; foreach ($new as $k => $v) { $out .= $k."=".$v."\n"; }

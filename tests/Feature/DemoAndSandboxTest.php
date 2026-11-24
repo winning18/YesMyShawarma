@@ -15,6 +15,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
@@ -119,5 +120,13 @@ class DemoAndSandboxTest extends TestCase
         $this->assertSame(['primary' => '#f59e0b', 'accent' => '#0f766e', 'background' => '#111827'], $described['colours']);
         $this->assertSame('classic', $described['theme']);
         $this->assertNotNull($described['logo']);
+
+        // A removed owner is skipped for the next one still in use.
+        $gm = User::firstWhere('email', 'gm@demo.expresspos.test');
+        app(PermissionRegistrar::class)->setPermissionsTeamId(Branch::firstWhere('name', 'Osu')->id);
+        $gm->assignRole('owner');
+        User::firstWhere('email', 'owner@demo.expresspos.test')->delete();
+        Artisan::call('expresspos:describe');
+        $this->assertSame('gm@demo.expresspos.test', json_decode(trim(Artisan::output()), true)['owner']['email']);
     }
 }

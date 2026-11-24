@@ -17,8 +17,10 @@ Owner = Solusys Digital's owner. Tech = whoever runs the server steps (with Clau
 **Unchanged for customers:** the website address, their accounts and order history, Google
 results, links in SMS already sent, the home-screen app, Paystack checkout.
 
-**Things that change for staff:** a new sign-in address; each till device is set up as a counter
-again; push notifications switched on again; riders use the new link.
+**Things that change for staff:** a new sign-in address; push notifications switched on again;
+riders use the new link. (The rehearsal showed Yes My Shawarma has no counters, printers or PINs
+set up yet, so there are no tills to set up again; staff sign in with email and password as now.
+If counters are set up before release day, each needs setting up again on the new address.)
 
 **No DNS changes are needed:** `*.pos.solusysdigital.com` already points at the server, and so
 does `yesmyshawarma.com`.
@@ -110,7 +112,9 @@ Start only if the rehearsal passed. Note the time at each step.
          update the live installs (Yes My Shawarma and De Boyes Kitchen) with the same code.
 3. - [ ] **Checks before saying go** (Tech and Owner together, on a phone and a computer):
    - [ ] `yesmyshawarma.com` opens the website; the menu, a dish and the cart work.
-   - [ ] A test order with Paystack (smallest amount) completes, and the webhook marks it paid.
+   - [ ] Paystack is **off** for Yes My Shawarma (the rehearsal confirmed it), so the website
+         offers cash only; check checkout says so. If it's switched on before release day, place
+         a smallest-amount Paystack test order instead and check the webhook marks it paid.
    - [ ] `yesmyshawarma.pos.solusysdigital.com` signs in (owner); the dashboard, order board and
          reports show the real history.
    - [ ] A POS order on a test counter reaches the kitchen board live; receipt and kitchen
