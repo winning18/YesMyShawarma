@@ -9,6 +9,8 @@
 #   bash deploy/move-yes-my-shawarma.sh --remove-rehearsal
 #   bash deploy/move-yes-my-shawarma.sh --go          the real move, on release night
 #   bash deploy/move-yes-my-shawarma.sh --rollback <keep folder>
+#   bash deploy/move-yes-my-shawarma.sh --remove-failed   clears a --go that stopped
+#                                                          early (old install already back)
 #
 # --go: fresh backup; the old install put in maintenance and its scheduler
 # and services paused (kept, as the rollback); a new install
@@ -37,7 +39,7 @@ STAGING_SOURCE=/var/www/yes-my-shawarma-staging
 
 case "$MODE" in
   --rehearsal|--remove-rehearsal) NAME=ymsrehearsal ;;
-  --go|--rollback) NAME=yesmyshawarma ;;
+  --go|--rollback|--remove-failed) NAME=yesmyshawarma ;;
   *) sed -n '2,25p' "$0"; exit 1 ;;
 esac
 SLUG_DIR="expresspos-$NAME"
@@ -64,6 +66,16 @@ if [[ "$MODE" == --remove-rehearsal ]]; then
   step "Removing the rehearsal at https://$DOMAIN"
   remove_install
   echo "Done."
+  exit 0
+fi
+
+if [[ "$MODE" == --remove-failed ]]; then
+  # Only a move that never took over: not registered, not released.
+  ! grep -qx "$SLUG_DIR" /etc/expresspos/installs 2>/dev/null || { echo "$SLUG_DIR is registered as live: use --rollback, not this." >&2; exit 1; }
+  [[ ! -f /etc/expresspos/released ]] || { echo "Already released: use --rollback, not this." >&2; exit 1; }
+  step "Removing the unfinished new install at https://$DOMAIN"
+  remove_install
+  echo "Done. The original install is untouched."
   exit 0
 fi
 
@@ -106,7 +118,21 @@ if [[ "$MODE" == --go ]]; then
   systemctl disable --now yes-my-shawarma-queue.service yes-my-shawarma-reverb.service
 
   # Until the new site has taken over, any failure brings the old one back.
-  trap 'echo "!! The move stopped. Bringing the original install back up."; crontab -u root "$KEEP/root.crontab"; systemctl enable --now yes-my-shawarma-queue.service yes-my-shawarma-reverb.service; (cd "$OLD_DIR" && sudo -u www-data php artisan up); echo "The new install at $NEW_DIR is left for inspection; remove it before trying again."' ERR
+  bring_back() {
+    echo "!! The move stopped. Bringing the original install back up."
+    # Its website's nginx site first, if it had been taken out.
+    if [[ -f "$KEEP/nginx/yes-my-shawarma-domain" && ! -e /etc/nginx/sites-enabled/yes-my-shawarma-domain ]]; then
+      sed -i -E "s/^(\s*server_name) .*;/\1 $DOMAIN;/" "/etc/nginx/sites-available/$SLUG_DIR" 2>/dev/null || true
+      cp "$KEEP/nginx/yes-my-shawarma-domain" /etc/nginx/sites-available/yes-my-shawarma-domain
+      ln -sf /etc/nginx/sites-available/yes-my-shawarma-domain /etc/nginx/sites-enabled/yes-my-shawarma-domain
+      nginx -t && systemctl reload nginx
+    fi
+    crontab -u root "$KEEP/root.crontab"
+    systemctl enable --now yes-my-shawarma-queue.service yes-my-shawarma-reverb.service
+    (cd "$OLD_DIR" && sudo -u www-data php artisan up)
+    echo "The original install is back. Clear the unfinished one with: bash $0 --remove-failed"
+  }
+  trap bring_back ERR
 else
   trap 'echo "!! The rehearsal stopped; removing it."; remove_install' ERR
 fi

@@ -48,11 +48,18 @@ DOMAIN="${DOMAIN,,}"; DOMAIN="${DOMAIN#www.}"
 [[ "$DOMAIN" != *solusysdigital.com ]] || fail "Use the restaurant's own domain, not a solusysdigital.com address."
 
 SERVER_IP="$(curl -4 -s https://ifconfig.me)"
+# Points here directly, or is served through Cloudflare's proxy (its address
+# is then Cloudflare's, never ours; Yes My Shawarma's is, 2026-11-24). Either
+# way the certificate step below proves the domain really reaches this
+# server, and puts everything back if it doesn't.
 resolves() { [[ "$(getent ahostsv4 "$1" | awk 'NR==1 {print $1}')" == "$SERVER_IP" ]]; }
-resolves "$DOMAIN" || fail "$DOMAIN does not point at this server yet ($SERVER_IP). Add the A record and try again in a few minutes."
+proxied() { curl -sI --max-time 10 "http://$1/" | grep -qi '^server: cloudflare'; }
+reaches() { resolves "$1" || proxied "$1"; }
+reaches "$DOMAIN" || fail "$DOMAIN does not point at this server yet ($SERVER_IP). Add the A record and try again in a few minutes."
+proxied "$DOMAIN" && echo "$DOMAIN is served through Cloudflare; the certificate step checks it reaches this server."
 
 NAMES=("$POS_HOST" "$DOMAIN")
-resolves "www.$DOMAIN" && NAMES+=("www.$DOMAIN") || echo "www.$DOMAIN has no record pointing here; only $DOMAIN is added."
+reaches "www.$DOMAIN" && NAMES+=("www.$DOMAIN") || echo "www.$DOMAIN has no record pointing here; only $DOMAIN is added."
 
 echo "==> nginx: ${NAMES[*]}"
 cp "$SITE" "$SITE.bak"
