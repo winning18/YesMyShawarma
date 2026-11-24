@@ -10,7 +10,7 @@
             const wanted = new URLSearchParams(location.search).get('category');
             if (wanted && ! location.hash) document.getElementById('cat-' + wanted)?.scrollIntoView();
         "
-        class="sticky top-16 z-30 -mx-4 px-4 py-3 bg-brand-white/95 backdrop-blur border-b border-brand-gray-100"
+        class="sticky top-16 md:top-20 z-30 -mx-4 px-4 py-3 bg-brand-white/95 backdrop-blur border-b border-brand-gray-100"
         aria-label="{{ __('Menu categories') }}"
     >
         <div class="overflow-x-auto scrollbar-hide">

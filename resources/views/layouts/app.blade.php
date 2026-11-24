@@ -36,7 +36,7 @@
                 <!-- Mobile top bar -->
                 <div class="md:hidden flex items-center justify-between h-16 px-4 bg-white border-b border-gray-100 shrink-0">
                     <a href="{{ route('dashboard') }}">
-                        <x-application-logo class="block h-9 w-auto" />
+                        <x-application-logo class="block h-12 w-auto max-w-[11rem] object-contain" />
                     </a>
                     <button @click="sidebarOpen = true" aria-label="{{ __('Open menu') }}" class="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none">
                         <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">

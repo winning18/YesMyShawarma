@@ -29,7 +29,7 @@
             <aside class="hidden md:flex md:flex-col md:w-64 md:shrink-0 md:sticky md:top-0 md:h-screen bg-white border-r border-gray-100">
                 <div class="h-16 flex items-center px-6 border-b border-gray-100 shrink-0">
                     <a href="{{ route('rider.dashboard') }}">
-                        <x-application-logo class="block h-9 w-auto" />
+                        <x-application-logo class="block h-12 w-auto max-w-[11rem] object-contain" />
                     </a>
                 </div>
 
@@ -79,7 +79,7 @@
                 >
                     <div class="h-16 flex items-center justify-between px-4 border-b border-gray-100 shrink-0">
                         <a href="{{ route('rider.dashboard') }}">
-                            <x-application-logo class="block h-9 w-auto" />
+                            <x-application-logo class="block h-12 w-auto max-w-[11rem] object-contain" />
                         </a>
                         <button @click="sidebarOpen = false" aria-label="{{ __('Close menu') }}" class="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none">
                             <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
@@ -117,7 +117,7 @@
                             </svg>
                         </button>
                         <a href="{{ route('rider.dashboard') }}">
-                            <x-application-logo class="block h-8 w-auto" />
+                            <x-application-logo class="block h-12 w-auto max-w-[11rem] object-contain" />
                         </a>
                     </div>
                 </div>

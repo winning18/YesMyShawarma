@@ -55,7 +55,7 @@
     </x-slot>
 
     {{-- 01 Menu --}}
-    <section id="menu" class="scroll-mt-20 py-6">
+    <section id="menu" class="scroll-mt-24 py-6">
         <p class="text-sm font-semibold text-brand-accent-text mb-1">{{ $number(__('Menu')) }} —</p>
         <h2 class="font-heading text-4xl sm:text-5xl text-brand-black mb-6">{{ __('Menu') }}</h2>
         @include('themes.onepage._menu')
@@ -70,7 +70,7 @@
 
     {{-- About (only when Website content → About us is written) --}}
     @if ($about)
-        <section id="about" class="scroll-mt-20 py-10 border-t-2 border-brand-black mt-6">
+        <section id="about" class="scroll-mt-24 py-10 border-t-2 border-brand-black mt-6">
             <p class="text-sm font-semibold text-brand-accent-text mb-1">{{ $number(__('About')) }} —</p>
             <h2 class="font-heading text-4xl sm:text-5xl text-brand-black mb-6">{{ $about['heading'] ?: __('About us') }}</h2>
             <div class="grid grid-cols-1 md:grid-cols-5 gap-8">
@@ -88,7 +88,7 @@
     @endif
 
     {{-- Branches --}}
-    <section id="branches" class="scroll-mt-20 py-10 border-t-2 border-brand-black mt-6">
+    <section id="branches" class="scroll-mt-24 py-10 border-t-2 border-brand-black mt-6">
         <p class="text-sm font-semibold text-brand-accent-text mb-1">{{ $number(__('Branches')) }} —</p>
         <h2 class="font-heading text-4xl sm:text-5xl text-brand-black mb-6">{{ trans_choice('Our branch|Our branches', $branches->count()) }}</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -99,7 +99,7 @@
     </section>
 
     {{-- Contact --}}
-    <section id="contact" class="scroll-mt-20 py-10 border-t-2 border-brand-black mt-6 mb-16">
+    <section id="contact" class="scroll-mt-24 py-10 border-t-2 border-brand-black mt-6 mb-16">
         <p class="text-sm font-semibold text-brand-accent-text mb-1">{{ $number(__('Contact')) }} —</p>
         <h2 class="font-heading text-4xl sm:text-5xl text-brand-black mb-6">{{ __('Get in touch') }}</h2>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">

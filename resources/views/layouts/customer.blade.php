@@ -105,7 +105,7 @@
         <header class="bg-brand-surface sticky top-0 z-40">
             <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
                 <a href="{{ route('home') }}">
-                    <x-brand-logo class="h-10 w-auto" text-class="font-bold text-xl text-brand-on-surface" />
+                    <x-brand-logo class="h-11 md:h-14 w-auto max-w-[11rem] md:max-w-[15rem] object-contain" text-class="font-bold text-xl text-brand-on-surface" />
                 </a>
 
                 @if ($websiteOn)
@@ -219,9 +219,9 @@
                     x-transition:leave-start="translate-x-0"
                     x-transition:leave-end="-translate-x-full"
                 >
-                    <div class="h-16 flex items-center justify-between px-4 border-b border-brand-on-surface/15 shrink-0">
+                    <div class="h-20 flex items-center justify-between px-4 border-b border-brand-on-surface/15 shrink-0">
                         <a href="{{ route('home') }}">
-                            <x-brand-logo class="h-8 w-auto" text-class="font-bold text-lg text-brand-on-surface" />
+                            <x-brand-logo class="h-10 w-auto max-w-[10rem] object-contain" text-class="font-bold text-lg text-brand-on-surface" />
                         </a>
                         <button type="button" @click="open = false" aria-label="{{ __('Close menu') }}" class="p-2 -me-2 text-brand-on-surface">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
@@ -355,7 +355,7 @@
         <footer class="mt-12 bg-brand-surface border-t border-brand-highlight">
             <div class="max-w-5xl mx-auto px-4 py-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 text-sm text-brand-on-surface/70">
                 <div>
-                    <x-brand-logo class="h-9 w-auto mb-4" text-class="block font-bold text-lg text-brand-on-surface mb-4" />
+                    <x-brand-logo class="h-12 w-auto max-w-[12rem] object-contain mb-4" text-class="block font-bold text-lg text-brand-on-surface mb-4" />
                     @if ($footerTagline)
                         <p class="text-brand-on-surface/70">{{ $footerTagline }}</p>
                     @endif
