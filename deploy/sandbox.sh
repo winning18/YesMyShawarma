@@ -89,7 +89,8 @@ chown root:www-data "$HTPASSWD"
 chmod 640 "$HTPASSWD"
 SITE="/etc/nginx/sites-available/$SLUG_DIR"
 # The whole site behind the gate; the real-time connections authenticate on their own.
-sed -i "0,/index index.php;/s//index index.php;\n    auth_basic \"Sandbox\";\n    auth_basic_user_file $HTPASSWD;/" "$SITE"
+# "#" as the delimiter: the password file's path is full of slashes.
+sed -i "0,\#index index.php;#s##index index.php;\n    auth_basic \"Sandbox\";\n    auth_basic_user_file $HTPASSWD;#" "$SITE"
 sed -i "s#location /apps/ {#location /apps/ {\n        auth_basic off;#; s#location /app/ {#location /app/ {\n        auth_basic off;#" "$SITE"
 nginx -t
 systemctl reload nginx
