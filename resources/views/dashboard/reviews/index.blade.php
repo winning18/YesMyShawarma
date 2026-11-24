@@ -39,7 +39,7 @@
                     </thead>
                     <tbody class="divide-y divide-gray-100">
                         @forelse ($reviews as $review)
-                            <tr>
+                            <tr class="align-top">
                                 <td class="px-4 py-2 font-medium">
                                     <a href="{{ route('dashboard.orders.show', $review->order) }}" class="text-indigo-600 hover:underline">
                                         {{ $review->order->reference }}
@@ -47,8 +47,22 @@
                                 </td>
                                 <td class="px-4 py-2 text-gray-500">{{ $review->branch->name }}</td>
                                 <td class="px-4 py-2 text-amber-500">{{ str_repeat('★', $review->rating) }}{{ str_repeat('☆', 5 - $review->rating) }}</td>
-                                <td class="px-4 py-2 text-gray-500 max-w-xs truncate" title="{{ $review->comment }}">{{ $review->comment ?? 'N/A' }}</td>
-                                <td class="px-4 py-2 text-gray-500">{{ $review->created_at->timezone('Africa/Accra')->format('d M Y, H:i') }}</td>
+                                {{-- The whole comment, readable before Approve/Reject: wrapped with the
+                                     customer's own line breaks, folded to three lines with "Read full
+                                     comment" when it's longer. Without JavaScript it simply shows in full. --}}
+                                <td class="px-4 py-2 text-gray-700 min-w-[16rem] max-w-md">
+                                    @if (filled($review->comment))
+                                        <div x-data="{ open: false, long: false }" x-init="$nextTick(() => long = $refs.text.scrollHeight > $refs.text.clientHeight + 1)">
+                                            <p x-ref="text" class="whitespace-pre-line break-words" x-bind:class="open ? '' : 'line-clamp-3'">{{ $review->comment }}</p>
+                                            <button type="button" x-show="long" x-cloak x-on:click="open = ! open"
+                                                class="mt-1 text-xs font-medium text-indigo-600 hover:underline"
+                                                x-text="open ? @js(__('Show less')) : @js(__('Read full comment'))"></button>
+                                        </div>
+                                    @else
+                                        <span class="text-gray-500">{{ __('N/A') }}</span>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-2 text-gray-500 whitespace-nowrap">{{ $review->created_at->timezone('Africa/Accra')->format('d M Y, H:i') }}</td>
                                 <td class="px-4 py-2 text-right">
                                     @if ($review->status === 'pending')
                                         <div class="flex items-center justify-end gap-2">
