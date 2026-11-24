@@ -99,6 +99,10 @@ nginx -t
 systemctl reload nginx
 
 echo "==> Copying the client's data and photos"
+# Emptied first: the sandbox migrated it to the staging code's schema, which
+# may be newer than the live install's; the copy goes in as it is and the
+# migrations below bring it forward.
+mysql -e "DROP DATABASE \`$DB\`; CREATE DATABASE \`$DB\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 mysqldump --single-transaction --quick --no-tablespaces "$LIVE_DB" | mysql "$DB"
 if [[ -d "$LIVE_DIR/storage/app/public" ]]; then
   rsync -a "$LIVE_DIR/storage/app/public/" "$DIR/storage/app/public/"

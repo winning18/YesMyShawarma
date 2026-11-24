@@ -126,6 +126,11 @@ if [[ "$MODE" == --rehearsal ]]; then
 fi
 
 step "Copying the database"
+# Emptied first: the new install migrated it to the newest schema, and the
+# old database is older (renamed tables keep their old key names), so it
+# goes in exactly as it was and the migrations below bring it forward. The
+# install's user keeps its grants on the database name.
+mysql -e "DROP DATABASE \`$NEW_DB\`; CREATE DATABASE \`$NEW_DB\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 mysqldump --single-transaction --quick --no-tablespaces "$OLD_DB" | mysql "$NEW_DB"
 
 step "Copying files"
