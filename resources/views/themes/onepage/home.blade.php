@@ -39,7 +39,7 @@
                 </div>
 
                 <div class="relative">
-                    <div class="absolute -inset-3 sm:-inset-4 translate-x-4 translate-y-4 rounded-[2rem] bg-brand-red" aria-hidden="true"></div>
+                    <div class="absolute -inset-3 sm:-inset-4 translate-x-4 translate-y-4 rounded-[2rem] bg-brand-button" aria-hidden="true"></div>
                     <div class="relative aspect-[4/3] md:aspect-[4/5] overflow-hidden rounded-[2rem] bg-brand-yellow">
                         @if ($hero['imageUrl'])
                             <img src="{{ $hero['imageUrl'] }}" alt="" fetchpriority="high" decoding="async" class="absolute inset-0 w-full h-full object-cover">

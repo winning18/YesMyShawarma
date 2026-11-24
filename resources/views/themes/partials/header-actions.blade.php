@@ -18,7 +18,7 @@
             <path d="M16 10a4 4 0 0 1-8 0" />
         </svg>
         @if ($cartItemCount > 0)
-            <span class="absolute top-0 right-0 bg-brand-red text-brand-on-accent text-[11px] font-bold rounded-full min-w-5 h-5 px-1 flex items-center justify-center">{{ $cartItemCount }}</span>
+            <span class="absolute top-0 right-0 bg-brand-button text-brand-on-button text-[11px] font-bold rounded-full min-w-5 h-5 px-1 flex items-center justify-center">{{ $cartItemCount }}</span>
         @endif
     </a>
 

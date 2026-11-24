@@ -63,6 +63,9 @@ export default {
                     surface: 'rgb(var(--brand-background) / <alpha-value>)',
                     'on-surface': 'rgb(var(--brand-background-ink) / <alpha-value>)',
                     highlight: 'rgb(var(--brand-highlight) / <alpha-value>)',
+                    // Buttons and badges on white pages: always visible.
+                    button: 'rgb(var(--brand-button) / <alpha-value>)',
+                    'on-button': 'rgb(var(--brand-button-ink) / <alpha-value>)',
                     red: {
                         light: 'rgb(var(--brand-accent-light) / <alpha-value>)',
                         DEFAULT: 'rgb(var(--brand-accent) / <alpha-value>)',

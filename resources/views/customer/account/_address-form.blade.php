@@ -50,7 +50,7 @@
     <div>
         <input type="hidden" name="lat" :value="lat">
         <input type="hidden" name="lng" :value="lng">
-        <button type="button" @click="locate()" :disabled="locating" class="px-4 py-2 bg-brand-red text-brand-white text-sm font-semibold rounded-md hover:bg-brand-red-dark disabled:opacity-60">
+        <button type="button" @click="locate()" :disabled="locating" class="px-4 py-2 bg-brand-button text-brand-on-button text-sm font-semibold rounded-md hover:opacity-90 disabled:opacity-60">
             <span x-text="locating ? @js(__('Locating…')) : @js($address && $address->lat !== null ? __('Update to my current location') : __('Use my current location'))"></span>
         </button>
         <p x-show="locationNote" x-text="locationNote" class="text-xs text-brand-gray-500 mt-1"></p>

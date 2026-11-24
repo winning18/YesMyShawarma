@@ -260,6 +260,15 @@ class BusinessProfile
             ? $vars['--brand-primary']
             : $vars['--brand-background-ink'];
 
+        // A button or badge on a white page (2026-11-24): the accent when it
+        // stands out on white (3:1), else the main colour, else the
+        // background colour, else black; with its own readable text.
+        $button = collect(['brand_accent', 'brand_primary', 'brand_background'])
+            ->map(fn (string $key) => $this->colours()[$key])
+            ->first(fn (string $hex) => $this->contrast($hex, '#ffffff') >= 3) ?? '#000000';
+        $vars['--brand-button'] = implode(' ', sscanf($button, '#%02x%02x%02x'));
+        $vars['--brand-button-ink'] = $this->inkFor($button);
+
         return $vars;
     }
 

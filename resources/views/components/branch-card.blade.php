@@ -69,8 +69,8 @@
                     {{ __('Not accepting orders right now') }}
                 </span>
             @elseif ($branch->is_open_now)
-                <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-white bg-brand-red px-2.5 py-1 rounded-full">
-                    <span class="w-1.5 h-1.5 rounded-full bg-brand-white"></span>
+                <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-on-button bg-brand-button px-2.5 py-1 rounded-full">
+                    <span class="w-1.5 h-1.5 rounded-full bg-brand-on-button"></span>
                     {{ __('Accepting orders') }}
                 </span>
             @else

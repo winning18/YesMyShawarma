@@ -202,6 +202,9 @@ class WebsiteThemeTest extends TestCase
             ->assertSee('--brand-highlight:247 240 29;', false, 'yellow stands out on red')
             ->assertSee('bg-brand-surface', false);
 
+        // Buttons on white pages: the white accent and yellow main colour don't show on white, so red.
+        $this->get(route('home'))->assertSee('--brand-button:242 38 2;', false)->assertSee('--brand-button-ink:255 255 255;', false);
+
         // A main colour too close to the background falls back to readable text.
         app(BusinessProfile::class)->setBrandColours('#e02020', '#ffffff', '#f22602');
         $this->get(route('home'))->assertSee('--brand-highlight:255 255 255;', false);
