@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateSitePageRequest;
 use App\Services\Content\SitePageService;
+use App\Services\Content\WebsiteThemeService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
@@ -15,11 +16,12 @@ use Illuminate\View\View;
  */
 class SitePageManagementController extends Controller
 {
-    public function index(SitePageService $pages): View
+    public function index(SitePageService $pages, WebsiteThemeService $themes): View
     {
         Gate::authorize('content.manage');
 
         return view('dashboard.site-pages.index', [
+            'theme' => $themes->chosen(),
             'pages' => collect(SitePageService::PAGES)->map(fn (array $config, string $slug) => [
                 'slug' => $slug,
                 'label' => $config['label'],

@@ -62,6 +62,53 @@
 }
 
 /*
+ * Website themes' heading faces (2026-11-24): Photo-led (Fraunces) and
+ * One-page (Bricolage Grotesque). Same licence and self-hosting as above; a
+ * browser only downloads a face a page actually uses, so each site loads
+ * its own theme's font and nothing else.
+ */
+@font-face {
+    font-family: 'Fraunces';
+    src: url('/fonts/fraunces-600-latin.woff2') format('woff2');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Bricolage Grotesque';
+    src: url('/fonts/bricolage-700-latin.woff2') format('woff2');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+/*
+ * Each website theme's heading face (WebsiteThemeService). The themed pages
+ * use font-heading; every shared page's own headings follow it too.
+ */
+.theme-photo {
+    --font-heading: 'Fraunces', Georgia, serif;
+}
+.theme-onepage {
+    --font-heading: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+}
+.font-heading,
+.theme-photo main :is(h1, h2, h3),
+.theme-onepage main :is(h1, h2, h3) {
+    font-family: var(--font-heading, 'Inter', ui-sans-serif, system-ui, sans-serif);
+}
+.theme-photo .font-heading,
+.theme-photo main :is(h1, h2, h3) {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+.theme-onepage .font-heading,
+.theme-onepage main :is(h1, h2, h3) {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+/*
  * Brand colours as "r g b" channels (tailwind.config.js reads them). Neutral
  * greys only until partials/brand-head sets the business's own colours from
  * its Business profile (every client chooses them at onboarding, 2026-11-24).
@@ -73,6 +120,8 @@
     --brand-accent: 107 114 128;
     --brand-accent-light: 243 244 246;
     --brand-accent-dark: 75 85 99;
+    --brand-primary-ink: 255 255 255;
+    --brand-accent-ink: 255 255 255;
 }
 
 /*

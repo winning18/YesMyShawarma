@@ -7,6 +7,7 @@ use App\Models\FaqItem;
 use App\Models\MenuItem;
 use App\Models\SitePage;
 use App\Models\User;
+use App\Services\Content\WebsiteThemeService;
 use App\Services\Modules\ModuleService;
 use App\Services\Settings\BusinessProfile;
 use App\Services\Settings\SettingsService;
@@ -49,7 +50,7 @@ class ClientSetupService
     }
 
     /**
-     * @param  array{business: string, brand: array{primary: string, accent: string, logo: string}, branch: array{name: string, phone: string, address: string, lat: float, lng: float, opens_at: string, closes_at: string}, owner: array{name: string, email: string, phone: ?string}, support_email: ?string, modules: list<string>}  $input
+     * @param  array{business: string, brand: array{primary: string, accent: string, logo: string}, branch: array{name: string, phone: string, address: string, lat: float, lng: float, opens_at: string, closes_at: string}, owner: array{name: string, email: string, phone: ?string}, support_email: ?string, modules: list<string>, theme?: string}  $input
      * @return array{branch: Branch, owner: array{user: User, temporary_password: string}, support: ?array{user: User, temporary_password: string}}
      */
     public function setUp(array $input): array
@@ -92,6 +93,8 @@ class ClientSetupService
             if (in_array(ModuleService::WEBSITE, $input['modules'], true)) {
                 $this->seedWebsiteStarter(trim($input['business']));
             }
+            // The website's look (2026-11-24): chosen at onboarding, Classic unless said otherwise.
+            app(WebsiteThemeService::class)->set($input['theme'] ?? WebsiteThemeService::DEFAULT);
 
             $owner = $this->users->create(['name' => $input['owner']['name'], 'email' => $input['owner']['email'], 'phone' => $input['owner']['phone'] ?? null], 'owner', $branch->id);
 

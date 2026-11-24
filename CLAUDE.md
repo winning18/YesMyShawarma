@@ -122,6 +122,14 @@ neutral greys, never another business's.
 2. Paystack and SMS (Arkesel) keys per client from the portal, not by hand on the server.
 3. Website content set up as part of onboarding (pages, FAQ, photos) for clients with a website.
 
+**Website looks (owner, 2026-11-24):** three themes built into the product, every one open to
+every client: Classic (today's design, the default), Photo-led (Fraunces headings) and One-page
+(Bricolage Grotesque headings). Chosen at onboarding (`expresspos:new-client --theme`) and by the
+owner or GM under Website content → Website look, with a signed preview link first. Colours are
+always the business's own. A theme changes only the header, home, menu and item page; every
+other customer page is shared. See schema.md's "Website content". A fully custom design for one
+client is later work and needs a customer API first.
+
 **Editions:**
 
 - **Subscription** (the MVP): hosted by Solusys Digital, every module available, every update.

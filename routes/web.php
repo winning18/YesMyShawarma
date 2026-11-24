@@ -81,6 +81,7 @@ use App\Http\Controllers\TaxReportController;
 use App\Http\Controllers\TodayReportController;
 use App\Http\Controllers\TrackingController;
 use App\Http\Controllers\UserManagementController;
+use App\Http\Controllers\WebsiteThemeController;
 use App\Http\Controllers\WeeklyReportController;
 use App\Http\Controllers\WorkingHoursController;
 use Illuminate\Support\Facades\Route;
@@ -330,6 +331,8 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     // Website content (content.manage: owner, general manager) — the
     // FAQ routes come first so /website/faq isn't read as a page slug.
     Route::get('/dashboard/website', [SitePageManagementController::class, 'index'])->middleware('module:website')->name('dashboard.site-pages.index');
+    Route::get('/dashboard/website/look', [WebsiteThemeController::class, 'edit'])->middleware('module:website')->name('dashboard.website-look.edit');
+    Route::put('/dashboard/website/look', [WebsiteThemeController::class, 'update'])->middleware('module:website')->name('dashboard.website-look.update');
     Route::get('/dashboard/website/home-strips', [HomeStripController::class, 'edit'])->middleware('module:website')->name('dashboard.home-strips.edit');
     Route::put('/dashboard/website/home-strips', [HomeStripController::class, 'update'])->middleware('module:website')->name('dashboard.home-strips.update');
     Route::get('/dashboard/website/faq', [FaqItemManagementController::class, 'index'])->middleware('module:website')->name('dashboard.faq-items.index');

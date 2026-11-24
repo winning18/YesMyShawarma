@@ -7,7 +7,10 @@
 #   expresspos-provision <slug> <business> <branch> <branch-phone> <address> \
 #       <lat> <lng> <opens HH:MM> <closes HH:MM> <owner-name> <owner-email> \
 #       <owner-phone|-> <support-email|-> <modules, comma-separated|-> \
-#       <primary #rrggbb> <accent #rrggbb> <logo path>
+#       <primary #rrggbb> <accent #rrggbb> <logo path> [website look]
+#
+# The website look (classic, photo or onepage) is optional and Classic when
+# left out (2026-11-24).
 #
 # The logo must be in the portal's own logo folder (LOGO_DIR below), named
 # <slug>.png|jpg|jpeg|webp; colours and logo are required (owner, 2026-11-24).
@@ -34,18 +37,19 @@ DOMAIN_SUFFIX=""
 fail() { echo "EXPRESSPOS_RESULT {\"ok\":false,\"error\":\"$1\"}"; exit 1; }
 
 [[ $EUID -eq 0 ]] || fail "Must run as root."
-[[ $# -eq 17 ]] || fail "Expected 17 arguments, got $#."
+[[ $# -eq 17 || $# -eq 18 ]] || fail "Expected 17 or 18 arguments, got $#."
 [[ -n "$DOMAIN_SUFFIX" ]] || fail "DOMAIN_SUFFIX is not set in $CONF."
 
 SLUG="$1"; BUSINESS="$2"; BRANCH="$3"; BRANCH_PHONE="$4"; ADDRESS="$5"; LAT="$6"; LNG="$7"
 OPENS="$8"; CLOSES="$9"; OWNER_NAME="${10}"; OWNER_EMAIL="${11}"; OWNER_PHONE="${12}"; SUPPORT_EMAIL="${13}"; MODULES="${14}"
-PRIMARY="${15}"; ACCENT="${16}"; LOGO="${17}"
+PRIMARY="${15}"; ACCENT="${16}"; LOGO="${17}"; THEME="${18:-classic}"
 LOGO_DIR=/var/www/expresspos-admin/storage/app/private/logos
 
 [[ "$SLUG" =~ ^[a-z][a-z0-9]{1,20}$ ]] || fail "The web address name must be 2-21 lowercase letters and digits."
 [[ "$MODULES" =~ ^(-|[a-z_]+(,[a-z_]+)*)$ ]] || fail "Modules must be comma-separated keys."
 [[ "$OPENS" =~ ^[0-2][0-9]:[0-5][0-9]$ && "$CLOSES" =~ ^[0-2][0-9]:[0-5][0-9]$ ]] || fail "Opening times must be HH:MM."
 [[ "$PRIMARY" =~ ^#[0-9a-f]{6}$ && "$ACCENT" =~ ^#[0-9a-f]{6}$ ]] || fail "Brand colours must be #rrggbb."
+[[ "$THEME" =~ ^(classic|photo|onepage)$ ]] || fail "The website look must be classic, photo or onepage."
 [[ "$LOGO" =~ ^$LOGO_DIR/$SLUG\.(png|jpg|jpeg|webp)$ && -f "$LOGO" ]] || fail "The logo wasn't found in the portal's logo folder."
 
 DOMAIN="$SLUG.$DOMAIN_SUFFIX"
@@ -69,7 +73,7 @@ ARGS=(
   "--lat=$LAT" "--lng=$LNG" "--opens=$OPENS" "--closes=$CLOSES"
   "--owner-name=$OWNER_NAME" "--owner-email=$OWNER_EMAIL"
   "--modules=$([[ "$MODULES" == "-" ]] && echo "" || echo "$MODULES")"
-  "--primary-colour=$PRIMARY" "--accent-colour=$ACCENT" "--logo=$LOGO"
+  "--primary-colour=$PRIMARY" "--accent-colour=$ACCENT" "--logo=$LOGO" "--theme=$THEME"
   --json --no-interaction
 )
 [[ "$OWNER_PHONE" != "-" ]] && ARGS+=("--owner-phone=$OWNER_PHONE")

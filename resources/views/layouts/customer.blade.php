@@ -55,7 +55,7 @@
         @include('partials.reverb-config')
         @vite(['resources/css/app.css', ...($realtime ? ['resources/js/echo.js'] : []), 'resources/js/customer.js'])
     </head>
-    <body class="font-customer antialiased {{ $bodyClass }} text-brand-black min-h-screen flex flex-col">
+    <body class="font-customer antialiased theme-{{ $theme }} {{ $bodyClass }} text-brand-black min-h-screen flex flex-col">
         {{--
             Full-screen page loader. No real vector source exists for the
             logo (only the PNG exports), so this uses the real logo image
@@ -82,6 +82,14 @@
             </svg>
         </div>
 
+        @if ($themePreviewing && $websiteOn)
+            {{-- A staff preview of another website look (Website content → Website look): this browser only. --}}
+            <div class="bg-brand-black text-brand-white text-xs sm:text-sm px-4 py-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center">
+                <span>{{ __('Previewing the :theme look. Customers still see the look chosen in Website content.', ['theme' => __(\App\Services\Content\WebsiteThemeService::THEMES[$themePreviewing]['label'])]) }}</span>
+                <a href="{{ request()->fullUrlWithQuery(['theme_preview' => 'off']) }}" class="font-semibold underline">{{ __('End preview') }}</a>
+            </div>
+        @endif
+
         {{--
             x-data lives here, not on <header> — the drawer below needs to
             sit outside the header so its z-index isn't capped by the
@@ -90,6 +98,9 @@
             drawer's own comment.
         --}}
         <div x-data="{ open: false }">
+        @if ($theme !== 'classic')
+            @include('themes.'.$theme.'.header')
+        @else
         <header class="bg-brand-black sticky top-0 z-40">
             <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
                 <a href="{{ route('home') }}">
@@ -155,6 +166,7 @@
                 @endif
             </div>
         </header>
+        @endif
 
             @if ($websiteOn)
             {{--
@@ -218,14 +230,9 @@
                     </div>
 
                     <nav class="flex-1 overflow-y-auto px-4 py-4 space-y-2 text-brand-white text-sm" @click="open = false">
-                        <a href="{{ route('home') }}" class="block hover:text-brand-yellow {{ request()->routeIs('home') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Home') }}</a>
-                        <a href="{{ route('menu.index') }}" class="block hover:text-brand-yellow {{ request()->routeIs('menu.index') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Menu') }}</a>
-                        <a href="{{ route('branches.index') }}" class="block hover:text-brand-yellow {{ request()->routeIs('branches.index') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Branches') }}</a>
-                        <a href="{{ route('contact') }}" class="block hover:text-brand-yellow {{ request()->routeIs('contact') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Contact us') }}</a>
-                        @if ($publishedPages['about'])
-                        <a href="{{ route('about') }}" class="block hover:text-brand-yellow {{ request()->routeIs('about') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('About us') }}</a>
-                        @endif
-                        <a href="{{ route('tracking.lookup') }}" class="block hover:text-brand-yellow {{ request()->routeIs('tracking.*') ? 'text-brand-yellow font-semibold' : '' }}">{{ __('Track order') }}</a>
+                        @foreach ($customerNav as $link)
+                        <a href="{{ $link['url'] }}" class="block hover:text-brand-yellow {{ $link['active'] ? 'text-brand-yellow font-semibold' : '' }}">@if ($link['number'])<span class="text-brand-gray-300 text-xs me-1">{{ $link['number'] }}</span>@endif{{ $link['label'] }}</a>
+                        @endforeach
                         <a href="{{ route('cart.show') }}" class="flex items-center gap-2 hover:text-brand-yellow">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 shrink-0">
                                 <circle cx="9" cy="21" r="1"></circle>
@@ -260,11 +267,19 @@
         @endisset
 
         @isset($pageHeader)
+            @if ($theme === 'classic')
             <div class="bg-brand-black py-10 border-t border-brand-yellow">
                 <div class="max-w-5xl mx-auto px-4">
                     <h1 class="text-2xl font-bold text-brand-white text-center">{{ $pageHeader }}</h1>
                 </div>
             </div>
+            @else
+            <div class="bg-brand-yellow-light py-12">
+                <div class="max-w-5xl mx-auto px-4">
+                    <h1 class="font-heading text-3xl sm:text-4xl text-brand-black text-center">{{ $pageHeader }}</h1>
+                </div>
+            </div>
+            @endif
         @endisset
 
         @if (session('status'))

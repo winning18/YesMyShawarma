@@ -6,7 +6,9 @@ use App\Models\Branch;
 use App\Models\Category;
 use App\Models\MenuItem;
 use App\Services\Content\SitePageService;
+use App\Services\Content\WebsiteThemeService;
 use App\Services\Customers\CustomerBranchSelection;
+use App\Services\Menu\CustomerMenuService;
 use App\Services\Menu\PopularItemsService;
 use App\Services\Modules\ModuleService;
 use App\Services\Settings\BusinessProfile;
@@ -17,7 +19,7 @@ use Illuminate\View\View;
 
 class MenuController extends Controller
 {
-    public function index(CustomerBranchSelection $selection, PopularItemsService $popular, SitePageService $pages): View|RedirectResponse
+    public function index(CustomerBranchSelection $selection, PopularItemsService $popular, SitePageService $pages, CustomerMenuService $menu, WebsiteThemeService $themes): View|RedirectResponse
     {
         $branch = $this->resolveBranch($selection);
 
@@ -25,28 +27,9 @@ class MenuController extends Controller
             return $branch;
         }
 
-        // Ordered by categories.sort_order explicitly, then by each item's
-        // own sort_order within that category — grouping a flat item query
-        // by category name after the fact doesn't actually respect category
-        // order (item sort_order is only unique within its own category, so
-        // items from different categories interleave arbitrarily).
-        $categories = Category::where('is_active', true)
-            ->orderBy('sort_order')
-            ->get()
-            ->map(fn (Category $category) => [
-                'category' => $category,
-                'items' => $branch->menuItems()
-                    ->where('menu_items.category_id', $category->id)
-                    ->where('menu_items.is_active', true)
-                    ->wherePivot('is_available', true)
-                    ->with(['optionGroups.options' => fn ($query) => $query->where('is_active', true)])
-                    ->orderBy('menu_items.sort_order')
-                    ->get(),
-            ])
-            ->filter(fn (array $group) => $group['items']->isNotEmpty())
-            ->values();
+        $categories = $menu->categories($branch);
 
-        return view('menu.index', [
+        return view($themes->view('menu.index'), [
             'meta' => $pages->meta('menu'),
             'branch' => $branch,
             'categories' => $categories,
@@ -57,7 +40,7 @@ class MenuController extends Controller
         ]);
     }
 
-    public function show(MenuItem $menuItem, CustomerBranchSelection $selection, PopularItemsService $popular, SitePageService $pages): View|RedirectResponse
+    public function show(MenuItem $menuItem, CustomerBranchSelection $selection, PopularItemsService $popular, SitePageService $pages, WebsiteThemeService $themes): View|RedirectResponse
     {
         $branch = $this->resolveBranch($selection);
 
@@ -95,7 +78,7 @@ class MenuController extends Controller
                 ->get()
             : collect();
 
-        return view('menu.show', [
+        return view($themes->view('menu.show'), [
             'metaTitle' => $pages->meta('menu-item', [':item' => $item->name])['title'],
             'branch' => $branch,
             'item' => $item,

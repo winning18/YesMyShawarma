@@ -25,7 +25,7 @@ class WebsiteDomain
     /** First path segments that are staff pages. */
     private const STAFF = [
         'dashboard', 'login', 'logout', 'rider', 'forgot-password', 'reset-password', 'verify-email',
-        'email', 'confirm-password', 'password', 'profile', 'branches', 'print',
+        'email', 'confirm-password', 'password', 'profile', 'print',
     ];
 
     /** First path segments that answer on both addresses. */
@@ -42,17 +42,21 @@ class WebsiteDomain
 
         $host = strtolower($request->getHost());
         $segment = strtolower((string) $request->segment(1));
+        // /branches is the customers' branch finder; only /branches/select
+        // (staff choosing their branch) is a staff page.
+        $isStaff = in_array($segment, self::STAFF, true)
+            || ($segment === 'branches' && strtolower((string) $request->segment(2)) === 'select');
         $onWebsite = $host === $website || $host === 'www.'.$website;
 
         if (in_array($segment, self::EITHER, true)) {
             return $next($request);
         }
 
-        if ($onWebsite && in_array($segment, self::STAFF, true)) {
+        if ($onWebsite && $isStaff) {
             return redirect()->away(rtrim((string) config('app.url'), '/').$request->getRequestUri());
         }
 
-        if (! $onWebsite && $request->isMethod('GET') && ! in_array($segment, self::STAFF, true)) {
+        if (! $onWebsite && $request->isMethod('GET') && ! $isStaff) {
             // The POS address's own home is the staff sign-in.
             if ($segment === '') {
                 return redirect('/login');

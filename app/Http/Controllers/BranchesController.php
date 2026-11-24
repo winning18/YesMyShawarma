@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Branch;
+use App\Services\Branches\BranchStatusService;
 use App\Services\Branches\NearestBranchFinder;
 use App\Services\Branches\WorkingHoursService;
 use App\Services\Cart\CartService;
@@ -74,14 +75,7 @@ class BranchesController extends Controller
      */
     private function withStatus(Branch $branch, WorkingHoursService $workingHours): Branch
     {
-        $branch->is_open_now = $workingHours->isOpenNow($branch);
-        $branch->next_opening_label = $branch->is_open_now ? null : $workingHours->nextOpening($branch)?->format('l g:ia');
-        $branch->todays_hours_label = $workingHours->todayLabel($branch);
-        $branch->reviews_count = $branch->approvedReviews()->count();
-        $branch->reviews_avg_rating = $branch->approvedReviews()->avg('rating');
-        $branch->recent_reviews = $branch->approvedReviews()->latest('moderated_at')->limit(3)->get();
-
-        return $branch;
+        return app(BranchStatusService::class)->withStatus($branch);
     }
 
     public function select(Request $request, Branch $branch, CustomerBranchSelection $selection, CartService $cart): RedirectResponse

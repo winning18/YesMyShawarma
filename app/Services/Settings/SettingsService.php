@@ -109,6 +109,12 @@ class SettingsService
      */
     public const WEBSITE_DOMAIN = 'website_domain';
 
+    /**
+     * The customer website's look (owner, 2026-11-24): 'classic' (the
+     * default), 'photo' or 'onepage'. See WebsiteThemeService.
+     */
+    public const WEBSITE_THEME = 'website_theme';
+
     public function websiteDomain(): ?string
     {
         $domain = $this->get(self::WEBSITE_DOMAIN);

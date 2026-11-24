@@ -34,6 +34,9 @@ class CartController extends Controller
             // single-select group's option, which is always exactly one.
             'option_qty' => ['array'],
             'option_qty.*' => ['integer', 'min:1', 'max:'.MenuPricingService::MAX_OPTION_QUANTITY],
+            // Website themes' quick Add buttons: back to the same spot on
+            // a long page (One-page's menu section) rather than its top.
+            'return_anchor' => ['nullable', 'string', 'regex:/^[a-z0-9-]{1,80}$/'],
         ]);
 
         $branch = Branch::findOrFail($validated['branch_id']);
@@ -58,7 +61,11 @@ class CartController extends Controller
             $optionQuantities,
         );
 
-        return back()->with('added_to_cart', true);
+        $back = isset($validated['return_anchor'])
+            ? redirect()->to(url()->previous().'#'.$validated['return_anchor'])
+            : back();
+
+        return $back->with('added_to_cart', true);
     }
 
     /**

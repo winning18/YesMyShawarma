@@ -44,6 +44,15 @@ class WebsiteDomainTest extends TestCase
         $this->get('http://deboyeskitchen.com/login')->assertRedirect('https://deboyes.pos.solusysdigital.com/login');
         $this->get('http://www.deboyeskitchen.com/dashboard/pos')->assertRedirect('https://deboyes.pos.solusysdigital.com/dashboard/pos');
         $this->get('http://deboyeskitchen.com/contact')->assertOk();
+        $this->get('http://deboyeskitchen.com/branches/select')->assertRedirect('https://deboyes.pos.solusysdigital.com/branches/select');
+    }
+
+    public function test_the_branch_finder_stays_on_the_website(): void
+    {
+        $this->ownDomain();
+
+        $this->get('http://deboyeskitchen.com/branches')->assertOk();
+        $this->get('http://deboyes.pos.solusysdigital.com/branches')->assertRedirect('https://deboyeskitchen.com/branches');
     }
 
     public function test_customer_links_use_the_website_domain(): void

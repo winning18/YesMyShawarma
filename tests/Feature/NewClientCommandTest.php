@@ -7,6 +7,7 @@ use App\Models\FaqItem;
 use App\Models\SitePage;
 use App\Models\User;
 use App\Services\Content\SitePageService;
+use App\Services\Content\WebsiteThemeService;
 use App\Services\Modules\ModuleService;
 use App\Services\Settings\BusinessProfile;
 use App\Services\Settings\SettingsService;
@@ -147,5 +148,24 @@ class NewClientCommandTest extends TestCase
 
         $this->artisan('expresspos:brand', ['--primary-colour' => '#112233', '--accent-colour' => '#445566'])->assertSuccessful();
         $this->assertSame('#112233', app(BusinessProfile::class)->colours()['brand_primary']);
+    }
+
+    public function test_the_website_look_is_classic_unless_chosen(): void
+    {
+        Storage::fake('public');
+
+        $this->artisan('expresspos:new-client', $this->commandOptions(['--theme' => 'neon']))->assertFailed();
+        $this->assertFalse(Branch::exists());
+
+        $this->artisan('expresspos:new-client', $this->commandOptions())->assertSuccessful();
+        $this->assertSame('classic', app(SettingsService::class)->get(SettingsService::WEBSITE_THEME));
+    }
+
+    public function test_a_chosen_website_look_is_set_at_onboarding(): void
+    {
+        Storage::fake('public');
+
+        $this->artisan('expresspos:new-client', $this->commandOptions(['--theme' => 'photo']))->assertSuccessful();
+        $this->assertSame('photo', app(WebsiteThemeService::class)->chosen());
     }
 }

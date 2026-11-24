@@ -7,7 +7,10 @@ use App\Models\Category;
 use App\Models\MenuItem;
 use App\Services\Content\HomeStripService;
 use App\Services\Content\SitePageService;
+use App\Services\Content\ThemeHomeService;
+use App\Services\Content\WebsiteThemeService;
 use App\Services\Customers\CustomerBranchSelection;
+use App\Services\Menu\CustomerMenuService;
 use App\Services\Menu\PopularItemsService;
 use App\Services\Modules\ModuleService;
 use App\Services\Promotions\PromotionService;
@@ -19,7 +22,7 @@ use Illuminate\View\View;
 
 class HomeController extends Controller
 {
-    public function index(CustomerBranchSelection $selection, RestaurantSchemaBuilder $restaurantSchema, PromotionService $promotions, PopularItemsService $popular, SitePageService $pages): View|RedirectResponse
+    public function index(CustomerBranchSelection $selection, RestaurantSchemaBuilder $restaurantSchema, PromotionService $promotions, PopularItemsService $popular, SitePageService $pages, WebsiteThemeService $themes): View|RedirectResponse
     {
         // POS-only (Express POS step 4): with no Website module, the
         // business's address opens the staff login.
@@ -49,8 +52,9 @@ class HomeController extends Controller
         $promotion = $promotions->findActiveAutomatic($selection->current());
 
         $schema = $restaurantSchema->forActiveBranches();
+        $popularItems = $this->popularItems($popular, $selection->current());
 
-        return view('home', [
+        return view($themes->view('home'), [
             'meta' => $pages->meta('home', [
                 ':branches' => collect($schema)->map(fn (array $branch) => Str::after($branch['name'], ': '))->join(', ', ' and '),
             ]),
@@ -59,10 +63,51 @@ class HomeController extends Controller
                 'headline' => $promotion->banner_headline,
                 'imageUrl' => $promotion->bannerImageUrl(),
             ] : null,
-            'popularItems' => $this->popularItems($popular, $selection->current()),
-            'menuSliders' => $this->menuSliders($selection->current()),
+            'popularItems' => $popularItems,
+            'menuSliders' => $themes->current() === WebsiteThemeService::CLASSIC ? $this->menuSliders($selection->current()) : collect(),
             'restaurantSchema' => $schema,
+            ...$this->themeData($themes->current(), $heroSlides, $popularItems, $selection, $popular),
         ]);
+    }
+
+    /**
+     * What the Photo-led and One-page themes add to the home page
+     * (WebsiteThemeService). Classic needs nothing more.
+     */
+    private function themeData(string $theme, Collection $heroSlides, Collection $popularItems, CustomerBranchSelection $selection, PopularItemsService $popular): array
+    {
+        if ($theme === WebsiteThemeService::CLASSIC) {
+            return [];
+        }
+
+        $home = app(ThemeHomeService::class);
+        $menu = app(CustomerMenuService::class);
+        $branch = $theme === WebsiteThemeService::ONE_PAGE ? $menu->branchFor($selection) : $selection->current();
+        $branch ??= Branch::where('is_active', true)->orderBy('id')->first();
+
+        $data = [
+            'hero' => $home->hero($heroSlides),
+            'quickFacts' => $home->quickFacts($branch),
+            'reviews' => $home->reviews(),
+        ];
+
+        if ($theme === WebsiteThemeService::PHOTO) {
+            return $data + [
+                'featured' => $home->featured($popularItems),
+                'categoryTiles' => $home->categoryTiles(),
+                'gallery' => $home->gallery(),
+            ];
+        }
+
+        return $data + [
+            'branch' => $branch,
+            'categories' => $branch ? $menu->categories($branch) : collect(),
+            'popularIds' => $popular->badged(),
+            'branches' => $home->branches(),
+            'selectedBranchId' => $selection->id(),
+            'about' => $home->about(),
+            'contact' => $home->contact(),
+        ];
     }
 
     /**

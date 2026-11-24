@@ -2,12 +2,14 @@
 
 namespace App\Console\Commands;
 
+use App\Services\Content\WebsiteThemeService;
 use App\Services\Modules\ModuleService;
 use App\Services\Setup\ClientSetupService;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use RuntimeException;
 
 use function Laravel\Prompts\multiselect;
@@ -30,6 +32,7 @@ use function Laravel\Prompts\text;
     {--primary-colour= : Brand primary colour, #rrggbb (required, owner 2026-11-24)}
     {--accent-colour= : Brand accent colour, #rrggbb (required)}
     {--logo= : Path to the logo on this server: PNG, JPG or WebP, up to 2 MB (required)}
+    {--theme=classic : Website look: classic, photo or onepage (with the Website module)}
     {--json : Print the result as one line of JSON (for the Express POS admin portal)}')]
 #[Description('Set up a fresh Express POS install for a new client: business, first branch, owner account and modules')]
 class NewClient extends Command
@@ -67,6 +70,7 @@ class NewClient extends Command
                 'logo' => $ask('logo', 'Path to the logo file (PNG, JPG or WebP, up to 2 MB)'),
             ],
             'modules' => $this->modules(),
+            'theme' => $this->option('theme') ?: WebsiteThemeService::DEFAULT,
         ];
 
         $validator = Validator::make($input, [
@@ -82,6 +86,7 @@ class NewClient extends Command
             'owner.email' => ['required', 'email', 'max:255'],
             'owner.phone' => ['nullable', 'string', 'max:30'],
             'support_email' => ['nullable', 'email', 'max:255'],
+            'theme' => ['required', Rule::in(array_keys(WebsiteThemeService::THEMES))],
             'brand.primary' => ['required', 'regex:/^#[0-9a-f]{6}$/'],
             'brand.accent' => ['required', 'regex:/^#[0-9a-f]{6}$/'],
             'brand.logo' => ['required', 'string', function (string $attribute, mixed $value, \Closure $fail): void {
@@ -90,7 +95,11 @@ class NewClient extends Command
                     $fail('The logo must be a PNG, JPG or WebP image of up to 2 MB.');
                 }
             }],
-        ], ['brand.primary.regex' => 'The primary colour must be #rrggbb.', 'brand.accent.regex' => 'The accent colour must be #rrggbb.']);
+        ], [
+            'brand.primary.regex' => 'The primary colour must be #rrggbb.',
+            'brand.accent.regex' => 'The accent colour must be #rrggbb.',
+            'theme.in' => 'The website look must be classic, photo or onepage.',
+        ]);
 
         if ($validator->fails()) {
             return $this->failWith(implode(' ', $validator->errors()->all()));
@@ -111,6 +120,7 @@ class NewClient extends Command
                 'business' => $input['business'],
                 'branch' => $result['branch']->name,
                 'modules' => $input['modules'],
+                'theme' => $input['theme'],
                 'accounts' => array_values(array_filter([
                     ['role' => 'owner', 'email' => $result['owner']['user']->email, 'temporary_password' => $result['owner']['temporary_password']],
                     $result['support'] ? ['role' => 'support', 'email' => $result['support']['user']->email, 'temporary_password' => $result['support']['temporary_password']] : null,

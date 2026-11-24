@@ -49,6 +49,10 @@ export default {
                     },
                     black: '#000000',
                     white: '#ffffff',
+                    // Black or white, whichever reads on the business's
+                    // primary/accent colour (BusinessProfile::cssVariables).
+                    'on-primary': 'rgb(var(--brand-primary-ink) / <alpha-value>)',
+                    'on-accent': 'rgb(var(--brand-accent-ink) / <alpha-value>)',
                     red: {
                         light: 'rgb(var(--brand-accent-light) / <alpha-value>)',
                         DEFAULT: 'rgb(var(--brand-accent) / <alpha-value>)',

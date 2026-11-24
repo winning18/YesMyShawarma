@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\Branches\BranchContext;
 use App\Services\Cart\CartService;
 use App\Services\Content\SitePageService;
+use App\Services\Content\WebsiteThemeService;
 use App\Services\Delivery\DeliveryFeeCalculator;
 use App\Services\Freebies\FreebieService;
 use App\Services\MarketLists\MarketListService;
@@ -130,6 +131,13 @@ class AppServiceProvider extends ServiceProvider
             return app(BranchContext::class)->hasRoleAtAnyBranch($user, 'owner') ? true : null;
         });
 
+        // A theme's own views know which theme they're drawn in (One-page
+        // shares Photo-led's item page, with its own back link).
+        View::composer('themes.*', fn ($view) => $view->with([
+            'theme' => app(WebsiteThemeService::class)->current(),
+            'cartItemCount' => request()->hasSession() ? app(CartService::class)->count() : 0,
+        ]));
+
         View::composer('layouts.customer', function ($view) {
             // Error pages can render on routes without the web middleware
             // (no session at all, e.g. a 404 from /storage/{path}) — no
@@ -151,6 +159,13 @@ class AppServiceProvider extends ServiceProvider
             $pages = app(SitePageService::class);
             $view->with('publishedPages', $pages->published());
             $view->with('defaultDescription', $pages->meta('default')['description']);
+
+            // The website's look (WebsiteThemeService): which header to
+            // draw, its navigation, and whether a staff preview is on.
+            $themes = app(WebsiteThemeService::class);
+            $view->with('theme', $themes->current());
+            $view->with('themePreviewing', $themes->previewing());
+            $view->with('customerNav', $this->customerNav($themes->current(), $pages->published()));
         });
 
         // Rendered on every staff-dashboard page regardless of which
@@ -193,5 +208,39 @@ class AppServiceProvider extends ServiceProvider
                 'navFreebiesAwaiting' => $user && app(ModuleService::class)->enabled(ModuleService::FREEBIES) ? app(FreebieService::class)->awaitingApprovalCount($user) : 0,
             ]);
         });
+    }
+
+    /**
+     * The customer website's navigation for $theme. Classic and Photo-led
+     * link to pages; One-page links to its home page's sections.
+     *
+     * @param  array<string, bool>  $published
+     * @return list<array{label: string, url: string, active: bool, number: ?string}>
+     */
+    private function customerNav(string $theme, array $published): array
+    {
+        if ($theme === WebsiteThemeService::ONE_PAGE) {
+            $home = route('home');
+            $links = [
+                ['label' => __('Menu'), 'url' => $home.'#menu', 'active' => request()->routeIs('menu.*')],
+                ...($published['about'] ? [['label' => __('About'), 'url' => $home.'#about', 'active' => request()->routeIs('about')]] : []),
+                ['label' => __('Branches'), 'url' => $home.'#branches', 'active' => request()->routeIs('branches.*')],
+                ['label' => __('Contact'), 'url' => $home.'#contact', 'active' => request()->routeIs('contact')],
+            ];
+
+            return [
+                ...collect($links)->values()->map(fn (array $link, int $i) => $link + ['number' => sprintf('%02d', $i + 1)])->all(),
+                ['label' => __('Track order'), 'url' => route('tracking.lookup'), 'active' => request()->routeIs('tracking.*'), 'number' => null],
+            ];
+        }
+
+        return collect([
+            ['label' => __('Home'), 'url' => route('home'), 'active' => request()->routeIs('home')],
+            ['label' => __('Menu'), 'url' => route('menu.index'), 'active' => request()->routeIs('menu.index')],
+            ['label' => __('Branches'), 'url' => route('branches.index'), 'active' => request()->routeIs('branches.index')],
+            ['label' => __('Contact us'), 'url' => route('contact'), 'active' => request()->routeIs('contact')],
+            ...($published['about'] ? [['label' => __('About us'), 'url' => route('about'), 'active' => request()->routeIs('about')]] : []),
+            ['label' => __('Track order'), 'url' => route('tracking.lookup'), 'active' => request()->routeIs('tracking.*')],
+        ])->map(fn (array $link) => $link + ['number' => null])->all();
     }
 }

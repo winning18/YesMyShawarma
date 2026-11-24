@@ -823,6 +823,16 @@ Bodies are rendered by `Str::markdown` with raw HTML escaped and unsafe links dr
 league/commonmark's Attributes extension for `{#anchor}` heading ids; placeholder values typed
 elsewhere (a branch address) are escaped so they're never read as Markdown.
 
+**Website look** (owner, 2026-11-24): the `website_theme` setting — `classic` (the default, and
+what any unknown value reads as), `photo` or `onepage` — chosen under Website content → Website
+look (`WebsiteThemeController`, `content.manage`) or at onboarding (`expresspos:new-client
+--theme`). `WebsiteThemeService::view()` swaps in `resources/views/themes/<theme>/…` for the home
+page, menu and item page (and the layout includes `themes/<theme>/header`); everything else is
+one shared page whose headings take the theme's font (`--font-heading`, app.css). Theme-only
+home data comes from `ThemeHomeService`. A preview is a signed `?theme_preview=` link, valid an
+hour, kept in that browser's session only (`PreviewWebsiteTheme` middleware). Home page strips
+only show on Classic.
+
 About, FAQ and the four policies (`OPTIONAL_PAGES`) only exist once something is written —
 otherwise they answer 404 and the header, footer, cookie notice, sitemap and llms.txt don't link
 them. Yes My Shawarma's content (`database/seeders/data/site_content.php`) was copied in by

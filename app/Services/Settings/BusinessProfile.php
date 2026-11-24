@@ -237,7 +237,24 @@ class BusinessProfile
             $vars['--'.Str::of($key)->replace('_', '-')] = "{$r} {$g} {$b}";
         }
 
+        // Readable text on each brand colour, black or white, whichever
+        // contrasts more (website themes, 2026-11-24: a business's primary
+        // may be light or dark).
+        foreach (['brand_primary', 'brand_accent'] as $key) {
+            $vars['--'.Str::of($key)->replace('_', '-').'-ink'] = $this->inkFor($this->colours()[$key]);
+        }
+
         return $vars;
+    }
+
+    /** "0 0 0" or "255 255 255": the WCAG contrast winner on $hex. */
+    private function inkFor(string $hex): string
+    {
+        $luminance = collect(sscanf($hex, '#%02x%02x%02x'))
+            ->map(fn (int $channel) => ($c = $channel / 255) <= 0.03928 ? $c / 12.92 : (($c + 0.055) / 1.055) ** 2.4)
+            ->pipe(fn ($c) => 0.2126 * $c[0] + 0.7152 * $c[1] + 0.0722 * $c[2]);
+
+        return ($luminance + 0.05) / 0.05 >= 1.05 / ($luminance + 0.05) ? '0 0 0' : '255 255 255';
     }
 
     /**
