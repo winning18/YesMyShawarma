@@ -65,6 +65,19 @@ is small (about 41 MB of database and 31 MB of photos), so the move takes minute
 - [ ] Time the run. Note anything that needed a hand fix and put it into the script.
 - [ ] `bash deploy/move-yes-my-shawarma.sh --remove-rehearsal`.
 
+**First rehearsal, 2026-11-24:** found and fixed three problems:
+- the import clashed with the already-migrated schema; the database is now emptied first;
+- the business came out named "Express POS"; `APP_NAME` is now carried over;
+- `expresspos:describe` found no owner (a removed owner came first); it now skips removed
+  accounts.
+
+Second run: 60 seconds, clean. Orders, order totals, last week's orders, menu items and prices,
+branches, promotions and staff accounts all matched production exactly. No migrations were left
+pending. It came out on the Classic look with the black background, and every module on except
+Paystack (off in production). MoMo transaction checks were kept. Every customer name and phone
+was scrambled, and the website, menu and sign-in pages loaded without errors. Run the rehearsal
+again close to the day if the code has changed since.
+
 ## Before the day: people and decisions
 
 - [ ] **Owner picks the date and time:** after closing, on a quiet night (e.g. 23:00 to midnight),
