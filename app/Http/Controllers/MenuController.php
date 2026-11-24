@@ -152,6 +152,18 @@ class MenuController extends Controller
                 'priceCurrency' => 'GHS',
                 'price' => number_format($item->base_price / 100, 2, '.', ''),
                 'availability' => $isAvailable ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+                // Food isn't taken back once sold; the refund policy page says
+                // what happens when an order goes wrong. Clears Search
+                // Console's "Missing field hasMerchantReturnPolicy" warning.
+                // aggregateRating/review are deliberately absent: reviews are
+                // of orders and branches, not of one item, and marking them up
+                // as an item's rating breaks Google's review snippet rules.
+                'hasMerchantReturnPolicy' => [
+                    '@type' => 'MerchantReturnPolicy',
+                    'applicableCountry' => 'GH',
+                    'returnPolicyCategory' => 'https://schema.org/MerchantReturnNotPermitted',
+                    'merchantReturnLink' => route('policy.refunds'),
+                ],
             ],
         ];
 

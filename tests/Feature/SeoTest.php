@@ -139,6 +139,18 @@ class SeoTest extends TestCase
         $this->assertSame('35.00', $json['offers']['price']);
         $this->assertSame('GHS', $json['offers']['priceCurrency']);
         $this->assertSame('https://schema.org/InStock', $json['offers']['availability']);
+
+        // No returns on food; details on the refund policy page.
+        $policy = $json['offers']['hasMerchantReturnPolicy'];
+        $this->assertSame('MerchantReturnPolicy', $policy['@type']);
+        $this->assertSame('GH', $policy['applicableCountry']);
+        $this->assertSame('https://schema.org/MerchantReturnNotPermitted', $policy['returnPolicyCategory']);
+        $this->assertSame(route('policy.refunds'), $policy['merchantReturnLink']);
+        $this->get($policy['merchantReturnLink'])->assertOk();
+
+        // Reviews are of orders and branches, never marked up as one item's rating.
+        $this->assertArrayNotHasKey('aggregateRating', $json);
+        $this->assertArrayNotHasKey('review', $json);
     }
 
     public function test_menu_page_includes_menu_structured_data(): void
