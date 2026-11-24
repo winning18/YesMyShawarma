@@ -11,6 +11,7 @@ use App\Models\SmsBroadcastRecipient;
 use App\Models\User;
 use App\Services\Customers\CustomerService;
 use App\Services\Modules\ModuleService;
+use App\Support\CustomerUrl;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -158,7 +159,7 @@ class SmsBroadcastService
     {
         // No "https://" — phones link a bare domain anyway, and every
         // character here is paid for.
-        $url = preg_replace('#^https?://#', '', route('sms.opt-out.show', $optOutCode));
+        $url = preg_replace('#^https?://#', '', CustomerUrl::route('sms.opt-out.show', $optOutCode));
 
         return rtrim($message)."\n".__('Stop: :url', ['url' => $url]);
     }

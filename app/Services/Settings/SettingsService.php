@@ -101,6 +101,21 @@ class SettingsService
         $this->setBool('branch_kitchen_screen_'.$branchId, $has);
     }
 
+    /**
+     * The customer website's own domain (owner, 2026-11-24), e.g.
+     * deboyeskitchen.com, set by Express POS Admin. The POS always stays on
+     * its <client>.pos.solusysdigital.com address (APP_URL). Null: the
+     * website, if any, is on the POS address. See WebsiteDomain.
+     */
+    public const WEBSITE_DOMAIN = 'website_domain';
+
+    public function websiteDomain(): ?string
+    {
+        $domain = $this->get(self::WEBSITE_DOMAIN);
+
+        return $domain ? strtolower($domain) : null;
+    }
+
     public function checksMomoTransactionId(): bool
     {
         return $this->getBool(self::MOMO_CHECK_TRANSACTION_ID, false);

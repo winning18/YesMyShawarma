@@ -14,6 +14,19 @@
         </ul>
     </section>
 
+    @module('website')
+    <section>
+        <h3>{{ __('Website, a week before') }}</h3>
+        <ul>
+            <li>{{ __('Logo, colours and photos of the food (Business profile, Menu Editor, Hero Slider).') }}</li>
+            <li>{{ __('About page and FAQ read through and made true for the business (Website content: they start with general wording).') }}</li>
+            <li>{{ __('Terms, refund, privacy and cookie policies written or approved by the owner, then published (Website content). They stay hidden until they have text.') }}</li>
+            <li>{{ __('Delivery areas and fees checked, and a test order placed from a phone.') }}</li>
+            <li>{{ __('If the restaurant has its own domain: it opens the website, and staff still sign in at the POS address.') }}</li>
+        </ul>
+    </section>
+    @endmodule
+
     <section>
         <h3>{{ __('Hardware, two days before') }}</h3>
         <ul>

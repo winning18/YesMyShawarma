@@ -6,6 +6,7 @@ use App\Jobs\SendSms;
 use App\Models\Order;
 use App\Models\Refund;
 use App\Services\Modules\ModuleService;
+use App\Support\CustomerUrl;
 
 /**
  * The customer-facing order-status SMS points — delivery gets placed,
@@ -74,7 +75,7 @@ class CustomerOrderNotifier
         // The tracking page is part of the customer website; without the
         // Website module the message goes without the link (ModuleService).
         $text = app(ModuleService::class)->enabled(ModuleService::WEBSITE)
-            ? "{$message} Track it here: ".route('tracking.show', $order)
+            ? "{$message} Track it here: ".CustomerUrl::route('tracking.show', $order)
             : $message;
 
         SendSms::dispatch(

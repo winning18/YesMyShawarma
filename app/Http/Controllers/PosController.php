@@ -27,6 +27,7 @@ use App\Services\Shifts\CounterService;
 use App\Services\Shifts\ShiftService;
 use App\Services\Tables\TableTabService;
 use App\Services\Tax\TaxService;
+use App\Support\CustomerUrl;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -442,7 +443,7 @@ class PosController extends Controller
                 'reference' => $order->reference,
                 'total' => $order->total,
                 'table' => $tab?->table?->name,
-                'tracking_url' => $modules->enabled(ModuleService::WEBSITE) ? route('tracking.show', $order) : null,
+                'tracking_url' => $modules->enabled(ModuleService::WEBSITE) ? CustomerUrl::route('tracking.show', $order) : null,
             ],
         ]);
     }

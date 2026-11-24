@@ -81,3 +81,26 @@ gunzip -c /var/backups/expresspos/expresspos_mamaput/expresspos_mamaput-2026-12-
 ```
 
 Only ever into the install's own database, and only after taking a fresh backup first.
+
+## A restaurant's own website domain
+
+Done from the client's page in Express POS Admin. By hand:
+
+```sh
+ssh root@161.35.170.51
+expresspos-add-website-domain deboyes deboyeskitchen.com     # or: deboyes --remove
+```
+
+The restaurant first points its domain at the server: an **A record** for `@` (and for `www`)
+to `161.35.170.51`. The POS always stays at `<name>.pos.solusysdigital.com`.
+
+## A restaurant's Paystack and SMS keys
+
+Done from the client's page in Express POS Admin. By hand (keys on standard input, never as
+arguments):
+
+```sh
+ssh root@161.35.170.51
+echo '{"PAYSTACK_PUBLIC_KEY":"pk_live_…","PAYSTACK_SECRET_KEY":"sk_live_…"}' | expresspos-set-keys deboyes
+```
+

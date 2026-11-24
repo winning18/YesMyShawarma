@@ -3,7 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\Branch;
+use App\Models\FaqItem;
+use App\Models\SitePage;
 use App\Models\User;
+use App\Services\Content\SitePageService;
 use App\Services\Modules\ModuleService;
 use App\Services\Settings\BusinessProfile;
 use App\Services\Settings\SettingsService;
@@ -94,5 +97,21 @@ class NewClientCommandTest extends TestCase
         $this->artisan('expresspos:new-client', $this->commandOptions(['--json' => true]))
             ->expectsOutputToContain('{"ok":false,"error":"This install already has branches')
             ->assertFailed();
+    }
+
+    public function test_a_client_with_a_website_starts_with_an_about_page_and_faq_but_no_policies(): void
+    {
+        $this->artisan('expresspos:new-client', $this->commandOptions(['--modules' => 'website']))->assertSuccessful();
+
+        $this->assertStringContainsString('Welcome to **Mama Put Kitchen**', SitePage::where('slug', 'about')->value('body'));
+        $this->assertSame(5, FaqItem::count());
+        $this->assertFalse(app(SitePageService::class)->isPublished('terms'), 'policies are written by the business');
+    }
+
+    public function test_a_client_without_a_website_gets_no_website_content(): void
+    {
+        $this->artisan('expresspos:new-client', $this->commandOptions(['--modules' => 'tax']))->assertSuccessful();
+
+        $this->assertSame(0, FaqItem::count());
     }
 }

@@ -106,6 +106,16 @@ deploy updates every install. Moving to one shared system for all clients is a l
 around ten clients — don't build for it now, but don't make it harder either (keep everything
 branch-scoped, keep settings in the database).
 
+**Addresses (owner, 2026-11-24, fixed):** every client's POS lives at
+`<client>.pos.solusysdigital.com` and never moves off it. Only a client's customer website may have
+its own domain (e.g. `deboyeskitchen.com`), served by the same install.
+
+**Build before the first client is onboarded (owner, 2026-11-24):**
+1. Own website domain: an optional website domain per client in Express POS Admin (DNS, SSL,
+   the install answering on it), with the POS staying on its subdomain.
+2. Paystack and SMS (Arkesel) keys per client from the portal, not by hand on the server.
+3. Website content set up as part of onboarding (pages, FAQ, photos) for clients with a website.
+
 **Editions:**
 
 - **Subscription** (the MVP): hosted by Solusys Digital, every module available, every update.

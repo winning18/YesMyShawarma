@@ -8,6 +8,7 @@ use App\Http\Middleware\RedirectStaffToUnacceptedWebOrders;
 use App\Http\Middleware\ResolveCurrentBranch;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\TrackVisitorSession;
+use App\Http\Middleware\WebsiteDomain;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -26,7 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(SecurityHeaders::class);
         // After StartSession (web group), so every guard's session user is readable.
-        $middleware->web(append: [EnsureAccountNotSuspended::class]);
+        $middleware->web(prepend: [WebsiteDomain::class], append: [EnsureAccountNotSuspended::class]);
 
         $middleware->alias([
             'branch' => ResolveCurrentBranch::class,

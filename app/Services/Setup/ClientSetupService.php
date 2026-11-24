@@ -3,7 +3,9 @@
 namespace App\Services\Setup;
 
 use App\Models\Branch;
+use App\Models\FaqItem;
 use App\Models\MenuItem;
+use App\Models\SitePage;
 use App\Models\User;
 use App\Services\Modules\ModuleService;
 use App\Services\Settings\SettingsService;
@@ -81,6 +83,11 @@ class ClientSetupService
                 $this->modules->set($module, in_array($module, $input['modules'], true));
             }
 
+            // A website starts with an About page and FAQ in the business's name (2026-11-24).
+            if (in_array(ModuleService::WEBSITE, $input['modules'], true)) {
+                $this->seedWebsiteStarter(trim($input['business']));
+            }
+
             $owner = $this->users->create(['name' => $input['owner']['name'], 'email' => $input['owner']['email'], 'phone' => $input['owner']['phone'] ?? null], 'owner', $branch->id);
 
             $support = null;
@@ -90,5 +97,16 @@ class ClientSetupService
 
             return ['branch' => $branch, 'owner' => $owner, 'support' => $support];
         });
+    }
+
+    private function seedWebsiteStarter(string $business): void
+    {
+        $starter = require database_path('seeders/data/site_content_starter.php');
+        $fill = fn (string $text) => str_replace(':name', $business, $text);
+
+        SitePage::updateOrCreate(['slug' => 'about'], ['body' => $fill($starter['about'])]);
+        foreach ($starter['faq'] as $i => [$question, $answer]) {
+            FaqItem::create(['question' => $fill($question), 'answer' => $fill($answer), 'sort_order' => $i + 1]);
+        }
     }
 }

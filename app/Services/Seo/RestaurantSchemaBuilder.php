@@ -8,6 +8,7 @@ use App\Services\Branches\WorkingHoursService;
 use App\Services\Customers\CustomerService;
 use App\Services\Modules\ModuleService;
 use App\Services\Settings\BusinessProfile;
+use App\Support\CustomerUrl;
 
 /**
  * Restaurant structured data (schema.org) for a branch — lets Google show
@@ -84,7 +85,7 @@ class RestaurantSchemaBuilder
                 'longitude' => (float) $branch->lng,
             ],
             'servesCuisine' => $this->profile->cuisines(),
-            'hasMenu' => route('menu.index'),
+            'hasMenu' => CustomerUrl::route('menu.index'),
             'acceptsReservations' => false,
             'priceRange' => $this->priceRange(),
             'url' => route('branches.show', $branch),
