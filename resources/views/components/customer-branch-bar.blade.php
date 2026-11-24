@@ -8,5 +8,5 @@
         @endif
     </span>
     <a href="{{ route('branches.index') }}" class="underline text-brand-gray-500 hover:text-brand-black">{{ __('Change') }}</a>
-    <x-nearest-branch-button :label="__('Find nearest')" class="text-brand-red hover:text-brand-red-dark" />
+    <x-nearest-branch-button :label="__('Find nearest')" class="text-brand-accent-text hover:underline" />
 </div>

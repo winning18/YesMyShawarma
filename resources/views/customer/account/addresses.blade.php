@@ -37,7 +37,7 @@
                             <form method="POST" action="{{ route('customer.account.addresses.destroy', $address) }}" onsubmit="return confirm({{ Js::from(__('Remove this address?')) }})">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="underline text-brand-red">{{ __('Remove') }}</button>
+                                <button type="submit" class="underline text-brand-accent-text">{{ __('Remove') }}</button>
                             </form>
                         </div>
                     </div>

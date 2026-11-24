@@ -51,7 +51,7 @@
                     <div class="md:col-span-2">
                         <template x-if="isProblemStatus(order.status)">
                             <div class="rounded-lg border-2 border-brand-red bg-brand-red-light p-4">
-                                <p class="font-semibold text-brand-red-dark" x-text="statusLabel(order.status)"></p>
+                                <p class="font-semibold text-brand-accent-text" x-text="statusLabel(order.status)"></p>
                                 <p x-show="order.cancellation_reason" class="text-sm text-brand-black mt-1" x-text="order.cancellation_reason"></p>
                             </div>
                         </template>

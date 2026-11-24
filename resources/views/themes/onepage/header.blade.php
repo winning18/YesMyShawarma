@@ -11,9 +11,9 @@
         @if ($websiteOn)
             <nav class="hidden md:flex items-center gap-6 text-sm font-semibold text-brand-black">
                 @foreach ($customerNav as $link)
-                    <a href="{{ $link['url'] }}" class="group inline-flex items-baseline gap-1 hover:text-brand-red transition">
+                    <a href="{{ $link['url'] }}" class="group inline-flex items-baseline gap-1 hover:text-brand-accent-text transition">
                         @if ($link['number'])
-                            <span class="text-[11px] text-brand-gray-500 group-hover:text-brand-red">{{ $link['number'] }}</span>
+                            <span class="text-[11px] text-brand-gray-500 group-hover:text-brand-accent-text">{{ $link['number'] }}</span>
                         @endif
                         {{ $link['label'] }}
                     </a>

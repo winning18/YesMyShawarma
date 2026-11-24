@@ -243,9 +243,35 @@ class BusinessProfile
         // may be light or dark).
         foreach (['brand_primary', 'brand_accent'] as $key) {
             $vars['--'.Str::of($key)->replace('_', '-').'-ink'] = $this->inkFor($this->colours()[$key]);
+            // The colour as text or a link on white: darkened just enough to read (WCAG AA).
+            $vars['--'.Str::of($key)->replace('_', '-').'-text'] = $this->readableOnWhite($this->colours()[$key]);
         }
 
         return $vars;
+    }
+
+    /**
+     * "r g b" of $hex darkened step by step until it reaches 4.5:1 against
+     * white (2026-11-24: a light accent like yellow is unreadable as link
+     * text otherwise). A colour already dark enough comes back unchanged.
+     */
+    private function readableOnWhite(string $hex): string
+    {
+        $rgb = sscanf($hex, '#%02x%02x%02x');
+
+        for ($i = 0; $i < 20 && 1.05 / ($this->luminance($rgb) + 0.05) < 4.5; $i++) {
+            $rgb = array_map(fn (int $c) => (int) floor($c * 0.9), $rgb);
+        }
+
+        return implode(' ', $rgb);
+    }
+
+    /** @param  array{0: int, 1: int, 2: int}  $rgb */
+    private function luminance(array $rgb): float
+    {
+        $c = array_map(fn (int $v) => ($s = $v / 255) <= 0.03928 ? $s / 12.92 : (($s + 0.055) / 1.055) ** 2.4, $rgb);
+
+        return 0.2126 * $c[0] + 0.7152 * $c[1] + 0.0722 * $c[2];
     }
 
     /** "0 0 0" or "255 255 255": the WCAG contrast winner on $hex. */

@@ -5,7 +5,7 @@
 
         @if ($orders->isEmpty())
             <p class="text-brand-gray-500">{{ __("You haven't placed any orders yet.") }}</p>
-            <a href="{{ route('menu.index') }}" class="inline-block mt-4 text-sm font-semibold text-brand-red hover:text-brand-red-dark">{{ __('Browse the menu →') }}</a>
+            <a href="{{ route('menu.index') }}" class="inline-block mt-4 text-sm font-semibold text-brand-accent-text hover:underline">{{ __('Browse the menu →') }}</a>
         @else
             <div class="space-y-3">
                 @foreach ($orders as $order)

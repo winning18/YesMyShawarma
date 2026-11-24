@@ -179,6 +179,15 @@ class WebsiteThemeTest extends TestCase
         $this->get(route('home'))
             ->assertSee('<style>html:root{--brand-primary:252 209 22;', false)
             ->assertSee('--brand-primary-ink:0 0 0;', false)
-            ->assertSee('--brand-accent-ink:255 255 255;', false);
+            ->assertSee('--brand-accent-ink:255 255 255;', false)
+            // As text on white: a dark colour stays itself, a light one is darkened until readable.
+            ->assertSee('--brand-accent-text:26 35 126;', false)
+            ->assertDontSee('--brand-primary-text:252 209 22;', false);
+
+        $html = $this->get(route('home'))->getContent();
+        preg_match('/--brand-primary-text:(\d+) (\d+) (\d+);/', $html, $m);
+        $lum = fn (int $v) => ($s = $v / 255) <= 0.03928 ? $s / 12.92 : (($s + 0.055) / 1.055) ** 2.4;
+        $l = 0.2126 * $lum((int) $m[1]) + 0.7152 * $lum((int) $m[2]) + 0.0722 * $lum((int) $m[3]);
+        $this->assertGreaterThanOrEqual(4.5, 1.05 / ($l + 0.05), 'readable on white');
     }
 }

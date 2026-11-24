@@ -1,7 +1,7 @@
 <x-customer-layout :title="'Payment not completed · '.config('app.name')">
     <div class="max-w-xl mx-auto text-center">
         <div class="w-16 h-16 mx-auto rounded-full bg-brand-red-light flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-brand-red" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-brand-accent-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M18 6 6 18M6 6l12 12" />
             </svg>
         </div>

@@ -53,6 +53,9 @@ export default {
                     // primary/accent colour (BusinessProfile::cssVariables).
                     'on-primary': 'rgb(var(--brand-primary-ink) / <alpha-value>)',
                     'on-accent': 'rgb(var(--brand-accent-ink) / <alpha-value>)',
+                    // The brand colours as text on white, darkened until readable.
+                    'primary-text': 'rgb(var(--brand-primary-text) / <alpha-value>)',
+                    'accent-text': 'rgb(var(--brand-accent-text) / <alpha-value>)',
                     red: {
                         light: 'rgb(var(--brand-accent-light) / <alpha-value>)',
                         DEFAULT: 'rgb(var(--brand-accent) / <alpha-value>)',

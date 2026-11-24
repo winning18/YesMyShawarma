@@ -9,7 +9,7 @@
 
     @if (empty($lines))
         <p class="text-brand-gray-500">{{ __('Your cart is empty.') }}</p>
-        <a href="{{ route('menu.index') }}" class="inline-block mt-4 text-sm font-semibold text-brand-red hover:text-brand-red-dark">
+        <a href="{{ route('menu.index') }}" class="inline-block mt-4 text-sm font-semibold text-brand-accent-text hover:underline">
             {{ __('Browse the menu →') }}
         </a>
     @else
@@ -105,7 +105,7 @@
                                 <form method="POST" action="{{ route('cart.remove', $line['line_id']) }}" class="mt-2">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="text-sm text-brand-red hover:text-brand-red-dark">{{ __('Remove') }}</button>
+                                    <button type="submit" class="text-sm text-brand-accent-text hover:underline">{{ __('Remove') }}</button>
                                 </form>
                             </div>
                         </div>

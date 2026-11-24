@@ -3,7 +3,7 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
         @foreach ($reviews as $review)
             <figure class="rounded-2xl bg-brand-white border border-brand-gray-100 p-6 flex flex-col">
-                <div class="text-brand-red mb-3" aria-label="{{ __(':rating out of 5 stars', ['rating' => $review->rating]) }}">
+                <div class="text-brand-accent-text mb-3" aria-label="{{ __(':rating out of 5 stars', ['rating' => $review->rating]) }}">
                     @for ($star = 1; $star <= 5; $star++)<span>{{ $star <= $review->rating ? '★' : '☆' }}</span>@endfor
                 </div>
                 <blockquote class="text-brand-black leading-relaxed flex-1">“{{ $review->comment }}”</blockquote>

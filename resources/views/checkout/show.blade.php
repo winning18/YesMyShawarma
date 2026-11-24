@@ -361,7 +361,7 @@
                                     <span x-text="@js(__('is :km km closer to you.')).replace(':km', closerBranch?.km)"></span>
                                     {{ __('Delivery from there costs less.') }}
                                 </p>
-                                <a :href="closerBranch?.url" class="inline-block mt-2 font-semibold text-brand-red hover:text-brand-red-dark underline" x-text="@js(__('Move my order to :branch')).replace(':branch', closerBranch?.name)"></a>
+                                <a :href="closerBranch?.url" class="inline-block mt-2 font-semibold text-brand-accent-text hover:underline underline" x-text="@js(__('Move my order to :branch')).replace(':branch', closerBranch?.name)"></a>
                             </div>
                             <input type="hidden" name="lat" x-model="lat" value="{{ old('lat') }}">
                             <input type="hidden" name="lng" x-model="lng" value="{{ old('lng') }}">

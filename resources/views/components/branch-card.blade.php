@@ -64,7 +64,7 @@
 
         <div class="mb-5">
             @if (! $branch->is_accepting_orders)
-                <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-red-dark bg-brand-red-light px-2.5 py-1 rounded-full">
+                <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-accent-text bg-brand-red-light px-2.5 py-1 rounded-full">
                     <span class="w-1.5 h-1.5 rounded-full bg-brand-red"></span>
                     {{ __('Not accepting orders right now') }}
                 </span>
