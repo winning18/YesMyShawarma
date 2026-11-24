@@ -271,4 +271,23 @@ class ReviewTest extends TestCase
 
         $this->actingAs($rider)->get(route('dashboard.reviews.index'))->assertForbidden();
     }
+
+    public function test_the_whole_comment_is_on_the_page_before_approving(): void
+    {
+        $owner = $this->makeOwner();
+        $order = $this->makeOrder('delivered', 'delivery');
+        $comment = str_repeat('The shawarma was great but the delivery took long. ', 30)."\nSecond paragraph & the <end>.";
+        Review::create([
+            'order_id' => $order->id, 'branch_id' => $this->branch->id, 'customer_id' => $order->customer_id,
+            'rating' => 3, 'comment' => $comment, 'status' => Review::STATUS_PENDING,
+        ]);
+
+        $response = $this->actingAs($owner)->get(route('dashboard.reviews.index'))->assertOk();
+
+        // In full, escaped, never cut to one line — folded only on screen.
+        $response->assertSee($comment);
+        $response->assertSee('Read full comment');
+        $response->assertSee('line-clamp-3', false);
+        $response->assertDontSee('max-w-xs truncate', false);
+    }
 }
