@@ -123,8 +123,7 @@ its own domain (e.g. `deboyeskitchen.com`), served by the same install.
   `clients:expire-sandboxes`). For custom-look work and support, never the live site.
 - **At the MVP release** Yes My Shawarma becomes an ordinary install: its POS at
   `yesmyshawarma.pos.solusysdigital.com`, `yesmyshawarma.com` connected as its own website
-  domain. Needs a written cut-over checklist first (database, Paystack webhook, Print Agent
-  address, staff sign-in and push, rider subdomains).
+  domain. The plan, pre-work, rehearsal, night and rollback: `deploy/MVP-CUTOVER.md`.
 
 **Brand (owner, 2026-11-24):** there is no default palette. Every client chooses its two brand
 colours and uploads its logo before onboarding can go ahead (`expresspos:new-client` requires
