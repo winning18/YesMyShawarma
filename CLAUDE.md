@@ -133,7 +133,9 @@ every client: Classic (today's design, the default), Photo-led (Fraunces heading
 owner or GM under Website content → Website look, with a signed preview link first. Colours are
 always the business's own. A theme changes only the header, home, menu and item page; every
 other customer page is shared. See schema.md's "Website content". A fully custom design for one
-client is later work and needs a customer API first.
+client is later work and needs a customer API first. A client wanting a custom design (built by
+Solusys) gets a custom look inside Express POS, per `.claude/rules/custom-looks.md`; start each
+one in a new chat.
 
 **Editions:**
 
@@ -339,3 +341,4 @@ These load automatically when you touch matching files. Read them before working
 | `.claude/rules/permissions.md` | Roles, matrix, scoping | policies, middleware, routes |
 | `.claude/rules/realtime.md` | Channels, broadcast auth | events, listeners, channels |
 | `.claude/rules/payments.md` | Paystack, webhooks, cash | payment services, webhook controller |
+| `.claude/rules/custom-looks.md` | Building and changing a client's custom website look | website looks (`resources/views/themes/**`), theme services |
