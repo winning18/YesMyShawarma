@@ -142,7 +142,7 @@ return [
     'prohibited_unless' => 'The :attribute field is prohibited unless :other is in :values.',
     'prohibits' => 'The :attribute field prohibits :other from being present.',
     'regex' => ':Attribute isn\'t in the right format. Check it and try again.',
-    'required' => ':Attribute is missing. Fill it in and try again.',
+    'required' => ':Attribute is missing. Fill it in or choose one, then try again.',
     'required_array_keys' => 'The :attribute field must contain entries for: :values.',
     'required_if' => ':Attribute is needed here. Fill it in and try again.',
     'required_if_accepted' => 'The :attribute field is required when :other is accepted.',
@@ -180,9 +180,95 @@ return [
     |
     */
 
+    // Fields picked from a list, not typed (2026-11-24): "Choose", not "Fill it in".
     'custom' => [
-        'attribute-name' => [
-            'rule-name' => 'custom-message',
+        'theme' => [
+            'required' => 'Choose :attribute, then try again.',
+            'required_if' => 'Choose :attribute, then try again.',
+        ],
+        'website_theme' => [
+            'required' => 'Choose :attribute, then try again.',
+            'required_if' => 'Choose :attribute, then try again.',
+        ],
+        'payment_method' => [
+            'required' => 'Choose :attribute, then try again.',
+            'required_if' => 'Choose :attribute, then try again.',
+        ],
+        'fulfilment_type' => [
+            'required' => 'Choose :attribute, then try again.',
+            'required_if' => 'Choose :attribute, then try again.',
+        ],
+        'delivery_area_id' => [
+            'required' => 'Choose :attribute, then try again.',
+            'required_if' => 'Choose :attribute, then try again.',
+        ],
+        'branch_id' => [
+            'required' => 'Choose :attribute, then try again.',
+            'required_if' => 'Choose :attribute, then try again.',
+        ],
+        'category_id' => [
+            'required' => 'Choose :attribute, then try again.',
+            'required_if' => 'Choose :attribute, then try again.',
+        ],
+        'role' => [
+            'required' => 'Choose :attribute, then try again.',
+            'required_if' => 'Choose :attribute, then try again.',
+        ],
+        'expense_category_id' => [
+            'required' => 'Choose :attribute, then try again.',
+            'required_if' => 'Choose :attribute, then try again.',
+        ],
+        'pos_mode' => [
+            'required' => 'Choose :attribute, then try again.',
+            'required_if' => 'Choose :attribute, then try again.',
+        ],
+        'table_id' => [
+            'required' => 'Choose :attribute, then try again.',
+            'required_if' => 'Choose :attribute, then try again.',
+        ],
+        'menu_item_id' => [
+            'required' => 'Choose :attribute, then try again.',
+            'required_if' => 'Choose :attribute, then try again.',
+        ],
+        'delivery_fee_handling' => [
+            'required' => 'Choose :attribute, then try again.',
+            'required_if' => 'Choose :attribute, then try again.',
+        ],
+        'freebie_recipient_type' => [
+            'required' => 'Choose :attribute, then try again.',
+            'required_if' => 'Choose :attribute, then try again.',
+        ],
+        'type' => [
+            'required' => 'Choose :attribute, then try again.',
+            'required_if' => 'Choose :attribute, then try again.',
+        ],
+        'status' => [
+            'required' => 'Choose :attribute, then try again.',
+            'required_if' => 'Choose :attribute, then try again.',
+        ],
+        'modules' => [
+            'required' => 'Choose :attribute, then try again.',
+            'required_if' => 'Choose :attribute, then try again.',
+        ],
+        'option_ids' => [
+            'required' => 'Choose :attribute, then try again.',
+            'required_if' => 'Choose :attribute, then try again.',
+        ],
+        'kind' => [
+            'required' => 'Choose :attribute, then try again.',
+            'required_if' => 'Choose :attribute, then try again.',
+        ],
+        'printer_id' => [
+            'required' => 'Choose :attribute, then try again.',
+            'required_if' => 'Choose :attribute, then try again.',
+        ],
+        'terminal_id' => [
+            'required' => 'Choose :attribute, then try again.',
+            'required_if' => 'Choose :attribute, then try again.',
+        ],
+        'rider_id' => [
+            'required' => 'Choose :attribute, then try again.',
+            'required_if' => 'Choose :attribute, then try again.',
         ],
     ],
 

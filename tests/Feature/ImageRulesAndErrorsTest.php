@@ -123,12 +123,12 @@ class ImageRulesAndErrorsTest extends TestCase
         $page->assertOk()
             ->assertSee('window.xposFormErrors', false)
             ->assertSee('1 thing needs fixing before this can be saved:')
-            ->assertSee('Theme is missing. Fill it in and try again.');
+            ->assertSee('Choose theme, then try again.');
     }
 
     public function test_validation_messages_say_how_to_fix_the_mistake(): void
     {
         $this->assertSame('That doesn\'t look like an email address. Check for a missing @ or dot (e.g. name@example.com).', __('validation.email', ['attribute' => 'email']));
-        $this->assertStringContainsString('Fill it in', __('validation.required', ['attribute' => 'name']));
+        $this->assertStringContainsString('Fill it in or choose one', __('validation.required', ['attribute' => 'name']));
     }
 }
