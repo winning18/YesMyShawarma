@@ -6,6 +6,7 @@ use App\Events\OrderPlaced;
 use App\Exceptions\OrderPlacementException;
 use App\Models\Branch;
 use App\Models\DeliveryArea;
+use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\User;
@@ -192,9 +193,18 @@ class OrderCreationService
                 // PromotionRedemption's own docblock: "how much did we give
                 // away" never depends on how the order's own subtotal/
                 // discount_total columns happen to be structured.
-                $redemptionValue = collect($itemRows)
-                    ->where('is_free', true)
-                    ->sum(fn ($row) => $row['quantity'] * $priceByMenuItem[$row['menu_item_id']]);
+                //
+                // The free item needn't be in the cart: "buy any 2 shawarma,
+                // get a Chicken Shawarma free" bought as beef had no price to
+                // look up and crashed checkout and the POS (Sentry
+                // PHP-LARAVEL-12, 2026-11-25). Then it's valued at the free
+                // item's own base price; when it is in the cart, at that
+                // line's price as before, so existing figures don't change.
+                $freeRows = collect($itemRows)->where('is_free', true);
+                $basePrices = MenuItem::whereIn('id', $freeRows->pluck('menu_item_id')->diff($priceByMenuItem->keys()))
+                    ->pluck('base_price', 'id');
+                $redemptionValue = $freeRows->sum(fn ($row) => $row['quantity']
+                    * (int) ($priceByMenuItem[$row['menu_item_id']] ?? $basePrices[$row['menu_item_id']] ?? 0));
             } elseif ($promotion) {
                 $discountTotal = $this->promotions->calculateDiscount($promotion, $subtotal);
                 $redemptionValue = $discountTotal;
