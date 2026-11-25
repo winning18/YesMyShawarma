@@ -14,6 +14,7 @@ use App\Services\Modules\ModuleService;
 use App\Services\Settings\SettingsService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -138,5 +139,48 @@ class DeliveryFeesAndHomeStripsTest extends TestCase
 
         app(ModuleService::class)->set(ModuleService::WEBSITE, false);
         $this->as($gm)->get(route('dashboard.home-strips.edit'))->assertNotFound();
+    }
+
+    /**
+     * Sentry PHP-LARAVEL-11: every strip ran its own category, item and
+     * availability queries. Now three queries in all, whatever the number
+     * of strips, with each strip still getting exactly its own items in
+     * sort order.
+     */
+    public function test_home_strips_load_their_items_in_one_pass(): void
+    {
+        // Created out of order, so the strips' order can only come from sort_order.
+        foreach (['wraps' => ['Beef Wrap' => 2, 'Chicken Wrap' => 1], 'sides' => ['Kelewele' => 3], 'drinks' => ['Asaana' => 2, 'Sobolo' => 1]] as $slug => $names) {
+            $category = Category::create(['name' => ucfirst($slug), 'slug' => $slug]);
+            foreach ($names as $name => $sortOrder) {
+                $item = MenuItem::create(['category_id' => $category->id, 'name' => $name, 'slug' => str($name)->slug(), 'base_price' => 2000, 'sort_order' => $sortOrder]);
+                $this->branch->menuItems()->attach($item->id, ['is_available' => $name !== 'Asaana']);
+            }
+        }
+        $gm = $this->userWithRole('general_manager');
+        $this->as($gm)->put(route('dashboard.home-strips.update'), ['strips' => [
+            ['title' => 'Wraps and sides', 'slugs' => ['wraps', 'sides']],
+            ['title' => 'Cold drinks', 'slugs' => ['drinks']],
+        ]])->assertSessionHas('status');
+        auth()->logout();
+        $this->get(route('branches.pick', $this->branch));
+
+        $categoryQueries = 0;
+        DB::listen(function ($query) use (&$categoryQueries) {
+            if (str_contains($query->sql, 'from "categories" where "slug" in')) {
+                $categoryQueries++;
+            }
+        });
+
+        $response = $this->get(route('home'))->assertOk();
+
+        $this->assertSame(1, $categoryQueries);
+        $strips = collect($response->viewData('menuSliders'))->mapWithKeys(fn ($strip) => [$strip['title'] => $strip['items']->pluck('name')->all()]);
+        $this->assertSame(['Wraps and sides', 'Cold drinks'], $strips->keys()->all());
+        $this->assertSame(['Chicken Wrap', 'Beef Wrap', 'Kelewele'], $strips['Wraps and sides']);
+        $this->assertSame(['Sobolo', 'Asaana'], $strips['Cold drinks']);
+        // Sold out at this branch: still on the strip, greyed out.
+        $asaana = collect($response->viewData('menuSliders'))->firstWhere('title', 'Cold drinks')['items']->firstWhere('name', 'Asaana');
+        $this->assertFalse($asaana->isAvailable);
     }
 }
