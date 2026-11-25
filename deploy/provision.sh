@@ -63,7 +63,7 @@ SLUG_DIR="expresspos-$SLUG"
 DIR="/var/www/$SLUG_DIR"
 
 echo "==> Creating the install at https://$DOMAIN"
-/usr/local/sbin/expresspos-new-install "$SLUG" "$DOMAIN" || fail "Creating the install failed; see the log above."
+EXPRESSPOS_PROVISIONING=1 /usr/local/sbin/expresspos-new-install "$SLUG" "$DOMAIN" || fail "Creating the install failed; see the log above."
 
 echo "==> Registering it for updates$([[ "$KIND" == live ]] && echo " and backups" || echo " (a test client: no backups)")"
 mkdir -p /etc/expresspos

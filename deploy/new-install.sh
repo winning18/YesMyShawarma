@@ -275,11 +275,16 @@ sudo -u deploy php artisan view:cache
 systemctl daemon-reload
 systemctl enable --now "$SLUG-queue.service" "$SLUG-reverb.service"
 
+echo
+echo "Done: https://$DOMAIN (code: $BRANCH)"
+
+# Express POS Admin's onboarding does the next steps itself (and leaves a test
+# client out of the backups), so the hand-run tips only show when run by hand.
+[[ -n "${EXPRESSPOS_PROVISIONING:-}" ]] && exit 0
+
 cat <<DONE
 
-Done: https://$DOMAIN
-
-Code: $BRANCH. Next (Express POS Admin's onboarding does all three itself):
+Next:
   1. Fill in the business:  cd $DIR && sudo -u www-data php artisan expresspos:new-client
   2. Register it for updates: add "$SLUG" to /etc/expresspos/installs (a live client)
      or /etc/expresspos/staging-installs (staging, sandboxes).
