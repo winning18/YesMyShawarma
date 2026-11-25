@@ -120,13 +120,32 @@ jobs:
           for install in $INSTALLS; do
             [[ "$install" =~ ^expresspos-[a-z0-9]+$ ]] || { echo "Skipping odd install name: $install"; continue; }
             echo "==> $install"
+            # Maintenance mode for the whole switch (Sentry PHP-LARAVEL-10,
+            # 2026-11-24): new vendor/ with old code, then new code before
+            # its migrations, served real visitors errors for a few seconds.
+            # The page is pre-rendered now, from the old code, so it needs
+            # neither the database nor the new files.
+            ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+              "cd /var/www/$install && php artisan down --render='errors::503' --retry=60 --refresh=15" \
+              || echo "::warning::$install: maintenance mode didn't switch on; updating it live."
+            synced=1
             for part in vendor public/build public/downloads; do
               rsync -az --delete -e "ssh -i ~/.ssh/deploy_key" "$part/" \
-                ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/var/www/$install/$part/
+                ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/var/www/$install/$part/ || { synced=0; break; }
             done
+            if [ "$synced" = 0 ]; then
+              ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+                "cd /var/www/$install && (php artisan up || rm -f storage/framework/down storage/framework/maintenance.php)"
+              echo "::error::$install: copying files failed part-way; it's back up but needs this deploy re-run."
+              exit 1
+            fi
+            # The trap brings the site back up however this ends, so a failed
+            # step never leaves it stuck on the maintenance page. PHP is
+            # reloaded before that, so no stale cached code is served.
             ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "
               set -e
               cd /var/www/$install
+              trap 'php artisan up >/dev/null 2>&1 || rm -f storage/framework/down storage/framework/maintenance.php' EXIT
               git fetch origin
               git checkout --quiet -B Main origin/Main
               php artisan package:discover --ansi
@@ -136,6 +155,6 @@ jobs:
               php artisan view:cache
               sudo systemctl restart $install-queue.service
               sudo systemctl restart $install-reverb.service
+              sudo systemctl reload php8.3-fpm
             "
           done
-          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} 'sudo systemctl reload php8.3-fpm'

@@ -205,7 +205,7 @@
             that step since price/availability are branch-scoped.
 
             A sold-out item ($item->isAvailable false — set in
-            HomeController@itemsForSlugs from the selected branch's
+            HomeController@stripItems from the selected branch's
             branch_menu_item pivot) stays visible but grayed out and
             unlinked instead: clicking through would otherwise 404, since
             MenuController@show 404s on an item that isn't available at

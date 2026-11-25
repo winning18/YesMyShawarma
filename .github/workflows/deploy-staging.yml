@@ -108,6 +108,16 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
 
+      # Maintenance mode for the whole switch, as in deploy.yml (Sentry
+      # PHP-LARAVEL-10): pre-rendered from the old code, needing neither
+      # the database nor the new files. Back up at the end of "Update source
+      # code", or by "Bring staging back up" below if anything fails first.
+      - name: Maintenance mode on
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+            "cd /var/www/yes-my-shawarma-staging && php artisan down --render='errors::503' --retry=60 --refresh=15" \
+            || echo "::warning::Maintenance mode didn't switch on; updating staging live."
+
       - name: Sync vendor/, public/build/ and public/downloads/ to server
         run: |
           rsync -az --delete -e "ssh -i ~/.ssh/deploy_key" vendor/ \
@@ -122,6 +132,7 @@ jobs:
           ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} '
             set -e
             cd /var/www/yes-my-shawarma-staging
+            trap "php artisan up >/dev/null 2>&1 || rm -f storage/framework/down storage/framework/maintenance.php" EXIT
             git fetch origin
             git reset --hard origin/staging
             php artisan package:discover --ansi
@@ -133,6 +144,14 @@ jobs:
             sudo systemctl restart yes-my-shawarma-staging-reverb.service
             sudo systemctl reload php8.3-fpm
           '
+
+      # Only when a step before "Update source code" failed: never leave
+      # staging on the maintenance page.
+      - name: Bring staging back up
+        if: failure()
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+            "cd /var/www/yes-my-shawarma-staging && (php artisan up || rm -f storage/framework/down storage/framework/maintenance.php)" || true
 
       # Installs on the staging code (owner, 2026-11-24): shared staging and
       # client sandboxes, listed in /etc/expresspos/staging-installs on the
@@ -155,13 +174,25 @@ jobs:
           for install in $INSTALLS; do
             [[ "$install" =~ ^expresspos-[a-z0-9]+$ ]] || { echo "Skipping odd install name: $install"; continue; }
             echo "==> $install"
+            # Maintenance mode for the whole switch: see deploy.yml.
+            ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+              "cd /var/www/$install && php artisan down --render='errors::503' --retry=60 --refresh=15" \
+              || echo "::warning::$install: maintenance mode didn't switch on; updating it live."
+            synced=1
             for part in vendor public/build public/downloads; do
               rsync -az --delete -e "ssh -i ~/.ssh/deploy_key" "$part/" \
-                ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/var/www/$install/$part/
+                ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/var/www/$install/$part/ || { synced=0; break; }
             done
+            if [ "$synced" = 0 ]; then
+              ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+                "cd /var/www/$install && (php artisan up || rm -f storage/framework/down storage/framework/maintenance.php)"
+              echo "::error::$install: copying files failed part-way; it's back up but needs this deploy re-run."
+              exit 1
+            fi
             ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "
               set -e
               cd /var/www/$install
+              trap 'php artisan up >/dev/null 2>&1 || rm -f storage/framework/down storage/framework/maintenance.php' EXIT
               git fetch origin
               git reset --hard origin/staging
               php artisan package:discover --ansi
@@ -171,6 +202,6 @@ jobs:
               php artisan view:cache
               sudo systemctl restart $install-queue.service
               sudo systemctl restart $install-reverb.service
+              sudo systemctl reload php8.3-fpm
             "
           done
-          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} 'sudo systemctl reload php8.3-fpm'
