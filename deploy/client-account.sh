@@ -44,6 +44,8 @@ DOWN_FILE="$DIR/storage/framework/down"
 
 case "$ACTION" in
   suspend)
+    [[ -f "$DIR/resources/views/errors/suspended.blade.php" ]] \
+      || fail "This install doesn't have the latest update yet, so it can't be suspended. Wait a few minutes for the update to reach it, then try again."
     echo "==> Suspending $NAME"
     cd "$DIR"
     sudo -u www-data php artisan down --render="errors::suspended" --retry=3600
