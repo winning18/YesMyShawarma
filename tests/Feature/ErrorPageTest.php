@@ -2,8 +2,11 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Foundation\Exceptions\RegisterErrorViewPaths;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class ErrorPageTest extends TestCase
@@ -39,7 +42,7 @@ class ErrorPageTest extends TestCase
     public function test_the_text_input_component_renders_without_shared_form_errors(): void
     {
         // Outside a web request (console, queued mail) nothing shares $errors.
-        $html = \Illuminate\Support\Facades\Blade::render('<x-text-input name="email" />');
+        $html = Blade::render('<x-text-input name="email" />');
 
         $this->assertStringContainsString('name="email"', $html);
     }
@@ -47,5 +50,30 @@ class ErrorPageTest extends TestCase
     public function test_the_test_suite_never_reports_to_sentry(): void
     {
         $this->assertNull(config('sentry.dsn'));
+    }
+
+    /**
+     * The deploy's maintenance page (`artisan down --render="errors::503"`)
+     * is pre-rendered while code and database are being swapped, so it
+     * must stand alone: no layout, no database, nothing business-specific.
+     */
+    public function test_the_maintenance_page_needs_no_database_and_no_business_data(): void
+    {
+        $queries = 0;
+        DB::listen(function () use (&$queries) {
+            $queries++;
+        });
+
+        // Same as `artisan down --render` (DownCommand::prerenderView()).
+        (new RegisterErrorViewPaths)();
+        $html = view('errors::503')->render();
+
+        $this->assertSame(0, $queries);
+        $this->assertStringContainsString('Back in a minute', $html);
+        $this->assertStringContainsString('noindex', $html);
+        $this->assertStringNotContainsString('Express POS', $html);
+        $this->assertStringNotContainsString(config('app.name'), $html);
+        $this->assertStringNotContainsString('<link', $html);
+        $this->assertStringNotContainsString('<script', $html);
     }
 }
