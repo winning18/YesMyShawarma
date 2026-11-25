@@ -67,7 +67,7 @@ case "$ACTION" in
     STAMP="$(date +%Y%m%d-%H%M)"
     mysqldump --single-transaction --quick --no-tablespaces "$DB" | gzip > "$FINAL/$SLUG-$STAMP.sql.gz"
     tar -czf "$FINAL/$SLUG-$STAMP-files.tar.gz" -C "$DIR/storage" app
-    chmod 600 "$FINAL/$SLUG-$STAMP".*
+    chmod 600 "$FINAL/$SLUG-$STAMP.sql.gz" "$FINAL/$SLUG-$STAMP-files.tar.gz"
     # Destroyed after 30 days by a daily job.
     echo "15 3 * * * root find $FINAL -type f -mtime +30 -delete" > /etc/cron.d/expresspos-deleted-purge
     chmod 644 /etc/cron.d/expresspos-deleted-purge
