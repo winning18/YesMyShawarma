@@ -30,4 +30,15 @@ class SecurityHeadersTest extends TestCase
         $response = $this->get('https://localhost/');
         $response->assertHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     }
+
+    public function test_on_an_own_website_domain_photos_and_live_updates_from_the_pos_address_are_allowed(): void
+    {
+        // Yes My Shawarma since the MVP move: website yesmyshawarma.com, POS address in APP_URL.
+        config(['app.url' => 'https://yesmyshawarma.pos.solusysdigital.com']);
+
+        $csp = $this->get('http://yesmyshawarma.com/up')->headers->get('Content-Security-Policy');
+
+        $this->assertMatchesRegularExpression('#img-src [^;]*https://yesmyshawarma\.pos\.solusysdigital\.com#', $csp);
+        $this->assertMatchesRegularExpression('#connect-src [^;]*wss://yesmyshawarma\.pos\.solusysdigital\.com#', $csp);
+    }
 }

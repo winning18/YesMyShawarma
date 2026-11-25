@@ -28,6 +28,12 @@ class SecurityHeaders
 
         $origin = $request->getSchemeAndHttpHost();
         $wsOrigin = 'wss://'.$request->getHost();
+        // The install's own address (APP_URL). On a business's own website
+        // domain (e.g. yesmyshawarma.com), photos (Storage URLs) and the
+        // real-time connection (Reverb) are served from the POS address, so
+        // both must be allowed or the browser blocks them (2026-11-25).
+        $appOrigin = rtrim((string) config('app.url'), '/');
+        $appWs = 'wss://'.(parse_url($appOrigin, PHP_URL_HOST) ?: $request->getHost());
 
         $csp = implode('; ', [
             "default-src 'self'",
@@ -36,8 +42,8 @@ class SecurityHeaders
             "font-src 'self'",
             // blob: is a photo chosen for upload, previewed on this device
             // before it's sent (x-image-upload); it never leaves the browser.
-            "img-src 'self' data: blob: https://*.tile.openstreetmap.org",
-            "connect-src 'self' {$origin} {$wsOrigin} https://nominatim.openstreetmap.org https://cloudflareinsights.com",
+            "img-src 'self' {$appOrigin} data: blob: https://*.tile.openstreetmap.org",
+            "connect-src 'self' {$origin} {$wsOrigin} {$appOrigin} {$appWs} https://nominatim.openstreetmap.org https://cloudflareinsights.com",
             "frame-src 'self' https://www.google.com https://challenges.cloudflare.com",
             "frame-ancestors 'self'",
             "object-src 'none'",
