@@ -44,15 +44,21 @@ DOWN_FILE="$DIR/storage/framework/down"
 
 case "$ACTION" in
   suspend)
+    [[ -f "$DIR/resources/views/errors/suspended.blade.php" ]] \
+      || fail "This install doesn't have the latest update yet, so it can't be suspended. Wait a few minutes for the update to reach it, then try again."
     echo "==> Suspending $NAME"
     cd "$DIR"
     sudo -u www-data php artisan down --render="errors::suspended" --retry=3600
+    # Deploys see this and leave the install suspended (they update its code
+    # behind the page, but never take it down or bring it up).
+    sudo -u www-data touch "$DIR/storage/framework/suspended"
     echo "EXPRESSPOS_RESULT {\"ok\":true,\"state\":\"suspended\"}"
     ;;
 
   unsuspend)
     echo "==> Bringing $NAME back"
     cd "$DIR"
+    rm -f "$DIR/storage/framework/suspended"
     sudo -u www-data php artisan up
     systemctl restart "$NAME-queue.service" "$NAME-reverb.service"
     echo "EXPRESSPOS_RESULT {\"ok\":true,\"state\":\"active\"}"
