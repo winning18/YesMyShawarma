@@ -27,6 +27,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(SecurityHeaders::class);
+        // A suspended account (Express POS Admin, `artisan down`) still takes
+        // Paystack's confirmations, so a payment already made is never lost.
+        $middleware->preventRequestsDuringMaintenance(except: ['api/webhooks/paystack']);
         // After StartSession (web group), so every guard's session user is readable.
         $middleware->web(prepend: [WebsiteDomain::class], append: [EnsureAccountNotSuspended::class, PreviewWebsiteTheme::class]);
 
