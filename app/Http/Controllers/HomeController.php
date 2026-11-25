@@ -118,7 +118,10 @@ class HomeController extends Controller
      */
     private function menuSliders(?Branch $branch): Collection
     {
-        return collect(app(HomeStripService::class)->strips())
+        $strips = collect(app(HomeStripService::class)->strips());
+        $items = $this->stripItems($strips->pluck('slugs')->flatten()->unique()->values()->all(), $branch);
+
+        return $strips
             ->map(fn (array $slider) => [
                 'title' => $slider['title'],
                 // First slug only — enough for the "Show all" link's
@@ -127,13 +130,18 @@ class HomeController extends Controller
                 // lands on the first of the group, which sits right at the
                 // start of that section since they're ordered adjacently.
                 'categorySlug' => $slider['slugs'][0],
-                'items' => $this->itemsForSlugs($slider['slugs'], $branch),
+                'items' => $items->filter(fn (MenuItem $item) => in_array($item->categorySlug, $slider['slugs'], true))->values(),
             ])
             ->filter(fn (array $slider) => $slider['items']->isNotEmpty())
             ->values();
     }
 
     /**
+     * Every strip's items in three queries in all — categories, items,
+     * branch availability — split into strips afterwards by
+     * $item->categorySlug, keeping sort_order. One set of three queries
+     * per strip was Sentry's PHP-LARAVEL-11 (N+1 on the home page).
+     *
      * Items stay on the marquee even when sold out — see
      * home.blade.php's gray-out treatment — only $item->is_active (a
      * permanent removal, not a stock state) drops an item entirely.
@@ -142,19 +150,24 @@ class HomeController extends Controller
      * resolveBranch pattern); with none selected yet every active item is
      * treated as available, matching menu.show's own redirect-to-branch
      * behaviour for that case.
+     *
+     * @param  list<string>  $slugs
      */
-    private function itemsForSlugs(array $slugs, ?Branch $branch): Collection
+    private function stripItems(array $slugs, ?Branch $branch): Collection
     {
-        $categoryIds = Category::whereIn('slug', $slugs)->pluck('id');
+        $slugById = Category::whereIn('slug', $slugs)->pluck('slug', 'id');
 
-        if ($categoryIds->isEmpty()) {
+        if ($slugById->isEmpty()) {
             return collect();
         }
 
-        $items = MenuItem::whereIn('category_id', $categoryIds)
+        $items = MenuItem::whereIn('category_id', $slugById->keys())
             ->where('is_active', true)
             ->orderBy('sort_order')
-            ->get();
+            ->get()
+            ->each(function (MenuItem $item) use ($slugById) {
+                $item->categorySlug = $slugById[$item->category_id];
+            });
 
         return $this->withAvailability($items, $branch);
     }
