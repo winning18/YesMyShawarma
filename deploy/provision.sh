@@ -8,7 +8,11 @@
 #       <lat> <lng> <opens HH:MM> <closes HH:MM> <owner-name> <owner-email> \
 #       <owner-phone|-> <support-email|-> <modules, comma-separated|-> \
 #       <primary #rrggbb> <accent #rrggbb> <logo path> <website look> \
-#       <background #rrggbb>
+#       <background #rrggbb> [live|test|test-demo]
+#
+# The last value (2026-11-25, default live): a test client (Express POS
+# Admin's "This is a test client") is left out of the nightly backups;
+# test-demo also gets the demo menu (expresspos:demo-menu).
 #
 # The website look is classic, photo or onepage; the background is the
 # third brand colour (both 2026-11-24).
@@ -38,12 +42,13 @@ DOMAIN_SUFFIX=""
 fail() { echo "EXPRESSPOS_RESULT {\"ok\":false,\"error\":\"$1\"}"; exit 1; }
 
 [[ $EUID -eq 0 ]] || fail "Must run as root."
-[[ $# -eq 19 ]] || fail "Expected 19 arguments, got $#."
+[[ $# -eq 19 || $# -eq 20 ]] || fail "Expected 19 or 20 arguments, got $#."
 [[ -n "$DOMAIN_SUFFIX" ]] || fail "DOMAIN_SUFFIX is not set in $CONF."
 
 SLUG="$1"; BUSINESS="$2"; BRANCH="$3"; BRANCH_PHONE="$4"; ADDRESS="$5"; LAT="$6"; LNG="$7"
 OPENS="$8"; CLOSES="$9"; OWNER_NAME="${10}"; OWNER_EMAIL="${11}"; OWNER_PHONE="${12}"; SUPPORT_EMAIL="${13}"; MODULES="${14}"
-PRIMARY="${15}"; ACCENT="${16}"; LOGO="${17}"; THEME="${18}"; BACKGROUND="${19}"
+PRIMARY="${15}"; ACCENT="${16}"; LOGO="${17}"; THEME="${18}"; BACKGROUND="${19}"; KIND="${20:-live}"
+[[ "$KIND" =~ ^(live|test|test-demo)$ ]] || fail "The kind must be live, test or test-demo."
 LOGO_DIR=/var/www/expresspos-admin/storage/app/private/logos
 
 [[ "$SLUG" =~ ^[a-z][a-z0-9]{1,20}$ ]] || fail "The web address name must be 2-21 lowercase letters and digits."
@@ -60,11 +65,11 @@ DIR="/var/www/$SLUG_DIR"
 echo "==> Creating the install at https://$DOMAIN"
 /usr/local/sbin/expresspos-new-install "$SLUG" "$DOMAIN" || fail "Creating the install failed; see the log above."
 
-echo "==> Registering it for updates and backups"
+echo "==> Registering it for updates$([[ "$KIND" == live ]] && echo " and backups" || echo " (a test client: no backups)")"
 mkdir -p /etc/expresspos
 touch /etc/expresspos/installs
 grep -qx "$SLUG_DIR" /etc/expresspos/installs || echo "$SLUG_DIR" >> /etc/expresspos/installs
-if [[ -f /etc/expresspos/backup.conf ]] && ! grep -q "expresspos_$SLUG" /etc/expresspos/backup.conf; then
+if [[ "$KIND" == live && -f /etc/expresspos/backup.conf ]] && ! grep -q "expresspos_$SLUG" /etc/expresspos/backup.conf; then
   sed -i "s/^DATABASES=\"\(.*\)\"/DATABASES=\"\1 expresspos_$SLUG\"/" /etc/expresspos/backup.conf
 fi
 
@@ -82,5 +87,9 @@ ARGS=(
 
 cd "$DIR"
 RESULT="$(sudo -u www-data php artisan expresspos:new-client "${ARGS[@]}" | tail -1)" || true
+if [[ "$KIND" == test-demo && "$RESULT" == *'"ok":true'* ]]; then
+  echo "==> Demo menu (a test client)"
+  sudo -u www-data php artisan expresspos:demo-menu || echo "The demo menu couldn't be added; the client is set up without it."
+fi
 echo "EXPRESSPOS_RESULT $RESULT"
 [[ "$RESULT" == *'"ok":true'* ]]

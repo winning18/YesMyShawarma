@@ -129,4 +129,18 @@ class DemoAndSandboxTest extends TestCase
         Artisan::call('expresspos:describe');
         $this->assertSame('gm@demo.expresspos.test', json_decode(trim(Artisan::output()), true)['owner']['email']);
     }
+
+    public function test_a_test_client_can_get_the_demo_menu_once(): void
+    {
+        Branch::create([
+            'name' => 'Teshie', 'slug' => 'teshie', 'phone' => '+233241112222', 'address' => 'A',
+            'lat' => 5.58, 'lng' => -0.1, 'opens_at' => '08:00', 'closes_at' => '22:00',
+        ]);
+
+        $this->artisan('expresspos:demo-menu')->assertSuccessful()->expectsOutputToContain('11 dishes');
+        $this->assertSame(11, Branch::first()->menuItems()->wherePivot('is_available', true)->count());
+
+        $this->artisan('expresspos:demo-menu')->assertFailed();
+        $this->assertSame(11, MenuItem::count());
+    }
 }

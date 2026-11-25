@@ -76,10 +76,7 @@ class DemoDataService
             ])]);
 
             $this->menu($data, $branches);
-
-            foreach ($data['delivery_areas'] as $name) {
-                DeliveryArea::firstOrCreate(['name' => $name], ['is_active' => true]);
-            }
+            $this->deliveryAreas($data);
 
             foreach ($branches as $branch) {
                 $this->workingHours->save($branch->id, array_fill_keys(range(1, 7), $data['hours']));
@@ -110,6 +107,37 @@ class DemoDataService
 
             return $accounts;
         });
+    }
+
+    /**
+     * Only the demo menu (with its options) and delivery areas, on an
+     * install that has no menu yet: for a test client in Express POS Admin
+     * (owner, 2026-11-25), so its POS and website have something in them.
+     * Every item is on sale at every branch.
+     *
+     * @return int how many dishes were added
+     */
+    public function fillMenu(): int
+    {
+        if (MenuItem::exists()) {
+            throw new RuntimeException('This install already has a menu; the demo menu only goes on an empty one.');
+        }
+
+        $data = require database_path('seeders/data/demo_business.php');
+
+        DB::transaction(function () use ($data) {
+            $this->menu($data, Branch::all());
+            $this->deliveryAreas($data);
+        });
+
+        return MenuItem::count();
+    }
+
+    private function deliveryAreas(array $data): void
+    {
+        foreach ($data['delivery_areas'] as $name) {
+            DeliveryArea::firstOrCreate(['name' => $name], ['is_active' => true]);
+        }
     }
 
     /** @param  Collection<int, Branch>  $branches */
