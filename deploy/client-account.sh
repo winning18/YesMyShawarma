@@ -49,12 +49,16 @@ case "$ACTION" in
     echo "==> Suspending $NAME"
     cd "$DIR"
     sudo -u www-data php artisan down --render="errors::suspended" --retry=3600
+    # Deploys see this and leave the install suspended (they update its code
+    # behind the page, but never take it down or bring it up).
+    sudo -u www-data touch "$DIR/storage/framework/suspended"
     echo "EXPRESSPOS_RESULT {\"ok\":true,\"state\":\"suspended\"}"
     ;;
 
   unsuspend)
     echo "==> Bringing $NAME back"
     cd "$DIR"
+    rm -f "$DIR/storage/framework/suspended"
     sudo -u www-data php artisan up
     systemctl restart "$NAME-queue.service" "$NAME-reverb.service"
     echo "EXPRESSPOS_RESULT {\"ok\":true,\"state\":\"active\"}"

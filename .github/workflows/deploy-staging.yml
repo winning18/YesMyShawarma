@@ -175,16 +175,24 @@ jobs:
             [[ "$install" =~ ^expresspos-[a-z0-9]+$ ]] || { echo "Skipping odd install name: $install"; continue; }
             echo "==> $install"
             # Maintenance mode for the whole switch: see deploy.yml.
-            ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
-              "cd /var/www/$install && php artisan down --render='errors::503' --retry=60 --refresh=15" \
-              || echo "::warning::$install: maintenance mode didn't switch on; updating it live."
+            # A suspended client (Express POS Admin, owner 2026-11-25) is
+            # already behind its "temporarily unavailable" page: its code is
+            # updated there and it stays suspended; never down, never up.
+            SUSPENDED="$(ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "test -f /var/www/$install/storage/framework/suspended && echo 1 || echo 0")"
+            if [ "$SUSPENDED" = 1 ]; then
+              echo "$install is suspended: updated behind its page, left suspended."
+            else
+              ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+                "cd /var/www/$install && php artisan down --render='errors::503' --retry=60 --refresh=15" \
+                || echo "::warning::$install: maintenance mode didn't switch on; updating it live."
+            fi
             synced=1
             for part in vendor public/build public/downloads; do
               rsync -az --delete -e "ssh -i ~/.ssh/deploy_key" "$part/" \
                 ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/var/www/$install/$part/ || { synced=0; break; }
             done
             if [ "$synced" = 0 ]; then
-              ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+              [ "$SUSPENDED" = 1 ] || ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
                 "cd /var/www/$install && (php artisan up || rm -f storage/framework/down storage/framework/maintenance.php)"
               echo "::error::$install: copying files failed part-way; it's back up but needs this deploy re-run."
               exit 1
@@ -192,7 +200,7 @@ jobs:
             ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "
               set -e
               cd /var/www/$install
-              trap 'php artisan up >/dev/null 2>&1 || rm -f storage/framework/down storage/framework/maintenance.php' EXIT
+              [ $SUSPENDED = 1 ] || trap 'php artisan up >/dev/null 2>&1 || rm -f storage/framework/down storage/framework/maintenance.php' EXIT
               git fetch origin
               git reset --hard origin/staging
               php artisan package:discover --ansi
