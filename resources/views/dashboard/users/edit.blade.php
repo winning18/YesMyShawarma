@@ -58,12 +58,16 @@
         @if (app(\App\Services\Users\PinService::class)->canHavePin($targetUser))
             {{-- Counter sign-in (Express POS step 7b). --}}
             <div class="bg-white shadow rounded-lg p-6 space-y-3">
-                <h3 class="font-semibold text-gray-800">{{ __('Counter sign-in') }}</h3>
+                <h3 class="font-semibold text-gray-800">{{ app(\App\Services\Users\PinService::class)->approvesAtTheTill($targetUser) ? __('Approval PIN') : __('Counter sign-in') }}</h3>
                 <p class="text-sm text-gray-600">
                     {{ __('Staff ID:') }} <strong class="font-mono">{{ $targetUser->staff_code ?? __('given when a PIN is set') }}</strong>
                     · {{ $targetUser->pin ? __('PIN set') : __('No PIN yet') }}
                 </p>
+                @if (app(\App\Services\Users\PinService::class)->approvesAtTheTill($targetUser))
+                    <p class="text-xs text-gray-500">{{ __(':name types their Staff ID and this PIN at a till to approve a price change or a return. It doesn\'t sign them in.', ['name' => $targetUser->name]) }}</p>
+                @else
                 <p class="text-xs text-gray-500">{{ __('At a counter, :name signs in with their Staff ID and this PIN. Anywhere else they use their email and password.', ['name' => $targetUser->name]) }}</p>
+                @endif
                 <form method="POST" action="{{ route('dashboard.users.pin.set', $targetUser) }}" class="flex flex-wrap items-end gap-3">
                     @csrf
                     @method('PUT')

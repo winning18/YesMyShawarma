@@ -115,7 +115,37 @@ product_packs   id, menu_item_id (FK cascade), name varchar(60), units uint (bas
   rows with the same SKU and only pack columns add packs.
 - For pharmacies and shops only: the product fields, Pack sizes, Import (`retail` route
   middleware), the table-style Products list. Modifiers and combos are a restaurant's.
-- Not yet: which pack an order line sold (R3), stock and cost snapshots (R4), medicine fields (R5).
+- Not yet: stock and cost snapshots (R4), medicine fields (R5).
+
+### The pharmacy and shop till (plan step R3, owner-approved 2026-11-27)
+
+```
+order_items  + product_pack_id (nullable FK, null on delete) -- the pack sold
+             + units uint default 1                         -- product units in one of this line (stock, R4)
+             + list_price_snapshot nullable                 -- the price before a change at the till
+             + price_changed_by (nullable FK users)         -- the manager who approved it
+held_sales   id, branch_id, terminal_id nullable, user_id, label varchar(60) nullable, cart json, timestamps
+refunds      + kind varchar(20) default 'refund'            -- 'return': items back at the till
+             + shift_id (nullable FK)                       -- the till the money came from
+refund_items id, refund_id (FK cascade), order_item_id (FK), quantity, amount (pesewas), timestamps
+```
+
+- `RetailPosService` (search and scan, sellable here only), `RetailPosController` (`retail`
+  middleware). The cart line carries `pack_id`, `price`, `price_changed_by`; `MenuPricingService`
+  prices a pack and a changed price; a pharmacy's or shop's line may hold up to 9,999
+  (`CartService::maxLineQuantity()`; a restaurant's stays 20).
+- **Approval:** `PinService::approver()` — the Staff ID + PIN of an owner, or a manager or general
+  manager of the branch; 5 wrong tries lock it 15 minutes. At a pharmacy or shop those roles get a
+  PIN on the Users page for this only; counter sign-in by PIN stays till staff only.
+- **Held sales** (`HeldSaleService`): any cashier at the branch recalls one; cleared when its till
+  closes (`ShiftService::end()`).
+- **Returns** (`CounterReturnService`): found by receipt number, within `returns_days` (setting,
+  default 7, 0 = none); each unit's money is its share of what was paid (discount and added tax
+  shared out, never the delivery fee); given back the way the sale was paid, at once
+  (`RefundService::directRefund()`: payments + order_events rows as every refund). A return
+  counts against the till named in `shift_id`, not the till that made the sale
+  (`OrderReportService::refundsInRange()`). An exchange is a return then a new sale; the till
+  shows the difference.
 
 ## Customers
 

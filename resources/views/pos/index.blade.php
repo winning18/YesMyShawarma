@@ -76,7 +76,13 @@
                 </section>
                 @endmodule
 
+                {{-- A pharmacy or shop scans and searches instead (R3). --}}
+                @unlessrestaurant
+                    @include('pos.partials.retail-picker')
+                @endrestaurant
+
                 <div x-show="view === 'menu'" class="space-y-8">
+                @restaurant
                 @forelse ($categories as $group)
                     <section>
                         <h3 class="font-semibold text-gray-800 mb-3">{{ $group['category']->name }}</h3>
@@ -113,12 +119,16 @@
                 @empty
                     <p class="text-sm text-gray-500">{{ __('Nothing available to sell at this branch right now.') }}</p>
                 @endforelse
+                @endrestaurant
                 </div>
             </div>
 
             {{-- Cart + checkout --}}
             <div class="bg-white shadow rounded-lg p-4 lg:h-full lg:overflow-y-auto">
                 <h3 class="font-semibold text-gray-800 mb-3">{{ __('Order') }}</h3>
+                @unlessrestaurant
+                    @include('pos.partials.retail-actions')
+                @endrestaurant
 
                 {{-- On the Tables screen with no table chosen: point to the tables, not a quick-sale form. --}}
                 <p x-show="!table && view === 'tables'" x-cloak class="text-sm text-gray-500"
@@ -204,11 +214,15 @@
                                     <span x-show="line.is_free" class="ml-1 text-xs font-semibold text-green-700 bg-green-50 rounded px-1.5 py-0.5">{{ __('FREE') }}</span>
                                 </p>
                                 <p class="text-xs text-gray-500" x-show="line.options.length" x-text="line.options.map(o => o.name_snapshot + (o.quantity > 1 ? ' x' + o.quantity : '')).join(', ')"></p>
+                                @unlessrestaurant
+                                    @include('pos.partials.retail-line')
+                                @else
                                 <div class="flex items-center gap-2 mt-1" x-show="!line.is_free">
                                     <button type="button" @click="changeQuantity(line.line_id, line.quantity - 1)" class="w-5 h-5 flex items-center justify-center border border-gray-300 rounded text-xs text-gray-600">-</button>
                                     <span class="text-xs w-4 text-center" x-text="line.quantity"></span>
                                     <button type="button" @click="changeQuantity(line.line_id, line.quantity + 1)" class="w-5 h-5 flex items-center justify-center border border-gray-300 rounded text-xs text-gray-600">+</button>
                                 </div>
+                                @endrestaurant
                                 {{-- A free line's quantity is entirely
                                      derived from its paid sibling lines —
                                      never independently editable or
@@ -431,6 +445,10 @@
         </div>
         @endmodule
 
+        @unlessrestaurant
+            @include('pos.partials.retail-modals')
+        @endrestaurant
+
         {{-- Item options modal --}}
         <div x-show="activeItem" x-cloak class="fixed inset-0 z-40 flex items-center justify-center p-4">
             <div class="fixed inset-0 bg-black/50" @click="activeItem = null"></div>
@@ -481,7 +499,7 @@
 
                     <div class="flex items-center gap-3 mb-4">
                         <label class="text-sm font-medium text-brand-yellow-dark">{{ __('Qty') }}</label>
-                        <input type="number" x-model.number="itemQuantity" min="1" max="{{ \App\Services\Cart\PosCartService::MAX_LINE_QUANTITY }}" class="w-20 rounded-md border-gray-300 text-sm">
+                        <input type="number" x-model.number="itemQuantity" min="1" max="{{ \App\Services\Cart\PosCartService::maxLineQuantity() }}" class="w-20 rounded-md border-gray-300 text-sm">
                     </div>
 
                     <div class="grid grid-cols-2 gap-3">
@@ -510,9 +528,13 @@
     </div>
 
     @include('partials.tax-script')
+    @unlessrestaurant
+        @include('pos.partials.retail-script')
+    @endrestaurant
     <script>
         function posTerminal() {
             return {
+                @unlessrestaurant ...retailTillState(), @endrestaurant
                 lines: @json($cart['lines']),
                 subtotal: {{ $cart['subtotal'] }},
                 discount: {{ $cart['discount'] }},

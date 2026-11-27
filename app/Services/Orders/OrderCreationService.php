@@ -330,6 +330,11 @@ class OrderCreationService
                     'line_total' => $row['line_total'],
                     'is_free' => $row['is_free'] ?? false,
                     'notes' => $row['notes'],
+                    // A pharmacy's or shop's pack and price change (R3); defaults on a restaurant's line.
+                    'product_pack_id' => $row['product_pack_id'] ?? null,
+                    'units' => $row['units'] ?? 1,
+                    'list_price_snapshot' => $row['list_price_snapshot'] ?? null,
+                    'price_changed_by' => $row['price_changed_by'] ?? null,
                 ]);
 
                 foreach ($row['options'] as $option) {

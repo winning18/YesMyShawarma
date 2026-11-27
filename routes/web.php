@@ -58,6 +58,7 @@ use App\Http\Controllers\RecipeManagementController;
 use App\Http\Controllers\RefundController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\ReportsInvoicesController;
+use App\Http\Controllers\RetailPosController;
 use App\Http\Controllers\ReviewManagementController;
 use App\Http\Controllers\ReviewsController;
 use App\Http\Controllers\Rider\AuthenticatedSessionController as RiderAuthenticatedSessionController;
@@ -229,6 +230,19 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::post('/dashboard/pos/cart/{line}/options/{option}', [PosController::class, 'updateOptionQuantity'])->name('dashboard.pos.cart.options.update');
     Route::delete('/dashboard/pos/cart/{line}', [PosController::class, 'removeItem'])->name('dashboard.pos.cart.remove');
     Route::post('/dashboard/pos/orders', [PosController::class, 'store'])->name('dashboard.pos.orders.store');
+    // The pharmacy and shop till (R3): search and scan, packs, price changes, held sales, returns.
+    Route::middleware('retail')->group(function () {
+        Route::get('/dashboard/pos/products', [RetailPosController::class, 'search'])->name('dashboard.pos.products');
+        Route::post('/dashboard/pos/scan', [RetailPosController::class, 'scan'])->name('dashboard.pos.scan');
+        Route::post('/dashboard/pos/add-product', [RetailPosController::class, 'add'])->name('dashboard.pos.add-product');
+        Route::post('/dashboard/pos/cart/{line}/price', [RetailPosController::class, 'price'])->middleware('throttle:30,1')->name('dashboard.pos.cart.price');
+        Route::get('/dashboard/pos/held', [RetailPosController::class, 'held'])->name('dashboard.pos.held');
+        Route::post('/dashboard/pos/held', [RetailPosController::class, 'hold'])->name('dashboard.pos.held.store');
+        Route::post('/dashboard/pos/held/{heldSale}/recall', [RetailPosController::class, 'recall'])->name('dashboard.pos.held.recall');
+        Route::delete('/dashboard/pos/held/{heldSale}', [RetailPosController::class, 'discard'])->name('dashboard.pos.held.discard');
+        Route::get('/dashboard/pos/returns/find', [RetailPosController::class, 'findSale'])->name('dashboard.pos.returns.find');
+        Route::post('/dashboard/pos/returns/{order}', [RetailPosController::class, 'return'])->middleware('throttle:30,1')->name('dashboard.pos.returns.store');
+    });
 
     // Tables (2026-11-20): open bills on the POS.
     Route::get('/dashboard/tables', [TableController::class, 'index'])->middleware('module:tables')->name('dashboard.tables.index');

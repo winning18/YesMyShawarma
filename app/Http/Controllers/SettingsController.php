@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateSettingsRequest;
 use App\Services\Delivery\DeliveryFeeCalculator;
+use App\Services\Orders\CounterReturnService;
+use App\Services\Settings\BusinessType;
 use App\Services\Settings\SettingsService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
@@ -37,6 +39,7 @@ class SettingsController extends Controller
             'deliveryFeeHandling' => $settings->get(SettingsService::DELIVERY_FEE_HANDLING, 'handed_in'),
             'posMode' => $settings->get(SettingsService::POS_MODE, 'both'),
             'checksMomo' => $settings->checksMomoTransactionId(),
+            'returnsDays' => app(CounterReturnService::class)->returnDays(),
         ]);
     }
 
@@ -78,6 +81,10 @@ class SettingsController extends Controller
         // How the POS works (owner, 2026-11-20): the owner's call only.
         if (isset($validated['pos_mode']) && $request->user()->can('business.manage')) {
             $settings->set(SettingsService::POS_MODE, $validated['pos_mode']);
+        }
+        // A pharmacy's or shop's return window (R3): the owner's call only.
+        if (isset($validated['returns_days']) && $request->user()->can('business.manage') && ! app(BusinessType::class)->isRestaurant()) {
+            $settings->set(SettingsService::RETURNS_DAYS, (string) (int) $validated['returns_days']);
         }
         if (isset($validated['whatsapp_reward'])) {
             $settings->set(SettingsService::WHATSAPP_REWARD_AMOUNT, (string) (int) round(((float) $validated['whatsapp_reward']) * 100));

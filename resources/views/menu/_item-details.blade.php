@@ -66,7 +66,7 @@
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <label class="text-sm text-brand-highlight font-semibold">{{ __('Qty') }}</label>
-                <input type="number" name="quantity" value="1" min="1" max="{{ \App\Services\Cart\CartService::MAX_LINE_QUANTITY }}" class="w-16 rounded-md border-brand-gray-300 text-sm focus:border-brand-yellow focus:ring-brand-yellow">
+                <input type="number" name="quantity" value="1" min="1" max="{{ \App\Services\Cart\CartService::maxLineQuantity() }}" class="w-16 rounded-md border-brand-gray-300 text-sm focus:border-brand-yellow focus:ring-brand-yellow">
             </div>
             <button
                 type="submit"

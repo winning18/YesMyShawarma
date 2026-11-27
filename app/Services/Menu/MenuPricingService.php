@@ -73,6 +73,26 @@ class MenuPricingService
         }
 
         $unitPrice = (int) $menuItem->base_price;
+        $name = $menuItem->name;
+        $units = 1;
+
+        // A pack size (R3): its own price, and how many of the product's unit it is.
+        if ($itemData->packId !== null) {
+            $pack = $menuItem->packs()->whereKey($itemData->packId)->first();
+            if (! $pack) {
+                throw OrderPlacementException::menuItemUnavailable($menuItem->name);
+            }
+            $unitPrice = (int) $pack->price;
+            $name = $menuItem->name.' ('.$pack->name.')';
+            $units = (int) $pack->units;
+        }
+
+        // A price changed at the till (R3), approved by a manager: the list price is kept.
+        $listPrice = null;
+        if ($itemData->unitPriceOverride !== null && $itemData->unitPriceOverride !== $unitPrice) {
+            $listPrice = $unitPrice;
+            $unitPrice = max(0, $itemData->unitPriceOverride);
+        }
 
         $optionRows = $this->buildOptionRows($menuItem, $itemData->optionQuantities);
 
@@ -96,9 +116,14 @@ class MenuPricingService
 
         return [
             'menu_item_id' => $menuItem->id,
-            'name_snapshot' => $menuItem->name,
+            'name_snapshot' => $name,
             'unit_price_snapshot' => $unitPrice,
             'quantity' => $itemData->quantity,
+            'product_pack_id' => $itemData->packId,
+            'units' => $units,
+            'list_price_snapshot' => $listPrice,
+            'price_changed_by' => $listPrice !== null ? $itemData->priceChangedBy : null,
+            'unit_name' => $menuItem->unit_name,
             'line_total' => $lineTotal,
             'notes' => $itemData->notes,
             'options' => $optionRows,

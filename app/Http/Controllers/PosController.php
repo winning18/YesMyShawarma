@@ -75,7 +75,8 @@ class PosController extends Controller
         // Mirrors MenuController::index()'s category/item shaping — POS
         // needs the same "what can actually be sold here right now" view,
         // just rendered for staff instead of a customer.
-        $categories = Category::where('is_active', true)
+        // A pharmacy's or shop's thousands of products are searched, not listed (R3).
+        $categories = ! app(BusinessType::class)->isRestaurant() ? collect() : Category::where('is_active', true)
             ->orderBy('sort_order')
             ->get()
             ->map(fn (Category $category) => [
@@ -125,7 +126,7 @@ class PosController extends Controller
             'deliveryAreas' => $deliveryAreas,
             'deliveryAvailable' => $deliveryAreas->isNotEmpty(),
             'ratePerKmPesewas' => app(DeliveryFeeCalculator::class)->ratePerKm(),
-            'cart' => $this->cartPayload($cart, $promotions),
+            'cart' => self::cartPayload($cart, $promotions),
             'posMode' => app(SettingsService::class)->posMode(),
             'checksMomo' => app(SettingsService::class)->checksMomoTransactionId(),
             'taxConfig' => app(TaxService::class)->clientConfig(),
@@ -150,7 +151,7 @@ class PosController extends Controller
 
         $validated = $request->validate([
             'menu_item_id' => ['required', 'integer', 'exists:menu_items,id'],
-            'quantity' => ['required', 'integer', 'min:1', 'max:'.PosCartService::MAX_LINE_QUANTITY],
+            'quantity' => ['required', 'integer', 'min:1', 'max:'.PosCartService::maxLineQuantity()],
             'notes' => ['nullable', 'string', 'max:255'],
             'option_ids' => ['array'],
             'option_ids.*' => ['integer'],
@@ -180,7 +181,7 @@ class PosController extends Controller
             $optionQuantities,
         );
 
-        return response()->json($this->cartPayload($cart, $promotions));
+        return response()->json(self::cartPayload($cart, $promotions));
     }
 
     public function updateQuantity(Request $request, string $line, PosCartService $cart, PromotionService $promotions): JsonResponse
@@ -189,12 +190,12 @@ class PosController extends Controller
         Gate::authorize('orders.create');
 
         $validated = $request->validate([
-            'quantity' => ['required', 'integer', 'min:1', 'max:'.PosCartService::MAX_LINE_QUANTITY],
+            'quantity' => ['required', 'integer', 'min:1', 'max:'.PosCartService::maxLineQuantity()],
         ]);
 
         $cart->updateQuantity($line, $validated['quantity']);
 
-        return response()->json($this->cartPayload($cart, $promotions));
+        return response()->json(self::cartPayload($cart, $promotions));
     }
 
     public function updateOptionQuantity(Request $request, string $line, int $option, PosCartService $cart, PromotionService $promotions): JsonResponse
@@ -208,7 +209,7 @@ class PosController extends Controller
 
         $cart->updateOptionQuantity($line, $option, $validated['quantity']);
 
-        return response()->json($this->cartPayload($cart, $promotions));
+        return response()->json(self::cartPayload($cart, $promotions));
     }
 
     /**
@@ -231,7 +232,7 @@ class PosController extends Controller
 
         $cart->remove($line);
 
-        return response()->json($this->cartPayload($cart, $promotions));
+        return response()->json(self::cartPayload($cart, $promotions));
     }
 
     /** One cart's lines and totals: the quick-sale cart, or a table's (?table_id=). */
@@ -239,7 +240,7 @@ class PosController extends Controller
     {
         Gate::authorize('orders.create');
 
-        return response()->json($this->cartPayload($cart->forTable($request->integer('table_id')), $promotions));
+        return response()->json(self::cartPayload($cart->forTable($request->integer('table_id')), $promotions));
     }
 
     public function store(
@@ -464,7 +465,8 @@ class PosController extends Controller
      *
      * @return array{branch: ?array<string, mixed>, lines: list<array<string, mixed>>, subtotal: int, dropped: string[], discount: int, promotionBanner: ?string, foodSubtotal: int}
      */
-    private function cartPayload(PosCartService $cart, PromotionService $promotions): array
+    /** Also the pharmacy and shop till's (RetailPosController, R3). */
+    public static function cartPayload(PosCartService $cart, PromotionService $promotions): array
     {
         $summary = $cart->summary();
         $promotion = $summary['branch'] ? $promotions->findActiveAutomatic($summary['branch']) : null;

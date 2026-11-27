@@ -24,7 +24,7 @@ class CartController extends Controller
         $validated = $request->validate([
             'branch_id' => ['required', 'integer', 'exists:branches,id'],
             'menu_item_id' => ['required', 'integer', 'exists:menu_items,id'],
-            'quantity' => ['required', 'integer', 'min:1', 'max:'.CartService::MAX_LINE_QUANTITY],
+            'quantity' => ['required', 'integer', 'min:1', 'max:'.CartService::maxLineQuantity()],
             'notes' => ['nullable', 'string', 'max:255'],
             'option_ids' => ['array'],
             'option_ids.*' => ['integer'],
@@ -79,7 +79,7 @@ class CartController extends Controller
      */
     public function updateQuantity(Request $request, string $line, CartService $cart): JsonResponse
     {
-        $validated = $request->validate(['quantity' => ['required', 'integer', 'min:1', 'max:'.CartService::MAX_LINE_QUANTITY]]);
+        $validated = $request->validate(['quantity' => ['required', 'integer', 'min:1', 'max:'.CartService::maxLineQuantity()]]);
 
         $cart->updateQuantity($line, $validated['quantity']);
 

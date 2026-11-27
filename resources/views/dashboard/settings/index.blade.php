@@ -130,6 +130,21 @@
             @endcan
             @endmodule
 
+            {{-- A pharmacy's or shop's return window (R3, owner 2026-11-27). --}}
+            @unlessrestaurant
+            @can('business.manage')
+            <div class="border-t border-gray-100 pt-6">
+                <h3 class="font-semibold text-gray-800">{{ __('Returns at the till') }}</h3>
+                <label for="returns_days" class="block text-sm text-gray-500 mb-2">{{ __('How many days after a sale items can be brought back. 0 means no returns at the till (a manager can still refund from Refunds).') }}</label>
+                <div class="flex items-center gap-2">
+                    <input id="returns_days" name="returns_days" type="number" min="0" max="365" value="{{ old('returns_days', $returnsDays) }}" class="w-24 rounded-md text-sm {{ $errors->has('returns_days') ? 'border-red-600 ring-1 ring-red-600' : 'border-gray-300' }}">
+                    <span class="text-sm text-gray-600">{{ __('days') }}</span>
+                </div>
+                <x-input-error class="mt-2" :messages="$errors->get('returns_days')" />
+            </div>
+            @endcan
+            @endrestaurant
+
             @module('delivery')
             <div class="border-t border-gray-100 pt-6">
                 <h3 class="font-semibold text-gray-800">{{ __('Delivery fees') }}</h3>

@@ -91,7 +91,7 @@
                                             >&minus;</button>
                                             <span class="w-8 text-center text-sm">{{ $line['quantity'] }}</span>
                                             <button
-                                                type="button" @click="changeQuantity('{{ $line['line_id'] }}', {{ $line['quantity'] }}, 1)" :disabled="{{ $line['quantity'] }} >= {{ \App\Services\Cart\CartService::MAX_LINE_QUANTITY }}"
+                                                type="button" @click="changeQuantity('{{ $line['line_id'] }}', {{ $line['quantity'] }}, 1)" :disabled="{{ $line['quantity'] }} >= {{ \App\Services\Cart\CartService::maxLineQuantity() }}"
                                                 class="w-7 h-7 flex items-center justify-center text-brand-gray-600 disabled:opacity-30 hover:bg-brand-gray-100"
                                                 aria-label="{{ __('Increase quantity') }}"
                                             >+</button>
@@ -138,7 +138,7 @@
                 error: '',
 
                 changeQuantity(lineId, currentQuantity, delta) {
-                    const max = {{ \App\Services\Cart\CartService::MAX_LINE_QUANTITY }};
+                    const max = {{ \App\Services\Cart\CartService::maxLineQuantity() }};
                     const newQuantity = Math.min(max, Math.max(1, currentQuantity + delta));
                     if (newQuantity === currentQuantity || this.loading) return;
 

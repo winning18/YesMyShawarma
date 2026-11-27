@@ -78,7 +78,7 @@
 
         <div class="flex items-center gap-3 mb-6">
             <label class="text-sm font-medium text-brand-black">{{ __('Qty') }}</label>
-            <input type="number" name="quantity" value="1" min="1" max="{{ \App\Services\Cart\CartService::MAX_LINE_QUANTITY }}" class="w-20 rounded-md border-2 border-brand-black focus:border-brand-black focus:ring-brand-black">
+            <input type="number" name="quantity" value="1" min="1" max="{{ \App\Services\Cart\CartService::maxLineQuantity() }}" class="w-20 rounded-md border-2 border-brand-black focus:border-brand-black focus:ring-brand-black">
         </div>
 
         <button type="submit" class="w-full sm:w-auto px-8 py-3 bg-brand-surface text-brand-highlight font-bold rounded-md hover:opacity-90">

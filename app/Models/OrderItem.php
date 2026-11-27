@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable([
     'order_id', 'menu_item_id', 'name_snapshot', 'unit_price_snapshot',
     'quantity', 'line_total', 'is_free', 'notes',
+    // Pharmacies and shops (R3): the pack sold, its units, a price changed at the till.
+    'product_pack_id', 'units', 'list_price_snapshot', 'price_changed_by',
 ])]
 class OrderItem extends Model
 {
@@ -31,6 +33,16 @@ class OrderItem extends Model
     public function menuItem(): BelongsTo
     {
         return $this->belongsTo(MenuItem::class);
+    }
+
+    public function pack(): BelongsTo
+    {
+        return $this->belongsTo(ProductPack::class, 'product_pack_id');
+    }
+
+    public function priceChanger(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'price_changed_by');
     }
 
     public function options(): HasMany

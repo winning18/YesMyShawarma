@@ -35,6 +35,8 @@ class UpdateSettingsRequest extends FormRequest
             'delivery_fee_handling' => ['sometimes', $this->forModule(ModuleService::DELIVERY), 'in:handed_in,kept_by_rider'],
             'pos_mode' => ['sometimes', $this->forModule(ModuleService::TABLES), 'in:tables,quick,both'],
             'momo_check_transaction_id' => ['sometimes', 'boolean'],
+            // A pharmacy's or shop's return window (R3).
+            'returns_days' => ['sometimes', 'integer', 'min:0', 'max:365'],
         ];
     }
 

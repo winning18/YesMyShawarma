@@ -215,13 +215,24 @@ class OrderReportService
      */
     private function refundsInRange(Carbon $from, Carbon $to, bool $ignoreBranchScope = false, ?int $branchId = null, ?array $branchIds = null, ?string $channel = null, ?string $paymentMethod = null, ?int $shiftId = null): Collection
     {
-        // One counter's till: every completed refund on the orders it took.
+        // One counter's till: every completed refund on the orders it took —
+        // except a return given back at another till (R3: refunds.shift_id
+        // names that till), and plus the returns this till gave back on
+        // other tills' sales.
         if ($shiftId !== null) {
+            $tillOrders = fn () => Order::withoutGlobalScope(BranchScope::class)->where('shift_id', $shiftId)
+                ->when($channel, fn ($query) => $query->where('channel', $channel))
+                ->when($paymentMethod, fn ($query) => $query->where('payment_method', $paymentMethod))
+                ->select('id');
+            $anyOrder = fn () => Order::withoutGlobalScope(BranchScope::class)
+                ->when($channel, fn ($query) => $query->where('channel', $channel))
+                ->when($paymentMethod, fn ($query) => $query->where('payment_method', $paymentMethod))
+                ->select('id');
+
             return Refund::where('status', Refund::STATUS_COMPLETED)
-                ->whereIn('order_id', Order::withoutGlobalScope(BranchScope::class)->where('shift_id', $shiftId)
-                    ->when($channel, fn ($query) => $query->where('channel', $channel))
-                    ->when($paymentMethod, fn ($query) => $query->where('payment_method', $paymentMethod))
-                    ->select('id'))
+                ->where(fn ($q) => $q
+                    ->where(fn ($q) => $q->whereNull('shift_id')->whereIn('order_id', $tillOrders()))
+                    ->orWhere(fn ($q) => $q->where('shift_id', $shiftId)->whereIn('order_id', $anyOrder())))
                 ->with(['order' => fn ($q) => $q->withoutGlobalScope(BranchScope::class)->select('id', 'subtotal', 'discount_total', 'tax_total', 'total', 'delivery_fee')])
                 ->get();
         }

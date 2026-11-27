@@ -8,6 +8,7 @@ use App\Models\MenuItem;
 use App\Services\Menu\MenuPricingService;
 use App\Services\Orders\Data\PlaceOrderItemData;
 use App\Services\Promotions\PromotionService;
+use App\Services\Settings\BusinessType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -21,6 +22,14 @@ class CartService
 {
     public const MAX_LINE_QUANTITY = 20;
 
+    /** A pharmacy or shop sells 100 tablets or 48 bottles on one line (R3). */
+    public const MAX_RETAIL_LINE_QUANTITY = 9999;
+
+    public static function maxLineQuantity(): int
+    {
+        return app(BusinessType::class)->isRestaurant() ? self::MAX_LINE_QUANTITY : self::MAX_RETAIL_LINE_QUANTITY;
+    }
+
     public function __construct(
         private readonly Request $request,
         private readonly MenuPricingService $pricing,
@@ -30,7 +39,7 @@ class CartService
     /**
      * @param  array<int, int>  $optionQuantities  option_id => quantity
      */
-    public function add(int $branchId, int $menuItemId, int $quantity, ?string $notes, array $optionQuantities): void
+    public function add(int $branchId, int $menuItemId, int $quantity, ?string $notes, array $optionQuantities, ?int $packId = null): void
     {
         if ($this->branchId() !== null && $this->branchId() !== $branchId) {
             $this->moveToBranch(Branch::findOrFail($branchId));
@@ -48,8 +57,8 @@ class CartService
         // of 1x) is a genuinely different line, not a merge candidate — see
         // MenuPricingService's "fixed total for the line" pricing.
         foreach ($cart['items'] as &$item) {
-            if ($this->isSameLine($item, $menuItemId, $notes, $optionQuantities)) {
-                $item['quantity'] = min(self::MAX_LINE_QUANTITY, $item['quantity'] + $quantity);
+            if ($this->isSameLine($item, $menuItemId, $notes, $optionQuantities, $packId)) {
+                $item['quantity'] = min(self::maxLineQuantity(), $item['quantity'] + $quantity);
                 $this->save($cart);
 
                 return;
@@ -60,10 +69,33 @@ class CartService
         $cart['items'][] = [
             'id' => (string) Str::uuid(),
             'menu_item_id' => $menuItemId,
-            'quantity' => min(self::MAX_LINE_QUANTITY, $quantity),
+            'quantity' => min(self::maxLineQuantity(), $quantity),
             'notes' => $notes,
             'options' => $optionQuantities,
+            // A pharmacy's or shop's pack, and a price changed at the till (R3).
+            'pack_id' => $packId,
+            'price' => null,
+            'price_changed_by' => null,
         ];
+
+        $this->save($cart);
+    }
+
+    /**
+     * A price changed at the till (R3), approved by a manager; null puts the
+     * list price back.
+     */
+    public function setPrice(string $lineId, ?int $pesewas, ?int $approvedBy): void
+    {
+        $cart = $this->raw();
+
+        foreach ($cart['items'] as &$item) {
+            if ($item['id'] === $lineId) {
+                $item['price'] = $pesewas;
+                $item['price_changed_by'] = $pesewas === null ? null : $approvedBy;
+            }
+        }
+        unset($item);
 
         $this->save($cart);
     }
@@ -72,9 +104,11 @@ class CartService
      * @param  array<string, mixed>  $item
      * @param  array<int, int>  $optionQuantities
      */
-    private function isSameLine(array $item, int $menuItemId, ?string $notes, array $optionQuantities): bool
+    private function isSameLine(array $item, int $menuItemId, ?string $notes, array $optionQuantities, ?int $packId = null): bool
     {
         return $item['menu_item_id'] === $menuItemId
+            && ($item['pack_id'] ?? null) === $packId
+            && ($item['price'] ?? null) === null
             && $item['notes'] === $notes
             && $this->sameOptions($item['options'], $optionQuantities);
     }
@@ -97,7 +131,7 @@ class CartService
 
         foreach ($cart['items'] as &$item) {
             if ($item['id'] === $lineId) {
-                $item['quantity'] = max(1, min(self::MAX_LINE_QUANTITY, $quantity));
+                $item['quantity'] = max(1, min(self::maxLineQuantity(), $quantity));
             }
         }
 
@@ -271,12 +305,27 @@ class CartService
             quantity: $item['quantity'],
             notes: $item['notes'],
             optionQuantities: $item['options'],
+            packId: $item['pack_id'] ?? null,
+            unitPriceOverride: $item['price'] ?? null,
+            priceChangedBy: $item['price_changed_by'] ?? null,
         );
     }
 
     /**
      * @return array{branch_id: ?int, items: list<array<string, mixed>>}
      */
+    /** The cart as stored, for parking it as a held sale (R3). */
+    public function export(): array
+    {
+        return $this->raw();
+    }
+
+    /** A held sale's cart put back (R3); its lines are re-priced as usual. */
+    public function restore(array $cart): void
+    {
+        $this->save(['branch_id' => $cart['branch_id'] ?? null, 'items' => array_values($cart['items'] ?? [])]);
+    }
+
     private function raw(): array
     {
         $cart = $this->request->session()->get($this->sessionKey(), ['branch_id' => null, 'items' => []]);

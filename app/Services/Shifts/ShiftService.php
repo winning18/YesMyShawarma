@@ -7,6 +7,7 @@ use App\Models\Branch;
 use App\Models\Shift;
 use App\Models\User;
 use App\Services\MarketLists\MarketListService;
+use App\Services\Pos\HeldSaleService;
 
 class ShiftService
 {
@@ -95,6 +96,9 @@ class ShiftService
         // Also onto the market list, pending approval like any other
         // purchase (MarketListService::recordFromShift).
         app(MarketListService::class)->recordFromShift($shift, $endedBy, $expenses);
+
+        // A pharmacy's or shop's held sales go when their till closes (R3, owner).
+        app(HeldSaleService::class)->clearForClosedTill($shift);
 
         return $shift->fresh();
     }
