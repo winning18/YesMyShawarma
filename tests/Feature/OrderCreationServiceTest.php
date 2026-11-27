@@ -693,6 +693,43 @@ class OrderCreationServiceTest extends TestCase
         ]);
     }
 
+    /**
+     * Sentry PHP-LARAVEL-12 (2026-11-25): the promotion's free item isn't
+     * in the cart, e.g. two Beef Shawarma earning a free Chicken Shawarma.
+     * Checkout crashed looking up the free item's price among the cart's
+     * lines; it's now valued at the free item's own base price.
+     */
+    public function test_a_free_item_that_is_not_in_the_cart_is_given_and_valued_at_its_own_price(): void
+    {
+        $beef = MenuItem::create([
+            'category_id' => $this->shawarma->category_id, 'name' => 'Beef Shawarma', 'slug' => 'beef-shawarma', 'base_price' => 4000,
+        ]);
+        $this->branch->menuItems()->attach($beef->id, ['is_available' => true]);
+        Promotion::create([
+            'code' => 'WEDNESDAY-AUTO', 'type' => 'buy_x_get_y_free', 'value' => 0,
+            'buy_quantity' => 2, 'free_quantity' => 1, 'is_automatic' => true,
+            'free_menu_item_id' => $this->shawarma->id,
+            'recurring_days' => [now('Africa/Accra')->dayOfWeek], 'is_active' => true,
+        ]);
+
+        $order = $this->service->create(new PlaceOrderData(
+            customerPhone: '+233241111111',
+            customerName: 'Ama',
+            branchId: $this->branch->id,
+            fulfilmentType: 'pickup',
+            paymentMethod: 'cash',
+            items: [new PlaceOrderItemData(menuItemId: $beef->id, quantity: 2, optionQuantities: [])],
+        ));
+
+        $this->assertSame(8000, $order->subtotal);
+        $this->assertSame(8000, $order->total);
+        $free = $order->load('items')->items->firstWhere('is_free', true);
+        $this->assertSame($this->shawarma->id, $free->menu_item_id);
+        $this->assertSame(1, $free->quantity);
+        $this->assertSame(0, $free->line_total);
+        $this->assertDatabaseHas('promotion_redemptions', ['order_id' => $order->id, 'amount_discounted' => 3500]);
+    }
+
     public function test_an_automatic_promotion_excludes_bolt_food_orders(): void
     {
         $today = now('Africa/Accra')->dayOfWeek;
