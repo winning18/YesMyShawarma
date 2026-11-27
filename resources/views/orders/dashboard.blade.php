@@ -156,7 +156,7 @@
                                     {{-- Step 8a: reprint when an automatic print didn't come out. --}}
                                     <div x-show="window.expressPrinting?.enabled" x-cloak class="flex gap-3 mt-0.5 text-xs">
                                         <button type="button" class="text-indigo-600 hover:underline" @click="window.expressReprint(order.id, 'receipt')">{{ __('Print receipt') }}</button>
-                                        <button type="button" class="text-indigo-600 hover:underline" @click="window.expressReprint(order.id, 'kitchen')">{{ __('Print ticket') }}</button>
+                                        @restaurant<button type="button" class="text-indigo-600 hover:underline" @click="window.expressReprint(order.id, 'kitchen')">{{ __('Print ticket') }}</button>@endrestaurant
                                     </div>
                                     <div class="flex items-center gap-1.5 mt-1 flex-wrap">
                                         <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 capitalize" x-text="order.status"></span>

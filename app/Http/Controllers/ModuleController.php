@@ -19,7 +19,7 @@ class ModuleController extends Controller
         Gate::authorize('business.manage');
 
         return view('dashboard.modules.edit', [
-            'modules' => collect(ModuleService::MODULES)->map(fn (array $config, string $key) => [
+            'modules' => collect($modules->available())->map(fn (array $config, string $key) => [
                 ...$config,
                 'key' => $key,
                 'on' => $modules->switchedOn($key),

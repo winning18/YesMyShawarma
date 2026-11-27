@@ -19,7 +19,7 @@
         <h3>{{ __('3. The menu') }}</h3>
         <ol>
             <li><b>{{ __('Categories') }}</b>: {{ __('the groups on the POS, e.g. Wraps, Rice, Drinks.') }}</li>
-            <li><b>{{ __('Modifiers') }}</b>: {{ __('choices like size, sauce or extras, with any extra price. Make them once, use them on many items.') }}</li>
+            @restaurant<li><b>{{ __('Modifiers') }}</b>: {{ __('choices like size, sauce or extras, with any extra price. Make them once, use them on many items.') }}</li>@endrestaurant
             <li><b>{{ __('Menu Editor') }}</b>: {{ __('each item\'s name, price, picture and modifiers.') }}</li>
             <li><b>{{ __('Item availability') }}</b>: {{ __('switch an item off at a branch when it runs out, and back on later.') }}</li>
         </ol>

@@ -302,3 +302,9 @@ board's step-by-step flow is cut to one tap:
 Each automatic step is an ordinary `OrderStateMachine` transition (actor `system`, meta action
 `no_kitchen_screen`), so every one writes its `order_events` row.
 
+**Pharmacies and shops** (`BusinessType`, R1, 2026-11-25) have no kitchen, so no branch of theirs has
+a kitchen screen, and a POS sale that isn't a delivery needs no tap at all: placed, it runs
+`paid → accepted → preparing` (`no_kitchen_screen`) then `ready → dispatched` (`counter_sale`), and
+no "ready for pickup" SMS goes out. Website and delivery orders work as above. No kitchen tickets
+print (`PrinterService::kitchenPrinters()` is empty).
+

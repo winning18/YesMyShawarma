@@ -451,18 +451,19 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
     Route::post('/dashboard/menu-items/{menuItem}/recipe', [RecipeManagementController::class, 'storeForMenuItem'])->middleware('module:stock')->name('dashboard.menu-items.recipe.store');
     Route::delete('/dashboard/recipe/{recipeItem}', [RecipeManagementController::class, 'destroy'])->middleware('module:stock')->name('dashboard.recipe.destroy');
 
-    Route::get('/dashboard/menu-items/timetable', [MenuItemScheduleController::class, 'index'])->name('dashboard.menu-items.timetable');
-    Route::post('/dashboard/menu-items/{menuItem}/schedule', [MenuItemScheduleController::class, 'update'])->name('dashboard.menu-items.schedule.update');
-    Route::delete('/dashboard/menu-items/{menuItem}/schedule', [MenuItemScheduleController::class, 'destroy'])->name('dashboard.menu-items.schedule.destroy');
+    // Restaurants only (R1): the menu Time table and Modifiers.
+    Route::get('/dashboard/menu-items/timetable', [MenuItemScheduleController::class, 'index'])->middleware('restaurant')->name('dashboard.menu-items.timetable');
+    Route::post('/dashboard/menu-items/{menuItem}/schedule', [MenuItemScheduleController::class, 'update'])->middleware('restaurant')->name('dashboard.menu-items.schedule.update');
+    Route::delete('/dashboard/menu-items/{menuItem}/schedule', [MenuItemScheduleController::class, 'destroy'])->middleware('restaurant')->name('dashboard.menu-items.schedule.destroy');
 
-    Route::get('/dashboard/option-groups', [OptionGroupManagementController::class, 'index'])->name('dashboard.option-groups.index');
-    Route::get('/dashboard/option-groups/create', [OptionGroupManagementController::class, 'create'])->name('dashboard.option-groups.create');
-    Route::post('/dashboard/option-groups', [OptionGroupManagementController::class, 'store'])->name('dashboard.option-groups.store');
-    Route::get('/dashboard/option-groups/{optionGroup}/edit', [OptionGroupManagementController::class, 'edit'])->name('dashboard.option-groups.edit');
-    Route::put('/dashboard/option-groups/{optionGroup}', [OptionGroupManagementController::class, 'update'])->name('dashboard.option-groups.update');
-    Route::post('/dashboard/option-groups/{optionGroup}/options', [OptionGroupManagementController::class, 'storeOption'])->name('dashboard.option-groups.options.store');
-    Route::put('/dashboard/option-groups/{optionGroup}/options/{option}', [OptionGroupManagementController::class, 'updateOption'])->name('dashboard.option-groups.options.update');
-    Route::delete('/dashboard/option-groups/{optionGroup}/options/{option}', [OptionGroupManagementController::class, 'destroyOption'])->name('dashboard.option-groups.options.destroy');
+    Route::get('/dashboard/option-groups', [OptionGroupManagementController::class, 'index'])->middleware('restaurant')->name('dashboard.option-groups.index');
+    Route::get('/dashboard/option-groups/create', [OptionGroupManagementController::class, 'create'])->middleware('restaurant')->name('dashboard.option-groups.create');
+    Route::post('/dashboard/option-groups', [OptionGroupManagementController::class, 'store'])->middleware('restaurant')->name('dashboard.option-groups.store');
+    Route::get('/dashboard/option-groups/{optionGroup}/edit', [OptionGroupManagementController::class, 'edit'])->middleware('restaurant')->name('dashboard.option-groups.edit');
+    Route::put('/dashboard/option-groups/{optionGroup}', [OptionGroupManagementController::class, 'update'])->middleware('restaurant')->name('dashboard.option-groups.update');
+    Route::post('/dashboard/option-groups/{optionGroup}/options', [OptionGroupManagementController::class, 'storeOption'])->middleware('restaurant')->name('dashboard.option-groups.options.store');
+    Route::put('/dashboard/option-groups/{optionGroup}/options/{option}', [OptionGroupManagementController::class, 'updateOption'])->middleware('restaurant')->name('dashboard.option-groups.options.update');
+    Route::delete('/dashboard/option-groups/{optionGroup}/options/{option}', [OptionGroupManagementController::class, 'destroyOption'])->middleware('restaurant')->name('dashboard.option-groups.options.destroy');
     Route::post('/dashboard/options/{option}/recipe', [RecipeManagementController::class, 'storeForOption'])->middleware('module:stock')->name('dashboard.options.recipe.store');
 });
 

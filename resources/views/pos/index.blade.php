@@ -287,10 +287,12 @@
                             <label class="flex items-center gap-1.5">
                                 <input type="radio" x-model="fulfilmentType" value="pickup"> {{ __('Pickup') }}
                             </label>
-                            {{-- Dine in (owner, 2026-11-20); never for Bolt Food, whose courier collects it. --}}
+                            {{-- Dine in (owner, 2026-11-20); never for Bolt Food, whose courier collects it. A restaurant's only (R1). --}}
+                            @restaurant
                             <label class="flex items-center gap-1.5" x-show="paymentMethod !== 'bolt_food'">
                                 <input type="radio" x-model="fulfilmentType" value="dine_in"> {{ __('Dine in') }}
                             </label>
+                            @endrestaurant
                             @if ($deliveryAvailable)
                                 <label class="flex items-center gap-1.5" x-show="!pickupOnly()">
                                     <input type="radio" x-model="fulfilmentType" value="delivery"> {{ __('Delivery') }}

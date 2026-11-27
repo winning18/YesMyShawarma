@@ -5,6 +5,7 @@ namespace App\Services\Printing;
 use App\Models\Branch;
 use App\Models\Printer;
 use App\Models\Terminal;
+use App\Services\Settings\BusinessType;
 use Illuminate\Support\Collection;
 
 /**
@@ -38,6 +39,11 @@ class PrinterService
      */
     public function kitchenPrinters(int $branchId): Collection
     {
+        // No kitchen, no kitchen tickets (a pharmacy or shop, R1).
+        if (! app(BusinessType::class)->hasKitchen()) {
+            return new Collection;
+        }
+
         return Printer::where('branch_id', $branchId)->where('role', Printer::KITCHEN)->where('is_active', true)->orderBy('id')->get();
     }
 

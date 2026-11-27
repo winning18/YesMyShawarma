@@ -153,10 +153,12 @@
                     href="{{ route('dashboard.categories.index') }}"
                     class="block px-3 py-1.5 rounded-md text-sm transition duration-150 ease-in-out {{ request()->routeIs('dashboard.categories.*') ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
                 >{{ __('Categories') }}</a>
+                @restaurant
                 <a
                     href="{{ route('dashboard.option-groups.index') }}"
                     class="block px-3 py-1.5 rounded-md text-sm transition duration-150 ease-in-out {{ request()->routeIs('dashboard.option-groups.*') ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
                 >{{ __('Modifiers') }}</a>
+                @endrestaurant
             @endcan
 
             @can('menu.toggle_availability')
@@ -166,12 +168,14 @@
                 >{{ __('Item availability') }}</a>
             @endcan
 
+            @restaurant
             @can('menu.edit_content')
                 <a
                     href="{{ route('dashboard.menu-items.timetable') }}"
                     class="block px-3 py-1.5 rounded-md text-sm transition duration-150 ease-in-out {{ request()->routeIs('dashboard.menu-items.timetable') ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
                 >{{ __('Time table') }}</a>
             @endcan
+            @endrestaurant
         </div>
     </div>
 @endcanany

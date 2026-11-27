@@ -22,6 +22,7 @@ use App\Services\Orders\Data\PlaceOrderItemData;
 use App\Services\Orders\OrderCreationService;
 use App\Services\Printing\PrintJobService;
 use App\Services\Promotions\PromotionService;
+use App\Services\Settings\BusinessType;
 use App\Services\Settings\SettingsService;
 use App\Services\Shifts\CounterService;
 use App\Services\Shifts\ShiftService;
@@ -267,7 +268,7 @@ class PosController extends Controller
             'name' => ['nullable', 'string', 'max:255'],
             'fulfilment_type' => [
                 // Dine in (owner, 2026-11-20): eating in, at a table or not.
-                'required', $deliveryAvailable ? 'in:pickup,dine_in,delivery' : 'in:pickup,dine_in',
+                'required', Rule::in(array_filter(['pickup', app(BusinessType::class)->isRestaurant() ? 'dine_in' : null, $deliveryAvailable ? 'delivery' : null])),
                 // Bolt's own courier handles delivery for a Bolt Food
                 // order — never ours, so there's nothing for our rider
                 // flow to do with one placed as 'delivery'.

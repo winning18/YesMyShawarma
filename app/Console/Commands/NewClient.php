@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Services\Content\WebsiteThemeService;
 use App\Services\Modules\ModuleService;
+use App\Services\Settings\BusinessType;
 use App\Services\Setup\ClientSetupService;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -17,6 +18,7 @@ use function Laravel\Prompts\text;
 
 #[Signature('expresspos:new-client
     {--business= : Business name, as customers and staff see it}
+    {--type=restaurant : Kind of business: restaurant, pharmacy or shop (set once, here)}
     {--branch= : First branch name}
     {--branch-phone= : Branch phone, e.g. +233241234567}
     {--address= : Branch address}
@@ -71,6 +73,7 @@ class NewClient extends Command
                 'background' => strtolower((string) $ask('background-colour', 'Website background colour (#rrggbb)', '#000000')),
                 'logo' => $ask('logo', 'Path to the logo file (PNG, JPG or WebP, up to 2 MB)'),
             ],
+            'type' => $this->option('type') ?: BusinessType::RESTAURANT,
             'modules' => $this->modules(),
             'theme' => $this->option('theme') ?: WebsiteThemeService::DEFAULT,
         ];
@@ -89,6 +92,7 @@ class NewClient extends Command
             'owner.phone' => ['nullable', 'string', 'max:30'],
             'support_email' => ['nullable', 'email', 'max:255'],
             'theme' => ['required', Rule::in(array_keys(WebsiteThemeService::THEMES))],
+            'type' => ['required', Rule::in(array_keys(BusinessType::TYPES))],
             'brand.primary' => ['required', 'regex:/^#[0-9a-f]{6}$/'],
             'brand.accent' => ['required', 'regex:/^#[0-9a-f]{6}$/'],
             'brand.background' => ['required', 'regex:/^#[0-9a-f]{6}$/'],
@@ -103,6 +107,7 @@ class NewClient extends Command
             'brand.accent.regex' => 'The accent colour must be #rrggbb.',
             'brand.background.regex' => 'The background colour must be #rrggbb.',
             'theme.in' => 'The website look must be classic, photo or onepage.',
+            'type.in' => 'The business type must be restaurant, pharmacy or shop.',
         ]);
 
         if ($validator->fails()) {
@@ -122,6 +127,7 @@ class NewClient extends Command
             $this->line(json_encode([
                 'ok' => true,
                 'business' => $input['business'],
+                'type' => $input['type'],
                 'branch' => $result['branch']->name,
                 'modules' => $input['modules'],
                 'theme' => $input['theme'],
@@ -135,6 +141,7 @@ class NewClient extends Command
         }
 
         $this->info("{$input['business']} is set up, with {$result['branch']->name} as its first branch.");
+        $this->line('Business type: '.BusinessType::TYPES[$input['type']]);
         $this->line('Modules on: '.($input['modules'] ? implode(', ', array_map(fn ($m) => ModuleService::MODULES[$m]['label'], $input['modules'])) : 'none (POS only)'));
         $this->newLine();
         $this->line('Sign-in details (shown once; each must set a new password on first sign-in):');
@@ -173,7 +180,9 @@ class NewClient extends Command
 
         return array_values(multiselect(
             'Modules to switch on (none = POS only)',
-            collect(ModuleService::MODULES)->mapWithKeys(fn (array $module, string $key) => [$key => $module['label']])->all(),
+            collect(ModuleService::MODULES)
+                ->filter(fn (array $module, string $key) => BusinessType::typeAllowsModule($this->option('type') ?: BusinessType::RESTAURANT, $key))
+                ->mapWithKeys(fn (array $module, string $key) => [$key => $module['label']])->all(),
             hint: 'Space to tick, Enter to finish. All can be changed later on the Modules page.',
         ));
     }

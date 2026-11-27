@@ -7,6 +7,7 @@ use App\Models\Printer;
 use App\Services\Printing\PrinterService;
 use App\Services\Printing\PrintJobService;
 use App\Services\Printing\ReceiptService;
+use App\Services\Settings\BusinessType;
 use App\Services\Shifts\CounterService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -29,6 +30,8 @@ class PrintController extends Controller
     {
         Gate::authorize('view', $order);
         abort_unless(in_array($kind, Printer::ROLES, true), 404);
+        // No kitchen, no kitchen tickets (a pharmacy or shop, R1).
+        abort_if($kind === Printer::KITCHEN && ! app(BusinessType::class)->hasKitchen(), 404);
 
         return response()->json(['queued' => $jobs->reprint($order, $kind, $request->user())]);
     }
@@ -37,6 +40,8 @@ class PrintController extends Controller
     {
         Gate::authorize('view', $order);
         abort_unless(in_array($kind, Printer::ROLES, true), 404);
+        // No kitchen, no kitchen tickets (a pharmacy or shop, R1).
+        abort_if($kind === Printer::KITCHEN && ! app(BusinessType::class)->hasKitchen(), 404);
 
         $printer = $kind === Printer::RECEIPT
             ? $printers->receiptPrinterFor($order->branch_id, $counters->currentAt($order->branch_id))

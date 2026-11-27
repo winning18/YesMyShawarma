@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Services\Content\WebsiteThemeService;
 use App\Services\Modules\ModuleService;
 use App\Services\Settings\BusinessProfile;
+use App\Services\Settings\BusinessType;
 use App\Services\Settings\SettingsService;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -44,6 +45,7 @@ class DescribeInstallCommand extends Command
                 'opens_at' => substr((string) $branch->opens_at, 0, 5), 'closes_at' => substr((string) $branch->closes_at, 0, 5),
             ] : null,
             'owner' => $owner ? ['name' => $owner->name, 'email' => $owner->email, 'phone' => $owner->phone] : null,
+            'type' => app(BusinessType::class)->current(),
             'modules' => array_values(array_filter(array_keys(ModuleService::MODULES), fn (string $key) => $modules->switchedOn($key))),
             'colours' => ['primary' => $colours['brand_primary'], 'accent' => $colours['brand_accent'], 'background' => $colours['brand_background']],
             'theme' => $themes->chosen(),

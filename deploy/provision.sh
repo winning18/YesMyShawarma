@@ -8,11 +8,15 @@
 #       <lat> <lng> <opens HH:MM> <closes HH:MM> <owner-name> <owner-email> \
 #       <owner-phone|-> <support-email|-> <modules, comma-separated|-> \
 #       <primary #rrggbb> <accent #rrggbb> <logo path> <website look> \
-#       <background #rrggbb> [live|test|test-demo]
+#       <background #rrggbb> [live|test|test-demo] [restaurant|pharmacy|shop]
 #
-# The last value (2026-11-25, default live): a test client (Express POS
+# The 20th value (2026-11-25, default live): a test client (Express POS
 # Admin's "This is a test client") is left out of the nightly backups;
-# test-demo also gets the demo menu (expresspos:demo-menu).
+# test-demo also gets the demo menu (expresspos:demo-menu), restaurants only.
+#
+# The 21st (R1, 2026-11-25, default restaurant): the kind of business, set
+# once here (expresspos:new-client --type). Only a pharmacy or shop passes
+# --type, so a restaurant also onboards onto code from before R1.
 #
 # The website look is classic, photo or onepage; the background is the
 # third brand colour (both 2026-11-24).
@@ -42,13 +46,14 @@ DOMAIN_SUFFIX=""
 fail() { echo "EXPRESSPOS_RESULT {\"ok\":false,\"error\":\"$1\"}"; exit 1; }
 
 [[ $EUID -eq 0 ]] || fail "Must run as root."
-[[ $# -eq 19 || $# -eq 20 ]] || fail "Expected 19 or 20 arguments, got $#."
+[[ $# -ge 19 && $# -le 21 ]] || fail "Expected 19 to 21 arguments, got $#."
 [[ -n "$DOMAIN_SUFFIX" ]] || fail "DOMAIN_SUFFIX is not set in $CONF."
 
 SLUG="$1"; BUSINESS="$2"; BRANCH="$3"; BRANCH_PHONE="$4"; ADDRESS="$5"; LAT="$6"; LNG="$7"
 OPENS="$8"; CLOSES="$9"; OWNER_NAME="${10}"; OWNER_EMAIL="${11}"; OWNER_PHONE="${12}"; SUPPORT_EMAIL="${13}"; MODULES="${14}"
-PRIMARY="${15}"; ACCENT="${16}"; LOGO="${17}"; THEME="${18}"; BACKGROUND="${19}"; KIND="${20:-live}"
+PRIMARY="${15}"; ACCENT="${16}"; LOGO="${17}"; THEME="${18}"; BACKGROUND="${19}"; KIND="${20:-live}"; TYPE="${21:-restaurant}"
 [[ "$KIND" =~ ^(live|test|test-demo)$ ]] || fail "The kind must be live, test or test-demo."
+[[ "$TYPE" =~ ^(restaurant|pharmacy|shop)$ ]] || fail "The business type must be restaurant, pharmacy or shop."
 LOGO_DIR=/var/www/expresspos-admin/storage/app/private/logos
 
 [[ "$SLUG" =~ ^[a-z][a-z0-9]{1,20}$ ]] || fail "The web address name must be 2-21 lowercase letters and digits."
@@ -84,10 +89,13 @@ ARGS=(
 )
 [[ "$OWNER_PHONE" != "-" ]] && ARGS+=("--owner-phone=$OWNER_PHONE")
 [[ "$SUPPORT_EMAIL" != "-" ]] && ARGS+=("--support-email=$SUPPORT_EMAIL")
+[[ "$TYPE" != restaurant ]] && ARGS+=("--type=$TYPE")
 
 cd "$DIR"
 RESULT="$(sudo -u www-data php artisan expresspos:new-client "${ARGS[@]}" | tail -1)" || true
-if [[ "$KIND" == test-demo && "$RESULT" == *'"ok":true'* ]]; then
+if [[ "$KIND" == test-demo && "$TYPE" != restaurant ]]; then
+  echo "==> No demo menu: it's a restaurant's (demo products for a $TYPE come later)"
+elif [[ "$KIND" == test-demo && "$RESULT" == *'"ok":true'* ]]; then
   echo "==> Demo menu (a test client)"
   sudo -u www-data php artisan expresspos:demo-menu || echo "The demo menu couldn't be added; the client is set up without it."
 fi

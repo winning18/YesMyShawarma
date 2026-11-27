@@ -3,6 +3,7 @@
 namespace App\Services\Orders;
 
 use App\Models\Order;
+use App\Services\Settings\BusinessType;
 use App\Services\Settings\SettingsService;
 
 /**
@@ -18,16 +19,31 @@ use App\Services\Settings\SettingsService;
  *   customer is at the counter or the table. A delivery goes on to the
  *   rider as always; a website pickup waits for the customer to collect.
  *
+ * A pharmacy or shop (BusinessType, R1, 2026-11-25) has no kitchen at
+ * all, so no branch of its has a kitchen screen, and a sale at the counter
+ * needs no tap: paid, it goes on through ready to done straight away (meta
+ * action 'counter_sale'). Its website and delivery orders are accepted and
+ * marked ready on the Orders board as above.
+ *
  * Every automatic step is an ordinary transition, so it writes its own
  * order_events row (actor 'system', meta action 'no_kitchen_screen').
  */
 class KitchenFlowService
 {
-    public function __construct(private readonly SettingsService $settings) {}
+    public function __construct(
+        private readonly SettingsService $settings,
+        private readonly BusinessType $type,
+    ) {}
 
     public function hasKitchenScreen(int $branchId): bool
     {
-        return $this->settings->branchHasKitchenScreen($branchId);
+        return $this->type->hasKitchen() && $this->settings->branchHasKitchenScreen($branchId);
+    }
+
+    /** A pharmacy's or shop's sale at the counter: complete as it's paid. */
+    public function isCounterSale(Order $order): bool
+    {
+        return ! $this->type->hasKitchen() && $this->finishesOnReady($order);
     }
 
     /** One tap finishes this order on a branch without a kitchen screen. */
@@ -57,8 +73,10 @@ class KitchenFlowService
 
         if ($to === 'accepted') {
             $orders->transition($order, 'preparing', 'system', null, ['action' => 'no_kitchen_screen']);
+        } elseif ($to === 'preparing' && $this->isCounterSale($order)) {
+            $orders->transition($order, 'ready', 'system', null, ['action' => 'counter_sale']);
         } elseif ($to === 'ready' && $this->finishesOnReady($order)) {
-            $orders->transition($order, 'dispatched', 'system', null, ['action' => 'no_kitchen_screen']);
+            $orders->transition($order, 'dispatched', 'system', null, ['action' => $this->isCounterSale($order) ? 'counter_sale' : 'no_kitchen_screen']);
         }
     }
 }

@@ -8,7 +8,7 @@
         <label for="{{ $id }}-role" class="block text-xs font-medium text-gray-500">{{ __('Prints') }}</label>
         <select id="{{ $id }}-role" name="role" x-model="role" class="mt-1 block w-full rounded-md border-gray-300 text-sm">
             <option value="receipt">{{ __('Customer receipts') }}</option>
-            <option value="kitchen">{{ __('Kitchen tickets') }}</option>
+            @restaurant<option value="kitchen">{{ __('Kitchen tickets') }}</option>@endrestaurant
         </select>
     </div>
     <div>

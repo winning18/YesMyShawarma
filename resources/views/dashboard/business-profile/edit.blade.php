@@ -60,12 +60,14 @@
                         <x-input-error class="mt-2" :messages="$errors->get('region')" />
                     </div>
                 </div>
+                @restaurant
                 <div>
                     <x-input-label for="cuisines" :value="__('What you serve (optional)')" />
                     <x-text-input id="cuisines" name="cuisines" class="mt-1 block w-full" :value="old('cuisines', implode(', ', $profile->cuisines()))" maxlength="200" placeholder="{{ __('e.g. Ghanaian, Grills, Fast food') }}" />
                     <p class="text-xs text-gray-500 mt-1">{{ __('Kinds of food, separated by commas.') }}</p>
                     <x-input-error class="mt-2" :messages="$errors->get('cuisines')" />
                 </div>
+                @endrestaurant
             </section>
 
             <section class="space-y-4 border-t border-gray-100 pt-6">

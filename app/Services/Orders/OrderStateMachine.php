@@ -264,7 +264,8 @@ class OrderStateMachine
             DB::afterCommit(function () use ($order, $to, $from) {
                 match (true) {
                     $to === 'paid' && $from === 'pending_payment' => $this->notifier->placed($order),
-                    $to === 'ready' && $order->fulfilment_type === 'pickup' && $order->payment_method !== 'bolt_food' => $this->notifier->readyForPickup($order),
+                    // A pharmacy's or shop's counter sale is handed over as it's paid: no "ready" text.
+                    $to === 'ready' && $order->fulfilment_type === 'pickup' && $order->payment_method !== 'bolt_food' && ! app(KitchenFlowService::class)->isCounterSale($order) => $this->notifier->readyForPickup($order),
                     $to === 'dispatched' && $order->fulfilment_type === 'delivery' => $this->notifier->dispatched($order),
                     $to === 'delivered' => $this->notifier->delivered($order),
                     default => null,

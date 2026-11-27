@@ -3,6 +3,7 @@
 namespace App\Services\Modules;
 
 use App\Models\Setting;
+use App\Services\Settings\BusinessType;
 
 /**
  * Module switches (Express POS step 3). Core — counter POS, kitchen board,
@@ -15,6 +16,10 @@ use App\Models\Setting;
  * POS options and report lines are hidden (`@module` in Blade), its
  * services refuse its actions and its scheduled jobs do nothing. Its data
  * is kept, so switching it back on brings everything back.
+ *
+ * A module the business's type can't have (BusinessType: Tables, Recipes
+ * and stock, Bolt Food… are a restaurant's only) is off whatever is
+ * stored, and isn't offered on the Modules page.
  *
  * Stored as settings `module_<key>` = '1' / '0'. No stored switch means
  * off on a real install (config/modules.php); Yes My Shawarma's are all
@@ -84,6 +89,10 @@ class ModuleService
             throw new \InvalidArgumentException("Unknown module {$module}.");
         }
 
+        if (! app(BusinessType::class)->allowsModule($module)) {
+            return false;
+        }
+
         if (! self::MODULES[$module]['ready']) {
             return true;
         }
@@ -132,6 +141,16 @@ class ModuleService
         return $value === null ? (bool) config('modules.default_on') : $value === '1';
     }
 
+    /**
+     * The modules this business's type can have, as listed on the Modules page.
+     *
+     * @return array<string, array{label: string, description: string, requires: list<string>, ready: bool}>
+     */
+    public function available(): array
+    {
+        return array_filter(self::MODULES, fn (string $module) => app(BusinessType::class)->allowsModule($module), ARRAY_FILTER_USE_KEY);
+    }
+
     public function set(string $module, bool $on): void
     {
         if (! isset(self::MODULES[$module])) {
@@ -148,7 +167,7 @@ class ModuleService
     public function update(array $switches): void
     {
         foreach (self::MODULES as $module => $config) {
-            if ($config['ready'] && array_key_exists($module, $switches)) {
+            if ($config['ready'] && array_key_exists($module, $switches) && app(BusinessType::class)->allowsModule($module)) {
                 $this->set($module, $switches[$module]);
             }
         }

@@ -25,11 +25,15 @@ reports; Pokuase Y-Junction; GIMPA, Gimpa Green Hill Campus). It has every modul
 must keep working exactly as it does through every change. Its staff and customers should never
 notice the product work unless a change adds something to them on purpose.
 
-**Who it's for (MVP):** food and hospitality businesses in Ghana — restaurants, cafés, bars, food
-trucks, caterers. Mobile data is often slow, so page weight is a product requirement, not polish.
+**Who it's for:** businesses in Ghana. The MVP (released 2026-11-24) serves food and hospitality —
+restaurants, cafés, bars, food trucks, caterers. The next phase (owner, 2026-11-25) adds pharmacies
+and shops (mini-marts and supermarkets, boutiques, phone and electronics shops, hardware), each an
+install with its **business type** (see "Business types" below). Mobile data is often slow, so page
+weight is a product requirement, not polish.
 
 **Product brief and MVP plan** (owner-approved, 2026-11-15):
-https://claude.ai/artifact/3mX21W2A3ZL9EYnRhu3Fpi (tab "MVP plan").
+https://claude.ai/artifact/3mX21W2A3ZL9EYnRhu3Fpi (tab "MVP plan"). **Pharmacy and retail plan**
+(owner-approved, 2026-11-25): the same doc, tab "Pharmacy and retail plan" (steps R1 to R11).
 
 **Future:** a React Native app will consume this backend. Assume a second client is coming.
 
@@ -43,10 +47,11 @@ These come before everything else in this file.
    prefix, phone number, address or amount that belongs to one client appears in code, views,
    seeders or tests' assumptions about production. It lives in settings or the database. Step 2
    moved the last of Yes My Shawarma's into settings and the database — don't add new ones.
-2. **Every feature is either core or a module.** Core is always on: counter POS, kitchen board,
-   menu with options and branch availability, branches, staff, roles and permissions, shifts and
-   cash-up, sales reports, order history. Everything else is a module a business switches on.
-   Decide which before building, and say so in the plan.
+2. **Every feature is either core or a module.** Core is always on: counter POS, menu or products
+   with branch availability, branches, staff, roles and permissions, shifts and cash-up, sales
+   reports, order history — plus, for a restaurant, the kitchen board and menu options. Everything
+   else is a module a business switches on. Decide which before building, which business types it
+   is for, and say so in the plan.
 3. **A module switched off disappears completely** — its routes, menu items, POS options, page
    sections, report lines, scheduled jobs and notifications. Never a half-hidden feature that
    still runs underneath. Test it switched off as well as on. How: `App\Services\Modules\
@@ -95,6 +100,28 @@ kept, in maintenance, as the rollback (`deploy/move-yes-my-shawarma.sh --rollbac
 - **A fix that can't wait for a release** still takes the fix route: branch from `origin/Main`,
   fix with tests, push the branch, the owner releases it to `Main`, then merge `origin/Main`
   into `staging`.
+
+### Business types (owner, 2026-11-25; plan step R1)
+
+Every install is a **restaurant**, a **pharmacy** or a **shop** (`App\Services\Settings\BusinessType`,
+setting `business_type`; no setting means restaurant, so every install from before is unchanged).
+Chosen once at onboarding (`expresspos:new-client --type`, Express POS Admin's "Kind of business",
+`clients.business_type`); never changed from the app.
+
+- **Restaurant-only modules:** Tables, Recipes and stock, Bolt Food, Market list, Freebies, WhatsApp
+  reward (`BusinessType::RESTAURANT_ONLY_MODULES`). For a pharmacy or shop they're off whatever is
+  stored and missing from the Modules page. Website and Delivery are open to every type.
+- **Restaurant-only parts of core:** the kitchen (kitchen screens, kitchen printers and tickets),
+  Modifiers, the menu Time table, Dine in, "What you serve". Blade: `@restaurant … @endrestaurant`;
+  routes: `->middleware('restaurant')` (404 otherwise).
+- **No kitchen:** a pharmacy's or shop's counter sale completes as it's paid; website and delivery
+  orders are accepted and marked ready on the Orders board (orders.md's "Branches without a
+  kitchen screen").
+- **Words:** `lang/business-types/<type>/en.json` is laid over the app's own English, so
+  `__('Menu Editor')` reads "Products". Every line must match a string in the app
+  (`BusinessTypeTest` checks); when you reword a string a pharmacy or shop sees, update both lists.
+- A new feature says which types it's for. Test it as a restaurant (the suite's default) and, if it
+  touches them, as a pharmacy or shop (`app(BusinessType::class)->set(...)`).
 
 ---
 
@@ -285,7 +312,9 @@ step before the previous one is released.
 
 Straight after the MVP: offline mode for the subscription edition.
 
-**Current step:** 6 (Express POS Admin, brought forward), then 10 (food vendor pilot: De Boyes Kitchen). Step 10 tools built 2026-11-20 — `expresspos:new-client` (`ClientSetupService`), Help guides (staff quick-start, owner guide, go-live checklist), `deploy/new-install.sh` for a hand-set install on the staging code (updated by the staging deploy via the `EXPRESSPOS_EXTRA_INSTALLS` repo variable), nightly backups (`deploy/backup-databases.sh`), Reverb settings read at run time (`partials/reverb-config`) so one build serves every install; see `deploy/README.md`. Production Yes My Shawarma database backed up nightly since 2026-11-20 (`/etc/expresspos/backup.conf`). Step 9, optional tax, built 2026-11-20 (the `tax` module: Settings → Tax, inclusive or added on top, food only (delivery fees never taxed), `order_taxes` kept as at sale, Reports → Tax, TIN on receipts — schema.md's Orders → Tax). Step 8, direct printing, built 2026-11-15/20: 8a printers,
+**Current step (2026-11-25 on):** the Pharmacy and retail plan (product brief, tab "Pharmacy and retail plan"): R1 business types built 2026-11-27; R2 products next; offline mode straight after the plan. The MVP steps below are all done.
+
+**MVP steps:** 6 (Express POS Admin, brought forward), then 10 (food vendor pilot: De Boyes Kitchen). Step 10 tools built 2026-11-20 — `expresspos:new-client` (`ClientSetupService`), Help guides (staff quick-start, owner guide, go-live checklist), `deploy/new-install.sh` for a hand-set install on the staging code (updated by the staging deploy via the `EXPRESSPOS_EXTRA_INSTALLS` repo variable), nightly backups (`deploy/backup-databases.sh`), Reverb settings read at run time (`partials/reverb-config`) so one build serves every install; see `deploy/README.md`. Production Yes My Shawarma database backed up nightly since 2026-11-20 (`/etc/expresspos/backup.conf`). Step 9, optional tax, built 2026-11-20 (the `tax` module: Settings → Tax, inclusive or added on top, food only (delivery fees never taxed), `order_taxes` kept as at sale, Reports → Tax, TIN on receipts — schema.md's Orders → Tax). Step 8, direct printing, built 2026-11-15/20: 8a printers,
 receipts, kitchen tickets and browser printing; 8b the Express POS Print Agent for Windows
 (`print-agent/`, Go, unsigned for the pilot) — schema.md's Printing notes. Step 6 (installs per client) is the last step, after the
 pilot (owner, 2026-11-15). Step 7, several cashiers, built 2026-11-15: 7a named
@@ -314,7 +343,8 @@ Do not build these. If a task seems to require one, stop and raise it.
 - Table reservations
 - A lead pipeline with stages (the customer list stays a list)
 - Native mobile app
-- Retail or service businesses (barcodes, variants, appointments, commission)
+- Service businesses (appointments, commission). Retail and pharmacy are in scope since
+  2026-11-25, through the Pharmacy and retail plan (barcodes and variants with it).
 - The one-time, offline-only edition
 - Self sign-up for clients, and billing for Express POS inside the app
 - One shared system holding every client's data

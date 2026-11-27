@@ -43,7 +43,7 @@
         <h3>{{ __('Training, the day before') }}</h3>
         <ul>
             <li>{{ __('Each cashier signs in with their Staff ID and PIN, opens a till, takes a practice order, and closes the till.') }}</li>
-            <li>{{ __('Kitchen staff accept, prepare and mark a practice order ready on the board.') }}</li>
+            @restaurant<li>{{ __('Kitchen staff accept, prepare and mark a practice order ready on the board.') }}</li>@endrestaurant
             <li>{{ __('Everyone knows how to reprint a receipt or ticket.') }}</li>
             <li>{{ __('The Staff quick-start is printed and left by each till.') }}</li>
             <li>{{ __('Practice orders are cancelled, so they don\'t count as sales.') }}</li>

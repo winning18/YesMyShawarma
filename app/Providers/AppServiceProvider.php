@@ -20,6 +20,7 @@ use App\Services\Notifications\LogPushNotifier;
 use App\Services\Notifications\WebPushNotifier;
 use App\Services\Payments\PaystackClient;
 use App\Services\Settings\BusinessProfile;
+use App\Services\Settings\BusinessType;
 use App\Services\Settings\SettingsService;
 use App\Services\Shifts\CounterService;
 use App\Services\Shifts\ShiftService;
@@ -44,6 +45,8 @@ class AppServiceProvider extends ServiceProvider
         // One per request (or queued job): its switches are read once and
         // reused by every check on the page.
         $this->app->scoped(ModuleService::class);
+        // Restaurant, pharmacy or shop (R1, 2026-11-25), read once per request.
+        $this->app->scoped(BusinessType::class);
         // Which counter this device is, read once per request.
         $this->app->scoped(CounterService::class);
 
@@ -80,6 +83,17 @@ class AppServiceProvider extends ServiceProvider
         // @module('freebies') … @endmodule — shows a part only while that
         // module is switched on (ModuleService).
         Blade::if('module', fn (string $module) => app(ModuleService::class)->enabled($module));
+        // @restaurant … @endrestaurant — a restaurant's parts only: the
+        // kitchen, Modifiers, the menu Time table (BusinessType).
+        Blade::if('restaurant', fn () => app(BusinessType::class)->isRestaurant());
+
+        // A pharmacy's or shop's words laid over the app's own (BusinessType).
+        // Skipped quietly before the settings table exists, as below.
+        try {
+            app(BusinessType::class)->applyWording();
+        } catch (Throwable) {
+            // A fresh install's first migrate: no settings yet.
+        }
 
         // The business's name from its profile (Express POS: set per
         // install), so the 40-odd places that read config('app.name') all

@@ -40,6 +40,7 @@
         @endmodule
     </section>
 
+    @restaurant
     <section>
         <h3>{{ __('4. The kitchen board') }}</h3>
         <ol>
@@ -52,12 +53,29 @@
             @endmodule
         </ol>
     </section>
+    @else
+    {{-- A pharmacy or shop (R1): a counter sale completes as it's paid; online and delivery orders are worked on the board. --}}
+    <section>
+        <h3>{{ __('4. Sales and orders') }}</h3>
+        <ol>
+            <li>{{ __('A sale at the counter is complete as soon as it\'s paid: hand over the items and the receipt.') }}</li>
+            @if (app(\App\Services\Modules\ModuleService::class)->enabled('website') || app(\App\Services\Modules\ModuleService::class)->enabled('delivery'))
+                <li>{{ __('Website and delivery orders appear on the Orders board under') }} <b>{{ __('Needs acknowledgement') }}</b> {{ __('with a sound.') }}</li>
+                <li>{{ __('Tap') }} <b>{{ __('Accept') }}</b>{{ __(', put the order together, then tap') }} <b>{{ __('Ready for pickup') }}</b>.</li>
+                <li>{{ __('When the customer collects it, tap') }} <b>{{ __('Picked up') }}</b>.</li>
+                @module('delivery')
+                    <li>{{ __('For a delivery, assign a rider with') }} <b>{{ __('Assign to…') }}</b>. {{ __('The rider marks it delivered from their phone.') }}</li>
+                @endmodule
+            @endif
+        </ol>
+    </section>
+    @endrestaurant
 
     <section>
         <h3>{{ __('5. Printing') }}</h3>
         <ul>
             <li>{{ __('Receipts print when an order is placed at the POS; kitchen tickets print when an order is accepted.') }}</li>
-            <li>{{ __('Nothing came out? Open the order and tap') }} <b>{{ __('Print receipt') }}</b> {{ __('or') }} <b>{{ __('Print ticket') }}</b> {{ __('(or') }} <b>{{ __('Reprint') }}</b>).</li>
+            <li>{{ __('Nothing came out? Open the order and tap') }} <b>{{ __('Print receipt') }}</b> @restaurant{{ __('or') }} <b>{{ __('Print ticket') }}</b> @endrestaurant{{ __('(or') }} <b>{{ __('Reprint') }}</b>).</li>
             <li>{{ __('Still nothing: check the printer has paper, is switched on and its cable is in. Then tell a manager.') }}</li>
         </ul>
     </section>

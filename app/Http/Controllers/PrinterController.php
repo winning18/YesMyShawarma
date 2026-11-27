@@ -10,6 +10,7 @@ use App\Services\Branches\BranchContext;
 use App\Services\Printing\PrintAgentService;
 use App\Services\Printing\PrinterService;
 use App\Services\Printing\PrintJobService;
+use App\Services\Settings\BusinessType;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -137,7 +138,8 @@ class PrinterController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:60', Rule::unique('printers', 'name')->where('branch_id', $branchId)->ignore($printer?->id)],
-            'role' => ['required', Rule::in(Printer::ROLES)],
+            // Kitchen tickets are a restaurant's only (BusinessType, R1).
+            'role' => ['required', Rule::in(app(BusinessType::class)->hasKitchen() ? Printer::ROLES : [Printer::RECEIPT])],
             'paper_width' => ['required', 'integer', Rule::in(Printer::PAPER_WIDTHS)],
             'connection' => ['required', Rule::in(Printer::CONNECTIONS)],
             'address' => ['nullable', 'string', 'max:120'],

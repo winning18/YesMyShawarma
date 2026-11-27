@@ -8,6 +8,7 @@ use App\Services\Branches\WorkingHoursService;
 use App\Services\Customers\CustomerService;
 use App\Services\Modules\ModuleService;
 use App\Services\Settings\BusinessProfile;
+use App\Services\Settings\BusinessType;
 use App\Support\CustomerUrl;
 
 /**
@@ -24,6 +25,13 @@ use App\Support\CustomerUrl;
  */
 class RestaurantSchemaBuilder
 {
+    /** schema.org's type for each kind of business (BusinessType, R1). */
+    private const SCHEMA_TYPES = [
+        BusinessType::RESTAURANT => 'Restaurant',
+        BusinessType::PHARMACY => 'Pharmacy',
+        BusinessType::SHOP => 'Store',
+    ];
+
     /** ISO weekday (WorkingHoursService's own 1=Mon..7=Sun) to schema.org's plain day name. */
     private const ISO_DAYS = [
         1 => 'Monday', 2 => 'Tuesday', 3 => 'Wednesday', 4 => 'Thursday',
@@ -66,7 +74,7 @@ class RestaurantSchemaBuilder
 
         $schema = [
             '@context' => 'https://schema.org',
-            '@type' => 'Restaurant',
+            '@type' => self::SCHEMA_TYPES[app(BusinessType::class)->current()],
             'name' => config('app.name').': '.$branch->name,
             // Stored phones aren't always E.164 (an admin typed one as
             // "026-370-2929") — Google expects the international form.
@@ -93,6 +101,11 @@ class RestaurantSchemaBuilder
 
         if ($schema['servesCuisine'] === []) {
             unset($schema['servesCuisine']);
+        }
+
+        // A menu, cuisines and reservations belong to a restaurant only.
+        if (! app(BusinessType::class)->isRestaurant()) {
+            unset($schema['servesCuisine'], $schema['hasMenu'], $schema['acceptsReservations']);
         }
 
         if ($branch->imageUrl()) {

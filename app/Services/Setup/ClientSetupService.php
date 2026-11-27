@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Content\WebsiteThemeService;
 use App\Services\Modules\ModuleService;
 use App\Services\Settings\BusinessProfile;
+use App\Services\Settings\BusinessType;
 use App\Services\Settings\SettingsService;
 use App\Services\Users\UserManagementService;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -50,7 +51,7 @@ class ClientSetupService
     }
 
     /**
-     * @param  array{business: string, brand: array{primary: string, accent: string, background: string, logo: string}, branch: array{name: string, phone: string, address: string, lat: float, lng: float, opens_at: string, closes_at: string}, owner: array{name: string, email: string, phone: ?string}, support_email: ?string, modules: list<string>, theme?: string}  $input
+     * @param  array{business: string, brand: array{primary: string, accent: string, background: string, logo: string}, branch: array{name: string, phone: string, address: string, lat: float, lng: float, opens_at: string, closes_at: string}, owner: array{name: string, email: string, phone: ?string}, support_email: ?string, modules: list<string>, theme?: string, type?: string}  $input
      * @return array{branch: Branch, owner: array{user: User, temporary_password: string}, support: ?array{user: User, temporary_password: string}}
      */
     public function setUp(array $input): array
@@ -64,10 +65,21 @@ class ClientSetupService
             throw new RuntimeException('Unknown module(s): '.implode(', ', $unknown).'.');
         }
 
+        // Restaurant, pharmacy or shop (R1, 2026-11-25): set once, here.
+        $type = $input['type'] ?? BusinessType::RESTAURANT;
+        if (! isset(BusinessType::TYPES[$type])) {
+            throw new RuntimeException("Unknown business type {$type}. Use restaurant, pharmacy or shop.");
+        }
+        $notForType = array_filter($input['modules'], fn (string $module) => ! BusinessType::typeAllowsModule($type, $module));
+        if ($notForType !== []) {
+            throw new RuntimeException('Not for a '.strtolower(BusinessType::TYPES[$type]).': '.implode(', ', $notForType).'. These modules are a restaurant\'s only.');
+        }
+
         Artisan::call('db:seed', ['--class' => RolesAndPermissionsSeeder::class, '--force' => true]);
 
-        return DB::transaction(function () use ($input) {
+        return DB::transaction(function () use ($input, $type) {
             $this->settings->set(self::SETUP_MARKER, now()->toIso8601String());
+            app(BusinessType::class)->set($type);
             $this->settings->set('business_name', trim($input['business']));
             // The business's own colours and logo (required, owner 2026-11-24).
             $profile = app(BusinessProfile::class);
@@ -91,7 +103,7 @@ class ClientSetupService
 
             // A website starts with an About page and FAQ in the business's name (2026-11-24).
             if (in_array(ModuleService::WEBSITE, $input['modules'], true)) {
-                $this->seedWebsiteStarter(trim($input['business']));
+                $this->seedWebsiteStarter(trim($input['business']), $type);
             }
             // The website's look (2026-11-24): chosen at onboarding, Classic unless said otherwise.
             app(WebsiteThemeService::class)->set($input['theme'] ?? WebsiteThemeService::DEFAULT);
@@ -107,9 +119,10 @@ class ClientSetupService
         });
     }
 
-    private function seedWebsiteStarter(string $business): void
+    private function seedWebsiteStarter(string $business, string $type): void
     {
-        $starter = require database_path('seeders/data/site_content_starter.php');
+        // A restaurant's text is the original; a pharmacy and a shop have their own (R1).
+        $starter = require database_path($type === BusinessType::RESTAURANT ? 'seeders/data/site_content_starter.php' : "seeders/data/site_content_starter_{$type}.php");
         $fill = fn (string $text) => str_replace(':name', $business, $text);
 
         SitePage::updateOrCreate(['slug' => 'about'], ['body' => $fill($starter['about'])]);

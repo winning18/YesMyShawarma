@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\Branches\WorkingHoursService;
 use App\Services\Modules\ModuleService;
 use App\Services\Settings\BusinessProfile;
+use App\Services\Settings\BusinessType;
 use App\Services\Settings\SettingsService;
 use App\Services\Users\PinService;
 use App\Services\Users\UserManagementService;
@@ -121,6 +122,10 @@ class DemoDataService
     {
         if (MenuItem::exists()) {
             throw new RuntimeException('This install already has a menu; the demo menu only goes on an empty one.');
+        }
+        // The demo menu is a restaurant's; demo products for a pharmacy or shop come with R2.
+        if (! app(BusinessType::class)->isRestaurant()) {
+            throw new RuntimeException('The demo menu is for restaurants; there are no demo products for a '.strtolower(app(BusinessType::class)->label()).' yet.');
         }
 
         $data = require database_path('seeders/data/demo_business.php');
