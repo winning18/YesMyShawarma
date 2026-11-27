@@ -83,7 +83,7 @@
             <div>
                 <h3 class="font-semibold text-gray-800">{{ __('Recorded as (daily sales reporting)') }}</h3>
                 <p class="text-xs text-gray-500 mt-1">
-                    {{ __('If this item is a combo (e.g. "Signature" = Chicken Shawarma + Cheese + Sausage), configure what it counts as below. A plain item with nothing configured here is recorded under its own name as usual.') }}
+                    {{ __('If this item is a combo or bundle (e.g. "Value pack" = three items sold together), configure what it counts as below. A plain item with nothing configured here is recorded under its own name as usual.') }}
                 </p>
             </div>
 

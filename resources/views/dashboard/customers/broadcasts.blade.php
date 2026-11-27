@@ -31,7 +31,7 @@
                 <x-input-label for="message" :value="__('Message')" required />
                 <textarea id="message" name="message" rows="4" maxlength="560" x-model="message" x-ref="message" required
                     class="mt-1 block w-full rounded-md border-gray-300 text-sm"
-                    placeholder="{{ __('e.g. It\'s Shawarma Wednesday! Buy 2, get 1 free at every branch today. Order: yesmyshawarma.com') }}"></textarea>
+                    placeholder="{{ __('e.g. Today only: buy 2, get 1 free at every branch. Order on our website or visit us.') }}"></textarea>
                 <p class="text-xs text-gray-500 mt-1">
                     <span x-text="length"></span> {{ __('characters incl. the opt-out link') }} ·
                     <span class="font-semibold" x-text="parts"></span> <span x-text="parts === 1 ? @js(__('SMS')) : @js(__('SMS each'))"></span>

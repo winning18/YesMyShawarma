@@ -27,7 +27,7 @@
                             <label for="description" class="block text-xs font-medium text-gray-500 mb-1">{{ __('What happened') }} <span class="text-red-600">*</span></label>
                             <textarea id="description" name="description" rows="2" required maxlength="1000"
                                 class="w-full rounded-md border-gray-300 text-sm"
-                                placeholder="{{ __('e.g. Box of 10 Shawarma wraps got wet during delivery and had to be thrown out.') }}"
+                                placeholder="{{ __('e.g. A box of 10 items got wet during delivery and had to be thrown out.') }}"
                             >{{ old('description') }}</textarea>
                         </div>
 
