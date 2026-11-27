@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\OrderPlacementException;
 use App\Models\HeldSale;
+use App\Models\MenuItem;
 use App\Models\Order;
 use App\Services\Branches\BranchContext;
 use App\Services\Cart\PosCartService;
@@ -11,9 +12,11 @@ use App\Services\Menu\MenuPricingService;
 use App\Services\Orders\CounterReturnService;
 use App\Services\Orders\Data\PlaceOrderItemData;
 use App\Services\Pos\HeldSaleService;
+use App\Services\Pos\PharmacySaleService;
 use App\Services\Pos\RetailPosService;
 use App\Services\Promotions\PromotionService;
 use App\Services\Shifts\ShiftService;
+use App\Services\Stock\BatchService;
 use App\Services\Users\PinService;
 use App\Support\Money;
 use Illuminate\Http\JsonResponse;
@@ -45,6 +48,7 @@ class RetailPosController extends Controller
         $code = (string) $request->validate(['code' => ['required', 'string', 'max:64']])['code'];
 
         $found = $pos->scan($branch, $code);
+        app(BatchService::class)->assertSellable($found['item'], $branch->id);
         $cart->add($branch->id, $found['item']->id, 1, null, [], $found['pack']?->id);
         $payload = PosController::cartPayload($cart, $promotions);
 
@@ -62,6 +66,10 @@ class RetailPosController extends Controller
             'pack_id' => ['nullable', 'integer'],
             'quantity' => ['required', 'integer', 'min:1', 'max:'.PosCartService::maxLineQuantity()],
         ]);
+
+        if ($product = MenuItem::find($v['menu_item_id'])) {
+            app(BatchService::class)->assertSellable($product, $branch->id);
+        }
 
         try {
             $pricing->priceItem($branch, new PlaceOrderItemData(menuItemId: $v['menu_item_id'], quantity: $v['quantity'], packId: $v['pack_id'] ?? null));
@@ -92,6 +100,41 @@ class RetailPosController extends Controller
 
         $approver = $pins->approver($v['staff_code'], $v['pin'], $branch->id);
         $cart->setPrice($line, isset($v['price']) ? Money::toPesewas($v['price']) : null, $approver->id);
+
+        return response()->json(PosController::cartPayload($cart, $promotions));
+    }
+
+    /**
+     * A pharmacy's restricted medicines approved by a manager, with the
+     * prescription when one is needed (R5, PharmacySaleService).
+     */
+    public function pharmacyCheck(Request $request, BranchContext $context, PosCartService $cart, PinService $pins, PharmacySaleService $pharmacy, PromotionService $promotions): JsonResponse
+    {
+        Gate::authorize('orders.create');
+        abort_unless($pharmacy->applies(), 404);
+        abort_unless($branch = $context->branch(), 422, 'No branch selected.');
+
+        $v = $request->validate([
+            'staff_code' => ['required', 'string', 'max:20'],
+            'pin' => ['required', 'digits_between:4,6'],
+            'prescription' => ['array'],
+            'prescription.patient_name' => ['nullable', 'string', 'max:255'],
+            'prescription.patient_phone' => ['nullable', 'string', 'max:30'],
+            'prescription.prescriber_name' => ['nullable', 'string', 'max:255'],
+            'prescription.prescriber_facility' => ['nullable', 'string', 'max:255'],
+            'prescription.issued_on' => ['nullable', 'date', 'before_or_equal:today'],
+            'prescription.prescription_number' => ['nullable', 'string', 'max:60'],
+            'prescription.notes' => ['nullable', 'string', 'max:1000'],
+            'photo' => ['nullable', 'image', 'max:5120'],
+        ], [
+            'staff_code.required' => __('A manager types their Staff ID and PIN to approve this.'),
+            'pin.required' => __('A manager types their Staff ID and PIN to approve this.'),
+            'prescription.issued_on.before_or_equal' => __('The prescription date can\'t be in the future. Check the date on it.'),
+            'photo.max' => __('The photo is bigger than 5 MB. Take it again at a lower size.'),
+        ]);
+
+        $approver = $pins->approver($v['staff_code'], $v['pin'], $branch->id);
+        $pharmacy->approve($cart->summary()['lines'], $approver, $v['prescription'] ?? [], $request->file('photo'), $branch->id);
 
         return response()->json(PosController::cartPayload($cart, $promotions));
     }

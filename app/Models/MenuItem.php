@@ -16,10 +16,48 @@ use Illuminate\Support\Facades\Storage;
     'image_path', 'is_active', 'sort_order',
     // Products (pharmacies and shops, R2): ProductCatalogService.
     'sku', 'barcode', 'unit_name', 'cost_price',
+    // Medicines (pharmacies, R5).
+    'generic_name', 'strength', 'dosage_form', 'fda_number', 'medicine_class',
 ])]
 class MenuItem extends Model
 {
     use HasFactory, SoftDeletes;
+
+    /**
+     * A medicine's class (R5, owner 2026-11-27; names to confirm with the
+     * pilot pharmacist): OTC sells freely; the rest need a manager's
+     * approval at the till, and Prescription-only and Controlled a
+     * prescription too. Null: not a medicine.
+     */
+    public const OTC = 'otc';
+
+    public const PHARMACY_MEDICINE = 'pharmacy';
+
+    public const PRESCRIPTION_ONLY = 'pom';
+
+    public const CONTROLLED = 'controlled';
+
+    public const MEDICINE_CLASSES = [
+        self::OTC => 'Over the counter (OTC)',
+        self::PHARMACY_MEDICINE => 'Pharmacy medicine',
+        self::PRESCRIPTION_ONLY => 'Prescription only (POM)',
+        self::CONTROLLED => 'Controlled drug',
+    ];
+
+    public function isMedicine(): bool
+    {
+        return $this->medicine_class !== null;
+    }
+
+    public function needsApproval(): bool
+    {
+        return in_array($this->medicine_class, [self::PHARMACY_MEDICINE, self::PRESCRIPTION_ONLY, self::CONTROLLED], true);
+    }
+
+    public function needsPrescription(): bool
+    {
+        return in_array($this->medicine_class, [self::PRESCRIPTION_ONLY, self::CONTROLLED], true);
+    }
 
     protected function casts(): array
     {

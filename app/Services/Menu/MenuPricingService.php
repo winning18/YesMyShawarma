@@ -128,6 +128,8 @@ class MenuPricingService
             'cost_snapshot' => $cost,
             'price_changed_by' => $listPrice !== null ? $itemData->priceChangedBy : null,
             'unit_name' => $menuItem->unit_name,
+            // Display only (the till): a pharmacy's medicine class (R5).
+            'medicine_class' => $menuItem->medicine_class,
             'line_total' => $lineTotal,
             'notes' => $itemData->notes,
             'options' => $optionRows,

@@ -71,6 +71,32 @@
             <x-input-error class="mt-2" :messages="$errors->get('cost_price')" />
         </div>
     </div>
+
+    {{-- A pharmacy's medicine details (R5). --}}
+    @pharmacy
+        <div class="border-t border-gray-100 pt-4 space-y-4">
+            <div>
+                <x-input-label for="medicine_class" :value="__('Medicine class')" />
+                <select id="medicine_class" name="medicine_class" class="mt-1 block w-full rounded-md border-gray-300">
+                    <option value="">{{ __('Not a medicine') }}</option>
+                    @foreach (\App\Models\MenuItem::MEDICINE_CLASSES as $key => $label)
+                        <option value="{{ $key }}" @selected(old('medicine_class', $menuItem?->medicine_class) === $key)>{{ __($label) }}</option>
+                    @endforeach
+                </select>
+                <p class="text-xs text-gray-500 mt-1">{{ __('A medicine is kept in batches with expiry dates. Pharmacy medicines need a manager\'s approval at the till; Prescription only and Controlled need a prescription too.') }}</p>
+                <x-input-error class="mt-2" :messages="$errors->get('medicine_class')" />
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                @foreach (['generic_name' => [__('Generic name'), __('e.g. Paracetamol')], 'strength' => [__('Strength'), __('e.g. 500mg, 125mg/5ml')], 'dosage_form' => [__('Form'), __('e.g. Tablet, Syrup, Capsule')], 'fda_number' => [__('FDA Ghana registration no.'), '']] as $field => [$label, $hint])
+                    <div>
+                        <x-input-label :for="$field" :value="$label" />
+                        <x-text-input :id="$field" :name="$field" type="text" class="mt-1 block w-full" :value="$value($field)" placeholder="{{ $hint }}" />
+                        <x-input-error class="mt-2" :messages="$errors->get($field)" />
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endpharmacy
 @endrestaurant
 
 <div>

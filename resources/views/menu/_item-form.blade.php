@@ -5,6 +5,12 @@
         <p class="text-sm text-brand-gray-500">{{ __('Check back soon, or see what else is on the menu.') }}</p>
         <a href="{{ route('menu.index') }}" class="inline-block mt-3 px-6 py-2.5 bg-brand-surface text-brand-highlight font-bold rounded-md hover:opacity-90">{{ __('Browse the menu') }}</a>
     </div>
+{{-- A pharmacy's prescription-only medicine isn't sold online (R5). --}}
+@elseif ($item->needsPrescription())
+    <div class="mb-6 rounded-lg bg-brand-gray-100 px-4 py-3">
+        <p class="font-semibold">{{ __('Prescription needed') }}</p>
+        <p class="text-sm text-brand-gray-500">{{ __('This medicine is sold only against a prescription. Visit us with it, and our pharmacist will help.') }}</p>
+    </div>
 @else
 <div x-data="menuItemForm()">
     <form method="POST" action="{{ route('cart.add') }}" @submit="submit($event)">

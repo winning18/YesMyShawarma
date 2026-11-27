@@ -31,6 +31,7 @@ use App\Http\Controllers\HeroSliderController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\HomeStripController;
 use App\Http\Controllers\Inventory\InventoryController;
+use App\Http\Controllers\Inventory\PharmacyController;
 use App\Http\Controllers\Inventory\PurchaseOrderController;
 use App\Http\Controllers\Inventory\StockCountController;
 use App\Http\Controllers\Inventory\StockTransferController;
@@ -241,6 +242,7 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
         Route::post('/dashboard/pos/scan', [RetailPosController::class, 'scan'])->name('dashboard.pos.scan');
         Route::post('/dashboard/pos/add-product', [RetailPosController::class, 'add'])->name('dashboard.pos.add-product');
         Route::post('/dashboard/pos/cart/{line}/price', [RetailPosController::class, 'price'])->middleware('throttle:30,1')->name('dashboard.pos.cart.price');
+        Route::post('/dashboard/pos/pharmacy-check', [RetailPosController::class, 'pharmacyCheck'])->middleware('throttle:30,1')->name('dashboard.pos.pharmacy-check');
         Route::get('/dashboard/pos/held', [RetailPosController::class, 'held'])->name('dashboard.pos.held');
         Route::post('/dashboard/pos/held', [RetailPosController::class, 'hold'])->name('dashboard.pos.held.store');
         Route::post('/dashboard/pos/held/{heldSale}/recall', [RetailPosController::class, 'recall'])->name('dashboard.pos.held.recall');
@@ -502,6 +504,11 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
         Route::get('/transfers/{transfer}', [StockTransferController::class, 'show'])->name('transfers.show');
         Route::post('/transfers/{transfer}/receive', [StockTransferController::class, 'receive'])->name('transfers.receive');
         Route::post('/transfers/{transfer}/cancel', [StockTransferController::class, 'cancel'])->name('transfers.cancel');
+        // A pharmacy's (R5).
+        Route::get('/expiry', [PharmacyController::class, 'expiry'])->name('expiry');
+        Route::post('/batches/{batch}/write-off', [PharmacyController::class, 'writeOff'])->name('batches.write-off');
+        Route::get('/register', [PharmacyController::class, 'register'])->name('register');
+        Route::get('/prescriptions/{prescription}/photo', [PharmacyController::class, 'photo'])->name('prescriptions.photo');
     });
 
     // Pharmacies and shops only (R2): pack sizes and the product import.

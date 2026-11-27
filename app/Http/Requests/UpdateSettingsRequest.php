@@ -37,6 +37,8 @@ class UpdateSettingsRequest extends FormRequest
             'momo_check_transaction_id' => ['sometimes', 'boolean'],
             // A pharmacy's or shop's return window (R3).
             'returns_days' => ['sometimes', 'integer', 'min:0', 'max:365'],
+            // A pharmacy's expiry warning (R5).
+            'expiry_warning_days' => ['sometimes', 'integer', 'min:1', 'max:730'],
         ];
     }
 

@@ -32,6 +32,35 @@
             returnDamaged: [],
             returnReason: '',
             returnCredit: 0,
+            pharmacy: @js($cart['pharmacy'] ?? null),
+            checkOpen: false,
+
+            openCheck() {
+                this.checkOpen = true;
+                this.tillError = null;
+            },
+
+            // With a photo, so a form post, not JSON.
+            async saveCheck(form) {
+                this.tillBusy = true;
+                this.tillError = null;
+                try {
+                    const response = await fetch(@js(route('dashboard.pos.pharmacy-check')), {
+                        method: 'POST',
+                        headers: { Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                        body: new FormData(form),
+                    });
+                    const payload = await response.json().catch(() => ({}));
+                    if (!response.ok) throw new Error(window.failureMessage(response, payload));
+                    this.applyPayload(payload);
+                    this.checkOpen = false;
+                    form.reset();
+                } catch (e) {
+                    this.tillError = window.explainError(e);
+                } finally {
+                    this.tillBusy = false;
+                }
+            },
 
             async tillRequest(url, method = 'GET', body = null) {
                 const response = await fetch(url, { method, headers: this.headers(), body: body ? JSON.stringify(body) : undefined });
@@ -41,6 +70,7 @@
             },
 
             applyPayload(payload) {
+                if ('pharmacy' in payload) this.pharmacy = payload.pharmacy;
                 this.lines = payload.lines;
                 this.subtotal = payload.subtotal;
                 this.foodSubtotal = payload.foodSubtotal;

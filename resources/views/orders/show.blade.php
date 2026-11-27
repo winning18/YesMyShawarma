@@ -137,6 +137,24 @@
                     </div>
                 @endif
 
+                {{-- A pharmacy sale's prescription (R5): health data, managers and the owner only. --}}
+                @pharmacy
+                @can('orders.refund')
+                    @php $prescription = \App\Models\Prescription::where('order_id', $order->id)->with('approver:id,name')->first(); @endphp
+                    @if ($prescription)
+                        <div class="bg-white shadow rounded-lg p-4 text-sm space-y-1">
+                            <h3 class="font-semibold text-gray-800 mb-2">{{ __('Prescription') }}</h3>
+                            <p>{{ __('Patient') }}: {{ $prescription->patient_name }}@if ($prescription->patient_phone) · {{ $prescription->patient_phone }}@endif</p>
+                            <p>{{ __('Prescriber') }}: {{ $prescription->prescriber_name }}@if ($prescription->prescriber_facility) ({{ $prescription->prescriber_facility }})@endif</p>
+                            <p>{{ __('Issued') }}: {{ $prescription->issued_on->format('j M Y') }}@if ($prescription->prescription_number) · {{ __('No.') }} {{ $prescription->prescription_number }}@endif</p>
+                            <p>{{ __('Approved by') }}: {{ $prescription->approver?->name }}</p>
+                            @if ($prescription->notes)<p class="text-gray-600">{{ $prescription->notes }}</p>@endif
+                            @if ($prescription->photo_path)<a href="{{ route('dashboard.inventory.prescriptions.photo', $prescription) }}" target="_blank" class="text-indigo-600 hover:underline">{{ __('See the photo') }}</a>@endif
+                        </div>
+                    @endif
+                @endcan
+                @endpharmacy
+
                 {{-- Timeline --}}
                 <div class="bg-white shadow rounded-lg p-4">
                     <h3 class="font-semibold text-gray-800 mb-3">{{ __('Timeline') }}</h3>

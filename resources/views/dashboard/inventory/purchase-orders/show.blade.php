@@ -1,5 +1,5 @@
 {{-- A purchase order: its lines, marking it ordered, receiving it (R4). --}}
-@php $money = fn (int $p) => 'GH₵'.number_format($p / 100, 2); @endphp
+@php $money = fn (int $p) => 'GH₵'.number_format($p / 100, 2); $batches = app(\App\Services\Stock\BatchService::class); @endphp
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight"><span class="font-mono">{{ $order->reference }}</span> · {{ $statusLabel }}</h2>
@@ -19,7 +19,16 @@
                             <td class="py-2 text-right">{{ $line->quantity_received }}</td>
                             <td class="py-2 text-right">{{ $money($line->unit_cost) }}</td>
                             @if ($order->isOpen())
-                                <td class="py-2 pl-3"><input type="number" min="0" max="{{ $line->outstanding() }}" name="received[{{ $line->id }}]" value="{{ $line->outstanding() }}" @disabled($line->outstanding() === 0) class="w-24 rounded-md border-gray-300 text-sm"></td>
+                                <td class="py-2 pl-3">
+                                    <input type="number" min="0" max="{{ $line->outstanding() }}" name="received[{{ $line->id }}]" value="{{ $line->outstanding() }}" @disabled($line->outstanding() === 0) class="w-24 rounded-md border-gray-300 text-sm">
+                                    {{-- A medicine: its batch from the box (R5). --}}
+                                    @if ($batches->tracks($line->menuItem) && $line->outstanding() > 0)
+                                        <div class="mt-1 flex gap-1">
+                                            <input name="batches[{{ $line->id }}][batch_number]" value="{{ old('batches.'.$line->id.'.batch_number') }}" placeholder="{{ __('Batch no.') }}" maxlength="60" class="w-24 rounded-md border-gray-300 text-xs">
+                                            <input type="date" name="batches[{{ $line->id }}][expiry_date]" value="{{ old('batches.'.$line->id.'.expiry_date') }}" title="{{ __('Expiry date') }}" class="rounded-md border-gray-300 text-xs">
+                                        </div>
+                                    @endif
+                                </td>
                             @endif
                         </tr>
                     @endforeach

@@ -324,6 +324,10 @@
                 ['dashboard.inventory.counts.index', 'dashboard.inventory.counts.*', __('Stock counts')],
                 ['dashboard.inventory.transfers.index', 'dashboard.inventory.transfers.*', __('Transfers')],
                 ['dashboard.inventory.reports', 'dashboard.inventory.reports', __('Stock reports')],
+                ...(app(\App\Services\Settings\BusinessType::class)->current() === 'pharmacy' ? [
+                    ['dashboard.inventory.expiry', 'dashboard.inventory.expiry', __('Expiry')],
+                    ['dashboard.inventory.register', 'dashboard.inventory.register', __('Controlled drugs register')],
+                ] : []),
             ] as [$route, $active, $label])
                 <a href="{{ route($route) }}" class="block px-3 py-1.5 rounded-md text-sm transition duration-150 ease-in-out {{ request()->routeIs(...explode('|', $active)) ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}">{{ $label }}</a>
             @endforeach

@@ -80,12 +80,26 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // A pharmacy's or shop's managers and general managers manage stock at
+        // their branch (owner, 2026-11-27); a restaurant's stay as they were.
+        Gate::before(function (User $user, string $ability) {
+            if ($ability !== 'stock.manage' || app(BusinessType::class)->isRestaurant()) {
+                return null;
+            }
+            $context = app(BranchContext::class);
+            $branchId = $context->id();
+
+            return $branchId && in_array($context->primaryRoleFor($user, $branchId), ['manager', 'general_manager'], true) ? true : null;
+        });
+
         // @module('freebies') … @endmodule — shows a part only while that
         // module is switched on (ModuleService).
         Blade::if('module', fn (string $module) => app(ModuleService::class)->enabled($module));
         // @restaurant … @endrestaurant — a restaurant's parts only: the
         // kitchen, Modifiers, the menu Time table (BusinessType).
         Blade::if('restaurant', fn () => app(BusinessType::class)->isRestaurant());
+        // @pharmacy … @endpharmacy — a pharmacy's parts only: medicines, batches, prescriptions (R5).
+        Blade::if('pharmacy', fn () => app(BusinessType::class)->current() === BusinessType::PHARMACY);
 
         // A pharmacy's or shop's words laid over the app's own (BusinessType).
         // Skipped quietly before the settings table exists, as below.

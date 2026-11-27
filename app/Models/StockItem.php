@@ -38,6 +38,12 @@ class StockItem extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    /** A pharmacy's batches of this product here (R5), each with its expiry. */
+    public function batches(): HasMany
+    {
+        return $this->hasMany(StockBatch::class);
+    }
+
     public function movements(): HasMany
     {
         return $this->hasMany(StockMovement::class);

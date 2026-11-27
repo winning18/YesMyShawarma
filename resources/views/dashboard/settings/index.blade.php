@@ -142,6 +142,17 @@
                 </div>
                 <x-input-error class="mt-2" :messages="$errors->get('returns_days')" />
             </div>
+            @pharmacy
+            <div class="border-t border-gray-100 pt-6">
+                <h3 class="font-semibold text-gray-800">{{ __('Expiry warning') }}</h3>
+                <label for="expiry_warning_days" class="block text-sm text-gray-500 mb-2">{{ __('Batches expiring within this many days show under Stock, Expiry, and in the Monday text to the owner.') }}</label>
+                <div class="flex items-center gap-2">
+                    <input id="expiry_warning_days" name="expiry_warning_days" type="number" min="1" max="730" value="{{ old('expiry_warning_days', $expiryWarningDays) }}" class="w-24 rounded-md text-sm {{ $errors->has('expiry_warning_days') ? 'border-red-600 ring-1 ring-red-600' : 'border-gray-300' }}">
+                    <span class="text-sm text-gray-600">{{ __('days') }}</span>
+                </div>
+                <x-input-error class="mt-2" :messages="$errors->get('expiry_warning_days')" />
+            </div>
+            @endpharmacy
             @endcan
             @endrestaurant
 

@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\Category;
 use App\Models\MenuItem;
 use App\Models\ProductPack;
+use App\Services\Settings\BusinessType;
 use App\Support\Money;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -49,6 +50,20 @@ class ProductImportService
         'pack price' => 'pack_price',
         'pack cost' => 'pack_cost_price', 'pack cost price' => 'pack_cost_price',
         'pack barcode' => 'pack_barcode',
+        // Medicines (pharmacies, R5).
+        'generic name' => 'generic_name', 'generic' => 'generic_name',
+        'strength' => 'strength',
+        'form' => 'dosage_form', 'dosage form' => 'dosage_form',
+        'fda number' => 'fda_number', 'fda no' => 'fda_number', 'fda registration' => 'fda_number',
+        'class' => 'medicine_class', 'medicine class' => 'medicine_class',
+    ];
+
+    /** What a Class column may say => medicine_class. */
+    private const CLASS_WORDS = [
+        'otc' => 'otc', 'over the counter' => 'otc',
+        'pharmacy' => 'pharmacy', 'pharmacy medicine' => 'pharmacy', 'p' => 'pharmacy',
+        'pom' => 'pom', 'prescription' => 'pom', 'prescription only' => 'pom',
+        'controlled' => 'controlled', 'controlled drug' => 'controlled',
     ];
 
     public const TEMPLATE_HEADINGS = ['Name', 'Category', 'Price', 'SKU', 'Barcode', 'Unit', 'Cost price', 'Description', 'Pack name', 'Pack units', 'Pack price', 'Pack cost price', 'Pack barcode'];
@@ -86,6 +101,10 @@ class ProductImportService
                 ];
                 if ($product['description'] !== null) {
                     $fields['description'] = $product['description'];
+                }
+                // A pharmacy's medicine details (R5); only what the file gives.
+                if (app(BusinessType::class)->current() === BusinessType::PHARMACY) {
+                    $fields = [...$fields, ...$product['medicine']];
                 }
 
                 if ($product['category'] !== null) {
@@ -206,7 +225,7 @@ class ProductImportService
             };
             $sku = $v['sku'] ?? null;
             $pack = $this->pack($v, $fail);
-            $productColumns = array_filter(array_intersect_key($v, array_flip(['name', 'category', 'price', 'barcode', 'unit_name', 'cost_price', 'description'])), fn ($value) => $value !== null);
+            $productColumns = array_filter(array_intersect_key($v, array_flip(['name', 'category', 'price', 'barcode', 'unit_name', 'cost_price', 'description', 'generic_name', 'strength', 'dosage_form', 'fda_number', 'medicine_class'])), fn ($value) => $value !== null);
 
             // Another pack for a product further up the file.
             if ($sku !== null && isset($bySku[$sku])) {
@@ -255,6 +274,13 @@ class ProductImportService
                 $fail(__('the Unit is longer than 30 characters. Use a short word, e.g. tablet or piece.'));
             }
             $this->checkBarcode($v['barcode'] ?? null, $barcodes, $fail, $existing?->id);
+            $class = null;
+            if (($v['medicine_class'] ?? null) !== null) {
+                $class = self::CLASS_WORDS[mb_strtolower(trim($v['medicine_class']))] ?? null;
+                if ($class === null) {
+                    $fail(__('the Class ":value" isn\'t one we know. Use OTC, Pharmacy, POM or Controlled, or leave it empty if it isn\'t a medicine.', ['value' => $v['medicine_class']]));
+                }
+            }
 
             $products[] = [
                 'existing' => $existing,
@@ -266,6 +292,7 @@ class ProductImportService
                 'unit_name' => $v['unit_name'] ?? null,
                 'cost_price' => $v['cost_price'] ?? null,
                 'description' => $v['description'] ?? null,
+                'medicine' => array_filter(['generic_name' => $v['generic_name'] ?? null, 'strength' => $v['strength'] ?? null, 'dosage_form' => $v['dosage_form'] ?? null, 'fda_number' => $v['fda_number'] ?? null, 'medicine_class' => $class], fn ($x) => $x !== null),
                 'packs' => $pack ? [$pack] : [],
             ];
             if ($sku !== null) {

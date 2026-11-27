@@ -27,6 +27,30 @@
     </div>
 </div>
 
+{{-- A pharmacy's check: a manager's PIN, and the prescription when one is needed (R5). --}}
+<div x-show="checkOpen" x-cloak class="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" @keydown.escape.window="checkOpen = false">
+    <form class="bg-white rounded-lg shadow-xl w-full max-w-lg p-5 space-y-3 max-h-[90vh] overflow-y-auto" @click.outside="checkOpen = false" @submit.prevent="saveCheck($event.target)">
+        <h3 class="font-semibold text-gray-800" x-text="pharmacy?.needs_prescription ? @js(__('Prescription and approval')) : @js(__("Manager's approval"))"></h3>
+        <template x-if="pharmacy?.needs_prescription">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                <label class="sm:col-span-2">{{ __("Patient's name") }} <span class="text-red-600">*</span><input name="prescription[patient_name]" maxlength="255" class="mt-1 w-full rounded-md border-gray-300 text-sm"></label>
+                <label>{{ __("Patient's phone") }}<input name="prescription[patient_phone]" maxlength="30" class="mt-1 w-full rounded-md border-gray-300 text-sm"></label>
+                <label>{{ __('Date on the prescription') }} <span class="text-red-600">*</span><input type="date" name="prescription[issued_on]" class="mt-1 w-full rounded-md border-gray-300 text-sm"></label>
+                <label>{{ __('Prescriber') }} <span class="text-red-600">*</span><input name="prescription[prescriber_name]" maxlength="255" placeholder="{{ __('e.g. Dr A. Mensah') }}" class="mt-1 w-full rounded-md border-gray-300 text-sm"></label>
+                <label>{{ __('Hospital or clinic') }}<input name="prescription[prescriber_facility]" maxlength="255" class="mt-1 w-full rounded-md border-gray-300 text-sm"></label>
+                <label>{{ __('Prescription number') }}<input name="prescription[prescription_number]" maxlength="60" class="mt-1 w-full rounded-md border-gray-300 text-sm"></label>
+                <label>{{ __('Photo of it (optional)') }}<input type="file" name="photo" accept="image/*" capture="environment" class="mt-1 w-full text-xs"></label>
+            </div>
+        </template>
+        {!! str_replace(['x-model="approval.staff_code"', 'x-model="approval.pin"'], ['name="staff_code"', 'name="pin"'], $approval) !!}
+        <p x-show="tillError" class="text-sm text-red-600" x-text="tillError"></p>
+        <div class="flex justify-end gap-2">
+            <button type="button" @click="checkOpen = false" class="px-3 py-2 text-sm text-gray-600">{{ __('Cancel') }}</button>
+            <button :disabled="tillBusy" class="px-3 py-2 bg-gray-800 text-white text-sm font-semibold rounded-md disabled:opacity-50">{{ __('Approve') }}</button>
+        </div>
+    </form>
+</div>
+
 {{-- Held sales --}}
 <div x-show="heldOpen" x-cloak class="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" @keydown.escape.window="heldOpen = false">
     <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-5 space-y-3" @click.outside="heldOpen = false">

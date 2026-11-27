@@ -25,6 +25,9 @@ class StockMovement extends Model
 
     public const TYPE_RETURNED = 'returned';
 
+    /** An expired batch written off (R5). */
+    public const TYPE_EXPIRED = 'expired';
+
     /** What caused a movement (source_type). */
     public const SOURCE_ORDER = 'order';
 
@@ -36,8 +39,10 @@ class StockMovement extends Model
 
     public const SOURCE_REFUND = 'refund';
 
+    public const SOURCE_BATCH = 'stock_batch';
+
     /** Types that take stock away. */
-    public const OUTGOING = [self::TYPE_SALE, self::TYPE_TRANSFER_OUT];
+    public const OUTGOING = [self::TYPE_SALE, self::TYPE_TRANSFER_OUT, self::TYPE_EXPIRED];
 
     public $timestamps = false;
 

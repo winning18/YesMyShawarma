@@ -273,6 +273,10 @@ no longer hold any stock permission: stock moves entirely off recipe-driven auto
 sale" action, which was removed once that existed. `rider` never held any stock permission
 either way — they never touch ingredient stock.
 
+**Pharmacies and shops (owner, 2026-11-27):** managers and general managers also manage stock at
+the branch they're on (`Gate::before` in AppServiceProvider, `stock.manage` only, never at a
+restaurant), so they can receive deliveries, count and transfer.
+
 `stock_manager` exists because this app has **no mechanism to grant a permission to one
 specific user outside a role** (`givePermissionTo()` is never called anywhere except this
 seeder) — "owner can assign anyone to manage stock" therefore has to be a role, not a per-user

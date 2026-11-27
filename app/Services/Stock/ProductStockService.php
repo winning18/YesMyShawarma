@@ -79,15 +79,19 @@ class ProductStockService
         $this->forOrder($order, $actorId, 1, StockMovement::TYPE_RESTOCK, "Back in: sale {$order->reference} cancelled");
     }
 
-    /** A returned line put back on the shelf (CounterReturnService). */
+    /** A returned line put back on the shelf (CounterReturnService), into the batch it came from. */
     public function returnToShelf(OrderItem $line, int $quantity, Refund $refund, User $actor, ?int $shiftId = null): void
     {
         if (! $this->applies() || ! $line->menuItem) {
             return;
         }
 
+        $units = $quantity * max(1, $line->units);
         $item = $this->itemFor($line->menuItem, $refund->branch_id, $actor);
-        $this->stock->record($item, $actor, StockMovement::TYPE_RETURNED, $quantity * max(1, $line->units), [StockMovement::SOURCE_REFUND, $refund->id], "Returned: sale {$line->order?->reference}", $shiftId);
+        $this->stock->record($item, $actor, StockMovement::TYPE_RETURNED, $units, [StockMovement::SOURCE_REFUND, $refund->id], "Returned: sale {$line->order?->reference}", $shiftId);
+        if (app(BatchService::class)->tracks($line->menuItem)) {
+            app(BatchService::class)->giveBackLine($line, $units);
+        }
     }
 
     private function forOrder(Order $order, int $actorId, int $direction, string $type, string $note, ?int $shiftId = null): void
@@ -108,6 +112,18 @@ class ProductStockService
                 $this->stock->record($item, $actor, $type, $direction * $units, [StockMovement::SOURCE_ORDER, $order->id], $note, $shiftId);
             }
         });
+
+        // A pharmacy's medicines: which batches (R5), line by line.
+        $batches = app(BatchService::class);
+        foreach ($order->items()->with('menuItem')->get() as $line) {
+            if (! $batches->tracks($line->menuItem)) {
+                continue;
+            }
+            $units = $line->quantity * max(1, $line->units);
+            $direction < 0
+                ? $batches->take($this->itemFor($line->menuItem, $order->branch_id, $actor), $units, $line)
+                : $batches->giveBackLine($line, $units);
+        }
     }
 
     /** @return Collection<int, int> menu_item_id => units sold (free lines included: they left the shelf) */

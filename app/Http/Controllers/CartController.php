@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\OrderPlacementException;
 use App\Models\Branch;
+use App\Models\MenuItem;
 use App\Services\Cart\CartService;
 use App\Services\Menu\MenuPricingService;
 use App\Services\Orders\Data\PlaceOrderItemData;
@@ -41,6 +42,11 @@ class CartController extends Controller
 
         $branch = Branch::findOrFail($validated['branch_id']);
         $optionQuantities = $this->optionQuantities($validated);
+
+        // A pharmacy's prescription-only medicine isn't sold online (R5).
+        if (($product = MenuItem::find($validated['menu_item_id'])) && $product->needsPrescription()) {
+            return back()->withErrors(['menu_item_id' => OrderPlacementException::prescriptionNeeded($product->name)->getMessage()]);
+        }
 
         try {
             $pricing->priceItem($branch, new PlaceOrderItemData(

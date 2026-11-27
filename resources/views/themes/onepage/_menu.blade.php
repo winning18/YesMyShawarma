@@ -25,7 +25,7 @@
             </h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                 @foreach ($group['items'] as $item)
-                    @php $quickAdd = $item->optionGroups->isEmpty(); @endphp
+                    @php $quickAdd = $item->optionGroups->isEmpty() && ! $item->needsPrescription(); @endphp
                     <div class="flex gap-4 rounded-2xl border border-brand-gray-100 bg-brand-white p-3 sm:p-4">
                         @if ($item->imageUrl())
                             <a href="{{ route('menu.show', $item) }}" class="relative shrink-0 w-24 h-24 sm:w-28 sm:h-28 overflow-hidden rounded-xl bg-brand-gray-100">

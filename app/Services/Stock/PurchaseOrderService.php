@@ -22,6 +22,8 @@ use Illuminate\Validation\ValidationException;
  *   100 tablets), recorded against the order (stock_movements source).
  * - Receiving at a new cost updates the product's (and the pack's) cost
  *   price to the latest (owner); each sale keeps the cost it was sold at.
+ * - At a pharmacy, a medicine is received as a batch: its number and expiry
+ *   date (BatchService, R5); an expiry that's already past is refused.
  */
 class PurchaseOrderService
 {
@@ -80,14 +82,15 @@ class PurchaseOrderService
      * What arrived: each line's quantity (packs, or units for a unit line).
      *
      * @param  array<int, int|string>  $received  purchase_order_item_id => quantity arrived now
+     * @param  array<int, array{batch_number?: ?string, expiry_date?: ?string}>  $batches  purchase_order_item_id => its batch (medicines at a pharmacy)
      */
-    public function receive(PurchaseOrder $order, array $received, User $by): PurchaseOrder
+    public function receive(PurchaseOrder $order, array $received, User $by, array $batches = []): PurchaseOrder
     {
         if (! $order->isOpen()) {
             throw ValidationException::withMessages(['received' => __('This order is :status; nothing more can be received on it.', ['status' => $this->statusLabel($order->status)])]);
         }
 
-        return DB::transaction(function () use ($order, $received, $by) {
+        return DB::transaction(function () use ($order, $received, $by, $batches) {
             $any = false;
             foreach ($order->items()->with(['menuItem', 'pack'])->lockForUpdate()->get() as $line) {
                 $quantity = (int) ($received[$line->id] ?? 0);
@@ -99,7 +102,14 @@ class PurchaseOrderService
                 }
 
                 $item = $this->stock->itemFor($line->menuItem, $order->branch_id, $by);
-                $this->movements->record($item, $by, StockMovement::TYPE_RECEIVED, $quantity * $line->units, [StockMovement::SOURCE_PURCHASE_ORDER, $order->id], __('Received on :reference', ['reference' => $order->reference]));
+                $batch = $batches[$line->id] ?? [];
+                if (app(BatchService::class)->tracks($line->menuItem)) {
+                    $this->assertBatch($this->lineName($line), $batch);
+                }
+                $this->movements->record($item, $by, StockMovement::TYPE_RECEIVED, $quantity * $line->units, [StockMovement::SOURCE_PURCHASE_ORDER, $order->id], __('Received on :reference', ['reference' => $order->reference]).(($batch['batch_number'] ?? null) ? ' · '.__('batch :batch', ['batch' => $batch['batch_number']]) : ''));
+                if (app(BatchService::class)->tracks($line->menuItem)) {
+                    app(BatchService::class)->receive($item, $quantity * $line->units, $batch['batch_number'] ?? null, $batch['expiry_date'] ?? null, $line->id);
+                }
                 $line->increment('quantity_received', $quantity);
                 $this->updateCost($line);
                 $any = true;
@@ -124,16 +134,35 @@ class PurchaseOrderService
     /**
      * A delivery that came with no order: recorded as an order received in full.
      *
-     * @param  list<array{menu_item_id: int|string, pack_id?: int|string|null, quantity: int|string, unit_cost: string|float|int}>  $lines
+     * @param  list<array{menu_item_id: int|string, pack_id?: int|string|null, quantity: int|string, unit_cost: string|float|int, batch_number?: ?string, expiry_date?: ?string}>  $lines
      */
     public function receiveWithoutOrder(int $branchId, ?int $supplierId, array $lines, User $by, ?string $note = null): PurchaseOrder
     {
         return DB::transaction(function () use ($branchId, $supplierId, $lines, $by, $note) {
+            $lines = array_values(array_filter($lines, fn ($l) => (int) ($l['quantity'] ?? 0) > 0));
             $order = $this->create($branchId, $supplierId, $lines, $by, $note);
             $order->update(['status' => PurchaseOrder::ORDERED, 'ordered_at' => now()]);
+            $items = $order->items()->orderBy('id')->get()->values();
 
-            return $this->receive($order, $order->items->mapWithKeys(fn (PurchaseOrderItem $l) => [$l->id => $l->quantity])->all(), $by);
+            return $this->receive(
+                $order,
+                $items->mapWithKeys(fn (PurchaseOrderItem $l) => [$l->id => $l->quantity])->all(),
+                $by,
+                $items->mapWithKeys(fn (PurchaseOrderItem $l, int $i) => [$l->id => ['batch_number' => $lines[$i]['batch_number'] ?? null, 'expiry_date' => $lines[$i]['expiry_date'] ?? null]])->all(),
+            );
         });
+    }
+
+    /** @param  array{batch_number?: ?string, expiry_date?: ?string}  $batch */
+    private function assertBatch(string $name, array $batch): void
+    {
+        $expiry = $batch['expiry_date'] ?? null;
+        if (! $expiry || ! strtotime($expiry)) {
+            throw ValidationException::withMessages(['received' => __(':name is a medicine: enter its expiry date (and batch number) from the box.', ['name' => $name])]);
+        }
+        if ($expiry < now('Africa/Accra')->toDateString()) {
+            throw ValidationException::withMessages(['received' => __(':name: the expiry date :date has already passed. Expired stock can\'t be received; return it to the supplier.', ['name' => $name, 'date' => $expiry])]);
+        }
     }
 
     public function cancel(PurchaseOrder $order): PurchaseOrder

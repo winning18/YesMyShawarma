@@ -20,6 +20,7 @@ use App\Services\Orders\Data\DeliveryAddressData;
 use App\Services\Orders\Data\PlaceOrderData;
 use App\Services\Orders\Data\PlaceOrderItemData;
 use App\Services\Orders\OrderCreationService;
+use App\Services\Pos\PharmacySaleService;
 use App\Services\Printing\PrintJobService;
 use App\Services\Promotions\PromotionService;
 use App\Services\Settings\BusinessType;
@@ -395,6 +396,9 @@ class PosController extends Controller
             $customerName = filled($customerName) ? $customerName : $tab->customer_name;
         }
 
+        // A pharmacy (R5): no expired stock, and restricted medicines approved first.
+        app(PharmacySaleService::class)->assertCanSell($summary['lines'], $branch->id);
+
         try {
             $order = $orders->create(new PlaceOrderData(
                 customerPhone: $customerPhone,
@@ -433,6 +437,7 @@ class PosController extends Controller
         }
 
         $cart->clear();
+        app(PharmacySaleService::class)->recordFor($order);
 
         // Step 8b: receipt, kitchen ticket and cash drawer through the print
         // agent when it's on; otherwise the POS prints through the browser.
@@ -485,6 +490,8 @@ class PosController extends Controller
             'discount' => $discount,
             'promotionBanner' => $promotion?->banner_headline,
             'foodSubtotal' => $foodSubtotal,
+            // A pharmacy's restricted medicines (R5): what the sale needs before it's placed.
+            'pharmacy' => app(PharmacySaleService::class)->status($summary['lines']),
         ];
     }
 

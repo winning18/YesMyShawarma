@@ -27,6 +27,12 @@ class UpdateMenuItemRequest extends FormRequest
             'barcode' => ['nullable', 'string', 'max:64', 'regex:/^[0-9A-Za-z-]+$/'],
             'unit_name' => ['nullable', 'string', 'max:30'],
             'cost_price' => ['nullable', 'numeric', 'min:0'],
+            // Medicines (pharmacies, R5).
+            'generic_name' => ['nullable', 'string', 'max:255'],
+            'strength' => ['nullable', 'string', 'max:60'],
+            'dosage_form' => ['nullable', 'string', 'max:40'],
+            'fda_number' => ['nullable', 'string', 'max:60'],
+            'medicine_class' => ['nullable', 'in:otc,pharmacy,pom,controlled'],
             'option_group_ids' => ['nullable', 'array'],
             'option_group_ids.*' => ['integer', 'exists:option_groups,id'],
         ];

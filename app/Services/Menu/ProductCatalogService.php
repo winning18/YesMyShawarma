@@ -5,6 +5,7 @@ namespace App\Services\Menu;
 use App\Models\Branch;
 use App\Models\MenuItem;
 use App\Models\ProductPack;
+use App\Services\Settings\BusinessType;
 use App\Support\Money;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Validation\ValidationException;
@@ -46,12 +47,21 @@ class ProductCatalogService
 
         $cost = $input['cost_price'] ?? null;
 
-        return [
+        $fields = [
             'sku' => $sku,
             'barcode' => $barcode,
             'unit_name' => $this->clean($input['unit_name'] ?? null),
             'cost_price' => $cost === null || $cost === '' ? null : Money::toPesewas($cost),
         ];
+
+        // A pharmacy's medicine details (R5).
+        if (app(BusinessType::class)->current() === BusinessType::PHARMACY) {
+            foreach (['generic_name', 'strength', 'dosage_form', 'fda_number', 'medicine_class'] as $field) {
+                $fields[$field] = $this->clean($input[$field] ?? null);
+            }
+        }
+
+        return $fields;
     }
 
     /** A product saved without a code gets one made from its id. */

@@ -37,6 +37,12 @@ class OrderItem extends Model
         return $this->belongsTo(MenuItem::class);
     }
 
+    /** Which batches this line came from (R5), for recalls and returns. */
+    public function batches(): HasMany
+    {
+        return $this->hasMany(OrderItemBatch::class);
+    }
+
     public function pack(): BelongsTo
     {
         return $this->belongsTo(ProductPack::class, 'product_pack_id');

@@ -10,7 +10,8 @@
     @param  bool  $isPopular
 --}}
 @php
-    $quickAdd = ($branch ?? null) && $item->relationLoaded('optionGroups') && $item->optionGroups->isEmpty();
+    // A prescription-only medicine (R5) opens its page instead: no quick Add.
+    $quickAdd = ($branch ?? null) && $item->relationLoaded('optionGroups') && $item->optionGroups->isEmpty() && ! $item->needsPrescription();
 @endphp
 <article class="group flex flex-col">
     <a href="{{ route('menu.show', $item) }}" class="relative block aspect-[4/3] overflow-hidden rounded-2xl bg-brand-yellow-light">

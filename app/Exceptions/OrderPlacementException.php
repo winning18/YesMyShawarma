@@ -48,6 +48,12 @@ class OrderPlacementException extends Exception
         return new self('This branch is not currently accepting orders.');
     }
 
+    /** A pharmacy's prescription-only medicine, ordered online (R5). */
+    public static function prescriptionNeeded(string $name): self
+    {
+        return new self(__(':name is sold only against a prescription. Visit us with it, and our pharmacist will help.', ['name' => $name]));
+    }
+
     public static function menuItemUnavailable(string $name): self
     {
         return new self("\"{$name}\" is not available at this branch right now.");

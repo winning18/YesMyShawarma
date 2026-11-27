@@ -15,7 +15,7 @@
                 </select>
                 <a href="{{ route('dashboard.inventory.suppliers.create') }}" class="text-xs text-indigo-600 hover:underline">{{ __('Add a supplier') }}</a>
             </div>
-            @include('dashboard.inventory.partials.product-lines', ['mode' => 'buy'])
+            @include('dashboard.inventory.partials.product-lines', ['mode' => 'buy', 'receiving' => $receiveNow])
             <p class="text-xs text-gray-500">{{ __('A pack\'s cost is for the whole pack. When it\'s received, the product\'s cost price becomes this latest cost.') }}</p>
             <div>
                 <x-input-label for="note" :value="__('Note (optional)')" />

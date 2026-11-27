@@ -34,6 +34,8 @@ class HeldSaleService
             'cart' => $cart->export(),
         ]);
         $cart->clear();
+        // A pharmacy's approval belongs to the sale on screen (R5): held, it goes.
+        app(PharmacySaleService::class)->forget();
 
         return $held;
     }
@@ -52,6 +54,7 @@ class HeldSaleService
 
         $cart->restore($held->cart);
         $held->delete();
+        app(PharmacySaleService::class)->forget();
     }
 
     public function discard(HeldSale $held): void

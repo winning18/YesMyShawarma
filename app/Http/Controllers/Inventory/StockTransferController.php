@@ -73,9 +73,12 @@ class StockTransferController extends Controller
     {
         Gate::authorize('stock.manage');
         abort_unless($context->id() === $transfer->to_branch_id, 404);
-        $v = $request->validate(['received' => ['required', 'array'], 'received.*' => ['required', 'integer', 'min:0']]);
+        $v = $request->validate([
+            'received' => ['required', 'array'], 'received.*' => ['required', 'integer', 'min:0'],
+            'batches' => ['array'], 'batches.*.batch_number' => ['nullable', 'string', 'max:60'], 'batches.*.expiry_date' => ['nullable', 'date'],
+        ]);
 
-        $transfers->receive($transfer, $v['received'], $request->user());
+        $transfers->receive($transfer, $v['received'], $request->user(), $v['batches'] ?? []);
 
         return back()->with('status', __('Received: stock added to this branch.'));
     }

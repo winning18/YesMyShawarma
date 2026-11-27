@@ -18,6 +18,12 @@
                             <td class="py-2 text-right">
                                 @if ($canReceive)
                                     <input type="number" min="0" max="{{ $line->units }}" name="received[{{ $line->id }}]" value="{{ $line->units }}" class="w-24 rounded-md border-gray-300 text-sm">
+                                    @if (app(\App\Services\Stock\BatchService::class)->tracks($line->menuItem))
+                                        <div class="mt-1 flex justify-end gap-1">
+                                            <input name="batches[{{ $line->id }}][batch_number]" placeholder="{{ __('Batch no.') }}" maxlength="60" class="w-24 rounded-md border-gray-300 text-xs">
+                                            <input type="date" name="batches[{{ $line->id }}][expiry_date]" required title="{{ __('Expiry date') }}" class="rounded-md border-gray-300 text-xs">
+                                        </div>
+                                    @endif
                                 @else
                                     {{ $line->received_units ?? '—' }}
                                 @endif

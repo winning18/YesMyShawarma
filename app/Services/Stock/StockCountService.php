@@ -72,6 +72,10 @@ class StockCountService
                 $change = (float) $line->counted - (float) $line->expected;
                 if (abs($change) >= 0.005) {
                     $this->movements->record($line->stockItem, $by, StockMovement::TYPE_COUNT, $change, [StockMovement::SOURCE_STOCK_COUNT, $count->id], __('Stock count'));
+                    // A pharmacy's medicine: its batches follow (R5).
+                    if (app(BatchService::class)->tracks($line->stockItem->menuItem)) {
+                        app(BatchService::class)->adjust($line->stockItem, $change);
+                    }
                     $corrected++;
                 }
             }

@@ -83,8 +83,11 @@ class PurchaseOrderController extends Controller
     public function receive(Request $request, PurchaseOrder $purchaseOrder, PurchaseOrderService $orders): RedirectResponse
     {
         Gate::authorize('stock.manage');
-        $v = $request->validate(['received' => ['required', 'array'], 'received.*' => ['nullable', 'integer', 'min:0']]);
-        $orders->receive($purchaseOrder, array_map('intval', array_filter($v['received'], fn ($q) => $q !== null)), $request->user());
+        $v = $request->validate([
+            'received' => ['required', 'array'], 'received.*' => ['nullable', 'integer', 'min:0'],
+            'batches' => ['array'], 'batches.*.batch_number' => ['nullable', 'string', 'max:60'], 'batches.*.expiry_date' => ['nullable', 'date'],
+        ]);
+        $orders->receive($purchaseOrder, array_map('intval', array_filter($v['received'], fn ($q) => $q !== null)), $request->user(), $v['batches'] ?? []);
 
         return back()->with('status', __('Received: stock added.'));
     }
@@ -108,6 +111,8 @@ class PurchaseOrderController extends Controller
             'lines.*.pack_id' => ['nullable', 'integer'],
             'lines.*.quantity' => ['required', 'integer', 'min:1', 'max:1000000'],
             'lines.*.unit_cost' => ['required', 'numeric', 'min:0', 'max:10000000'],
+            'lines.*.batch_number' => ['nullable', 'string', 'max:60'],
+            'lines.*.expiry_date' => ['nullable', 'date'],
         ], [
             'lines.required' => __('Add at least one product.'),
             'lines.*.quantity.min' => __('Each line needs a quantity of 1 or more.'),

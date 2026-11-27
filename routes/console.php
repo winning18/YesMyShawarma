@@ -5,6 +5,7 @@ use App\Console\Commands\ApplyMenuItemSchedules;
 use App\Console\Commands\DeleteExpiredDamageReportPhotos;
 use App\Console\Commands\DeleteExpiredMarketListReceipts;
 use App\Console\Commands\EscalateUnacknowledgedOrders;
+use App\Console\Commands\ExpiryAlertsCommand;
 use App\Console\Commands\SendDueSmsBroadcasts;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -15,6 +16,8 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command(EscalateUnacknowledgedOrders::class)->everyMinute();
+// A pharmacy's expiry SMS to the owner (R5): Monday mornings, Accra time.
+Schedule::command(ExpiryAlertsCommand::class)->weeklyOn(1, '08:00')->timezone('Africa/Accra');
 Schedule::command(AbandonPendingPaymentOrders::class)->everyFiveMinutes();
 Schedule::command(ApplyMenuItemSchedules::class)->everyFiveMinutes();
 Schedule::command(DeleteExpiredDamageReportPhotos::class)->hourly();

@@ -1,4 +1,7 @@
 {{-- On a pharmacy's or shop's sale line (R3): a typed quantity, and the price changed with a manager's approval. --}}
+<span x-show="line.medicine_class && line.medicine_class !== 'otc'" x-cloak class="inline-block mt-0.5 text-[10px] font-bold uppercase tracking-wide rounded px-1.5 py-0.5"
+    :class="line.medicine_class === 'controlled' ? 'bg-red-100 text-red-800' : (line.medicine_class === 'pom' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800')"
+    x-text="{ pharmacy: @js(__('Pharmacy medicine')), pom: @js(__('Prescription only')), controlled: @js(__('Controlled')) }[line.medicine_class]"></span>
 <div class="flex items-center gap-2 mt-1 text-xs" x-show="!line.is_free">
     <input type="number" min="1" :value="line.quantity" @change="changeQuantity(line.line_id, parseInt($event.target.value) || 0)" class="w-16 rounded border-gray-300 text-xs py-0.5" aria-label="{{ __('Quantity') }}">
     <span class="text-gray-500" x-text="'× ' + formatMoney(line.unit_price_snapshot)"></span>

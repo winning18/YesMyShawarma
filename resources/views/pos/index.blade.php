@@ -610,6 +610,7 @@
                         const url = @js(route('dashboard.pos.cart.show')) + (this.table ? '?table_id=' + this.table.id : '');
                         const payload = await this.tablesRequest(url);
                         this.lines = payload.lines;
+                        if ('pharmacy' in this) this.pharmacy = payload.pharmacy ?? null;
                         this.subtotal = payload.subtotal;
                         this.foodSubtotal = payload.foodSubtotal;
                         this.discount = payload.discount;
@@ -909,6 +910,7 @@
                         }
 
                         this.lines = payload.lines;
+                        if ('pharmacy' in this) this.pharmacy = payload.pharmacy ?? null;
                         this.subtotal = payload.subtotal;
                         this.foodSubtotal = payload.foodSubtotal;
                         this.discount = payload.discount;
@@ -1022,6 +1024,7 @@
 
                 resetForm() {
                     this.lines = [];
+                    if ('pharmacy' in this) this.pharmacy = null;
                     this.subtotal = 0;
                     this.phone = phoneField('');
                     this.name = '';

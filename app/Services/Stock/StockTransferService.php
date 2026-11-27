@@ -42,19 +42,27 @@ class StockTransferService
             foreach ($lines as $line) {
                 $product = MenuItem::findOrFail((int) $line['menu_item_id']);
                 $transfer->items()->create(['menu_item_id' => $product->id, 'units' => (int) $line['units']]);
-                $this->movements->record($this->stock->itemFor($product, $fromBranchId, $by), $by, StockMovement::TYPE_TRANSFER_OUT, -(int) $line['units'], [StockMovement::SOURCE_TRANSFER, $transfer->id], __('Sent to :branch', ['branch' => $to]));
+                $from = $this->stock->itemFor($product, $fromBranchId, $by);
+                if (app(BatchService::class)->tracks($product)) {
+                    app(BatchService::class)->assertSellable($product, $fromBranchId);
+                    app(BatchService::class)->take($from, (int) $line['units']);
+                }
+                $this->movements->record($from, $by, StockMovement::TYPE_TRANSFER_OUT, -(int) $line['units'], [StockMovement::SOURCE_TRANSFER, $transfer->id], __('Sent to :branch', ['branch' => $to]));
             }
 
             return $transfer->fresh('items');
         });
     }
 
-    /** @param  array<int, int|string>  $received  stock_transfer_item_id => units that arrived */
-    public function receive(StockTransfer $transfer, array $received, User $by): StockTransfer
+    /**
+     * @param  array<int, int|string>  $received  stock_transfer_item_id => units that arrived
+     * @param  array<int, array{batch_number?: ?string, expiry_date?: ?string}>  $batches  a medicine's batch, from the boxes (R5)
+     */
+    public function receive(StockTransfer $transfer, array $received, User $by, array $batches = []): StockTransfer
     {
         $this->assertSent($transfer);
 
-        return DB::transaction(function () use ($transfer, $received, $by) {
+        return DB::transaction(function () use ($transfer, $received, $by, $batches) {
             $from = $transfer->fromBranch->name;
             foreach ($transfer->items()->with('menuItem')->get() as $line) {
                 $units = (int) ($received[$line->id] ?? $line->units);
@@ -63,7 +71,15 @@ class StockTransferService
                 }
                 $line->update(['received_units' => $units]);
                 if ($units > 0) {
-                    $this->movements->record($this->stock->itemFor($line->menuItem, $transfer->to_branch_id, $by), $by, StockMovement::TYPE_TRANSFER_IN, $units, [StockMovement::SOURCE_TRANSFER, $transfer->id], __('Received from :branch', ['branch' => $from]));
+                    $item = $this->stock->itemFor($line->menuItem, $transfer->to_branch_id, $by);
+                    if (app(BatchService::class)->tracks($line->menuItem)) {
+                        $batch = $batches[$line->id] ?? [];
+                        if (! ($batch['expiry_date'] ?? null)) {
+                            throw ValidationException::withMessages(['received' => __(':name is a medicine: enter its expiry date (and batch number) from the box.', ['name' => $line->menuItem->name])]);
+                        }
+                        app(BatchService::class)->receive($item, $units, $batch['batch_number'] ?? null, $batch['expiry_date']);
+                    }
+                    $this->movements->record($item, $by, StockMovement::TYPE_TRANSFER_IN, $units, [StockMovement::SOURCE_TRANSFER, $transfer->id], __('Received from :branch', ['branch' => $from]));
                 }
             }
             $transfer->update(['status' => StockTransfer::RECEIVED, 'received_by' => $by->id, 'received_at' => now()]);
@@ -78,7 +94,11 @@ class StockTransferService
 
         return DB::transaction(function () use ($transfer, $by) {
             foreach ($transfer->items()->with('menuItem')->get() as $line) {
-                $this->movements->record($this->stock->itemFor($line->menuItem, $transfer->from_branch_id, $by), $by, StockMovement::TYPE_TRANSFER_IN, $line->units, [StockMovement::SOURCE_TRANSFER, $transfer->id], __('Transfer cancelled: back in'));
+                $item = $this->stock->itemFor($line->menuItem, $transfer->from_branch_id, $by);
+                $this->movements->record($item, $by, StockMovement::TYPE_TRANSFER_IN, $line->units, [StockMovement::SOURCE_TRANSFER, $transfer->id], __('Transfer cancelled: back in'));
+                if (app(BatchService::class)->tracks($line->menuItem)) {
+                    app(BatchService::class)->refill($item, $line->units);
+                }
             }
             $transfer->update(['status' => StockTransfer::CANCELLED]);
 

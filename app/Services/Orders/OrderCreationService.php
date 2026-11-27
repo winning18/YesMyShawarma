@@ -104,6 +104,15 @@ class OrderCreationService
             throw OrderPlacementException::emptyCart();
         }
 
+        // A pharmacy's prescription-only medicine is never sold online (R5).
+        if ($data->channel !== 'pos') {
+            foreach (MenuItem::whereIn('id', array_map(fn ($i) => $i->menuItemId, $data->items))->get() as $product) {
+                if ($product->needsPrescription()) {
+                    throw OrderPlacementException::prescriptionNeeded($product->name);
+                }
+            }
+        }
+
         // Options belonging to a switched-off module (ModuleService).
         if ($data->paymentMethod === Order::BOLT_FOOD && ! $this->modules->enabled(ModuleService::BOLT_FOOD)) {
             throw OrderPlacementException::moduleOff(__('Bolt Food'));

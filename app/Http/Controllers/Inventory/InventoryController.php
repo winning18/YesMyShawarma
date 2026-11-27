@@ -8,6 +8,7 @@ use App\Models\MenuItem;
 use App\Models\ProductPack;
 use App\Models\StockItem;
 use App\Services\Branches\BranchContext;
+use App\Services\Stock\BatchService;
 use App\Services\Stock\InventoryReportService;
 use App\Services\Stock\ProductStockService;
 use App\Services\Stock\StockService;
@@ -92,6 +93,8 @@ class InventoryController extends Controller
             ->map(fn (MenuItem $p) => [
                 'id' => $p->id, 'name' => $p->name, 'sku' => $p->sku, 'unit' => $p->unit_name ?: __('unit'),
                 'cost' => $p->cost_price,
+                // A medicine is received with its batch and expiry (R5).
+                'medicine' => app(BatchService::class)->tracks($p),
                 'packs' => $p->packs->map(fn (ProductPack $k) => ['id' => $k->id, 'name' => $k->name, 'units' => $k->units, 'cost' => $k->cost_price])->values(),
             ])]);
     }

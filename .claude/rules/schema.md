@@ -185,6 +185,49 @@ stock_transfer_items id, stock_transfer_id, menu_item_id, units, received_units 
   returns give their cost back), stock value at the latest cost, products in stock not sold for N
   days. Screens under Stock (`dashboard/inventory`, `retail` middleware), `stock.manage`.
 
+### Pharmacy (plan step R5, owner-approved 2026-11-27)
+
+```
+menu_items          + generic_name, strength, dosage_form, fda_number,
+                      medicine_class (otc | pharmacy | pom | controlled; null = not a medicine)
+stock_batches       id, stock_item_id (FK), batch_number nullable, expiry_date nullable, quantity,
+                    received_quantity, purchase_order_item_id nullable, timestamps
+order_item_batches  id, order_item_id (FK), stock_batch_id (FK), units, timestamps
+prescriptions       id, branch_id, order_id nullable, patient_name, patient_phone, prescriber_name,
+                    prescriber_facility, issued_on, prescription_number, photo_path (private disk),
+                    approved_by (FK users), notes, timestamps
+```
+
+- Only for a pharmacy (`BusinessType::PHARMACY`; Blade `@pharmacy`), and batches only for a product
+  with a medicine class (`BatchService::tracks()`).
+- **Batches** (`BatchService`): received with number and expiry (required; a past expiry refused);
+  sold earliest expiry first (FEFO), recorded in `order_item_batches`; stock with no batch sold
+  after; **expired stock never sold** (owner) — the till and placement refuse when it's all that's
+  left; written off as an `expired` movement. Returns and cancellations go back into the batch
+  they came from; a count's correction and a cancelled transfer refill earliest expiry first.
+  Transfers: the receiving branch enters batch and expiry from the boxes (the schema doesn't
+  carry them across).
+- **At the till** (`PharmacySaleService`): Pharmacy medicine, Prescription-only and Controlled
+  need a manager's Staff ID + PIN (owner: any manager, not a pharmacist role); Prescription-only
+  and Controlled also the prescription (patient, prescriber, date required). The approval covers
+  the restricted items present when given. Placed: a `pharmacy_check` order_events row and the
+  prescription linked to the order. Held, the approval goes.
+- **Online**: Prescription-only and Controlled never sold online (CartController and
+  OrderCreationService refuse; the item page says "Prescription needed").
+- **Controlled drugs register** (`ControlledRegisterService`): read from stock_movements, with the
+  sale's prescription and approver, running balance; printable.
+- **Expiry**: Stock → Expiry lists batches within `expiry_warning_days` (setting, default 90);
+  `expresspos:expiry-alerts` texts the owner Mondays 08:00 Accra.
+- Prescription photos: private disk, `orders.refund` holders only, never cached.
+
+**To confirm with the pilot pharmacist (assumed from common Ghana practice, 2026-11-27):**
+1. The four classes and what each needs (an approval for Pharmacy medicine; a prescription for
+   Prescription-only and Controlled); whether a pharmacist (not any manager) must approve.
+2. Which prescription details are required, and how long prescriptions and the register are kept.
+3. The controlled drugs register's format (columns, signatures, a bound book as well?).
+4. Expiry: the warning period (90 days), near-expiry selling, write-off and disposal records.
+5. Whether Pharmacy medicines may be sold online; FDA number on receipts.
+
 ## Customers
 
 ```

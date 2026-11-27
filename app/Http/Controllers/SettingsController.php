@@ -7,6 +7,7 @@ use App\Services\Delivery\DeliveryFeeCalculator;
 use App\Services\Orders\CounterReturnService;
 use App\Services\Settings\BusinessType;
 use App\Services\Settings\SettingsService;
+use App\Services\Stock\BatchService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
@@ -40,6 +41,7 @@ class SettingsController extends Controller
             'posMode' => $settings->get(SettingsService::POS_MODE, 'both'),
             'checksMomo' => $settings->checksMomoTransactionId(),
             'returnsDays' => app(CounterReturnService::class)->returnDays(),
+            'expiryWarningDays' => app(BatchService::class)->warningDays(),
         ]);
     }
 
@@ -85,6 +87,9 @@ class SettingsController extends Controller
         // A pharmacy's or shop's return window (R3): the owner's call only.
         if (isset($validated['returns_days']) && $request->user()->can('business.manage') && ! app(BusinessType::class)->isRestaurant()) {
             $settings->set(SettingsService::RETURNS_DAYS, (string) (int) $validated['returns_days']);
+        }
+        if (isset($validated['expiry_warning_days']) && $request->user()->can('business.manage') && app(BusinessType::class)->current() === BusinessType::PHARMACY) {
+            $settings->set('expiry_warning_days', (string) (int) $validated['expiry_warning_days']);
         }
         if (isset($validated['whatsapp_reward'])) {
             $settings->set(SettingsService::WHATSAPP_REWARD_AMOUNT, (string) (int) round(((float) $validated['whatsapp_reward']) * 100));
