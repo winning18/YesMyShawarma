@@ -4,6 +4,7 @@ use App\Http\Middleware\EnsureAccountNotSuspended;
 use App\Http\Middleware\EnsureModuleEnabled;
 use App\Http\Middleware\EnsurePasswordIsChanged;
 use App\Http\Middleware\EnsureRestaurant;
+use App\Http\Middleware\EnsureRetail;
 use App\Http\Middleware\MarkRiderSeen;
 use App\Http\Middleware\PreviewWebsiteTheme;
 use App\Http\Middleware\RedirectStaffToUnacceptedWebOrders;
@@ -41,6 +42,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'staff.web_orders_check' => RedirectStaffToUnacceptedWebOrders::class,
             'module' => EnsureModuleEnabled::class,
             'restaurant' => EnsureRestaurant::class,
+            'retail' => EnsureRetail::class,
             'rider.seen' => MarkRiderSeen::class,
         ]);
 

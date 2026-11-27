@@ -15,6 +15,8 @@ use App\Models\StockItem;
 use App\Services\Branches\BranchContext;
 use App\Services\Media\ImageRules;
 use App\Services\Media\ImageUploadService;
+use App\Services\Menu\ProductCatalogService;
+use App\Services\Settings\BusinessType;
 use App\Support\Money;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -34,7 +36,7 @@ use Illuminate\View\View;
  */
 class MenuItemManagementController extends Controller
 {
-    public function index(BranchContext $context): View|RedirectResponse
+    public function index(Request $request, BranchContext $context, BusinessType $type, ProductCatalogService $products): View|RedirectResponse
     {
         $this->authorizeAny(['menu.toggle_availability', 'menu.edit_content']);
 
@@ -43,6 +45,17 @@ class MenuItemManagementController extends Controller
         if (! $branch) {
             return redirect()->guest(route('branches.select'))
                 ->with('status', __('Select a branch to manage the menu.'));
+        }
+
+        // A pharmacy's or shop's thousands of products: a searchable table (R2).
+        if (! $type->isRestaurant()) {
+            return view('dashboard.menu-items.products', [
+                'branch' => $branch,
+                'products' => $products->search($branch, $request->query('q'), $request->integer('category') ?: null),
+                'categories' => Category::orderBy('name')->get(['id', 'name']),
+                'canToggleAvailability' => Gate::allows('menu.toggle_availability'),
+                'canEditContent' => Gate::allows('menu.edit_content'),
+            ]);
         }
 
         return view('dashboard.menu-items.index', [
@@ -106,14 +119,17 @@ class MenuItemManagementController extends Controller
         ]);
     }
 
-    public function store(StoreMenuItemRequest $request, ImageUploadService $images): RedirectResponse
+    public function store(StoreMenuItemRequest $request, ImageUploadService $images, ProductCatalogService $products, BusinessType $type): RedirectResponse
     {
         Gate::authorize('menu.edit_content');
 
         $validated = $request->validated();
+        // A pharmacy's or shop's product fields (R2); a restaurant has none.
+        $productFields = $type->isRestaurant() ? [] : $products->productFields($validated);
 
-        $item = DB::transaction(function () use ($validated, $request) {
+        $item = DB::transaction(function () use ($validated, $request, $productFields, $products) {
             $item = MenuItem::create([
+                ...$productFields,
                 'category_id' => $validated['category_id'],
                 'name' => $validated['name'],
                 'slug' => $this->uniqueSlug($validated['name']),
@@ -130,6 +146,10 @@ class MenuItemManagementController extends Controller
             $item->branches()->attach(Branch::pluck('id'), ['is_available' => true]);
 
             $item->optionGroups()->sync($this->optionGroupSyncData($validated['option_group_ids'] ?? []));
+
+            if ($productFields !== []) {
+                $products->assignSku($item);
+            }
 
             return $item;
         });
@@ -243,14 +263,16 @@ class MenuItemManagementController extends Controller
             ->with('status', __('Component removed.'));
     }
 
-    public function update(UpdateMenuItemRequest $request, MenuItem $menuItem): RedirectResponse
+    public function update(UpdateMenuItemRequest $request, MenuItem $menuItem, ProductCatalogService $products, BusinessType $type): RedirectResponse
     {
         Gate::authorize('menu.edit_content');
 
         $validated = $request->validated();
+        $productFields = $type->isRestaurant() ? [] : $products->productFields($validated, $menuItem);
 
-        DB::transaction(function () use ($validated, $request, $menuItem) {
+        DB::transaction(function () use ($validated, $request, $menuItem, $productFields, $products) {
             $menuItem->update([
+                ...$productFields,
                 'category_id' => $validated['category_id'],
                 'name' => $validated['name'],
                 'slug' => $validated['slug'],
@@ -261,6 +283,10 @@ class MenuItemManagementController extends Controller
             ]);
 
             $menuItem->optionGroups()->sync($this->optionGroupSyncData($validated['option_group_ids'] ?? []));
+
+            if ($productFields !== []) {
+                $products->assignSku($menuItem);
+            }
         });
 
         return redirect()->route('dashboard.menu-items.edit', $menuItem)

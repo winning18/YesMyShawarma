@@ -43,6 +43,36 @@
     <x-input-error class="mt-2" :messages="$errors->get('base_price')" />
 </div>
 
+{{-- A pharmacy's or shop's product fields (R2, ProductCatalogService). --}}
+@unlessrestaurant
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+            <x-input-label for="sku" :value="__('Product code (SKU, optional)')" />
+            <x-text-input id="sku" name="sku" type="text" maxlength="64" class="mt-1 block w-full font-mono" :value="$value('sku')" />
+            <p class="text-xs text-gray-500 mt-1">{{ __('Leave blank and one is made, e.g. P-00042.') }}</p>
+            <x-input-error class="mt-2" :messages="$errors->get('sku')" />
+        </div>
+        <div>
+            <x-input-label for="barcode" :value="__('Barcode (optional)')" />
+            <x-text-input id="barcode" name="barcode" type="text" maxlength="64" inputmode="numeric" class="mt-1 block w-full font-mono" :value="$value('barcode')" />
+            <p class="text-xs text-gray-500 mt-1">{{ __('Click here and scan the item, or type the number under the bars.') }}</p>
+            <x-input-error class="mt-2" :messages="$errors->get('barcode')" />
+        </div>
+        <div>
+            <x-input-label for="unit_name" :value="__('Sold by (optional)')" />
+            <x-text-input id="unit_name" name="unit_name" type="text" maxlength="30" class="mt-1 block w-full" :value="$value('unit_name')" placeholder="{{ __('e.g. tablet, piece, bottle') }}" />
+            <x-input-error class="mt-2" :messages="$errors->get('unit_name')" />
+        </div>
+        <div>
+            <x-input-label for="cost_price" :value="__('Cost price, per unit (GH₵, optional)')" />
+            <x-text-input id="cost_price" name="cost_price" type="number" step="0.01" min="0" class="mt-1 block w-full"
+                :value="old('cost_price', $menuItem && $menuItem->cost_price !== null ? number_format($menuItem->cost_price / 100, 2, '.', '') : '')" />
+            <p class="text-xs text-gray-500 mt-1">{{ __('What you pay for it. Used for profit; customers never see it.') }}</p>
+            <x-input-error class="mt-2" :messages="$errors->get('cost_price')" />
+        </div>
+    </div>
+@endrestaurant
+
 <div>
     <x-input-label for="sort_order" :value="__('Sort order')" />
     <x-text-input id="sort_order" name="sort_order" type="number" min="0" class="mt-1 block w-full" :value="$value('sort_order', 0)" />
@@ -56,7 +86,7 @@
     </label>
 </div>
 
-@if ($optionGroups->isNotEmpty())
+@if ($optionGroups->isNotEmpty() && app(\App\Services\Settings\BusinessType::class)->isRestaurant())
     <div>
         <x-input-label :value="__('Option groups')" />
         <div class="mt-1 space-y-1">

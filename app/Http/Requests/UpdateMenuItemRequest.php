@@ -22,6 +22,11 @@ class UpdateMenuItemRequest extends FormRequest
             'base_price' => ['required', 'numeric', 'min:0.01'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
+            // Products (pharmacies and shops, R2); uniqueness is ProductCatalogService's.
+            'sku' => ['nullable', 'string', 'max:64'],
+            'barcode' => ['nullable', 'string', 'max:64', 'regex:/^[0-9A-Za-z-]+$/'],
+            'unit_name' => ['nullable', 'string', 'max:30'],
+            'cost_price' => ['nullable', 'numeric', 'min:0'],
             'option_group_ids' => ['nullable', 'array'],
             'option_group_ids.*' => ['integer', 'exists:option_groups,id'],
         ];

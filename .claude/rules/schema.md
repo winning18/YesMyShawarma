@@ -91,6 +91,32 @@ work but get reasserted next run.
 
 Price is always `menu_items.base_price` — no per-branch override.
 
+### Products (pharmacies and shops, plan step R2, owner-approved 2026-11-27)
+
+A pharmacy's or shop's product is a `menu_items` row, so the POS, website, cart, orders, branch
+availability and reports work unchanged. Restaurants leave these empty.
+
+```
+menu_items      + sku varchar(64) nullable unique      -- product code; blank = made from the id (P-00042)
+                + barcode varchar(64) nullable unique
+                + unit_name varchar(30) nullable       -- "tablet", "piece": what base_price is for
+                + cost_price unsignedBigInteger nullable  -- pesewas, never shown to customers
+product_packs   id, menu_item_id (FK cascade), name varchar(60), units uint (base units in it),
+                price, cost_price nullable (pesewas), barcode varchar(64) nullable unique,
+                sort_order, timestamps; unique (menu_item_id, name)
+```
+
+- `App\Services\Menu\ProductCatalogService`: the fields (cedis in, pesewas out), the made-up SKU,
+  packs, `findByCode()` (a scan: product barcode or SKU, else pack barcode) and the Products list
+  search. **A barcode is unique across both tables**: the service checks, since the database can't.
+- `ProductImportService`: CSV or Excel (openspout), from Products → Import or
+  `expresspos:import-products`. Every row checked first; any error, nothing saved. SKU (then
+  barcode) matches an existing product and updates it, so a file can be imported again; extra
+  rows with the same SKU and only pack columns add packs.
+- For pharmacies and shops only: the product fields, Pack sizes, Import (`retail` route
+  middleware), the table-style Products list. Modifiers and combos are a restaurant's.
+- Not yet: which pack an order line sold (R3), stock and cost snapshots (R4), medicine fields (R5).
+
 ## Customers
 
 ```

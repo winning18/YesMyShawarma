@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\Storage;
 #[Fillable([
     'category_id', 'name', 'slug', 'description', 'base_price',
     'image_path', 'is_active', 'sort_order',
+    // Products (pharmacies and shops, R2): ProductCatalogService.
+    'sku', 'barcode', 'unit_name', 'cost_price',
 ])]
 class MenuItem extends Model
 {
@@ -24,6 +26,12 @@ class MenuItem extends Model
         return [
             'is_active' => 'boolean',
         ];
+    }
+
+    /** Pack sizes (R2): a strip, box or crate of this product, each with its own price and barcode. */
+    public function packs(): HasMany
+    {
+        return $this->hasMany(ProductPack::class)->orderBy('sort_order')->orderBy('units');
     }
 
     public function category(): BelongsTo

@@ -48,6 +48,8 @@ use App\Http\Controllers\PolicyController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\PrintController;
 use App\Http\Controllers\PrinterController;
+use App\Http\Controllers\ProductImportController;
+use App\Http\Controllers\ProductPackController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProfitReportController;
 use App\Http\Controllers\PromotionManagementController;
@@ -450,6 +452,14 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
 
     Route::post('/dashboard/menu-items/{menuItem}/recipe', [RecipeManagementController::class, 'storeForMenuItem'])->middleware('module:stock')->name('dashboard.menu-items.recipe.store');
     Route::delete('/dashboard/recipe/{recipeItem}', [RecipeManagementController::class, 'destroy'])->middleware('module:stock')->name('dashboard.recipe.destroy');
+
+    // Pharmacies and shops only (R2): pack sizes and the product import.
+    Route::get('/dashboard/products/import', [ProductImportController::class, 'create'])->middleware('retail')->name('dashboard.products.import');
+    Route::post('/dashboard/products/import', [ProductImportController::class, 'store'])->middleware(['retail', 'throttle:10,1'])->name('dashboard.products.import.store');
+    Route::get('/dashboard/products/import/template', [ProductImportController::class, 'template'])->middleware('retail')->name('dashboard.products.import.template');
+    Route::post('/dashboard/menu-items/{menuItem}/packs', [ProductPackController::class, 'store'])->middleware('retail')->name('dashboard.menu-items.packs.store');
+    Route::put('/dashboard/menu-items/{menuItem}/packs/{pack}', [ProductPackController::class, 'update'])->middleware('retail')->name('dashboard.menu-items.packs.update');
+    Route::delete('/dashboard/menu-items/{menuItem}/packs/{pack}', [ProductPackController::class, 'destroy'])->middleware('retail')->name('dashboard.menu-items.packs.destroy');
 
     // Restaurants only (R1): the menu Time table and Modifiers.
     Route::get('/dashboard/menu-items/timetable', [MenuItemScheduleController::class, 'index'])->middleware('restaurant')->name('dashboard.menu-items.timetable');

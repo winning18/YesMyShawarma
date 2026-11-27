@@ -79,6 +79,10 @@
             </div>
         </div>
 
+        @include('dashboard.menu-items.partials.packs')
+
+        {{-- Combos for a restaurant's daily sales reporting; not for a pharmacy or shop (R2). --}}
+        @restaurant
         <div class="bg-white shadow rounded-lg p-6 space-y-4">
             <div>
                 <h3 class="font-semibold text-gray-800">{{ __('Recorded as (daily sales reporting)') }}</h3>
@@ -165,6 +169,8 @@
                 <p class="text-xs text-red-600">{{ $message }}</p>
             @enderror
         </div>
+
+        @endrestaurant
 
         @module('stock')
         <div class="bg-white shadow rounded-lg p-6 space-y-3">
