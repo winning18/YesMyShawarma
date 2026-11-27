@@ -53,7 +53,7 @@
     <div class="bg-white rounded-lg shadow-xl w-full max-w-lg p-5 space-y-3 max-h-[90vh] overflow-y-auto" @click.outside="returnOpen = false">
         <h3 class="font-semibold text-gray-800">{{ __('Return') }}</h3>
         <form @submit.prevent="findSale()" class="flex gap-2">
-            <input x-model="returnReference" placeholder="{{ __('Receipt number, e.g. :example', ['example' => app(\App\Services\Settings\SettingsService::class)->prefix(\App\Services\Settings\SettingsService::ORDER_REFERENCE_PREFIX_POS).'-7K3QP9']) }}" class="flex-1 rounded-md border-gray-300 text-sm uppercase" autocomplete="off">
+            <input x-model="returnReference" x-init="$watch('returnOpen', (open) => open && $nextTick(() => $el.focus()))" placeholder="{{ __('Receipt number, e.g. :example', ['example' => app(\App\Services\Settings\SettingsService::class)->prefix(\App\Services\Settings\SettingsService::ORDER_REFERENCE_PREFIX_POS).'-7K3QP9']) }}" class="flex-1 rounded-md border-gray-300 text-sm uppercase" autocomplete="off">
             <button class="px-3 py-2 bg-gray-800 text-white text-sm font-semibold rounded-md">{{ __('Find') }}</button>
         </form>
         <template x-if="returnSale">

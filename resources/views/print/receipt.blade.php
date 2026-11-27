@@ -53,4 +53,8 @@
         <div class="rule"></div>
         <p class="center">{{ $data['message'] }}</p>
     @endif
+    {{-- A pharmacy's or shop's receipt number as a barcode, scanned for a return (R3). --}}
+    @if ($data['barcode'] ?? null)
+        <div class="center" style="margin-top:6px"><style>.receipt-barcode svg{max-width:100%;height:auto}</style><div class="receipt-barcode">{!! \App\Support\Code128::svg($data['barcode'], 44, 2) !!}</div><div>{{ $data['barcode'] }}</div></div>
+    @endif
 </x-print-page>

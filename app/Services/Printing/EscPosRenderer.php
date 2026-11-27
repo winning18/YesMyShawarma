@@ -87,6 +87,10 @@ class EscPosRenderer
             $this->rule()->align(1)->text($data['message'])->align(0);
         }
 
+        if ($data['barcode'] ?? null) {
+            $this->barcode($data['barcode']);
+        }
+
         $this->cut();
 
         if ($openDrawer) {
@@ -175,6 +179,22 @@ class EscPosRenderer
         $this->columns = $printer->paper_width === 58 ? 32 : 48;
         $this->width = 1;
         $this->out = self::ESC.'@';
+    }
+
+    /**
+     * The receipt number as a Code 128 barcode, drawn by the printer itself
+     * (GS k, set B), with the number printed under it (R3).
+     */
+    private function barcode(string $text): self
+    {
+        $data = '{B'.$this->plain($text);
+        $this->align(1);
+        $this->out .= self::GS.'h'.chr(60)   // height in dots
+            .self::GS.'w'.chr(2)              // module width
+            .self::GS.'H'.chr(2)              // number below
+            .self::GS.'k'.chr(73).chr(strlen($data)).$data."\n";
+
+        return $this->align(0);
     }
 
     private function align(int $how): self

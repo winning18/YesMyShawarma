@@ -8,6 +8,7 @@ use App\Models\OrderItemOption;
 use App\Models\TableTab;
 use App\Models\User;
 use App\Services\Settings\BusinessProfile;
+use App\Services\Settings\BusinessType;
 use App\Services\Tables\TableTabService;
 use App\Services\Tax\TaxService;
 
@@ -59,6 +60,8 @@ class ReceiptService
             'tin' => $taxes->isNotEmpty() ? $this->profile->tin() : null,
             'payment' => $this->paymentLabel($order),
             'message' => $this->profile->receiptMessage(),
+            // A pharmacy's or shop's receipt carries its number as a barcode, scanned for a return (R3).
+            'barcode' => app(BusinessType::class)->isRestaurant() ? null : $order->reference,
         ];
     }
 

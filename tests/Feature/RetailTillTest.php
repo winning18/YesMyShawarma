@@ -7,12 +7,15 @@ use App\Models\Category;
 use App\Models\HeldSale;
 use App\Models\MenuItem;
 use App\Models\Order;
+use App\Models\Printer;
 use App\Models\ProductPack;
 use App\Models\Refund;
 use App\Models\Shift;
 use App\Models\Terminal;
 use App\Models\User;
 use App\Services\Menu\ProductCatalogService;
+use App\Services\Printing\EscPosRenderer;
+use App\Services\Printing\ReceiptService;
 use App\Services\Reports\OrderReportService;
 use App\Services\Settings\BusinessType;
 use App\Services\Settings\SettingsService;
@@ -199,6 +202,26 @@ class RetailTillTest extends TestCase
         app(SettingsService::class)->set(SettingsService::RETURNS_DAYS, '7');
         $order->forceFill(['placed_at' => now()->subDays(9)])->save();
         $this->till()->getJson(route('dashboard.pos.returns.find', ['reference' => $order->reference]))->assertStatus(422)->assertJsonValidationErrors('reference');
+    }
+
+    public function test_the_receipt_carries_its_number_as_a_barcode_and_a_scan_of_it_points_to_return(): void
+    {
+        $this->till()->postJson(route('dashboard.pos.add-product'), ['menu_item_id' => $this->para->id, 'quantity' => 1]);
+        $order = $this->sell();
+
+        $data = app(ReceiptService::class)->receipt($order);
+        $this->assertSame($order->reference, $data['barcode']);
+        $this->till()->get(route('dashboard.orders.print', [$order, 'receipt']))->assertOk()->assertSee('aria-label="'.$order->reference.'"', false);
+
+        $printer = Printer::create(['branch_id' => $this->branch->id, 'name' => 'Front', 'role' => 'receipt', 'paper_width' => 80, 'connection' => 'network', 'address' => '192.168.1.9', 'is_active' => true]);
+        $bytes = app(EscPosRenderer::class)->receipt($data, $printer);
+        $this->assertStringContainsString("\x1Dk\x49".chr(strlen($order->reference) + 2).'{B'.$order->reference, $bytes, 'the printer draws it (GS k, Code 128)');
+
+        $this->till()->postJson(route('dashboard.pos.scan'), ['code' => strtolower($order->reference)])->assertStatus(422)
+            ->assertJsonPath('errors.code.0', 'That\'s receipt '.$order->reference.'. To take items back, press Return and scan it there.');
+
+        app(BusinessType::class)->set(BusinessType::RESTAURANT);
+        $this->assertNull(app(ReceiptService::class)->receipt($order->fresh())['barcode'], 'a restaurant\'s receipt is unchanged');
     }
 
     public function test_a_restaurant_has_none_of_it(): void

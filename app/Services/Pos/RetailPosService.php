@@ -4,6 +4,7 @@ namespace App\Services\Pos;
 
 use App\Models\Branch;
 use App\Models\MenuItem;
+use App\Models\Order;
 use App\Models\ProductPack;
 use App\Services\Menu\ProductCatalogService;
 use Illuminate\Validation\ValidationException;
@@ -53,6 +54,11 @@ class RetailPosService
         $found = $this->products->findByCode($code);
 
         if (! $found) {
+            // A receipt scanned here by mistake: say where it goes.
+            if (Order::where('branch_id', $branch->id)->where('reference', strtoupper(trim($code)))->exists()) {
+                throw ValidationException::withMessages(['code' => __('That\'s receipt :code. To take items back, press Return and scan it there.', ['code' => strtoupper(trim($code))])]);
+            }
+
             throw ValidationException::withMessages(['code' => __('Nothing has the code :code. Check it, or search by name.', ['code' => trim($code)])]);
         }
         if (! $this->sellable($branch)->whereKey($found['item']->id)->exists()) {
