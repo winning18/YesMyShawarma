@@ -17,6 +17,7 @@ use App\Services\Media\ImageRules;
 use App\Services\Media\ImageUploadService;
 use App\Services\Menu\ProductCatalogService;
 use App\Services\Settings\BusinessType;
+use App\Services\Stock\ProductStockService;
 use App\Support\Money;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -49,9 +50,13 @@ class MenuItemManagementController extends Controller
 
         // A pharmacy's or shop's thousands of products: a searchable table (R2).
         if (! $type->isRestaurant()) {
+            $found = $products->search($branch, $request->query('q'), $request->integer('category') ?: null);
+
             return view('dashboard.menu-items.products', [
                 'branch' => $branch,
-                'products' => $products->search($branch, $request->query('q'), $request->integer('category') ?: null),
+                'products' => $found,
+                // Stock at this branch (R4).
+                'stock' => app(ProductStockService::class)->onHand($branch->id, $found->pluck('id')->all()),
                 'categories' => Category::orderBy('name')->get(['id', 'name']),
                 'canToggleAvailability' => Gate::allows('menu.toggle_availability'),
                 'canEditContent' => Gate::allows('menu.edit_content'),

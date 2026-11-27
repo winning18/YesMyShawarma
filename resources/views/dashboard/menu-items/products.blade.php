@@ -47,6 +47,7 @@
                         <th class="px-4 py-3 font-medium text-right">{{ __('Price') }}</th>
                         <th class="px-4 py-3 font-medium text-right">{{ __('Cost') }}</th>
                         <th class="px-4 py-3 font-medium">{{ __('Packs') }}</th>
+                        <th class="px-4 py-3 font-medium text-right">{{ __('In stock') }}</th>
                         <th class="px-4 py-3 font-medium">{{ __('At this branch') }}</th>
                     </tr>
                 </thead>
@@ -68,6 +69,7 @@
                             <td class="px-4 py-2 text-right tabular-nums">{{ $cedis($item->base_price) }}</td>
                             <td class="px-4 py-2 text-right tabular-nums text-gray-500">{{ $cedis($item->cost_price) }}</td>
                             <td class="px-4 py-2">{{ $item->packs_count ?: '' }}</td>
+                            <td class="px-4 py-2 text-right tabular-nums {{ ($stock[$item->id] ?? 0) <= 0 ? 'text-red-700' : '' }}">{{ rtrim(rtrim(number_format($stock[$item->id] ?? 0, 2, '.', ''), '0'), '.') }}</td>
                             <td class="px-4 py-2">
                                 @if ($canToggleAvailability)
                                     <form method="POST" action="{{ route('dashboard.menu-items.toggle-availability', $item) }}">
@@ -80,7 +82,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="px-4 py-10 text-center text-gray-500">
+                        <tr><td colspan="8" class="px-4 py-10 text-center text-gray-500">
                             @if (request('q') || request('category'))
                                 {{ __('No menu items match your search.') }}
                             @else

@@ -10,12 +10,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * One line of a return (R3, 2026-11-27): how many of a sale's line came
  * back and the money given back for them (pesewas).
  */
-#[Fillable(['refund_id', 'order_item_id', 'quantity', 'amount'])]
+#[Fillable(['refund_id', 'order_item_id', 'quantity', 'amount', 'restocked'])]
 class RefundItem extends Model
 {
     protected function casts(): array
     {
-        return ['quantity' => 'integer', 'amount' => 'integer'];
+        return ['quantity' => 'integer', 'amount' => 'integer', 'restocked' => 'boolean'];
     }
 
     public function refund(): BelongsTo

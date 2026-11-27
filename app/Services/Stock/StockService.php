@@ -91,6 +91,51 @@ class StockService
     }
 
     /**
+     * Any change to a pharmacy's or shop's product stock (R4): received,
+     * sold, counted, transferred or returned. $change is signed (+ adds,
+     * - takes away); the movement keeps its size (signed only for a count's
+     * correction) and what caused it. Never refuses to go below zero, like
+     * recordAutomaticConsumption(): a wrong count never stops a real sale.
+     * Re-arms or sends the low-stock alert as the others do.
+     *
+     * @param  array{0: string, 1: int}|null  $source  [source_type, source_id]
+     */
+    public function record(StockItem $item, User $actor, string $type, float $change, ?array $source = null, ?string $note = null, ?int $shiftId = null): StockMovement
+    {
+        $itemToAlert = null;
+
+        $movement = DB::transaction(function () use ($item, $actor, $type, $change, $source, $note, $shiftId, &$itemToAlert) {
+            $locked = StockItem::withoutGlobalScopes()->whereKey($item->id)->lockForUpdate()->firstOrFail();
+            $locked->update(['quantity' => (float) $locked->quantity + $change]);
+
+            $movement = $locked->movements()->create([
+                'type' => $type,
+                'quantity' => $type === StockMovement::TYPE_COUNT ? $change : abs($change),
+                'actor_id' => $actor->id,
+                'shift_id' => $shiftId,
+                'source_type' => $source[0] ?? null,
+                'source_id' => $source[1] ?? null,
+                'note' => $note,
+            ]);
+
+            if (! $locked->isLowStock()) {
+                $locked->update(['low_stock_alerted_at' => null]);
+            } elseif ($change < 0 && $locked->low_stock_alerted_at === null) {
+                $locked->update(['low_stock_alerted_at' => now()]);
+                $itemToAlert = $locked;
+            }
+
+            return $movement;
+        });
+
+        if ($itemToAlert) {
+            $this->alerts->lowStock($itemToAlert);
+        }
+
+        return $movement;
+    }
+
+    /**
      * RecipeStockService's own entry point for automatic, recipe-driven
      * deduction when an order is accepted — deliberately never throws on
      * insufficient stock. A kitchen routinely has more of an ingredient on

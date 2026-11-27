@@ -75,6 +75,8 @@ class MenuPricingService
         $unitPrice = (int) $menuItem->base_price;
         $name = $menuItem->name;
         $units = 1;
+        // What one of this line cost (R4): kept on the sale for profit.
+        $cost = $menuItem->cost_price === null ? null : (int) $menuItem->cost_price;
 
         // A pack size (R3): its own price, and how many of the product's unit it is.
         if ($itemData->packId !== null) {
@@ -85,6 +87,7 @@ class MenuPricingService
             $unitPrice = (int) $pack->price;
             $name = $menuItem->name.' ('.$pack->name.')';
             $units = (int) $pack->units;
+            $cost = $pack->cost_price !== null ? (int) $pack->cost_price : ($cost === null ? null : $cost * $units);
         }
 
         // A price changed at the till (R3), approved by a manager: the list price is kept.
@@ -122,6 +125,7 @@ class MenuPricingService
             'product_pack_id' => $itemData->packId,
             'units' => $units,
             'list_price_snapshot' => $listPrice,
+            'cost_snapshot' => $cost,
             'price_changed_by' => $listPrice !== null ? $itemData->priceChangedBy : null,
             'unit_name' => $menuItem->unit_name,
             'line_total' => $lineTotal,

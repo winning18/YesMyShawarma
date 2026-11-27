@@ -16,6 +16,7 @@
             searching: false,
             scanError: null,
             scanAdded: null,
+            stockWarning: null,
             tillMessage: null,
             tillError: null,
             tillBusy: false,
@@ -28,6 +29,7 @@
             returnReference: '',
             returnSale: null,
             returnQuantities: {},
+            returnDamaged: [],
             returnReason: '',
             returnCredit: 0,
 
@@ -68,7 +70,7 @@
                 try {
                     const payload = await this.tillRequest(urls.scan, 'POST', { code });
                     this.applyPayload(payload);
-                    this.done(payload.added);
+                    this.done(payload.added, payload.stock_warning);
                 } catch (e) {
                     if (this.results.length === 1) return this.addProduct(this.results[0], null);
                     this.scanError = window.explainError(e);
@@ -77,15 +79,17 @@
 
             async addProduct(product, pack) {
                 try {
-                    this.applyPayload(await this.tillRequest(urls.add, 'POST', { menu_item_id: product.id, pack_id: pack ? pack.id : null, quantity: product.qty || 1 }));
-                    this.done(product.name + (pack ? ' (' + pack.name + ')' : ''));
+                    const payload = await this.tillRequest(urls.add, 'POST', { menu_item_id: product.id, pack_id: pack ? pack.id : null, quantity: product.qty || 1 });
+                    this.applyPayload(payload);
+                    this.done(product.name + (pack ? ' (' + pack.name + ')' : ''), payload.stock_warning);
                 } catch (e) {
                     this.scanError = window.explainError(e);
                 }
             },
 
-            done(added) {
+            done(added, warning = null) {
                 this.scanAdded = added ? @js(__('Added:')) + ' ' + added : null;
+                this.stockWarning = warning;
                 this.query = '';
                 this.results = [];
                 this.error = null;
@@ -161,6 +165,7 @@
                 this.returnReference = '';
                 this.returnReason = '';
                 this.returnQuantities = {};
+                this.returnDamaged = [];
                 this.approval = { staff_code: '', pin: '' };
                 this.tillError = null;
             },
@@ -186,7 +191,7 @@
                 this.tillError = null;
                 try {
                     const result = await this.tillRequest(urls.base + '/returns/' + this.returnSale.order.id, 'POST', {
-                        quantities: this.returnQuantities, reason: this.returnReason, ...this.approval,
+                        quantities: this.returnQuantities, damaged: this.returnDamaged, reason: this.returnReason, ...this.approval,
                     });
                     this.returnOpen = false;
                     this.returnCredit = result.amount;

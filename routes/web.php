@@ -30,6 +30,11 @@ use App\Http\Controllers\HelpController;
 use App\Http\Controllers\HeroSliderController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\HomeStripController;
+use App\Http\Controllers\Inventory\InventoryController;
+use App\Http\Controllers\Inventory\PurchaseOrderController;
+use App\Http\Controllers\Inventory\StockCountController;
+use App\Http\Controllers\Inventory\StockTransferController;
+use App\Http\Controllers\Inventory\SupplierController;
 use App\Http\Controllers\LlmsController;
 use App\Http\Controllers\ManifestController;
 use App\Http\Controllers\MarketListController;
@@ -466,6 +471,38 @@ Route::middleware(['auth', 'verified', 'branch', 'password.change_required', 'st
 
     Route::post('/dashboard/menu-items/{menuItem}/recipe', [RecipeManagementController::class, 'storeForMenuItem'])->middleware('module:stock')->name('dashboard.menu-items.recipe.store');
     Route::delete('/dashboard/recipe/{recipeItem}', [RecipeManagementController::class, 'destroy'])->middleware('module:stock')->name('dashboard.recipe.destroy');
+
+    // A pharmacy's or shop's stock (R4): levels, suppliers, purchase orders, counts, transfers, reports.
+    Route::middleware('retail')->prefix('dashboard/inventory')->name('dashboard.inventory.')->group(function () {
+        Route::get('/', [InventoryController::class, 'index'])->name('index');
+        Route::get('/products', [InventoryController::class, 'products'])->name('products');
+        Route::get('/reports', [InventoryController::class, 'reports'])->name('reports');
+        Route::get('/products/{menuItem}/history', [InventoryController::class, 'history'])->name('history');
+        Route::post('/products/{menuItem}/threshold', [InventoryController::class, 'threshold'])->name('threshold');
+        Route::get('/suppliers', [SupplierController::class, 'index'])->name('suppliers.index');
+        Route::get('/suppliers/create', [SupplierController::class, 'create'])->name('suppliers.create');
+        Route::post('/suppliers', [SupplierController::class, 'store'])->name('suppliers.store');
+        Route::get('/suppliers/{supplier}/edit', [SupplierController::class, 'edit'])->name('suppliers.edit');
+        Route::put('/suppliers/{supplier}', [SupplierController::class, 'update'])->name('suppliers.update');
+        Route::get('/purchase-orders', [PurchaseOrderController::class, 'index'])->name('purchase-orders.index');
+        Route::get('/purchase-orders/create', [PurchaseOrderController::class, 'create'])->name('purchase-orders.create');
+        Route::post('/purchase-orders', [PurchaseOrderController::class, 'store'])->name('purchase-orders.store');
+        Route::get('/purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'show'])->name('purchase-orders.show');
+        Route::post('/purchase-orders/{purchaseOrder}/ordered', [PurchaseOrderController::class, 'ordered'])->name('purchase-orders.ordered');
+        Route::post('/purchase-orders/{purchaseOrder}/receive', [PurchaseOrderController::class, 'receive'])->name('purchase-orders.receive');
+        Route::post('/purchase-orders/{purchaseOrder}/cancel', [PurchaseOrderController::class, 'cancel'])->name('purchase-orders.cancel');
+        Route::get('/counts', [StockCountController::class, 'index'])->name('counts.index');
+        Route::post('/counts', [StockCountController::class, 'store'])->name('counts.store');
+        Route::get('/counts/{count}', [StockCountController::class, 'show'])->name('counts.show');
+        Route::put('/counts/{count}', [StockCountController::class, 'update'])->name('counts.update');
+        Route::post('/counts/{count}/cancel', [StockCountController::class, 'cancel'])->name('counts.cancel');
+        Route::get('/transfers', [StockTransferController::class, 'index'])->name('transfers.index');
+        Route::get('/transfers/create', [StockTransferController::class, 'create'])->name('transfers.create');
+        Route::post('/transfers', [StockTransferController::class, 'store'])->name('transfers.store');
+        Route::get('/transfers/{transfer}', [StockTransferController::class, 'show'])->name('transfers.show');
+        Route::post('/transfers/{transfer}/receive', [StockTransferController::class, 'receive'])->name('transfers.receive');
+        Route::post('/transfers/{transfer}/cancel', [StockTransferController::class, 'cancel'])->name('transfers.cancel');
+    });
 
     // Pharmacies and shops only (R2): pack sizes and the product import.
     Route::get('/dashboard/products/import', [ProductImportController::class, 'create'])->middleware('retail')->name('dashboard.products.import');

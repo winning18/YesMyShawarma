@@ -46,12 +46,13 @@ class RetailPosController extends Controller
 
         $found = $pos->scan($branch, $code);
         $cart->add($branch->id, $found['item']->id, 1, null, [], $found['pack']?->id);
+        $payload = PosController::cartPayload($cart, $promotions);
 
-        return response()->json([...PosController::cartPayload($cart, $promotions), 'added' => $found['item']->name.($found['pack'] ? ' ('.$found['pack']->name.')' : '')]);
+        return response()->json([...$payload, 'added' => $found['item']->name.($found['pack'] ? ' ('.$found['pack']->name.')' : ''), 'stock_warning' => $pos->stockWarning($branch, $found['item']->id, $payload['lines'])]);
     }
 
     /** A product (or one of its packs) chosen from the search, with a quantity. */
-    public function add(Request $request, BranchContext $context, PosCartService $cart, MenuPricingService $pricing, PromotionService $promotions): JsonResponse
+    public function add(Request $request, BranchContext $context, PosCartService $cart, MenuPricingService $pricing, PromotionService $promotions, RetailPosService $pos): JsonResponse
     {
         Gate::authorize('orders.create');
         abort_unless($branch = $context->branch(), 422, 'No branch selected.');
@@ -69,8 +70,9 @@ class RetailPosController extends Controller
         }
 
         $cart->add($branch->id, $v['menu_item_id'], $v['quantity'], null, [], $v['pack_id'] ?? null);
+        $payload = PosController::cartPayload($cart, $promotions);
 
-        return response()->json(PosController::cartPayload($cart, $promotions));
+        return response()->json([...$payload, 'stock_warning' => $pos->stockWarning($branch, $v['menu_item_id'], $payload['lines'])]);
     }
 
     /** A line's price changed (or put back), approved by a manager's Staff ID and PIN. */
@@ -158,6 +160,8 @@ class RetailPosController extends Controller
         $v = $request->validate([
             'quantities' => ['required', 'array'],
             'quantities.*' => ['integer', 'min:0'],
+            'damaged' => ['array'],
+            'damaged.*' => ['integer'],
             'reason' => ['required', 'string', 'max:255'],
             'staff_code' => ['required', 'string', 'max:20'],
             'pin' => ['required', 'digits_between:4,6'],
@@ -168,7 +172,7 @@ class RetailPosController extends Controller
         ]);
 
         $approver = $pins->approver($v['staff_code'], $v['pin'], $branch->id);
-        $refund = $returns->create($order, array_map('intval', $v['quantities']), $approver, $v['reason'], $shifts->activeForBranch($branch->id)?->id);
+        $refund = $returns->create($order, array_map('intval', $v['quantities']), $approver, $v['reason'], $shifts->activeForBranch($branch->id)?->id, array_map('intval', $v['damaged'] ?? []));
 
         return response()->json([
             'amount' => $refund->amount,

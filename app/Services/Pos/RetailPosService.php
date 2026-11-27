@@ -7,6 +7,7 @@ use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\ProductPack;
 use App\Services\Menu\ProductCatalogService;
+use App\Services\Stock\ProductStockService;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -30,7 +31,7 @@ class RetailPosService
             return [];
         }
 
-        return $this->sellable($branch)
+        $found = $this->sellable($branch)
             ->where(fn ($q) => $q
                 ->where('menu_items.name', 'like', '%'.addcslashes($query, '%_\\').'%')
                 ->orWhere('menu_items.sku', $query)
@@ -39,9 +40,10 @@ class RetailPosService
             ->orderByRaw('menu_items.name like ? desc', [addcslashes($query, '%_\\').'%'])
             ->orderBy('menu_items.name')
             ->limit(self::RESULTS)
-            ->get()
-            ->map(fn (MenuItem $item) => $this->present($item))
-            ->all();
+            ->get();
+        $stock = app(ProductStockService::class)->onHand($branch->id, $found->pluck('id')->all());
+
+        return $found->map(fn (MenuItem $item) => [...$this->present($item), 'stock' => $stock[$item->id] ?? 0.0])->all();
     }
 
     /**
@@ -79,6 +81,25 @@ class RetailPosService
             'unit' => $item->unit_name,
             'packs' => $item->packs->map(fn (ProductPack $p) => ['id' => $p->id, 'name' => $p->name, 'units' => $p->units, 'price' => $p->price])->values()->all(),
         ];
+    }
+
+    /**
+     * The till's warning when a sale takes more than the system shows
+     * (owner, 2026-11-27: warn, never block). Null when there's enough.
+     *
+     * @param  list<array<string, mixed>>  $lines  the cart's priced lines
+     */
+    public function stockWarning(Branch $branch, int $menuItemId, array $lines): ?string
+    {
+        $wanted = collect($lines)->where('menu_item_id', $menuItemId)->sum(fn (array $l) => $l['quantity'] * ($l['units'] ?? 1));
+        $onHand = app(ProductStockService::class)->onHand($branch->id, [$menuItemId])[$menuItemId];
+
+        if ($wanted <= $onHand) {
+            return null;
+        }
+        $name = MenuItem::withTrashed()->find($menuItemId)?->name;
+
+        return __('Stock shows :on_hand :name, and this sale has :wanted. Sold anyway; check the shelf or count it.', ['on_hand' => rtrim(rtrim(number_format($onHand, 2, '.', ''), '0'), '.'), 'name' => $name, 'wanted' => $wanted]);
     }
 
     private function sellable(Branch $branch)

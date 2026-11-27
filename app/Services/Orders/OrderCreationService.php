@@ -335,6 +335,7 @@ class OrderCreationService
                     'units' => $row['units'] ?? 1,
                     'list_price_snapshot' => $row['list_price_snapshot'] ?? null,
                     'price_changed_by' => $row['price_changed_by'] ?? null,
+                    'cost_snapshot' => $row['cost_snapshot'] ?? null,
                 ]);
 
                 foreach ($row['options'] as $option) {

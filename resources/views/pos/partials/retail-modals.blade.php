@@ -63,11 +63,15 @@
                     <template x-for="line in returnSale.lines" :key="line.id">
                         <li class="py-2 flex items-center justify-between gap-2">
                             <span><span x-text="line.name"></span> <span class="text-gray-500" x-text="'(' + line.returnable + ' ' + @js(__('of')) + ' ' + line.quantity + ' ' + @js(__('can come back')) + ')'"></span></span>
-                            <input type="number" min="0" :max="line.returnable" x-model.number="returnQuantities[line.id]" :disabled="line.returnable === 0" class="w-20 rounded-md border-gray-300 text-sm">
+                            <span class="flex items-center gap-2">
+                                <label class="flex items-center gap-1 text-xs text-gray-600" x-show="returnQuantities[line.id] > 0"><input type="checkbox" :value="line.id" x-model.number="returnDamaged" class="rounded border-gray-300"> {{ __('Damaged') }}</label>
+                                <input type="number" min="0" :max="line.returnable" x-model.number="returnQuantities[line.id]" :disabled="line.returnable === 0" class="w-20 rounded-md border-gray-300 text-sm">
+                            </span>
                         </li>
                     </template>
                 </ul>
                 <p class="text-sm font-semibold" x-text="@js(__('To give back:')) + ' ' + formatMoney(returnTotal())"></p>
+                <p class="text-xs text-gray-500">{{ __('Returned items go back into stock. Tick Damaged for any that can\'t be sold again.') }}</p>
                 <div>
                     <label class="block text-xs font-medium text-gray-500">{{ __('Why it came back') }}</label>
                     <input x-model="returnReason" maxlength="255" placeholder="{{ __('e.g. Wrong size, Damaged, Exchanged') }}" class="mt-1 w-full rounded-md border-gray-300 text-sm">

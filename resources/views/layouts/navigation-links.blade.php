@@ -306,6 +306,32 @@
     deduction" section), so staff/manager/general_manager have no stock
     screen of their own left to reach at all.
 --}}
+{{-- A pharmacy's or shop's stock (R4): levels, buying, counts, transfers, reports. --}}
+@unlessrestaurant
+@can('stock.manage')
+    @php $onInventory = request()->routeIs('dashboard.inventory.*'); @endphp
+    <div x-data="{ inventoryOpen: {{ $onInventory ? 'true' : 'false' }} }">
+        <button type="button" @click="inventoryOpen = ! inventoryOpen"
+            class="w-full flex items-center justify-between px-3 py-2 rounded-md rounded-l-none border-l-4 text-sm font-medium transition duration-150 ease-in-out {{ $onInventory ? 'border-indigo-400 bg-indigo-50 text-indigo-700 font-semibold' : 'border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}">
+            <span>{{ __('Stock') }}</span>
+            <svg class="w-4 h-4 shrink-0 transition-transform" :class="{ 'rotate-180': inventoryOpen }" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+        </button>
+        <div x-show="inventoryOpen" x-cloak class="mt-1 ml-3 pl-3 border-l border-gray-100 space-y-1">
+            @foreach ([
+                ['dashboard.inventory.index', 'dashboard.inventory.index|dashboard.inventory.history', __('Stock levels')],
+                ['dashboard.inventory.purchase-orders.index', 'dashboard.inventory.purchase-orders.*', __('Purchase orders')],
+                ['dashboard.inventory.suppliers.index', 'dashboard.inventory.suppliers.*', __('Suppliers')],
+                ['dashboard.inventory.counts.index', 'dashboard.inventory.counts.*', __('Stock counts')],
+                ['dashboard.inventory.transfers.index', 'dashboard.inventory.transfers.*', __('Transfers')],
+                ['dashboard.inventory.reports', 'dashboard.inventory.reports', __('Stock reports')],
+            ] as [$route, $active, $label])
+                <a href="{{ route($route) }}" class="block px-3 py-1.5 rounded-md text-sm transition duration-150 ease-in-out {{ request()->routeIs(...explode('|', $active)) ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}">{{ $label }}</a>
+            @endforeach
+        </div>
+    </div>
+@endcan
+@endrestaurant
+
 @module('stock')
 @can('stock.manage')
     <x-sidebar-link :href="route('dashboard.stock.index')" :active="request()->routeIs('dashboard.stock.*')">

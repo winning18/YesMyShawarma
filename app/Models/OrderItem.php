@@ -13,6 +13,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'quantity', 'line_total', 'is_free', 'notes',
     // Pharmacies and shops (R3): the pack sold, its units, a price changed at the till.
     'product_pack_id', 'units', 'list_price_snapshot', 'price_changed_by',
+    // R4: the cost of one of this line when sold (pesewas), for profit.
+    'cost_snapshot',
 ])]
 class OrderItem extends Model
 {

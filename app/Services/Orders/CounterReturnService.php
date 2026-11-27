@@ -9,6 +9,7 @@ use App\Models\Refund;
 use App\Models\RefundItem;
 use App\Models\User;
 use App\Services\Settings\SettingsService;
+use App\Services\Stock\ProductStockService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -29,6 +30,9 @@ use Illuminate\Validation\ValidationException;
  *   the till it was given from (`shift_id`), so it comes off that till's
  *   takings (OrderReportService), whichever till made the sale.
  * - An exchange is a return then a new sale; the POS shows the difference.
+ * - Each item goes back on the shelf (stock up, ProductStockService) unless
+ *   the cashier ticks it damaged (owner, 2026-11-27); refund_items.restocked
+ *   says which.
  */
 class CounterReturnService
 {
@@ -75,12 +79,13 @@ class CounterReturnService
 
     /**
      * @param  array<int, int>  $quantities  order_item_id => how many came back
+     * @param  list<int>  $damaged  order_item_ids that can't be sold again (not restocked)
      */
-    public function create(Order $order, array $quantities, User $approver, string $reason, ?int $shiftId): Refund
+    public function create(Order $order, array $quantities, User $approver, string $reason, ?int $shiftId, array $damaged = []): Refund
     {
         $this->assertReturnable($order);
 
-        return DB::transaction(function () use ($order, $quantities, $approver, $reason, $shiftId) {
+        return DB::transaction(function () use ($order, $quantities, $approver, $reason, $shiftId, $damaged) {
             // Locked, so two returns of the same sale can't both take the last one.
             Order::whereKey($order->id)->lockForUpdate()->first();
             $returned = $this->returnedQuantities($order);
@@ -110,7 +115,11 @@ class CounterReturnService
 
             $refund->update(['kind' => Refund::KIND_RETURN, 'shift_id' => $shiftId]);
             foreach ($lines as $line) {
-                RefundItem::create(['refund_id' => $refund->id, 'order_item_id' => $line['item']->id, 'quantity' => $line['quantity'], 'amount' => $line['amount']]);
+                $restock = ! in_array($line['item']->id, $damaged, true);
+                RefundItem::create(['refund_id' => $refund->id, 'order_item_id' => $line['item']->id, 'quantity' => $line['quantity'], 'amount' => $line['amount'], 'restocked' => $restock]);
+                if ($restock) {
+                    app(ProductStockService::class)->returnToShelf($line['item'], $line['quantity'], $refund, $approver, $shiftId);
+                }
             }
 
             return $refund->fresh('items');

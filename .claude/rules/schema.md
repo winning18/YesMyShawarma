@@ -147,6 +147,44 @@ refund_items id, refund_id (FK cascade), order_item_id (FK), quantity, amount (p
   (`OrderReportService::refundsInRange()`). An exchange is a return then a new sale; the till
   shows the difference.
 
+### Stock for pharmacies and shops (plan step R4, owner-approved 2026-11-27)
+
+```
+stock_items        + menu_item_id (nullable FK, unique per branch)  -- a product's stock at a branch
+stock_movements    + source_type, source_id (nullable)  -- order | purchase_order | stock_count | stock_transfer | refund
+                   types + received, count (signed correction), transfer_out, transfer_in, returned
+order_items        + cost_snapshot nullable   -- cost of one of this line when sold (pack cost, or unit cost × units)
+refund_items       + restocked bool           -- went back on the shelf (false = damaged)
+suppliers          id, name, phone, email, address, notes, timestamps        -- shared by every branch
+purchase_orders    id, branch_id, supplier_id nullable, reference unique, status (draft|ordered|part_received|
+                   received|cancelled), ordered_at, received_at, created_by, received_by, note, total, timestamps
+purchase_order_items id, purchase_order_id, menu_item_id, product_pack_id nullable, quantity, units,
+                   unit_cost (per product or per pack), quantity_received, timestamps
+stock_counts       id, branch_id, status (open|finished|cancelled), started_by, finished_by, finished_at, note
+stock_count_items  id, stock_count_id, stock_item_id, expected, counted nullable; unique per count
+stock_transfers    id, from_branch_id, to_branch_id, status (sent|received|cancelled), sent_by, received_by,
+                   sent_at, received_at, note, timestamps    -- no BranchScope: it belongs to both
+stock_transfer_items id, stock_transfer_id, menu_item_id, units, received_units nullable
+```
+
+- One stock row per product per branch, in the product's own unit, made when first needed
+  (`ProductStockService::itemFor()`). Every change goes through `StockService::record()` (signed
+  change, movement with its source, low-stock alert as for ingredients) — never set quantity directly.
+- **Sales** take `quantity × units` off when the order is accepted (a counter sale is, as it's paid);
+  cancelled any time before handover (`accepted`, `preparing` or `ready`) the goods come back —
+  unlike a restaurant, nothing was used up. Stock may go below zero: the till warns
+  (`RetailPosService::stockWarning()`) and sells anyway (owner).
+- **Receiving** (`PurchaseOrderService`): full or in parts; a delivery with no order is an order
+  received at once. The latest cost becomes the product's (and pack's) cost price (owner).
+- **Counts** (`StockCountService`): one open per branch; finishing applies `counted − expected` to
+  each counted product, so sales during the count still count; blanks are left alone.
+- **Transfers** (`StockTransferService`): out when sent, in when the receiving branch confirms what
+  arrived (it may be less); cancelled before then, back to the sender.
+- **Returns**: back on the shelf unless ticked Damaged (owner).
+- **Reports** (`InventoryReportService`): profit by product (sales − returns − cost; restocked
+  returns give their cost back), stock value at the latest cost, products in stock not sold for N
+  days. Screens under Stock (`dashboard/inventory`, `retail` middleware), `stock.manage`.
+
 ## Customers
 
 ```

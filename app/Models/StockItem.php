@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['branch_id', 'name', 'unit', 'quantity', 'low_stock_threshold', 'low_stock_alerted_at', 'created_by'])]
+#[Fillable(['branch_id', 'menu_item_id', 'name', 'unit', 'quantity', 'low_stock_threshold', 'low_stock_alerted_at', 'created_by'])]
 #[ScopedBy([BranchScope::class])]
 class StockItem extends Model
 {
@@ -20,6 +20,12 @@ class StockItem extends Model
             'low_stock_threshold' => 'decimal:2',
             'low_stock_alerted_at' => 'datetime',
         ];
+    }
+
+    /** A pharmacy's or shop's product this row counts at its branch (R4); null for an ingredient. */
+    public function menuItem(): BelongsTo
+    {
+        return $this->belongsTo(MenuItem::class);
     }
 
     public function branch(): BelongsTo

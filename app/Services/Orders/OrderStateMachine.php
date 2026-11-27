@@ -9,6 +9,7 @@ use App\Models\Scopes\BranchScope;
 use App\Services\Delivery\DeliveryFeeCalculator;
 use App\Services\Notifications\CustomerOrderNotifier;
 use App\Services\Notifications\NewOrderPushNotifier;
+use App\Services\Stock\ProductStockService;
 use App\Services\Stock\RecipeStockService;
 use App\Services\Tax\TaxService;
 use App\Support\SafeBroadcast;
@@ -192,6 +193,8 @@ class OrderStateMachine
             // not crashing the accept action over a stock concern.
             if ($to === 'accepted' && $actorId !== null) {
                 $this->recipeStock->deductForOrder($order, $actorId, $shiftId);
+                // A pharmacy's or shop's products (R4); nothing for a restaurant.
+                app(ProductStockService::class)->deductForOrder($order, $actorId, $shiftId);
             }
 
             // A web order's money goes in the till that accepts it (owner,
@@ -210,6 +213,12 @@ class OrderStateMachine
             // had stock deducted in the first place.
             if ($to === 'cancelled' && $from === 'accepted' && $actorId !== null) {
                 $this->recipeStock->restoreForOrder($order, $actorId);
+            }
+
+            // A pharmacy's or shop's goods aren't used up by packing them (R4):
+            // cancelled any time before they're handed over, they go back.
+            if ($to === 'cancelled' && in_array($from, ['accepted', 'preparing', 'ready'], true) && $actorId !== null) {
+                app(ProductStockService::class)->restoreForOrder($order, $actorId);
             }
 
             $order->events()->create([
